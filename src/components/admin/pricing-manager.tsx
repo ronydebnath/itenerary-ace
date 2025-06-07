@@ -5,76 +5,29 @@ import * as React from 'react';
 import Link from 'next/link';
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { PlusCircle, Edit, Trash2, Home, MapPinned } from 'lucide-react'; 
+import { PlusCircle, Edit, Trash2, Home, MapPinned, Loader2 } from 'lucide-react'; 
 import type { ServicePriceItem, CurrencyCode } from '@/types/itinerary';
-import { CURRENCIES } from '@/types/itinerary'; 
 import { ServicePriceForm } from './service-price-form';
 import { ServicePriceTable } from './service-price-table';
 import { generateGUID } from '@/lib/utils';
 import { useToast } from "@/hooks/use-toast";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-
+import { useServicePrices } from '@/hooks/useServicePrices'; // Import the hook
 
 const SERVICE_PRICES_STORAGE_KEY = 'itineraryAceServicePrices';
 
 export function PricingManager() {
-  const [servicePrices, setServicePrices] = React.useState<ServicePriceItem[]>([]);
+  const { allServicePrices, isLoading: isLoadingServices } = useServicePrices(); // Use the hook
+  const [currentServicePrices, setCurrentServicePrices] = React.useState<ServicePriceItem[]>([]);
   const [isFormOpen, setIsFormOpen] = React.useState(false);
   const [editingService, setEditingService] = React.useState<ServicePriceItem | undefined>(undefined);
   const { toast } = useToast();
 
   React.useEffect(() => {
-    try {
-      const storedPrices = localStorage.getItem(SERVICE_PRICES_STORAGE_KEY);
-      if (storedPrices) {
-        const parsedData = JSON.parse(storedPrices);
-        if (Array.isArray(parsedData)) {
-            // More robust mapping to handle potentially malformed or old data
-            const validatedPrices = parsedData.map(p => {
-              const category = p.category && CURRENCIES.includes(p.category as CurrencyCode) ? p.category : "misc"; 
-              
-              let seasonalRatesValid: ServicePriceItem['seasonalRates'] = undefined;
-              if (category === 'hotel' && Array.isArray(p.seasonalRates)) {
-                seasonalRatesValid = p.seasonalRates.map((sr: any) => ({
-                    id: sr.id || generateGUID(),
-                    startDate: sr.startDate || "", // Form expects ISO string or Date
-                    endDate: sr.endDate || "",   // Form expects ISO string or Date
-                    roomRate: typeof sr.roomRate === 'number' ? sr.roomRate : 0,
-                    extraBedRate: typeof sr.extraBedRate === 'number' ? sr.extraBedRate : undefined,
-                  }));
-              } else if (category === 'hotel') {
-                seasonalRatesValid = []; // Default to empty array for hotels if not present or invalid
-              }
-
-              return {
-                id: p.id || generateGUID(),
-                name: p.name || "Unnamed Service",
-                province: p.province || undefined, 
-                category: category,
-                subCategory: p.subCategory, // Keep as is, form logic handles it
-                price1: typeof p.price1 === 'number' ? p.price1 : 0,
-                price2: typeof p.price2 === 'number' ? p.price2 : undefined,
-                currency: CURRENCIES.includes(p.currency as CurrencyCode) ? p.currency : "THB" as CurrencyCode,
-                unitDescription: p.unitDescription || "N/A",
-                notes: p.notes,
-                seasonalRates: seasonalRatesValid,
-              } as ServicePriceItem;
-            }).filter(p => p.name && p.category && typeof p.price1 === 'number'); // Basic filter for essential fields
-            setServicePrices(validatedPrices);
-        } else {
-            console.warn("Stored service prices are not an array. It might be initialized by the hook with demo data shortly.");
-            setServicePrices([]); // Expecting hook to populate if empty/invalid
-        }
-      } else {
-         console.info("No service prices in localStorage. Expecting hook to populate with demo data if applicable.");
-         setServicePrices([]); // Expecting hook to populate
-      }
-    } catch (error) {
-      console.error("Failed to load or parse service prices from localStorage:", error);
-      toast({ title: "Error", description: "Could not load service prices. Data might be corrupted. Demo data might be loaded.", variant: "destructive" });
-      setServicePrices([]); // Fallback to empty, hook might populate
+    if (!isLoadingServices) {
+      setCurrentServicePrices(allServicePrices);
     }
-  }, [toast]);
+  }, [allServicePrices, isLoadingServices]);
 
   const savePricesToLocalStorage = (prices: ServicePriceItem[]) => {
     try {
@@ -88,14 +41,14 @@ export function PricingManager() {
   const handleFormSubmit = (data: Omit<ServicePriceItem, 'id'>) => {
     let updatedPrices;
     if (editingService) {
-      updatedPrices = servicePrices.map(sp => sp.id === editingService.id ? { ...editingService, ...data } : sp);
+      updatedPrices = currentServicePrices.map(sp => sp.id === editingService.id ? { ...editingService, ...data } : sp);
       toast({ title: "Success", description: `Service price "${data.name}" updated.` });
     } else {
       const newServicePrice: ServicePriceItem = { ...data, id: generateGUID() };
-      updatedPrices = [...servicePrices, newServicePrice];
+      updatedPrices = [...currentServicePrices, newServicePrice];
       toast({ title: "Success", description: `Service price "${data.name}" added.` });
     }
-    setServicePrices(updatedPrices);
+    setCurrentServicePrices(updatedPrices);
     savePricesToLocalStorage(updatedPrices);
     setIsFormOpen(false);
     setEditingService(undefined);
@@ -107,9 +60,9 @@ export function PricingManager() {
   };
 
   const handleDelete = (serviceId: string) => {
-    const serviceToDelete = servicePrices.find(sp => sp.id === serviceId);
-    const updatedPrices = servicePrices.filter(sp => sp.id !== serviceId);
-    setServicePrices(updatedPrices);
+    const serviceToDelete = currentServicePrices.find(sp => sp.id === serviceId);
+    const updatedPrices = currentServicePrices.filter(sp => sp.id !== serviceId);
+    setCurrentServicePrices(updatedPrices);
     savePricesToLocalStorage(updatedPrices);
     toast({ title: "Success", description: `Service price "${serviceToDelete?.name || 'Item'}" deleted.` });
   };
@@ -159,9 +112,14 @@ export function PricingManager() {
         </Link>
       </div>
 
-      {servicePrices.length > 0 ? (
+      {isLoadingServices ? (
+        <div className="text-center py-10">
+            <Loader2 className="mx-auto h-12 w-12 animate-spin text-primary" />
+            <p className="mt-4 text-muted-foreground">Loading service prices...</p>
+        </div>
+      ) : currentServicePrices.length > 0 ? (
         <ServicePriceTable
-          servicePrices={servicePrices}
+          servicePrices={currentServicePrices}
           onEdit={handleEdit}
           onDeleteConfirmation={(serviceId) => ( 
             <AlertDialog>
@@ -190,7 +148,7 @@ export function PricingManager() {
       ) : (
         <div className="text-center py-10 border-2 border-dashed border-muted-foreground/30 rounded-lg">
           <p className="text-muted-foreground text-lg">No service prices defined yet.</p>
-          <p className="text-sm text-muted-foreground mt-2">Loading demo data or click "Add New Service Price" to get started.</p>
+          <p className="text-sm text-muted-foreground mt-2">Demo data should load automatically. If not, please refresh or click "Add New Service Price".</p>
         </div>
       )}
     </div>
