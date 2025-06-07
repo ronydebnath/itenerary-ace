@@ -37,18 +37,25 @@ export function MiscItemForm({ item, travelers, currency, onUpdate, onDelete }: 
     onUpdate({ ...item, [field]: numValue, selectedServicePriceId: undefined });
   };
 
-  const handlePredefinedServiceSelect = (serviceId: string) => {
-    const selectedService = getServicePriceById(serviceId);
-    if (selectedService) {
+  const handlePredefinedServiceSelect = (selectedValue: string) => {
+    if (selectedValue === "none") {
       onUpdate({
         ...item,
-        name: item.name === `New misc` || item.selectedServicePriceId ? selectedService.name : item.name,
-        unitCost: selectedService.price1,
-        // Quantity and costAssignment are specific to this item instance, not from service.
-        // But we might want to clear costAssignment or guide user if service implies one.
-        // For now, keep item's costAssignment.
-        selectedServicePriceId: selectedService.id,
+        selectedServicePriceId: undefined,
+        unitCost: item.unitCost ?? 0,
+        // quantity and costAssignment are specific to this item instance, keep them.
       });
+    } else {
+      const selectedService = getServicePriceById(selectedValue);
+      if (selectedService) {
+        onUpdate({
+          ...item,
+          name: item.name === `New misc` || !item.name || item.selectedServicePriceId ? selectedService.name : item.name,
+          unitCost: selectedService.price1,
+          // Quantity and costAssignment are specific to this item instance, not from service.
+          selectedServicePriceId: selectedService.id,
+        });
+      }
     }
   };
   
@@ -60,14 +67,14 @@ export function MiscItemForm({ item, travelers, currency, onUpdate, onDelete }: 
         <div className="pt-2">
           <FormField label="Select Predefined Item (Optional)" id={`predefined-misc-${item.id}`}>
             <Select
-              value={item.selectedServicePriceId || ""}
+              value={item.selectedServicePriceId || ""} // Shows placeholder if undefined/empty
               onValueChange={handlePredefinedServiceSelect}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Choose a predefined item..." />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">None (Custom Price)</SelectItem>
+                <SelectItem value="none">None (Custom Price)</SelectItem>
                 {miscServices.map(service => (
                   <SelectItem key={service.id} value={service.id}>
                     {service.name} ({service.unitDescription}) - {currency} {service.price1}

@@ -43,16 +43,25 @@ export function ActivityItemForm({ item, travelers, currency, dayNumber, tripSet
     onUpdate({ ...item, endDay: numValue });
   };
 
-  const handlePredefinedServiceSelect = (serviceId: string) => {
-    const selectedService = getServicePriceById(serviceId);
-    if (selectedService) {
+  const handlePredefinedServiceSelect = (selectedValue: string) => {
+    if (selectedValue === "none") {
       onUpdate({
         ...item,
-        name: item.name === `New activity` || item.selectedServicePriceId ? selectedService.name : item.name, // Update name if it's default or was from another service
-        adultPrice: selectedService.price1,
-        childPrice: selectedService.price2,
-        selectedServicePriceId: selectedService.id,
+        selectedServicePriceId: undefined,
+        adultPrice: item.adultPrice ?? 0, // Keep existing or default to 0
+        childPrice: item.childPrice ?? 0, // Keep existing or default to 0
       });
+    } else {
+      const selectedService = getServicePriceById(selectedValue);
+      if (selectedService) {
+        onUpdate({
+          ...item,
+          name: item.name === `New activity` || !item.name || item.selectedServicePriceId ? selectedService.name : item.name,
+          adultPrice: selectedService.price1,
+          childPrice: selectedService.price2,
+          selectedServicePriceId: selectedService.id,
+        });
+      }
     }
   };
   
@@ -67,14 +76,14 @@ export function ActivityItemForm({ item, travelers, currency, dayNumber, tripSet
         <div className="pt-2">
           <FormField label="Select Predefined Activity (Optional)" id={`predefined-activity-${item.id}`}>
             <Select
-              value={item.selectedServicePriceId || ""}
+              value={item.selectedServicePriceId || ""} // Shows placeholder if undefined/empty
               onValueChange={handlePredefinedServiceSelect}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Choose a predefined activity..." />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">None (Custom Price)</SelectItem>
+                <SelectItem value="none">None (Custom Price)</SelectItem>
                 {activityServices.map(service => (
                   <SelectItem key={service.id} value={service.id}>
                     {service.name} ({service.unitDescription}) - {currency} {service.price1}

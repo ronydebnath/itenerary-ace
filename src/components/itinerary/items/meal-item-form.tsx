@@ -32,17 +32,27 @@ export function MealItemForm({ item, travelers, currency, onUpdate, onDelete }: 
     onUpdate({ ...item, [field]: numValue, selectedServicePriceId: undefined });
   };
 
-  const handlePredefinedServiceSelect = (serviceId: string) => {
-    const selectedService = getServicePriceById(serviceId);
-    if (selectedService) {
+  const handlePredefinedServiceSelect = (selectedValue: string) => {
+    if (selectedValue === "none") {
       onUpdate({
         ...item,
-        name: item.name === `New meal` || item.selectedServicePriceId ? selectedService.name : item.name,
-        adultMealPrice: selectedService.price1,
-        childMealPrice: selectedService.price2,
-        selectedServicePriceId: selectedService.id,
-        // totalMeals is kept as is, as it's specific to this item instance
+        selectedServicePriceId: undefined,
+        adultMealPrice: item.adultMealPrice ?? 0,
+        childMealPrice: item.childMealPrice ?? 0,
+        // totalMeals is specific to this item instance, keep it.
       });
+    } else {
+      const selectedService = getServicePriceById(selectedValue);
+      if (selectedService) {
+        onUpdate({
+          ...item,
+          name: item.name === `New meal` || !item.name || item.selectedServicePriceId ? selectedService.name : item.name,
+          adultMealPrice: selectedService.price1,
+          childMealPrice: selectedService.price2,
+          selectedServicePriceId: selectedService.id,
+          // totalMeals is kept as is, as it's specific to this item instance
+        });
+      }
     }
   };
   
@@ -54,14 +64,14 @@ export function MealItemForm({ item, travelers, currency, onUpdate, onDelete }: 
         <div className="pt-2">
           <FormField label="Select Predefined Meal (Optional)" id={`predefined-meal-${item.id}`}>
             <Select
-              value={item.selectedServicePriceId || ""}
+              value={item.selectedServicePriceId || ""} // Shows placeholder if undefined/empty
               onValueChange={handlePredefinedServiceSelect}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Choose a predefined meal..." />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">None (Custom Price)</SelectItem>
+                <SelectItem value="none">None (Custom Price)</SelectItem>
                 {mealServices.map(service => (
                   <SelectItem key={service.id} value={service.id}>
                     {service.name} ({service.unitDescription}) - {currency} {service.price1}
