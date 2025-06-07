@@ -2,17 +2,18 @@
 "use client";
 
 import type { TripData, CostSummary } from '@/types/itinerary';
-import { DetailsSummaryTable } from './details-summary-table'; // Using the same table, print CSS will adjust
-import { CostBreakdownTable } from './cost-breakdown-table'; // Using the same table
+import { DetailsSummaryTable } from './details-summary-table';
+import { CostBreakdownTable } from './cost-breakdown-table';
 import { formatCurrency } from '@/lib/utils';
 import { CalendarDays, Users, MapPin } from 'lucide-react';
 
 interface PrintLayoutProps {
   tripData: TripData;
   costSummary: CostSummary;
+  showCosts: boolean;
 }
 
-export function PrintLayout({ tripData, costSummary }: PrintLayoutProps) {
+export function PrintLayout({ tripData, costSummary, showCosts }: PrintLayoutProps) {
   const currentDate = new Date().toLocaleDateString(undefined, {
     year: 'numeric',
     month: 'long',
@@ -40,7 +41,7 @@ export function PrintLayout({ tripData, costSummary }: PrintLayoutProps) {
       {/* Main Content for Print */}
       <div className="print-content">
         <h1 className="text-2xl font-bold font-headline text-center my-6 text-primary">
-          Travel Itinerary Cost Summary
+          Travel Itinerary {showCosts ? "Cost Summary" : "Details"}
         </h1>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm mb-6 p-4 bg-secondary/30 rounded-lg border border-secondary print:bg-slate-100 print:border-slate-300">
@@ -48,20 +49,20 @@ export function PrintLayout({ tripData, costSummary }: PrintLayoutProps) {
             <div className="flex items-center"><Users className="mr-2 h-5 w-5 text-primary" /> <strong>Adults:</strong><span className="ml-1 font-code">{tripData.pax.adults}</span>, <strong>Children:</strong><span className="ml-1 font-code">{tripData.pax.children}</span></div>
             <div className="flex items-center col-span-1 sm:col-span-2"><MapPin className="mr-2 h-5 w-5 text-primary" /> <strong>Start Date:</strong><span className="ml-1 font-code">{displayStartDate}</span></div>
              <div className="flex items-center col-span-1 sm:col-span-2"><Users className="mr-2 h-5 w-5 text-primary" /> <strong>Currency:</strong><span className="ml-1 font-code">{tripData.pax.currency}</span>
-                {tripData.settings.budget && (<span className="ml-4"><strong>Budget:</strong> <span className="ml-1 font-code">{formatCurrency(tripData.settings.budget, tripData.pax.currency)}</span></span>)}
+                {showCosts && tripData.settings.budget && (<span className="ml-4"><strong>Budget:</strong> <span className="ml-1 font-code">{formatCurrency(tripData.settings.budget, tripData.pax.currency)}</span></span>)}
             </div>
         </div>
 
-
-        <section className="mb-8">
-          <h2 className="text-xl font-semibold mb-3 border-b pb-2 text-primary">Per-Person Cost Breakdown</h2>
-          <CostBreakdownTable summary={costSummary} currency={tripData.pax.currency} travelers={tripData.travelers}/>
-        </section>
+        {showCosts && (
+          <section className="mb-8">
+            <h2 className="text-xl font-semibold mb-3 border-b pb-2 text-primary">Per-Person Cost Breakdown</h2>
+            <CostBreakdownTable summary={costSummary} currency={tripData.pax.currency} travelers={tripData.travelers} showCosts={showCosts} />
+          </section>
+        )}
 
         <section>
           <h2 className="text-xl font-semibold mb-3 border-b pb-2 text-primary">Detailed Itinerary Summary</h2>
-          {/* DetailsSummaryTable uses print-only div internally for print view */}
-          <DetailsSummaryTable summary={costSummary} currency={tripData.pax.currency} />
+          <DetailsSummaryTable summary={costSummary} currency={tripData.pax.currency} showCosts={showCosts} />
         </section>
       </div>
 

@@ -2,13 +2,13 @@
 "use client";
 
 import * as React from 'react';
-import type { TripData, ItineraryItem, CostSummary, AISuggestion } from '@/types/itinerary';
+import type { TripData, ItineraryItem, CostSummary } from '@/types/itinerary';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
-import { ChevronLeft, ChevronRight, Printer, RotateCcw, MapPin, CalendarDays, Users } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Printer, RotateCcw, MapPin, CalendarDays, Users, Eye, EyeOff } from 'lucide-react';
 import { formatCurrency, generateGUID } from '@/lib/utils';
 import { AISuggestions } from './ai-suggestions'; 
 import { PrintLayout } from './print-layout'; 
@@ -18,7 +18,7 @@ import { DetailsSummaryTable } from './details-summary-table';
 import { calculateAllCosts } from '@/lib/calculation-utils'; 
 
 interface ItineraryPlannerProps {
-  tripData: TripData; // Changed from initialTripData
+  tripData: TripData;
   onReset: () => void;
   onUpdateTripData: (updatedTripData: TripData) => void;
 }
@@ -27,8 +27,7 @@ export function ItineraryPlanner({ tripData, onReset, onUpdateTripData }: Itiner
   const [currentDayView, setCurrentDayView] = React.useState<number>(1);
   const [costSummary, setCostSummary] = React.useState<CostSummary | null>(null);
   const [isPrinting, setIsPrinting] = React.useState(false);
-  // aiSuggestions state is not used, can be removed if not planned for future use directly modifying parent state
-  // const [aiSuggestions, setAiSuggestions] = React.useState<AISuggestion[]>([]); 
+  const [showCosts, setShowCosts] = React.useState<boolean>(true);
 
   React.useEffect(() => {
     if (tripData) {
@@ -103,7 +102,7 @@ export function ItineraryPlanner({ tripData, onReset, onUpdateTripData }: Itiner
   const displayStartDate = tripData.settings.startDate ? new Date(tripData.settings.startDate).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' }) : 'N/A';
 
   if (isPrinting && costSummary) {
-    return <PrintLayout tripData={tripData} costSummary={costSummary} />;
+    return <PrintLayout tripData={tripData} costSummary={costSummary} showCosts={showCosts} />;
   }
   
   return (
@@ -126,7 +125,7 @@ export function ItineraryPlanner({ tripData, onReset, onUpdateTripData }: Itiner
                 <div className="flex items-center"><Users className="mr-2 h-5 w-5 text-primary" /> <strong>Adults:</strong><span className="ml-1 font-code">{tripData.pax.adults}</span>, <strong>Children:</strong><span className="ml-1 font-code">{tripData.pax.children}</span></div>
                 <div className="flex items-center"><MapPin className="mr-2 h-5 w-5 text-primary" /> <strong>Start Date:</strong><span className="ml-1 font-code">{displayStartDate}</span></div>
                 <div className="flex items-center col-span-1 md:col-span-3"><Users className="mr-2 h-5 w-5 text-primary" /> <strong>Currency:</strong><span className="ml-1 font-code">{tripData.pax.currency}</span>
-                  {tripData.settings.budget && (<span className="ml-4"><strong>Budget:</strong> <span className="ml-1 font-code">{formatCurrency(tripData.settings.budget, tripData.pax.currency)}</span></span>)}
+                  {showCosts && tripData.settings.budget && (<span className="ml-4"><strong>Budget:</strong> <span className="ml-1 font-code">{formatCurrency(tripData.settings.budget, tripData.pax.currency)}</span></span>)}
                 </div>
             </div>
         </CardContent>
@@ -187,6 +186,7 @@ export function ItineraryPlanner({ tripData, onReset, onUpdateTripData }: Itiner
           <AISuggestions 
             tripData={tripData} 
             onApplySuggestion={(modifiedTripData) => onUpdateTripData(modifiedTripData)} 
+            showCosts={showCosts}
           />
           <Card className="shadow-lg">
             <CardHeader>
@@ -195,14 +195,21 @@ export function ItineraryPlanner({ tripData, onReset, onUpdateTripData }: Itiner
             <CardContent>
               {costSummary ? (
                 <>
-                  <CostBreakdownTable summary={costSummary} currency={tripData.pax.currency} travelers={tripData.travelers}/>
-                  <Separator className="my-4" />
-                  <div className="text-right">
-                    <p className="text-lg font-semibold">Grand Total:</p>
-                    <p className="text-2xl font-bold text-accent font-code">
-                      {formatCurrency(costSummary.grandTotal, tripData.pax.currency)}
-                    </p>
-                  </div>
+                  <CostBreakdownTable summary={costSummary} currency={tripData.pax.currency} travelers={tripData.travelers} showCosts={showCosts} />
+                  {showCosts && (
+                    <>
+                      <Separator className="my-4" />
+                      <div className="text-right">
+                        <p className="text-lg font-semibold">Grand Total:</p>
+                        <p className="text-2xl font-bold text-accent font-code">
+                          {formatCurrency(costSummary.grandTotal, tripData.pax.currency)}
+                        </p>
+                      </div>
+                    </>
+                  )}
+                  {!showCosts && (
+                    <p className="text-sm text-muted-foreground text-center mt-4">Cost details are hidden.</p>
+                  )}
                 </>
               ) : <p>Calculating costs...</p>}
             </CardContent>
@@ -212,11 +219,17 @@ export function ItineraryPlanner({ tripData, onReset, onUpdateTripData }: Itiner
 
       <Card className="mt-8 shadow-lg">
         <CardHeader>
-          <CardTitle className="text-2xl font-headline text-primary">Full Itinerary Details</CardTitle>
+          <div className="flex justify-between items-center">
+            <CardTitle className="text-2xl font-headline text-primary">Full Itinerary Details</CardTitle>
+            <Button variant="outline" size="sm" onClick={() => setShowCosts(!showCosts)} className="ml-4">
+              {showCosts ? <EyeOff className="mr-2 h-4 w-4" /> : <Eye className="mr-2 h-4 w-4" />}
+              {showCosts ? 'Hide Costs' : 'Show Costs'}
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
            {costSummary ? (
-            <DetailsSummaryTable summary={costSummary} currency={tripData.pax.currency} />
+            <DetailsSummaryTable summary={costSummary} currency={tripData.pax.currency} showCosts={showCosts} />
           ) : <p>Loading details...</p>}
         </CardContent>
       </Card>

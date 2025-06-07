@@ -9,38 +9,46 @@ interface CostBreakdownTableProps {
   summary: CostSummary;
   currency: CurrencyCode;
   travelers: Traveler[];
+  showCosts: boolean;
 }
 
-export function CostBreakdownTable({ summary, currency, travelers }: CostBreakdownTableProps) {
+export function CostBreakdownTable({ summary, currency, travelers, showCosts }: CostBreakdownTableProps) {
   return (
     <Table>
       <TableHeader>
         <TableRow>
           <TableHead>Traveler</TableHead>
-          <TableHead className="text-right">Total Cost</TableHead>
+          {showCosts && <TableHead className="text-right">Total Cost</TableHead>}
         </TableRow>
       </TableHeader>
       <TableBody>
         {travelers.length > 0
-          ? travelers.map(traveler => <TableRow key={traveler.id}>
+          ? travelers.map(traveler => (
+            <TableRow key={traveler.id}>
               <TableCell className="font-medium">{traveler.label}</TableCell>
-              <TableCell className="text-right font-code">
-                {formatCurrency(summary.perPersonTotals[traveler.id] || 0, currency)}
-              </TableCell>
-            </TableRow>)
-          : <TableRow>
-              <TableCell colSpan={2} className="text-center text-muted-foreground">No travelers defined.</TableCell>
-            </TableRow>}
+              {showCosts && (
+                <TableCell className="text-right font-code">
+                  {formatCurrency(summary.perPersonTotals[traveler.id] || 0, currency)}
+                </TableCell>
+              )}
+            </TableRow>
+            ))
+          : (
+            <TableRow>
+              <TableCell colSpan={showCosts ? 2 : 1} className="text-center text-muted-foreground">No travelers defined.</TableCell>
+            </TableRow>
+            )}
       </TableBody>
-      <TableFooter>
-        <TableRow className="bg-muted/50">
-          <TableHead>Grand Total</TableHead>
-          <TableHead className="text-right text-lg font-bold text-accent font-code">
-            {formatCurrency(summary.grandTotal, currency)}
-          </TableHead>
-        </TableRow>
-      </TableFooter>
+      {showCosts && (
+        <TableFooter>
+          <TableRow className="bg-muted/50">
+            <TableHead>Grand Total</TableHead>
+            <TableHead className="text-right text-lg font-bold text-accent font-code">
+              {formatCurrency(summary.grandTotal, currency)}
+            </TableHead>
+          </TableRow>
+        </TableFooter>
+      )}
     </Table>
   );
 }
-
