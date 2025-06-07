@@ -21,20 +21,16 @@ export function CostBreakdownTable({ summary, currency, travelers }: CostBreakdo
         </TableRow>
       </TableHeader>
       <TableBody>
-        {travelers.length > 0 ? (
-          travelers.map(traveler => (
-            <TableRow key={traveler.id}>
+        {travelers.length > 0
+          ? travelers.map(traveler => <TableRow key={traveler.id}>
               <TableCell className="font-medium">{traveler.label}</TableCell>
               <TableCell className="text-right font-code">
                 {formatCurrency(summary.perPersonTotals[traveler.id] || 0, currency)}
               </TableCell>
-            </TableRow>
-          ))
-        ) : (
-          <TableRow>
-            <TableCell colSpan={2} className="text-center text-muted-foreground">No travelers defined.</TableCell>
-          </TableRow>
-        )}
+            </TableRow>)
+          : <TableRow>
+              <TableCell colSpan={2} className="text-center text-muted-foreground">No travelers defined.</TableCell>
+            </TableRow>}
       </TableBody>
       <TableFooter>
         <TableRow className="bg-muted/50">
@@ -47,3 +43,4 @@ export function CostBreakdownTable({ summary, currency, travelers }: CostBreakdo
     </Table>
   );
 }
+
