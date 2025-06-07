@@ -33,12 +33,12 @@ export interface BaseItem {
 
 export interface TransferItem extends BaseItem {
   type: 'transfer';
-  mode: 'ticket' | 'vehicle';
-  adultTicketPrice?: number;
-  childTicketPrice?: number;
-  vehicleType?: 'Sedan' | 'SUV' | 'Van' | 'Bus' | 'Other';
-  costPerVehicle?: number;
-  vehicles?: number;
+  mode: 'ticket' | 'vehicle'; // Determines if pricing is per ticket or per vehicle
+  adultTicketPrice?: number; // Used if mode is 'ticket'
+  childTicketPrice?: number; // Used if mode is 'ticket'
+  vehicleType?: 'Sedan' | 'SUV' | 'Van' | 'Bus' | 'Other'; // Used if mode is 'vehicle'
+  costPerVehicle?: number; // Used if mode is 'vehicle'
+  vehicles?: number; // Used if mode is 'vehicle'
 }
 
 export interface ActivityItem extends BaseItem {
@@ -50,22 +50,22 @@ export interface ActivityItem extends BaseItem {
 
 export interface HotelRoomConfiguration {
   id: string; // Unique ID for this room configuration within a hotel item
-  category: string;
-  roomType: 'Double sharing' | 'Single room' | 'Triple sharing' | 'Family with child';
+  category: string; // User-defined room category name, e.g., "Deluxe King with View"
+  roomType: 'Double sharing' | 'Single room' | 'Triple sharing' | 'Family with child'; // Occupancy type
   adultsInRoom: number;
   childrenInRoom: number;
   extraBeds: number;
   numRooms: number;
-  roomRate: number; // Nightly
-  extraBedRate: number; // Nightly
+  roomRate: number; // Nightly rate for this specific configuration
+  extraBedRate: number; // Nightly extra bed rate for this specific configuration
   assignedTravelerIds: string[];
 }
 
 export interface HotelItem extends BaseItem {
   type: 'hotel';
   checkoutDay: number; // Day number for checkout
-  childrenSharingBed: boolean;
-  rooms: HotelRoomConfiguration[];
+  childrenSharingBed: boolean; // Applies if children are not specifically assigned to rooms
+  rooms: HotelRoomConfiguration[]; // Array of different room types/configs for this stay
 }
 
 export interface MealItem extends BaseItem {
@@ -142,14 +142,23 @@ export type AISuggestion = {
 // For Service Price Management
 export const SERVICE_CATEGORIES: ItineraryItemType[] = ['transfer', 'activity', 'hotel', 'meal', 'misc'];
 
+export interface SeasonalRate {
+  id: string;
+  startDate: string; // Stored as YYYY-MM-DD string
+  endDate: string;   // Stored as YYYY-MM-DD string
+  roomRate: number;
+  extraBedRate?: number;
+}
+
 export interface ServicePriceItem {
   id: string;
   name: string;
   category: ItineraryItemType;
-  subCategory?: string; // e.g., for Transfer: 'ticket' or 'vehicle'. For Hotel: 'Room Type A'
-  price1: number; // Main price (e.g., adult price, unit cost, vehicle cost, room rate)
-  price2?: number; // Secondary price (e.g., child price, extra bed rate)
+  subCategory?: string; // Hotel: Default room type name; Transfer: 'ticket' or 'vehicle' (or specific vehicle type like 'Sedan')
+  price1: number; // Main price: Activity/Meal: Adult Price; Transfer-Ticket: Adult Ticket; Transfer-Vehicle: Cost per Vehicle; Hotel: Default Room Rate; Misc: Unit Cost
+  price2?: number; // Secondary price: Activity/Meal: Child Price; Transfer-Ticket: Child Ticket; Hotel: Default Extra Bed Rate. Not used for Transfer-Vehicle or Misc.
   currency: CurrencyCode;
   unitDescription: string; // e.g., "per adult", "per vehicle", "per night", "per item"
   notes?: string;
+  seasonalRates?: SeasonalRate[]; // Specific to 'hotel' category
 }
