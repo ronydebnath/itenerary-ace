@@ -2,13 +2,13 @@
 "use client";
 
 import * as React from 'react';
-import type { TripData, ItineraryItem, CostSummary, DetailedSummaryItem, AISuggestion, Traveler } from '@/types/itinerary';
+import type { TripData, ItineraryItem, CostSummary, AISuggestion } from '@/types/itinerary';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"; // Added Select components
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
-import { ChevronLeft, ChevronRight, Printer, RotateCcw, Sparkles, MapPin, CalendarDays, Users, Edit3 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Printer, RotateCcw, MapPin, CalendarDays, Users } from 'lucide-react';
 import { formatCurrency, generateGUID } from '@/lib/utils';
 import { AISuggestions } from './ai-suggestions'; 
 import { PrintLayout } from './print-layout'; 
@@ -17,41 +17,37 @@ import { CostBreakdownTable } from './cost-breakdown-table';
 import { DetailsSummaryTable } from './details-summary-table';
 import { calculateAllCosts } from '@/lib/calculation-utils'; 
 
-
 interface ItineraryPlannerProps {
-  initialTripData: TripData;
+  tripData: TripData; // Changed from initialTripData
   onReset: () => void;
   onUpdateTripData: (updatedTripData: TripData) => void;
 }
 
-export function ItineraryPlanner({ initialTripData, onReset, onUpdateTripData }: ItineraryPlannerProps) {
-  const [tripData, setTripData] = React.useState<TripData>(initialTripData);
+export function ItineraryPlanner({ tripData, onReset, onUpdateTripData }: ItineraryPlannerProps) {
   const [currentDayView, setCurrentDayView] = React.useState<number>(1);
   const [costSummary, setCostSummary] = React.useState<CostSummary | null>(null);
   const [isPrinting, setIsPrinting] = React.useState(false);
-  const [aiSuggestions, setAiSuggestions] = React.useState<AISuggestion[]>([]);
+  // aiSuggestions state is not used, can be removed if not planned for future use directly modifying parent state
+  // const [aiSuggestions, setAiSuggestions] = React.useState<AISuggestion[]>([]); 
 
   React.useEffect(() => {
-    setTripData(initialTripData);
-  }, [initialTripData]);
-  
-  React.useEffect(() => {
-    const summary = calculateAllCosts(tripData);
-    setCostSummary(summary);
-    onUpdateTripData(tripData); // Propagate changes up for localStorage saving
-  }, [tripData, onUpdateTripData]);
+    if (tripData) {
+      const summary = calculateAllCosts(tripData);
+      setCostSummary(summary);
+    } else {
+      setCostSummary(null);
+    }
+  }, [tripData]);
 
   const handleUpdateItem = (day: number, updatedItem: ItineraryItem) => {
-    setTripData(prev => {
-      const newDays = { ...prev.days };
-      const dayItems = [...(newDays[day]?.items || [])];
-      const itemIndex = dayItems.findIndex(item => item.id === updatedItem.id);
-      if (itemIndex > -1) {
-        dayItems[itemIndex] = updatedItem;
-      }
-      newDays[day] = { items: dayItems };
-      return { ...prev, days: newDays };
-    });
+    const newDays = { ...tripData.days };
+    const dayItems = [...(newDays[day]?.items || [])];
+    const itemIndex = dayItems.findIndex(item => item.id === updatedItem.id);
+    if (itemIndex > -1) {
+      dayItems[itemIndex] = updatedItem;
+    }
+    newDays[day] = { items: dayItems };
+    onUpdateTripData({ ...tripData, days: newDays });
   };
 
   const handleAddItem = (day: number, itemType: ItineraryItem['type']) => {
@@ -80,29 +76,24 @@ export function ItineraryPlanner({ initialTripData, onReset, onUpdateTripData }:
         newItem = { ...baseNewItem, type: 'misc', unitCost: 0, quantity: 1, costAssignment: 'perPerson' };
         break;
       default:
-        return; // Should not happen
+        return; 
     }
 
-    setTripData(prev => {
-      const newDays = { ...prev.days };
-      const dayItems = [...(newDays[day]?.items || []), newItem];
-      newDays[day] = { items: dayItems };
-      return { ...prev, days: newDays };
-    });
+    const newDays = { ...tripData.days };
+    const dayItems = [...(newDays[day]?.items || []), newItem];
+    newDays[day] = { items: dayItems };
+    onUpdateTripData({ ...tripData, days: newDays });
   };
 
   const handleDeleteItem = (day: number, itemId: string) => {
-    setTripData(prev => {
-      const newDays = { ...prev.days };
-      const dayItems = (newDays[day]?.items || []).filter(item => item.id !== itemId);
-      newDays[day] = { items: dayItems };
-      return { ...prev, days: newDays };
-    });
+    const newDays = { ...tripData.days };
+    const dayItems = (newDays[day]?.items || []).filter(item => item.id !== itemId);
+    newDays[day] = { items: dayItems };
+    onUpdateTripData({ ...tripData, days: newDays });
   };
   
   const handlePrint = () => {
     setIsPrinting(true);
-    // Timeout to allow state to update and DOM to re-render for print
     setTimeout(() => {
       window.print();
       setIsPrinting(false);
@@ -195,7 +186,7 @@ export function ItineraryPlanner({ initialTripData, onReset, onUpdateTripData }:
         <div className="lg:col-span-4 space-y-6">
           <AISuggestions 
             tripData={tripData} 
-            onApplySuggestion={(modifiedTripData) => setTripData(modifiedTripData)} 
+            onApplySuggestion={(modifiedTripData) => onUpdateTripData(modifiedTripData)} 
           />
           <Card className="shadow-lg">
             <CardHeader>

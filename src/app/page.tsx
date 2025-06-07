@@ -1,7 +1,7 @@
 
 "use client";
 
-import * as React from 'react';
+import React from 'react';
 import { SetupForm } from '@/components/itinerary/setup-form';
 import { ItineraryPlanner } from '@/components/itinerary/itinerary-planner';
 import type { TripSettings, PaxDetails, TripData } from '@/types/itinerary';
@@ -32,7 +32,7 @@ export default function HomePage() {
     setIsInitialized(true);
   }, []);
 
-  const handleStartPlanning = (settings: TripSettings, pax: PaxDetails) => {
+  const handleStartPlanning = React.useCallback((settings: TripSettings, pax: PaxDetails) => {
     const newTravelers = [];
     for (let i = 1; i <= pax.adults; i++) {
       newTravelers.push({ id: `A${generateGUID()}`, label: `Adult ${i}`, type: 'adult' as const });
@@ -58,25 +58,25 @@ export default function HomePage() {
     } catch (error) {
       console.error("Failed to save data to localStorage:", error);
     }
-  };
+  }, []);
 
-  const handleReset = () => {
+  const handleReset = React.useCallback(() => {
     setTripData(null);
     try {
       localStorage.removeItem(LOCAL_STORAGE_KEY);
     } catch (error) {
       console.error("Failed to remove data from localStorage:", error);
     }
-  };
+  }, []);
 
-  const handleUpdateTripData = (updatedTripData: TripData) => {
+  const handleUpdateTripData = React.useCallback((updatedTripData: TripData) => {
     setTripData(updatedTripData);
      try {
       localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(updatedTripData));
     } catch (error) {
       console.error("Failed to save data to localStorage:", error);
     }
-  };
+  }, []);
 
   if (!isInitialized) {
     // Optional: Show a loading spinner or placeholder
@@ -86,7 +86,7 @@ export default function HomePage() {
   return (
     <main className="min-h-screen bg-background">
       {tripData ? (
-        <ItineraryPlanner initialTripData={tripData} onReset={handleReset} onUpdateTripData={handleUpdateTripData} />
+        <ItineraryPlanner tripData={tripData} onReset={handleReset} onUpdateTripData={handleUpdateTripData} />
       ) : (
         <SetupForm onStartPlanning={handleStartPlanning} />
       )}
