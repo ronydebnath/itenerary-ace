@@ -63,7 +63,7 @@ export function DayView({ dayNumber, items, travelers, currency, tripSettings, o
   };
 
   return (
-    <Card className="mb-6 shadow-md border-primary/20">
+    <Card className="mb-6 shadow-md border-primary/20 max-w-5xl mx-auto">
       <CardHeader className="pb-2 pt-4 px-4 md:px-6">
          {/* Day title is handled by ItineraryPlanner for larger screens, and Select for mobile */}
          {/* This component focuses on the content of the day */}
