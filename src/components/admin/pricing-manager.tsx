@@ -2,9 +2,10 @@
 "use client";
 
 import * as React from 'react';
+import Link from 'next/link'; // Import Link
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { PlusCircle, Edit, Trash2, CalendarClock } from 'lucide-react';
+import { PlusCircle, Edit, Trash2, Home } from 'lucide-react'; // Import Home icon
 import type { ServicePriceItem, CurrencyCode } from '@/types/itinerary';
 import { CURRENCIES } from '@/types/itinerary'; // Import CURRENCIES
 import { ServicePriceForm } from './service-price-form';
@@ -32,7 +33,7 @@ export function PricingManager() {
         if (Array.isArray(parsedData)) {
             setServicePrices(parsedData.map(p => {
               const category = p.category || "misc"; // Default category
-              const seasonalRatesValid = category === 'hotel' && Array.isArray(p.seasonalRates) 
+              const seasonalRatesValid = category === 'hotel' && Array.isArray(p.seasonalRates)
                 ? p.seasonalRates.map((sr: any) => ({
                     id: sr.id || generateGUID(),
                     startDate: sr.startDate || "",
@@ -110,7 +111,15 @@ export function PricingManager() {
   return (
     <div className="container mx-auto py-8">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold text-primary">Manage Service Prices</h1>
+        <div className="flex items-center gap-4">
+          <Link href="/" passHref legacyBehavior>
+            <Button variant="outline" size="icon" className="h-10 w-10">
+              <Home className="h-5 w-5" />
+              <span className="sr-only">Go to Home</span>
+            </Button>
+          </Link>
+          <h1 className="text-3xl font-bold text-primary">Manage Service Prices</h1>
+        </div>
         <Dialog open={isFormOpen} onOpenChange={(open) => {
           setIsFormOpen(open);
           if (!open) setEditingService(undefined);
@@ -174,3 +183,5 @@ export function PricingManager() {
     </div>
   );
 }
+
+    
