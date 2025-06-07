@@ -24,7 +24,7 @@ export function TransferItemForm({ item, travelers, currency, onUpdate, onDelete
     if (!isLoadingServices) {
       // Filter by category 'transfer', current currency, AND item.mode (via service.subCategory)
       const allTransfers = getServicePrices('transfer').filter(s => s.currency === currency);
-      const modeSpecificTransfers = allTransfers.filter(s => s.subCategory === item.mode);
+      const modeSpecificTransfers = allTransfers.filter(s => s.subCategory === item.mode || (item.mode === 'vehicle' && s.subCategory !== 'ticket'));
       setTransferServices(modeSpecificTransfers);
     }
   }, [isLoadingServices, getServicePrices, currency, item.mode]);
@@ -57,8 +57,10 @@ export function TransferItemForm({ item, travelers, currency, onUpdate, onDelete
       } else if (item.mode === 'vehicle') {
         updatedItem.costPerVehicle = selectedService.price1;
         // `vehicles` count kept as is, as it's specific to this item instance.
-        // `vehicleType` could also be updated if the service defines it, but servicePriceItem doesn't have vehicleType.
-        // For now, only set cost.
+        // `vehicleType` could also be updated if the service defines it (e.g. if subCategory is 'Sedan', 'Van' etc from service)
+        if (selectedService.subCategory && selectedService.subCategory !== 'vehicle' && selectedService.subCategory !== 'ticket') {
+             updatedItem.vehicleType = selectedService.subCategory as TransferItemType['vehicleType'];
+        }
       }
       onUpdate({ ...item, ...updatedItem });
     }
@@ -69,7 +71,11 @@ export function TransferItemForm({ item, travelers, currency, onUpdate, onDelete
   return (
     <BaseItemForm item={item} travelers={travelers} currency={currency} onUpdate={onUpdate} onDelete={onDelete} itemTypeLabel="Transfer">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
-        <FormField label="Mode" id={`transferMode-${item.id}`}>
+        <FormField 
+          label="Mode" 
+          id={`transferMode-${item.id}`}
+          className={transferServices.length === 0 ? "md:col-span-2" : ""}
+        >
           <Select
             value={item.mode}
             onValueChange={(value: 'ticket' | 'vehicle') => handleInputChange('mode', value)}
@@ -95,7 +101,7 @@ export function TransferItemForm({ item, travelers, currency, onUpdate, onDelete
                     <SelectItem value="">None (Custom Price)</SelectItem>
                     {transferServices.map(service => (
                     <SelectItem key={service.id} value={service.id}>
-                        {service.name} ({service.unitDescription}) - {currency} {service.price1}
+                        {service.name} ({service.subCategory !== 'ticket' && service.subCategory !== 'vehicle' ? service.subCategory : service.unitDescription}) - {currency} {service.price1}
                         {item.mode === 'ticket' && service.price2 !== undefined ? ` / Ch: ${service.price2}` : ''}
                     </SelectItem>
                     ))}
