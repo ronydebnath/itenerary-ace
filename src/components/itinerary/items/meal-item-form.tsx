@@ -2,9 +2,11 @@
 "use client";
 
 import * as React from 'react';
-import type { MealItem as MealItemType, Traveler, CurrencyCode } from '@/types/itinerary';
+import type { MealItem as MealItemType, Traveler, CurrencyCode, ServicePriceItem } from '@/types/itinerary';
 import { BaseItemForm, FormField } from './base-item-form';
 import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useServicePrices } from '@/hooks/useServicePrices';
 
 interface MealItemFormProps {
   item: MealItemType;
@@ -15,13 +17,63 @@ interface MealItemFormProps {
 }
 
 export function MealItemForm({ item, travelers, currency, onUpdate, onDelete }: MealItemFormProps) {
+  const { getServicePrices, getServicePriceById, isLoading: isLoadingServices } = useServicePrices();
+  const [mealServices, setMealServices] = React.useState<ServicePriceItem[]>([]);
+
+  React.useEffect(() => {
+    if (!isLoadingServices) {
+      setMealServices(getServicePrices('meal').filter(s => s.currency === currency));
+    }
+  }, [isLoadingServices, getServicePrices, currency]);
+
   const handleNumericInputChange = (field: keyof MealItemType, value: string) => {
     const numValue = value === '' ? undefined : parseFloat(value);
-    onUpdate({ ...item, [field]: numValue });
+    // If user manually changes price or quantity, clear the selected service ID
+    onUpdate({ ...item, [field]: numValue, selectedServicePriceId: undefined });
   };
+
+  const handlePredefinedServiceSelect = (serviceId: string) => {
+    const selectedService = getServicePriceById(serviceId);
+    if (selectedService) {
+      onUpdate({
+        ...item,
+        name: item.name === `New meal` || item.selectedServicePriceId ? selectedService.name : item.name,
+        adultMealPrice: selectedService.price1,
+        childMealPrice: selectedService.price2,
+        selectedServicePriceId: selectedService.id,
+        // totalMeals is kept as is, as it's specific to this item instance
+      });
+    }
+  };
+  
+  const selectedServiceName = item.selectedServicePriceId ? getServicePriceById(item.selectedServicePriceId)?.name : null;
 
   return (
     <BaseItemForm item={item} travelers={travelers} currency={currency} onUpdate={onUpdate} onDelete={onDelete} itemTypeLabel="Meal">
+      {mealServices.length > 0 && (
+        <div className="pt-2">
+          <FormField label="Select Predefined Meal (Optional)" id={`predefined-meal-${item.id}`}>
+            <Select
+              value={item.selectedServicePriceId || ""}
+              onValueChange={handlePredefinedServiceSelect}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Choose a predefined meal..." />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">None (Custom Price)</SelectItem>
+                {mealServices.map(service => (
+                  <SelectItem key={service.id} value={service.id}>
+                    {service.name} ({service.unitDescription}) - {currency} {service.price1}
+                    {service.price2 !== undefined ? ` / Ch: ${service.price2}` : ''}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </FormField>
+          {selectedServiceName && <p className="text-xs text-muted-foreground pt-1">Using: {selectedServiceName}</p>}
+        </div>
+      )}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
         <FormField label={`Adult Meal Price (${currency})`} id={`adultMealPrice-${item.id}`}>
           <Input

@@ -2,11 +2,11 @@
 "use client";
 
 import * as React from 'react';
-import type { TransferItem as TransferItemType, Traveler, CurrencyCode } from '@/types/itinerary';
+import type { TransferItem as TransferItemType, Traveler, CurrencyCode, ServicePriceItem } from '@/types/itinerary';
 import { BaseItemForm, FormField } from './base-item-form';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Label } from '@/components/ui/label';
+import { useServicePrices } from '@/hooks/useServicePrices';
 
 interface TransferItemFormProps {
   item: TransferItemType;
@@ -17,15 +17,54 @@ interface TransferItemFormProps {
 }
 
 export function TransferItemForm({ item, travelers, currency, onUpdate, onDelete }: TransferItemFormProps) {
+  const { getServicePrices, getServicePriceById, isLoading: isLoadingServices } = useServicePrices();
+  const [transferServices, setTransferServices] = React.useState<ServicePriceItem[]>([]);
+
+  React.useEffect(() => {
+    if (!isLoadingServices) {
+      // Filter by category 'transfer', current currency, AND item.mode (via service.subCategory)
+      const allTransfers = getServicePrices('transfer').filter(s => s.currency === currency);
+      const modeSpecificTransfers = allTransfers.filter(s => s.subCategory === item.mode);
+      setTransferServices(modeSpecificTransfers);
+    }
+  }, [isLoadingServices, getServicePrices, currency, item.mode]);
+
   const handleInputChange = (field: keyof TransferItemType, value: any) => {
-    onUpdate({ ...item, [field]: value });
+    // If mode is changed, the available predefined services change, so clear selectedServicePriceId
+    // Also, prices may no longer be relevant.
+    if (field === 'mode') {
+        onUpdate({ ...item, [field]: value, selectedServicePriceId: undefined, adultTicketPrice: 0, childTicketPrice: 0, costPerVehicle: 0, vehicles: 1 });
+    } else {
+        onUpdate({ ...item, [field]: value, selectedServicePriceId: undefined });
+    }
   };
   
   const handleNumericInputChange = (field: keyof TransferItemType, value: string) => {
     const numValue = value === '' ? undefined : parseFloat(value);
-    onUpdate({ ...item, [field]: numValue });
+    onUpdate({ ...item, [field]: numValue, selectedServicePriceId: undefined });
   };
 
+  const handlePredefinedServiceSelect = (serviceId: string) => {
+    const selectedService = getServicePriceById(serviceId);
+    if (selectedService) {
+      const updatedItem: Partial<TransferItemType> = {
+        name: item.name === `New transfer` || item.selectedServicePriceId ? selectedService.name : item.name,
+        selectedServicePriceId: selectedService.id,
+      };
+      if (item.mode === 'ticket') {
+        updatedItem.adultTicketPrice = selectedService.price1;
+        updatedItem.childTicketPrice = selectedService.price2;
+      } else if (item.mode === 'vehicle') {
+        updatedItem.costPerVehicle = selectedService.price1;
+        // `vehicles` count kept as is, as it's specific to this item instance.
+        // `vehicleType` could also be updated if the service defines it, but servicePriceItem doesn't have vehicleType.
+        // For now, only set cost.
+      }
+      onUpdate({ ...item, ...updatedItem });
+    }
+  };
+
+  const selectedServiceName = item.selectedServicePriceId ? getServicePriceById(item.selectedServicePriceId)?.name : null;
 
   return (
     <BaseItemForm item={item} travelers={travelers} currency={currency} onUpdate={onUpdate} onDelete={onDelete} itemTypeLabel="Transfer">
@@ -42,7 +81,31 @@ export function TransferItemForm({ item, travelers, currency, onUpdate, onDelete
             </SelectContent>
           </Select>
         </FormField>
+        
+        {transferServices.length > 0 && (
+            <FormField label="Select Predefined Transfer (Optional)" id={`predefined-transfer-${item.id}`}>
+                <Select
+                value={item.selectedServicePriceId || ""}
+                onValueChange={handlePredefinedServiceSelect}
+                >
+                <SelectTrigger>
+                    <SelectValue placeholder={`Choose ${item.mode} service...`} />
+                </SelectTrigger>
+                <SelectContent>
+                    <SelectItem value="">None (Custom Price)</SelectItem>
+                    {transferServices.map(service => (
+                    <SelectItem key={service.id} value={service.id}>
+                        {service.name} ({service.unitDescription}) - {currency} {service.price1}
+                        {item.mode === 'ticket' && service.price2 !== undefined ? ` / Ch: ${service.price2}` : ''}
+                    </SelectItem>
+                    ))}
+                </SelectContent>
+                </Select>
+            </FormField>
+        )}
       </div>
+      {selectedServiceName && <p className="text-xs text-muted-foreground pt-1 text-center md:text-left">Using: {selectedServiceName}</p>}
+
 
       {item.mode === 'ticket' && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
