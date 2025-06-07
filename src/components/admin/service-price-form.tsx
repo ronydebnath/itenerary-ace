@@ -37,7 +37,7 @@ const seasonalRateSchema = z.object({
 
 const servicePriceSchema = z.object({
   name: z.string().min(1, "Service name is required"),
-  province: z.string().optional(), // New province field
+  province: z.string().optional(),
   category: z.custom<ItineraryItemType>((val) => SERVICE_CATEGORIES.includes(val as ItineraryItemType), "Invalid category"),
   subCategory: z.string().optional(),
   price1: z.coerce.number().min(0, "Price must be non-negative"),
@@ -46,7 +46,7 @@ const servicePriceSchema = z.object({
   unitDescription: z.string().min(1, "Unit description is required (e.g., per adult, per night)"),
   notes: z.string().optional(),
   seasonalRates: z.array(seasonalRateSchema).optional(),
-  transferMode: z.enum(['ticket', 'vehicle']).optional(), // Form-only field
+  transferMode: z.enum(['ticket', 'vehicle']).optional(),
 });
 
 type ServicePriceFormValues = z.infer<typeof servicePriceSchema>;
@@ -62,7 +62,7 @@ export function ServicePriceForm({ initialData, onSubmit, onCancel }: ServicePri
     resolver: zodResolver(servicePriceSchema),
     defaultValues: {
       name: initialData?.name || "",
-      province: initialData?.province || "", // Initialize province
+      province: initialData?.province || "",
       category: initialData?.category || "activity",
       subCategory: initialData?.subCategory || "",
       price1: initialData?.price1 || 0,
@@ -70,15 +70,15 @@ export function ServicePriceForm({ initialData, onSubmit, onCancel }: ServicePri
       currency: initialData?.currency || "USD",
       unitDescription: initialData?.unitDescription || "",
       notes: initialData?.notes || "",
-      seasonalRates: initialData?.category === 'hotel' && initialData?.seasonalRates 
+      seasonalRates: initialData?.category === 'hotel' && initialData?.seasonalRates
         ? initialData.seasonalRates.map(sr => ({
             ...sr,
             startDate: sr.startDate ? new Date(sr.startDate) : new Date(),
             endDate: sr.endDate ? new Date(sr.endDate) : new Date(),
           }))
         : [],
-      transferMode: initialData?.category === 'transfer' 
-        ? (initialData.subCategory === 'ticket' ? 'ticket' : 'vehicle') 
+      transferMode: initialData?.category === 'transfer'
+        ? (initialData.subCategory === 'ticket' ? 'ticket' : 'vehicle')
         : undefined,
     },
   });
@@ -88,37 +88,53 @@ export function ServicePriceForm({ initialData, onSubmit, onCancel }: ServicePri
   const transferMode = form.watch("transferMode");
 
   React.useEffect(() => {
+    // Handles transitions when selectedCategory changes
     if (selectedCategory !== 'hotel') {
       form.setValue('seasonalRates', []);
     }
+
     if (selectedCategory !== 'transfer') {
       form.setValue('transferMode', undefined);
     } else {
-      if (initialData?.category === 'transfer') {
-        form.setValue('transferMode', initialData.subCategory === 'ticket' ? 'ticket' : 'vehicle');
-        if (initialData.subCategory !== 'ticket') {
-            form.setValue('subCategory', initialData.subCategory || '');
+      // If switching to 'transfer' and transferMode isn't set (or isn't valid for initialData),
+      // set a default. This also handles initial load if form.defaultValues didn't set it.
+      const currentTransferMode = form.getValues('transferMode');
+      if (!currentTransferMode) {
+        if (initialData?.category === 'transfer' && initialData.subCategory) {
+          const mode = initialData.subCategory === 'ticket' ? 'ticket' : 'vehicle';
+          form.setValue('transferMode', mode);
+          form.setValue('subCategory', initialData.subCategory);
+        } else {
+          form.setValue('transferMode', 'ticket');
+          form.setValue('subCategory', 'ticket');
         }
       } else {
-        form.setValue('transferMode', 'ticket');
-        form.setValue('subCategory', 'ticket'); 
+         // If transferMode is already set (e.g. from defaultValues), ensure subCategory is consistent for ticket mode
+        if (currentTransferMode === 'ticket') {
+            form.setValue('subCategory', 'ticket');
+        }
+        // For 'vehicle' mode, subCategory is user-editable, so it's handled by the transferMode effect if it was 'ticket'
       }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedCategory, form.setValue]); 
+  }, [selectedCategory, form.setValue]); // initialData is handled by defaultValues due to form key
+
 
   React.useEffect(() => {
+    // Handles transitions when transferMode changes, only if category is 'transfer'
     if (selectedCategory === 'transfer') {
       if (transferMode === 'ticket') {
         form.setValue('subCategory', 'ticket');
       } else if (transferMode === 'vehicle') {
+        // If we just switched to 'vehicle' mode and subCategory was 'ticket', clear it for user input.
         if (form.getValues('subCategory') === 'ticket') {
-           form.setValue('subCategory', initialData?.subCategory && initialData?.subCategory !== 'ticket' ? initialData.subCategory : '');
+           form.setValue('subCategory', '');
         }
+        // If subCategory is already a vehicle type (e.g. user typed, or loaded from initialData), leave it.
       }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [transferMode, selectedCategory, form.setValue, form.getValues]); 
+  }, [transferMode, selectedCategory, form.setValue]);
 
 
   const getPrice1Label = (): string => {
@@ -141,7 +157,7 @@ export function ServicePriceForm({ initialData, onSubmit, onCancel }: ServicePri
       default: return null;
     }
   };
-  
+
   const getSubCategoryLabel = (): string | null => {
     switch (selectedCategory) {
         case 'activity': return "Activity Type (e.g., Guided, Entrance)";
@@ -158,22 +174,22 @@ export function ServicePriceForm({ initialData, onSubmit, onCancel }: ServicePri
     if (selectedCategory === 'transfer' && transferMode === 'ticket') return false;
     return getSubCategoryLabel() !== null;
   };
-  
+
   const handleAddSeasonalRate = () => {
-    const newRate: SeasonalRate = { 
-      id: generateGUID(), 
-      startDate: new Date().toISOString().split('T')[0], 
-      endDate: new Date().toISOString().split('T')[0], 
-      roomRate: 0, 
-      extraBedRate: 0 
+    const newRate: SeasonalRate = {
+      id: generateGUID(),
+      startDate: new Date().toISOString().split('T')[0],
+      endDate: new Date().toISOString().split('T')[0],
+      roomRate: 0,
+      extraBedRate: 0
     };
     const currentRates = form.getValues('seasonalRates') || [];
-    const newRatesForForm = [...currentRates, { 
-        id: newRate.id, 
-        startDate: new Date(), 
-        endDate: new Date(), 
-        roomRate: 0, 
-        extraBedRate: 0 
+    const newRatesForForm = [...currentRates, {
+        id: newRate.id,
+        startDate: new Date(),
+        endDate: new Date(),
+        roomRate: 0,
+        extraBedRate: 0
     }];
     form.setValue('seasonalRates', newRatesForForm as any[]);
   };
@@ -182,10 +198,10 @@ export function ServicePriceForm({ initialData, onSubmit, onCancel }: ServicePri
     const currentRates = form.getValues('seasonalRates') || [];
     form.setValue('seasonalRates', currentRates.filter((_, i) => i !== index));
   };
-  
+
   const handleActualSubmit = (values: ServicePriceFormValues) => {
-    const { transferMode: _transferMode, ...dataToSubmit } = values; 
-    
+    const { transferMode: _formTransferMode, ...dataToSubmit } = values;
+
     if (dataToSubmit.category === 'transfer') {
         if (values.transferMode === 'ticket') {
             dataToSubmit.subCategory = 'ticket';
@@ -198,16 +214,16 @@ export function ServicePriceForm({ initialData, onSubmit, onCancel }: ServicePri
     } else {
         dataToSubmit.seasonalRates = dataToSubmit.seasonalRates?.map(sr => ({
             ...sr,
-            startDate: (sr.startDate as Date).toISOString().split('T')[0], 
+            startDate: (sr.startDate as Date).toISOString().split('T')[0],
             endDate: (sr.endDate as Date).toISOString().split('T')[0],
         }));
     }
-    
+
     if (!getPrice2Label()) {
         dataToSubmit.price2 = undefined;
     }
 
-    onSubmit({ ...dataToSubmit });
+    onSubmit({ ...dataToSubmit } as Omit<ServicePriceItem, 'id'>);
   };
 
   const subCategoryLabel = getSubCategoryLabel();
@@ -234,7 +250,7 @@ export function ServicePriceForm({ initialData, onSubmit, onCancel }: ServicePri
                     render={({ field }) => (
                         <FormItem>
                         <FormLabel>Province / Location (Optional)</FormLabel>
-                        <FormControl><Input placeholder="e.g., Bangkok, Pattaya, Phuket" {...field} /></FormControl>
+                        <FormControl><Input placeholder="e.g., Bangkok, Pattaya, Phuket" {...field} value={field.value || ''} /></FormControl>
                         <FormMessage />
                         </FormItem>
                     )}
@@ -246,7 +262,7 @@ export function ServicePriceForm({ initialData, onSubmit, onCancel }: ServicePri
                         render={({ field }) => (
                         <FormItem>
                             <FormLabel>Category</FormLabel>
-                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <Select onValueChange={field.onChange} value={field.value}>
                             <FormControl><SelectTrigger><SelectValue placeholder="Select category" /></SelectTrigger></FormControl>
                             <SelectContent>
                                 {SERVICE_CATEGORIES.map(cat => <SelectItem key={cat} value={cat}>{cat.charAt(0).toUpperCase() + cat.slice(1)}</SelectItem>)}
@@ -262,7 +278,7 @@ export function ServicePriceForm({ initialData, onSubmit, onCancel }: ServicePri
                         render={({ field }) => (
                         <FormItem>
                             <FormLabel>Currency</FormLabel>
-                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <Select onValueChange={field.onChange} value={field.value}>
                             <FormControl><SelectTrigger><SelectValue placeholder="Select currency" /></SelectTrigger></FormControl>
                             <SelectContent>
                                 {CURRENCIES.map(curr => <SelectItem key={curr} value={curr}>{curr}</SelectItem>)}
@@ -273,10 +289,10 @@ export function ServicePriceForm({ initialData, onSubmit, onCancel }: ServicePri
                         )}
                     />
                 </div>
-                
+
                 <div className="space-y-4 pt-4 border-t mt-4">
                     <h3 className="text-md font-medium text-muted-foreground">Category Specific Details: {selectedCategory.charAt(0).toUpperCase() + selectedCategory.slice(1)}</h3>
-                    
+
                     {selectedCategory === 'transfer' && (
                         <FormField
                             control={form.control}
@@ -284,7 +300,7 @@ export function ServicePriceForm({ initialData, onSubmit, onCancel }: ServicePri
                             render={({ field }) => (
                             <FormItem>
                                 <FormLabel>Transfer Mode</FormLabel>
-                                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                <Select onValueChange={field.onChange} value={field.value || undefined}>
                                 <FormControl><SelectTrigger><SelectValue placeholder="Select transfer mode" /></SelectTrigger></FormControl>
                                 <SelectContent>
                                     <SelectItem value="ticket">Ticket Basis</SelectItem>
@@ -304,7 +320,7 @@ export function ServicePriceForm({ initialData, onSubmit, onCancel }: ServicePri
                             render={({ field }) => (
                             <FormItem>
                                 <FormLabel>{subCategoryLabel}</FormLabel>
-                                <FormControl><Input placeholder={subCategoryLabel.startsWith("Vehicle Type") ? "e.g., Sedan, SUV" : "Details..."} {...field} /></FormControl>
+                                <FormControl><Input placeholder={subCategoryLabel.startsWith("Vehicle Type") ? "e.g., Sedan, SUV" : "Details..."} {...field} value={field.value || ''}/></FormControl>
                                 <FormMessage />
                             </FormItem>
                             )}
@@ -330,7 +346,7 @@ export function ServicePriceForm({ initialData, onSubmit, onCancel }: ServicePri
                             render={({ field }) => (
                                 <FormItem>
                                 <FormLabel>{getPrice2Label()}</FormLabel>
-                                <FormControl><Input type="number" placeholder="0.00" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)} /></FormControl>
+                                <FormControl><Input type="number" placeholder="0.00" {...field} value={field.value ?? ''} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)} /></FormControl>
                                 <FormMessage />
                                 </FormItem>
                             )}
@@ -338,7 +354,7 @@ export function ServicePriceForm({ initialData, onSubmit, onCancel }: ServicePri
                         )}
                     </div>
                 </div>
-                
+
                 <FormField
                     control={form.control}
                     name="unitDescription"
@@ -356,7 +372,7 @@ export function ServicePriceForm({ initialData, onSubmit, onCancel }: ServicePri
                     render={({ field }) => (
                         <FormItem>
                         <FormLabel>Notes (Optional)</FormLabel>
-                        <FormControl><Textarea placeholder="Additional details about the service or pricing" {...field} /></FormControl>
+                        <FormControl><Textarea placeholder="Additional details about the service or pricing" {...field} value={field.value || ''} /></FormControl>
                         <FormMessage />
                         </FormItem>
                     )}
@@ -425,7 +441,7 @@ export function ServicePriceForm({ initialData, onSubmit, onCancel }: ServicePri
                             render={({ field }) => (
                             <FormItem>
                                 <FormLabel>Extra Bed Rate ({form.getValues('currency')}) (Optional)</FormLabel>
-                                <FormControl><Input type="number" placeholder="0.00" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)} /></FormControl>
+                                <FormControl><Input type="number" placeholder="0.00" {...field} value={field.value ?? ''} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)} /></FormControl>
                                 <FormMessage />
                             </FormItem>
                             )}
@@ -453,3 +469,5 @@ export function ServicePriceForm({ initialData, onSubmit, onCancel }: ServicePri
     </Form>
   );
 }
+
+    
