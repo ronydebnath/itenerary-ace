@@ -113,7 +113,7 @@ export function PricingManager() {
     <div className="container mx-auto py-8">
       <div className="flex justify-between items-center mb-6">
         <div className="flex items-center gap-4">
-          <Link href="/" passHref legacyBehavior>
+          <Link href="/">
             <Button variant="outline" size="icon" className="h-10 w-10">
               <Home className="h-5 w-5" />
               <span className="sr-only">Go to Home</span>
