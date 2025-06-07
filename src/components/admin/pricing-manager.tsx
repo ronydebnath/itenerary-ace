@@ -4,13 +4,16 @@
 import * as React from 'react';
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { PlusCircle, Edit, Trash2 } from 'lucide-react';
-import type { ServicePriceItem } from '@/types/itinerary';
+import { PlusCircle, Edit, Trash2, CalendarClock } from 'lucide-react';
+import type { ServicePriceItem, CurrencyCode } from '@/types/itinerary';
+import { CURRENCIES } from '@/types/itinerary'; // Import CURRENCIES
 import { ServicePriceForm } from './service-price-form';
 import { ServicePriceTable } from './service-price-table';
 import { generateGUID } from '@/lib/utils';
 import { useToast } from "@/hooks/use-toast";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { Badge } from "@/components/ui/badge";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 
 const SERVICE_PRICES_STORAGE_KEY = 'itineraryAceServicePrices';
@@ -25,11 +28,44 @@ export function PricingManager() {
     try {
       const storedPrices = localStorage.getItem(SERVICE_PRICES_STORAGE_KEY);
       if (storedPrices) {
-        setServicePrices(JSON.parse(storedPrices));
+        const parsedData = JSON.parse(storedPrices);
+        if (Array.isArray(parsedData)) {
+            setServicePrices(parsedData.map(p => {
+              const category = p.category || "misc"; // Default category
+              const seasonalRatesValid = category === 'hotel' && Array.isArray(p.seasonalRates) 
+                ? p.seasonalRates.map((sr: any) => ({
+                    id: sr.id || generateGUID(),
+                    startDate: sr.startDate || "",
+                    endDate: sr.endDate || "",
+                    roomRate: typeof sr.roomRate === 'number' ? sr.roomRate : 0,
+                    extraBedRate: typeof sr.extraBedRate === 'number' ? sr.extraBedRate : undefined,
+                  }))
+                : (category === 'hotel' ? [] : undefined);
+
+              return {
+                id: p.id || generateGUID(),
+                name: p.name || "Unnamed Service",
+                category: category,
+                subCategory: p.subCategory,
+                price1: typeof p.price1 === 'number' ? p.price1 : 0,
+                price2: typeof p.price2 === 'number' ? p.price2 : undefined,
+                currency: CURRENCIES.includes(p.currency as CurrencyCode) ? p.currency : "USD" as CurrencyCode,
+                unitDescription: p.unitDescription || "N/A",
+                notes: p.notes,
+                seasonalRates: seasonalRatesValid,
+              } as ServicePriceItem;
+            }));
+        } else {
+            console.warn("Stored service prices are not an array. Clearing.");
+            localStorage.removeItem(SERVICE_PRICES_STORAGE_KEY);
+            setServicePrices([]);
+        }
       }
     } catch (error) {
-      console.error("Failed to load service prices from localStorage:", error);
-      toast({ title: "Error", description: "Could not load service prices.", variant: "destructive" });
+      console.error("Failed to load or parse service prices from localStorage:", error);
+      toast({ title: "Error", description: "Could not load service prices. Data might be corrupted. Resetting prices.", variant: "destructive" });
+      localStorage.removeItem(SERVICE_PRICES_STORAGE_KEY);
+      setServicePrices([]);
     }
   }, [toast]);
 
@@ -42,7 +78,7 @@ export function PricingManager() {
     }
   };
 
-  const handleFormSubmit = (data: Omit<ServicePriceItem, 'id' | 'currency'> & { currency: ServicePriceItem['currency']}) => {
+  const handleFormSubmit = (data: Omit<ServicePriceItem, 'id'>) => {
     let updatedPrices;
     if (editingService) {
       updatedPrices = servicePrices.map(sp => sp.id === editingService.id ? { ...editingService, ...data } : sp);
@@ -64,10 +100,11 @@ export function PricingManager() {
   };
 
   const handleDelete = (serviceId: string) => {
+    const serviceToDelete = servicePrices.find(sp => sp.id === serviceId);
     const updatedPrices = servicePrices.filter(sp => sp.id !== serviceId);
     setServicePrices(updatedPrices);
     savePricesToLocalStorage(updatedPrices);
-    toast({ title: "Success", description: `Service price deleted.` });
+    toast({ title: "Success", description: `Service price "${serviceToDelete?.name || 'Item'}" deleted.` });
   };
 
   return (
@@ -83,12 +120,12 @@ export function PricingManager() {
               <PlusCircle className="mr-2 h-5 w-5" /> Add New Service Price
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-2xl">
+          <DialogContent className="sm:max-w-2xl"> {/* Increased max-width for longer form */}
             <DialogHeader>
               <DialogTitle>{editingService ? 'Edit' : 'Add'} Service Price</DialogTitle>
             </DialogHeader>
             <ServicePriceForm
-              key={editingService?.id || 'new'} // Re-mount form when editingService changes
+              key={editingService?.id || 'new'}
               initialData={editingService}
               onSubmit={handleFormSubmit}
               onCancel={() => {
@@ -104,7 +141,7 @@ export function PricingManager() {
         <ServicePriceTable
           servicePrices={servicePrices}
           onEdit={handleEdit}
-          onDelete={(serviceId) => (
+          onDeleteConfirmation={(serviceId) => ( // Renamed prop for clarity
             <AlertDialog>
               <AlertDialogTrigger asChild>
                 <Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10">
@@ -137,7 +174,3 @@ export function PricingManager() {
     </div>
   );
 }
-
-// Add a temporary link to the layout if it's not already there or managed elsewhere
-// For this prototype, a link in the main layout is assumed or can be added manually.
-// If you want me to add it to src/app/layout.tsx, please let me know.
