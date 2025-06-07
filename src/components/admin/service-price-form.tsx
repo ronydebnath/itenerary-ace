@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from 'react';
@@ -16,7 +17,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { DatePicker } from "@/components/ui/date-picker"; // Assuming you have this or similar
+import { DatePicker } from "@/components/ui/date-picker";
 import type { ServicePriceItem, CurrencyCode, ItineraryItemType, SeasonalRate } from '@/types/itinerary';
 import { CURRENCIES, SERVICE_CATEGORIES } from '@/types/itinerary';
 import { PlusCircle, Trash2 } from 'lucide-react';
@@ -37,15 +38,14 @@ const seasonalRateSchema = z.object({
 const servicePriceSchema = z.object({
   name: z.string().min(1, "Service name is required"),
   category: z.custom<ItineraryItemType>((val) => SERVICE_CATEGORIES.includes(val as ItineraryItemType), "Invalid category"),
-  subCategory: z.string().optional(), // Used for hotel room type, transfer mode/type
+  subCategory: z.string().optional(),
   price1: z.coerce.number().min(0, "Price must be non-negative"),
   price2: z.coerce.number().min(0, "Price must be non-negative").optional(),
   currency: z.custom<CurrencyCode>((val) => CURRENCIES.includes(val as CurrencyCode), "Invalid currency"),
   unitDescription: z.string().min(1, "Unit description is required (e.g., per adult, per night)"),
   notes: z.string().optional(),
   seasonalRates: z.array(seasonalRateSchema).optional(),
-  // Transfer specific mode, not directly part of ServicePriceItem, but helps manage subCategory
-  transferMode: z.enum(['ticket', 'vehicle']).optional(),
+  transferMode: z.enum(['ticket', 'vehicle']).optional(), // Form-only field
 });
 
 type ServicePriceFormValues = z.infer<typeof servicePriceSchema>;
@@ -75,7 +75,9 @@ export function ServicePriceForm({ initialData, onSubmit, onCancel }: ServicePri
             endDate: sr.endDate ? new Date(sr.endDate) : new Date(),
           }))
         : [],
-      transferMode: initialData?.category === 'transfer' ? (initialData.subCategory?.startsWith('vehicle') ? 'vehicle' : 'ticket') : undefined,
+      transferMode: initialData?.category === 'transfer' 
+        ? (initialData.subCategory === 'ticket' ? 'ticket' : 'vehicle') 
+        : undefined,
     },
   });
 
@@ -84,58 +86,84 @@ export function ServicePriceForm({ initialData, onSubmit, onCancel }: ServicePri
   const transferMode = form.watch("transferMode");
 
   React.useEffect(() => {
+    // Reset category-specific fields when category changes
     if (selectedCategory !== 'hotel') {
       form.setValue('seasonalRates', []);
     }
     if (selectedCategory !== 'transfer') {
       form.setValue('transferMode', undefined);
-      // If not transfer, subCategory is free text
+      // If switching FROM transfer, and subCategory was 'ticket' or 'vehicle' due to mode, clear it
+      // or let user decide. For now, we let it be, user can edit.
     } else {
-      // If category is transfer, and subCategory was for hotel, clear it
-      if (initialData?.category !== 'transfer' && form.getValues('subCategory')) {
-        // form.setValue('subCategory', ''); // Let user define subCategory like vehicle type
+      // If switching TO transfer, ensure transferMode is set if initialData had it
+      if (initialData?.category === 'transfer') {
+        form.setValue('transferMode', initialData.subCategory === 'ticket' ? 'ticket' : 'vehicle');
+        if (initialData.subCategory !== 'ticket') {
+            form.setValue('subCategory', initialData.subCategory || '');
+        }
+      } else {
+        // If switching to transfer from a non-transfer category, default to 'ticket' mode
+        form.setValue('transferMode', 'ticket');
+        form.setValue('subCategory', 'ticket'); // And set subCategory accordingly
       }
     }
-  }, [selectedCategory, form, initialData?.category]);
-  
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedCategory, form.setValue]); // Removed initialData from deps to avoid loops on edit.
+
   React.useEffect(() => {
+    // Handle subCategory based on transferMode
     if (selectedCategory === 'transfer') {
       if (transferMode === 'ticket') {
         form.setValue('subCategory', 'ticket');
       } else if (transferMode === 'vehicle') {
-        // User can type vehicle type in subCategory field if they want, or it defaults to 'vehicle'
-         if(form.getValues('subCategory') === 'ticket' || !form.getValues('subCategory')) {
-           form.setValue('subCategory', 'vehicle'); // Default subCategory for vehicle mode
-         }
+        // If subCategory was 'ticket' (from mode switch) or is empty, set to empty for user input or from initialData.
+        // User is expected to type vehicle type like "Sedan", "Van".
+        // It could default to 'vehicle' if empty, but explicit user input is better.
+        if (form.getValues('subCategory') === 'ticket') {
+           form.setValue('subCategory', initialData?.subCategory && initialData?.subCategory !== 'ticket' ? initialData.subCategory : '');
+        }
       }
     }
-  }, [transferMode, selectedCategory, form]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [transferMode, selectedCategory, form.setValue, form.getValues]); // Removed initialData from deps
 
 
-  const getPriceLabel = (priceField: 'price1' | 'price2'): string => {
+  const getPrice1Label = (): string => {
     switch (selectedCategory) {
-      case 'activity':
-        return priceField === 'price1' ? "Adult Price" : "Child Price (Optional)";
-      case 'meal':
-        return priceField === 'price1' ? "Adult Meal Price" : "Child Meal Price (Optional)";
-      case 'transfer':
-        if (transferMode === 'ticket') {
-          return priceField === 'price1' ? "Adult Ticket Price" : "Child Ticket Price (Optional)";
-        }
-        return priceField === 'price1' ? "Cost Per Vehicle" : ""; // No price2 for vehicle
-      case 'hotel':
-        return priceField === 'price1' ? "Default Room Rate (Nightly)" : "Default Extra Bed Rate (Optional)";
-      case 'misc':
-        return priceField === 'price1' ? "Unit Cost" : ""; // No price2 for misc
-      default:
-        return priceField === 'price1' ? "Price 1" : "Price 2 (Optional)";
+      case 'activity': return "Adult Price";
+      case 'meal': return "Adult Meal Price";
+      case 'transfer': return transferMode === 'ticket' ? "Adult Ticket Price" : "Cost Per Vehicle";
+      case 'hotel': return "Default Room Rate (Nightly)";
+      case 'misc': return "Unit Cost";
+      default: return "Price 1";
     }
   };
 
-  const showPrice2 = (): boolean => {
-    if (selectedCategory === 'misc') return false;
-    if (selectedCategory === 'transfer' && transferMode === 'vehicle') return false;
-    return true;
+  const getPrice2Label = (): string | null => {
+    switch (selectedCategory) {
+      case 'activity': return "Child Price (Optional)";
+      case 'meal': return "Child Meal Price (Optional)";
+      case 'transfer': return transferMode === 'ticket' ? "Child Ticket Price (Optional)" : null;
+      case 'hotel': return "Default Extra Bed Rate (Optional)";
+      default: return null; // Hidden for misc and transfer-vehicle
+    }
+  };
+  
+  const getSubCategoryLabel = (): string | null => {
+    switch (selectedCategory) {
+        case 'activity': return "Activity Type (e.g., Guided, Entrance)";
+        case 'meal': return "Meal Type (e.g., Set Menu, Buffet)";
+        case 'transfer': return transferMode === 'vehicle' ? "Vehicle Type (e.g., Sedan, Van)" : null; // Hidden for ticket mode
+        case 'hotel': return "Default Room Type (e.g., Deluxe King)";
+        case 'misc': return "Item Sub-Type (e.g., Visa Fee, Souvenir)";
+        default: return "Sub-category (Optional)";
+    }
+  };
+
+  const showPrice2 = (): boolean => getPrice2Label() !== null;
+  const showSubCategoryInput = (): boolean => {
+    if (selectedCategory === 'transfer' && transferMode === 'ticket') return false;
+    return getSubCategoryLabel() !== null;
   };
   
   const handleAddSeasonalRate = () => {
@@ -155,261 +183,256 @@ export function ServicePriceForm({ initialData, onSubmit, onCancel }: ServicePri
   };
   
   const handleActualSubmit = (values: ServicePriceFormValues) => {
-    const { transferMode, ...dataToSubmit } = values; // Exclude form-only transferMode
+    const { transferMode: _transferMode, ...dataToSubmit } = values; 
     
-    // Ensure subCategory is correctly set for transfers
     if (dataToSubmit.category === 'transfer') {
         if (values.transferMode === 'ticket') {
             dataToSubmit.subCategory = 'ticket';
         } else if (values.transferMode === 'vehicle') {
-            // If subCategory is 'ticket' (from previous mode), or empty, set to 'vehicle'
-            // Otherwise, user might have typed a specific vehicle type, e.g., "Sedan", "Van"
-            if (dataToSubmit.subCategory === 'ticket' || !dataToSubmit.subCategory) {
-                 dataToSubmit.subCategory = 'vehicle';
-            }
+            // If subCategory is empty for vehicle, default it to 'vehicle', otherwise use user's input
+            dataToSubmit.subCategory = dataToSubmit.subCategory?.trim() || 'vehicle';
         }
     }
+    if (dataToSubmit.category !== 'hotel') {
+        delete dataToSubmit.seasonalRates; // Ensure seasonal rates are not saved for non-hotel
+    } else {
+        dataToSubmit.seasonalRates = dataToSubmit.seasonalRates?.map(sr => ({
+            ...sr,
+            startDate: sr.startDate.toISOString().split('T')[0], 
+            endDate: sr.endDate.toISOString().split('T')[0],
+        }));
+    }
+    
+    // Ensure price2 is undefined if not applicable
+    if (!getPrice2Label()) {
+        dataToSubmit.price2 = undefined;
+    }
 
-
-    const seasonalRatesToSave = dataToSubmit.seasonalRates?.map(sr => ({
-        ...sr,
-        startDate: sr.startDate.toISOString().split('T')[0], // Store as YYYY-MM-DD string
-        endDate: sr.endDate.toISOString().split('T')[0],
-    }));
-
-    onSubmit({ ...dataToSubmit, seasonalRates: seasonalRatesToSave });
+    onSubmit({ ...dataToSubmit });
   };
 
+  const subCategoryLabel = getSubCategoryLabel();
 
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(handleActualSubmit)} className="space-y-6">
         <ScrollArea className="h-[60vh] md:h-[70vh] pr-3">
             <div className="space-y-6 p-1">
-            <FormField
-            control={form.control}
-            name="name"
-            render={({ field }) => (
-                <FormItem>
-                <FormLabel>Service Name</FormLabel>
-                <FormControl><Input placeholder="e.g., City Tour, Airport Transfer, Deluxe Room" {...field} /></FormControl>
-                <FormMessage />
-                </FormItem>
-            )}
-            />
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <FormField
-                control={form.control}
-                name="category"
-                render={({ field }) => (
-                <FormItem>
-                    <FormLabel>Category</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                    <FormControl><SelectTrigger><SelectValue placeholder="Select category" /></SelectTrigger></FormControl>
-                    <SelectContent>
-                        {SERVICE_CATEGORIES.map(cat => <SelectItem key={cat} value={cat}>{cat.charAt(0).toUpperCase() + cat.slice(1)}</SelectItem>)}
-                    </SelectContent>
-                    </Select>
-                    <FormMessage />
-                </FormItem>
-                )}
-            />
-            {selectedCategory === 'transfer' && (
+                {/* Common Fields */}
                 <FormField
                     control={form.control}
-                    name="transferMode"
+                    name="name"
                     render={({ field }) => (
-                    <FormItem>
-                        <FormLabel>Transfer Mode</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                        <FormControl><SelectTrigger><SelectValue placeholder="Select transfer mode" /></SelectTrigger></FormControl>
-                        <SelectContent>
-                            <SelectItem value="ticket">Ticket Basis</SelectItem>
-                            <SelectItem value="vehicle">Vehicle Basis</SelectItem>
-                        </SelectContent>
-                        </Select>
+                        <FormItem>
+                        <FormLabel>Service Name</FormLabel>
+                        <FormControl><Input placeholder="e.g., City Tour, Airport Transfer, Deluxe Room" {...field} /></FormControl>
                         <FormMessage />
-                    </FormItem>
+                        </FormItem>
                     )}
                 />
-            )}
-            {(selectedCategory === 'hotel' || (selectedCategory === 'transfer' && transferMode === 'vehicle')) && (
-                 <FormField
-                    control={form.control}
-                    name="subCategory"
-                    render={({ field }) => (
-                    <FormItem>
-                        <FormLabel>{selectedCategory === 'hotel' ? "Default Room Type (Optional)" : "Vehicle Type (Optional)"}</FormLabel>
-                        <FormControl><Input placeholder={selectedCategory === 'hotel' ? "e.g., Deluxe King, Standard Twin" : "e.g., Sedan, SUV, Van"} {...field} /></FormControl>
-                        <FormMessage />
-                    </FormItem>
-                    )}
-                />
-            )}
-             {selectedCategory !== 'hotel' && selectedCategory !== 'transfer' && (
-                <FormField
-                    control={form.control}
-                    name="subCategory"
-                    render={({ field }) => (
-                    <FormItem>
-                        <FormLabel>Sub-category (Optional)</FormLabel>
-                        <FormControl><Input placeholder="e.g., Guided, Private" {...field} /></FormControl>
-                        <FormMessage />
-                    </FormItem>
-                    )}
-                />
-            )}
-
-
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <FormField
-                control={form.control}
-                name="price1"
-                render={({ field }) => (
-                <FormItem>
-                    <FormLabel>{getPriceLabel('price1')}</FormLabel>
-                    <FormControl><Input type="number" placeholder="0.00" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || 0)}/></FormControl>
-                    <FormMessage />
-                </FormItem>
-                )}
-            />
-            {showPrice2() && (
-                <FormField
-                control={form.control}
-                name="price2"
-                render={({ field }) => (
-                    <FormItem>
-                    <FormLabel>{getPriceLabel('price2')}</FormLabel>
-                    <FormControl><Input type="number" placeholder="0.00" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)} /></FormControl>
-                    <FormMessage />
-                    </FormItem>
-                )}
-                />
-            )}
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <FormField
-                control={form.control}
-                name="currency"
-                render={({ field }) => (
-                <FormItem>
-                    <FormLabel>Currency</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                    <FormControl><SelectTrigger><SelectValue placeholder="Select currency" /></SelectTrigger></FormControl>
-                    <SelectContent>
-                        {CURRENCIES.map(curr => <SelectItem key={curr} value={curr}>{curr}</SelectItem>)}
-                    </SelectContent>
-                    </Select>
-                    <FormMessage />
-                </FormItem>
-                )}
-            />
-            <FormField
-                control={form.control}
-                name="unitDescription"
-                render={({ field }) => (
-                <FormItem>
-                    <FormLabel>Unit Description</FormLabel>
-                    <FormControl><Input placeholder="e.g., per adult, per night, per vehicle" {...field} /></FormControl>
-                    <FormMessage />
-                </FormItem>
-                )}
-            />
-            </div>
-            <FormField
-            control={form.control}
-            name="notes"
-            render={({ field }) => (
-                <FormItem>
-                <FormLabel>Notes (Optional)</FormLabel>
-                <FormControl><Textarea placeholder="Additional details about the service or pricing" {...field} /></FormControl>
-                <FormMessage />
-                </FormItem>
-            )}
-            />
-
-            {selectedCategory === 'hotel' && (
-            <div className="space-y-4 pt-4 border-t mt-4">
-                <div className="flex justify-between items-center">
-                <h3 className="text-lg font-medium text-primary">Seasonal Rates (Optional)</h3>
-                <Button type="button" variant="outline" size="sm" onClick={handleAddSeasonalRate} className="border-primary text-primary hover:bg-primary/10">
-                    <PlusCircle className="mr-2 h-4 w-4" /> Add Seasonal Rate
-                </Button>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <FormField
+                        control={form.control}
+                        name="category"
+                        render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Category</FormLabel>
+                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <FormControl><SelectTrigger><SelectValue placeholder="Select category" /></SelectTrigger></FormControl>
+                            <SelectContent>
+                                {SERVICE_CATEGORIES.map(cat => <SelectItem key={cat} value={cat}>{cat.charAt(0).toUpperCase() + cat.slice(1)}</SelectItem>)}
+                            </SelectContent>
+                            </Select>
+                            <FormMessage />
+                        </FormItem>
+                        )}
+                    />
+                    <FormField
+                        control={form.control}
+                        name="currency"
+                        render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Currency</FormLabel>
+                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <FormControl><SelectTrigger><SelectValue placeholder="Select currency" /></SelectTrigger></FormControl>
+                            <SelectContent>
+                                {CURRENCIES.map(curr => <SelectItem key={curr} value={curr}>{curr}</SelectItem>)}
+                            </SelectContent>
+                            </Select>
+                            <FormMessage />
+                        </FormItem>
+                        )}
+                    />
                 </div>
-                {seasonalRates.map((rate, index) => (
-                <div key={rate.id || index} className="p-4 border rounded-md shadow-sm bg-card space-y-3">
+                
+                {/* Category Specific Fields */}
+                <div className="space-y-4 pt-4 border-t mt-4">
+                    <h3 className="text-md font-medium text-muted-foreground">Category Specific Details: {selectedCategory.charAt(0).toUpperCase() + selectedCategory.slice(1)}</h3>
+                    
+                    {selectedCategory === 'transfer' && (
+                        <FormField
+                            control={form.control}
+                            name="transferMode"
+                            render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Transfer Mode</FormLabel>
+                                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                <FormControl><SelectTrigger><SelectValue placeholder="Select transfer mode" /></SelectTrigger></FormControl>
+                                <SelectContent>
+                                    <SelectItem value="ticket">Ticket Basis</SelectItem>
+                                    <SelectItem value="vehicle">Vehicle Basis</SelectItem>
+                                </SelectContent>
+                                </Select>
+                                <FormMessage />
+                            </FormItem>
+                            )}
+                        />
+                    )}
+
+                    {showSubCategoryInput() && subCategoryLabel && (
+                        <FormField
+                            control={form.control}
+                            name="subCategory"
+                            render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>{subCategoryLabel}</FormLabel>
+                                <FormControl><Input placeholder={subCategoryLabel.startsWith("Vehicle Type") ? "e.g., Sedan, SUV" : "Details..."} {...field} /></FormControl>
+                                <FormMessage />
+                            </FormItem>
+                            )}
+                        />
+                    )}
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <FormField
+                            control={form.control}
+                            name="price1"
+                            render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>{getPrice1Label()}</FormLabel>
+                                <FormControl><Input type="number" placeholder="0.00" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || 0)}/></FormControl>
+                                <FormMessage />
+                            </FormItem>
+                            )}
+                        />
+                        {showPrice2() && getPrice2Label() && (
+                            <FormField
+                            control={form.control}
+                            name="price2"
+                            render={({ field }) => (
+                                <FormItem>
+                                <FormLabel>{getPrice2Label()}</FormLabel>
+                                <FormControl><Input type="number" placeholder="0.00" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)} /></FormControl>
+                                <FormMessage />
+                                </FormItem>
+                            )}
+                            />
+                        )}
+                    </div>
+                </div>
+                
+                <FormField
+                    control={form.control}
+                    name="unitDescription"
+                    render={({ field }) => (
+                    <FormItem>
+                        <FormLabel>Unit Description</FormLabel>
+                        <FormControl><Input placeholder="e.g., per adult, per night, per vehicle" {...field} /></FormControl>
+                        <FormMessage />
+                    </FormItem>
+                    )}
+                />
+                <FormField
+                    control={form.control}
+                    name="notes"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>Notes (Optional)</FormLabel>
+                        <FormControl><Textarea placeholder="Additional details about the service or pricing" {...field} /></FormControl>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                />
+
+                {selectedCategory === 'hotel' && (
+                <div className="space-y-4 pt-4 border-t mt-4">
                     <div className="flex justify-between items-center">
-                        <p className="font-medium">Seasonal Period {index + 1}</p>
-                        <Button type="button" variant="ghost" size="icon" onClick={() => handleRemoveSeasonalRate(index)} className="text-destructive hover:bg-destructive/10">
-                            <Trash2 className="h-4 w-4" />
-                        </Button>
+                    <h3 className="text-lg font-medium text-primary">Seasonal Rates (Optional for Hotels)</h3>
+                    <Button type="button" variant="outline" size="sm" onClick={handleAddSeasonalRate} className="border-primary text-primary hover:bg-primary/10">
+                        <PlusCircle className="mr-2 h-4 w-4" /> Add Seasonal Rate
+                    </Button>
                     </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <Controller
-                        control={form.control}
-                        name={`seasonalRates.${index}.startDate`}
-                        render={({ field, fieldState: { error } }) => (
-                        <FormItem>
-                            <FormLabel>Start Date</FormLabel>
-                            <FormControl>
-                                <DatePicker date={field.value} onDateChange={field.onChange} />
-                            </FormControl>
-                            {error && <FormMessage>{error.message}</FormMessage>}
-                        </FormItem>
-                        )}
-                    />
-                    <Controller
-                        control={form.control}
-                        name={`seasonalRates.${index}.endDate`}
-                        render={({ field, fieldState: { error } }) => (
-                        <FormItem>
-                            <FormLabel>End Date</FormLabel>
-                            <FormControl>
-                                <DatePicker date={field.value} onDateChange={field.onChange} minDate={form.getValues(`seasonalRates.${index}.startDate`)}/>
-                            </FormControl>
-                             {error && <FormMessage>{error.message}</FormMessage>}
-                             {form.formState.errors.seasonalRates?.[index]?.endDate && <FormMessage>{form.formState.errors.seasonalRates[index]?.endDate?.message}</FormMessage>}
-                        </FormItem>
-                        )}
-                    />
+                    {seasonalRates.map((rate, index) => (
+                    <div key={rate.id || index} className="p-4 border rounded-md shadow-sm bg-card space-y-3">
+                        <div className="flex justify-between items-center">
+                            <p className="font-medium">Seasonal Period {index + 1}</p>
+                            <Button type="button" variant="ghost" size="icon" onClick={() => handleRemoveSeasonalRate(index)} className="text-destructive hover:bg-destructive/10">
+                                <Trash2 className="h-4 w-4" />
+                            </Button>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <Controller
+                            control={form.control}
+                            name={`seasonalRates.${index}.startDate`}
+                            render={({ field, fieldState: { error } }) => (
+                            <FormItem>
+                                <FormLabel>Start Date</FormLabel>
+                                <FormControl>
+                                    <DatePicker date={field.value} onDateChange={field.onChange} />
+                                </FormControl>
+                                {error && <FormMessage>{error.message}</FormMessage>}
+                            </FormItem>
+                            )}
+                        />
+                        <Controller
+                            control={form.control}
+                            name={`seasonalRates.${index}.endDate`}
+                            render={({ field, fieldState: { error } }) => (
+                            <FormItem>
+                                <FormLabel>End Date</FormLabel>
+                                <FormControl>
+                                    <DatePicker date={field.value} onDateChange={field.onChange} minDate={form.getValues(`seasonalRates.${index}.startDate`)}/>
+                                </FormControl>
+                                {error && <FormMessage>{error.message}</FormMessage>}
+                                {form.formState.errors.seasonalRates?.[index]?.endDate && <FormMessage>{form.formState.errors.seasonalRates[index]?.endDate?.message}</FormMessage>}
+                            </FormItem>
+                            )}
+                        />
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <FormField
+                            control={form.control}
+                            name={`seasonalRates.${index}.roomRate`}
+                            render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Room Rate ({form.getValues('currency')})</FormLabel>
+                                <FormControl><Input type="number" placeholder="0.00" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || 0)} /></FormControl>
+                                <FormMessage />
+                            </FormItem>
+                            )}
+                        />
+                        <FormField
+                            control={form.control}
+                            name={`seasonalRates.${index}.extraBedRate`}
+                            render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Extra Bed Rate ({form.getValues('currency')}) (Optional)</FormLabel>
+                                <FormControl><Input type="number" placeholder="0.00" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)} /></FormControl>
+                                <FormMessage />
+                            </FormItem>
+                            )}
+                        />
+                        </div>
                     </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <FormField
-                        control={form.control}
-                        name={`seasonalRates.${index}.roomRate`}
-                        render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>Room Rate ({form.getValues('currency')})</FormLabel>
-                            <FormControl><Input type="number" placeholder="0.00" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || 0)} /></FormControl>
-                            <FormMessage />
-                        </FormItem>
-                        )}
-                    />
-                    <FormField
-                        control={form.control}
-                        name={`seasonalRates.${index}.extraBedRate`}
-                        render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>Extra Bed Rate ({form.getValues('currency')}) (Optional)</FormLabel>
-                            <FormControl><Input type="number" placeholder="0.00" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)} /></FormControl>
-                            <FormMessage />
-                        </FormItem>
-                        )}
-                    />
-                    </div>
+                    ))}
+                    {form.formState.errors.seasonalRates && typeof form.formState.errors.seasonalRates === 'string' && (
+                        <FormMessage>{form.formState.errors.seasonalRates}</FormMessage>
+                    )}
+                    {Array.isArray(form.formState.errors.seasonalRates) && form.formState.errors.seasonalRates.map((error, index) => (
+                        error && <FormMessage key={index}>Error in seasonal rate {index + 1}: {Object.values(error).map(e => (e as any)?.message).filter(Boolean).join(', ')}</FormMessage>
+                    ))}
                 </div>
-                ))}
-                 {form.formState.errors.seasonalRates && typeof form.formState.errors.seasonalRates === 'string' && (
-                    <FormMessage>{form.formState.errors.seasonalRates}</FormMessage>
                 )}
-                 {Array.isArray(form.formState.errors.seasonalRates) && form.formState.errors.seasonalRates.map((error, index) => (
-                    error && <FormMessage key={index}>Error in seasonal rate {index + 1}: {Object.values(error).map(e => (e as any)?.message).filter(Boolean).join(', ')}</FormMessage>
-                ))}
-
-
-            </div>
-            )}
             </div>
         </ScrollArea>
         <div className="flex justify-end space-x-3 pt-4 border-t mt-4">
@@ -423,60 +446,4 @@ export function ServicePriceForm({ initialData, onSubmit, onCancel }: ServicePri
   );
 }
 
-// Minimal DatePicker component (replace with your actual ShadCN DatePicker if available)
-// For the purpose of this example, it will just be a simple date input.
-// Make sure you have a proper DatePicker component in your project at ui/date-picker.
-// If not, you might need to create one or use a library.
-
-// const DatePicker: React.FC<{ date?: Date, onDateChange: (date?: Date) => void, minDate?: Date }> = ({ date, onDateChange, minDate }) => {
-//   const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-//     const dateValue = event.target.value ? new Date(event.target.value) : undefined;
-//     onDateChange(dateValue);
-//   };
-
-//   return (
-//     <Input 
-//       type="date" 
-//       value={date ? date.toISOString().split('T')[0] : ""} 
-//       onChange={handleChange} 
-//       min={minDate ? minDate.toISOString().split('T')[0] : undefined}
-//     />
-//   );
-// };
-
-// Ensure you have this component: src/components/ui/date-picker.tsx
-// Example:
-// import * as React from "react";
-// import { format } from "date-fns";
-// import { Calendar as CalendarIcon } from "lucide-react";
-// import { cn } from "@/lib/utils";
-// import { Button } from "@/components/ui/button";
-// import { Calendar } from "@/components/ui/calendar";
-// import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-
-// export function DatePicker({ date, onDateChange, disabled, minDate, maxDate }: { date?: Date, onDateChange: (date?: Date) => void, disabled?: (date: Date) => boolean, minDate?: Date, maxDate?: Date }) {
-//   return (
-//     <Popover>
-//       <PopoverTrigger asChild>
-//         <Button
-//           variant={"outline"}
-//           className={cn("w-full justify-start text-left font-normal", !date && "text-muted-foreground")}
-//         >
-//           <CalendarIcon className="mr-2 h-4 w-4" />
-//           {date ? format(date, "PPP") : <span>Pick a date</span>}
-//         </Button>
-//       </PopoverTrigger>
-//       <PopoverContent className="w-auto p-0">
-//         <Calendar
-//           mode="single"
-//           selected={date}
-//           onSelect={onDateChange}
-//           initialFocus
-//           disabled={disabled}
-//           fromDate={minDate}
-//           toDate={maxDate}
-//         />
-//       </PopoverContent>
-//     </Popover>
-//   );
-// }
+    
