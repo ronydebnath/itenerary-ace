@@ -29,24 +29,29 @@ export function PricingManager() {
       if (storedPrices) {
         const parsedData = JSON.parse(storedPrices);
         if (Array.isArray(parsedData)) {
-            setServicePrices(parsedData.map(p => {
-              const category = p.category || "misc"; 
-              const seasonalRatesValid = category === 'hotel' && Array.isArray(p.seasonalRates)
-                ? p.seasonalRates.map((sr: any) => ({
+            // More robust mapping to handle potentially malformed or old data
+            const validatedPrices = parsedData.map(p => {
+              const category = p.category && CURRENCIES.includes(p.category as CurrencyCode) ? p.category : "misc"; 
+              
+              let seasonalRatesValid: ServicePriceItem['seasonalRates'] = undefined;
+              if (category === 'hotel' && Array.isArray(p.seasonalRates)) {
+                seasonalRatesValid = p.seasonalRates.map((sr: any) => ({
                     id: sr.id || generateGUID(),
-                    startDate: sr.startDate || "",
-                    endDate: sr.endDate || "",
+                    startDate: sr.startDate || "", // Form expects ISO string or Date
+                    endDate: sr.endDate || "",   // Form expects ISO string or Date
                     roomRate: typeof sr.roomRate === 'number' ? sr.roomRate : 0,
                     extraBedRate: typeof sr.extraBedRate === 'number' ? sr.extraBedRate : undefined,
-                  }))
-                : (category === 'hotel' ? [] : undefined);
+                  }));
+              } else if (category === 'hotel') {
+                seasonalRatesValid = []; // Default to empty array for hotels if not present or invalid
+              }
 
               return {
                 id: p.id || generateGUID(),
                 name: p.name || "Unnamed Service",
                 province: p.province || undefined, 
                 category: category,
-                subCategory: p.subCategory,
+                subCategory: p.subCategory, // Keep as is, form logic handles it
                 price1: typeof p.price1 === 'number' ? p.price1 : 0,
                 price2: typeof p.price2 === 'number' ? p.price2 : undefined,
                 currency: CURRENCIES.includes(p.currency as CurrencyCode) ? p.currency : "THB" as CurrencyCode,
@@ -54,18 +59,20 @@ export function PricingManager() {
                 notes: p.notes,
                 seasonalRates: seasonalRatesValid,
               } as ServicePriceItem;
-            }));
+            }).filter(p => p.name && p.category && typeof p.price1 === 'number'); // Basic filter for essential fields
+            setServicePrices(validatedPrices);
         } else {
-            console.warn("Stored service prices are not an array. Clearing.");
-            localStorage.removeItem(SERVICE_PRICES_STORAGE_KEY);
-            setServicePrices([]);
+            console.warn("Stored service prices are not an array. It might be initialized by the hook with demo data shortly.");
+            setServicePrices([]); // Expecting hook to populate if empty/invalid
         }
+      } else {
+         console.info("No service prices in localStorage. Expecting hook to populate with demo data if applicable.");
+         setServicePrices([]); // Expecting hook to populate
       }
     } catch (error) {
       console.error("Failed to load or parse service prices from localStorage:", error);
-      toast({ title: "Error", description: "Could not load service prices. Data might be corrupted. Resetting prices.", variant: "destructive" });
-      localStorage.removeItem(SERVICE_PRICES_STORAGE_KEY);
-      setServicePrices([]);
+      toast({ title: "Error", description: "Could not load service prices. Data might be corrupted. Demo data might be loaded.", variant: "destructive" });
+      setServicePrices([]); // Fallback to empty, hook might populate
     }
   }, [toast]);
 
@@ -114,7 +121,6 @@ export function PricingManager() {
           <Link href="/">
             <Button variant="outline" size="icon" className="h-10 w-10">
               <Home className="h-5 w-5" />
-              <span className="sr-only">Go to Home</span>
             </Button>
           </Link>
           <h1 className="text-3xl font-bold text-primary">Manage Service Prices</h1>
@@ -184,7 +190,7 @@ export function PricingManager() {
       ) : (
         <div className="text-center py-10 border-2 border-dashed border-muted-foreground/30 rounded-lg">
           <p className="text-muted-foreground text-lg">No service prices defined yet.</p>
-          <p className="text-sm text-muted-foreground mt-2">Click "Add New Service Price" to get started.</p>
+          <p className="text-sm text-muted-foreground mt-2">Loading demo data or click "Add New Service Price" to get started.</p>
         </div>
       )}
     </div>
