@@ -15,7 +15,7 @@ export interface PaxDetails {
 
 export interface TripSettings {
   numDays: number;
-  startDate: string | null; // ISO date string or null
+  startDate: string; // ISO date string, now mandatory
   budget?: number;
 }
 
@@ -153,6 +153,7 @@ export interface SeasonalRate {
 export interface ServicePriceItem {
   id: string;
   name: string;
+  province?: string; // New field for province/location
   category: ItineraryItemType;
   subCategory?: string; // Hotel: Default room type name; Transfer: 'ticket' or 'vehicle' (or specific vehicle type like 'Sedan')
   price1: number; // Main price: Activity/Meal: Adult Price; Transfer-Ticket: Adult Ticket; Transfer-Vehicle: Cost per Vehicle; Hotel: Default Room Rate; Misc: Unit Cost

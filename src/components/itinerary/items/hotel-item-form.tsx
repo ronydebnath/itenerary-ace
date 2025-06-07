@@ -42,8 +42,6 @@ export function HotelItemForm({ item, travelers, currency, dayNumber, tripSettin
         // Potentially show error or clamp, for now allow update
       }
     }
-    // If user manually changes checkout day, selected service might need re-evaluation for seasonal rates,
-    // but for now, we don't auto-clear selectedServicePriceId on day changes. Price application is on selection.
     onUpdate({ ...item, [field]: numValue });
   };
 
@@ -70,17 +68,16 @@ export function HotelItemForm({ item, travelers, currency, dayNumber, tripSettin
   const handlePredefinedServiceSelect = (serviceId: string) => {
     const selectedService = getServicePriceById(serviceId);
     if (!selectedService) {
-      onUpdate({ ...item, selectedServicePriceId: undefined }); // Clear if service not found
+      onUpdate({ ...item, selectedServicePriceId: undefined }); 
       return;
     }
 
-    let applicableRoomRate = selectedService.price1; // Default room rate
-    let applicableExtraBedRate = selectedService.price2; // Default extra bed rate
+    let applicableRoomRate = selectedService.price1; 
+    let applicableExtraBedRate = selectedService.price2; 
     const defaultRoomCategoryName = selectedService.subCategory || 'Standard Room';
 
-    // Determine actual check-in date
-    const tripStartDate = tripSettings.startDate ? parseISO(tripSettings.startDate) : new Date();
-    const checkInDate = addDays(tripStartDate, dayNumber - 1); // dayNumber is 1-indexed
+    const tripStartDate = parseISO(tripSettings.startDate); // startDate is now mandatory
+    const checkInDate = addDays(tripStartDate, dayNumber - 1);
 
     if (selectedService.seasonalRates && selectedService.seasonalRates.length > 0) {
       for (const sr of selectedService.seasonalRates) {
@@ -89,22 +86,20 @@ export function HotelItemForm({ item, travelers, currency, dayNumber, tripSettin
         if (checkInDate >= seasonalStartDate && checkInDate <= seasonalEndDate) {
           applicableRoomRate = sr.roomRate;
           applicableExtraBedRate = sr.extraBedRate;
-          break; // Found an applicable seasonal rate
+          break; 
         }
       }
     }
     
     const updatedRooms = [...item.rooms];
     if (updatedRooms.length > 0) {
-      // Update the first room configuration
       updatedRooms[0] = {
         ...updatedRooms[0],
         category: item.rooms[0].category === 'Standard Room' || item.selectedServicePriceId ? defaultRoomCategoryName : updatedRooms[0].category,
         roomRate: applicableRoomRate,
-        extraBedRate: applicableExtraBedRate ?? 0, // Ensure it's a number
+        extraBedRate: applicableExtraBedRate ?? 0, 
       };
     } else {
-      // If no rooms exist, add one with the new rates
       const newRoomConfig: HotelRoomConfiguration = {
         id: generateGUID(),
         category: defaultRoomCategoryName,
@@ -131,9 +126,6 @@ export function HotelItemForm({ item, travelers, currency, dayNumber, tripSettin
 
   const handleUpdateRoomConfig = (updatedConfig: HotelRoomConfiguration) => {
     const newRooms = item.rooms.map(rc => rc.id === updatedConfig.id ? updatedConfig : rc);
-    // If user manually changes a room's rate, we could clear item.selectedServicePriceId here
-    // For now, we won't, allowing service to be a base and rooms customizable.
-    // Consider: onUpdate({ ...item, rooms: newRooms, selectedServicePriceId: undefined });
     onUpdate({ ...item, rooms: newRooms });
   };
 
@@ -153,8 +145,6 @@ export function HotelItemForm({ item, travelers, currency, dayNumber, tripSettin
   
   React.useEffect(() => {
     if ((!item.rooms || item.rooms.length === 0) && !item.selectedServicePriceId) {
-      // Only add a completely default room if no service is selected and no rooms exist.
-      // If a service IS selected, its selection handler will add/update the first room.
       handleAddRoomConfig();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps

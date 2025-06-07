@@ -29,6 +29,7 @@ export function ServicePriceTable({ servicePrices, onEdit, onDeleteConfirmation 
         <TableHeader className="bg-muted/50">
           <TableRow>
             <TableHead className="w-[200px] min-w-[150px]">Name</TableHead>
+            <TableHead>Province</TableHead>
             <TableHead>Category</TableHead>
             <TableHead>Sub-category</TableHead>
             <TableHead className="text-right">Price 1 / Default Rate</TableHead>
@@ -43,6 +44,7 @@ export function ServicePriceTable({ servicePrices, onEdit, onDeleteConfirmation 
           {servicePrices.map((service) => (
             <TableRow key={service.id}>
               <TableCell className="font-medium">{service.name}</TableCell>
+              <TableCell>{service.province || 'N/A'}</TableCell>
               <TableCell>{service.category.charAt(0).toUpperCase() + service.category.slice(1)}</TableCell>
               <TableCell>{service.subCategory || 'N/A'}</TableCell>
               <TableCell className="text-right font-code">

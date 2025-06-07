@@ -46,6 +46,7 @@ export function PricingManager() {
               return {
                 id: p.id || generateGUID(),
                 name: p.name || "Unnamed Service",
+                province: p.province || undefined, // Handle new province field
                 category: category,
                 subCategory: p.subCategory,
                 price1: typeof p.price1 === 'number' ? p.price1 : 0,
@@ -129,7 +130,7 @@ export function PricingManager() {
               <PlusCircle className="mr-2 h-5 w-5" /> Add New Service Price
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-2xl"> {/* Increased max-width for longer form */}
+          <DialogContent className="sm:max-w-2xl"> 
             <DialogHeader>
               <DialogTitle>{editingService ? 'Edit' : 'Add'} Service Price</DialogTitle>
             </DialogHeader>
@@ -150,7 +151,7 @@ export function PricingManager() {
         <ServicePriceTable
           servicePrices={servicePrices}
           onEdit={handleEdit}
-          onDeleteConfirmation={(serviceId) => ( // Renamed prop for clarity
+          onDeleteConfirmation={(serviceId) => ( 
             <AlertDialog>
               <AlertDialogTrigger asChild>
                 <Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10">
@@ -183,5 +184,3 @@ export function PricingManager() {
     </div>
   );
 }
-
-    

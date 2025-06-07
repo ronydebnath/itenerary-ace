@@ -37,6 +37,7 @@ const seasonalRateSchema = z.object({
 
 const servicePriceSchema = z.object({
   name: z.string().min(1, "Service name is required"),
+  province: z.string().optional(), // New province field
   category: z.custom<ItineraryItemType>((val) => SERVICE_CATEGORIES.includes(val as ItineraryItemType), "Invalid category"),
   subCategory: z.string().optional(),
   price1: z.coerce.number().min(0, "Price must be non-negative"),
@@ -61,6 +62,7 @@ export function ServicePriceForm({ initialData, onSubmit, onCancel }: ServicePri
     resolver: zodResolver(servicePriceSchema),
     defaultValues: {
       name: initialData?.name || "",
+      province: initialData?.province || "", // Initialize province
       category: initialData?.category || "activity",
       subCategory: initialData?.subCategory || "",
       price1: initialData?.price1 || 0,
@@ -86,46 +88,37 @@ export function ServicePriceForm({ initialData, onSubmit, onCancel }: ServicePri
   const transferMode = form.watch("transferMode");
 
   React.useEffect(() => {
-    // Reset category-specific fields when category changes
     if (selectedCategory !== 'hotel') {
       form.setValue('seasonalRates', []);
     }
     if (selectedCategory !== 'transfer') {
       form.setValue('transferMode', undefined);
-      // If switching FROM transfer, and subCategory was 'ticket' or 'vehicle' due to mode, clear it
-      // or let user decide. For now, we let it be, user can edit.
     } else {
-      // If switching TO transfer, ensure transferMode is set if initialData had it
       if (initialData?.category === 'transfer') {
         form.setValue('transferMode', initialData.subCategory === 'ticket' ? 'ticket' : 'vehicle');
         if (initialData.subCategory !== 'ticket') {
             form.setValue('subCategory', initialData.subCategory || '');
         }
       } else {
-        // If switching to transfer from a non-transfer category, default to 'ticket' mode
         form.setValue('transferMode', 'ticket');
-        form.setValue('subCategory', 'ticket'); // And set subCategory accordingly
+        form.setValue('subCategory', 'ticket'); 
       }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedCategory, form.setValue]); // Removed initialData from deps to avoid loops on edit.
+  }, [selectedCategory, form.setValue]); 
 
   React.useEffect(() => {
-    // Handle subCategory based on transferMode
     if (selectedCategory === 'transfer') {
       if (transferMode === 'ticket') {
         form.setValue('subCategory', 'ticket');
       } else if (transferMode === 'vehicle') {
-        // If subCategory was 'ticket' (from mode switch) or is empty, set to empty for user input or from initialData.
-        // User is expected to type vehicle type like "Sedan", "Van".
-        // It could default to 'vehicle' if empty, but explicit user input is better.
         if (form.getValues('subCategory') === 'ticket') {
            form.setValue('subCategory', initialData?.subCategory && initialData?.subCategory !== 'ticket' ? initialData.subCategory : '');
         }
       }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [transferMode, selectedCategory, form.setValue, form.getValues]); // Removed initialData from deps
+  }, [transferMode, selectedCategory, form.setValue, form.getValues]); 
 
 
   const getPrice1Label = (): string => {
@@ -145,7 +138,7 @@ export function ServicePriceForm({ initialData, onSubmit, onCancel }: ServicePri
       case 'meal': return "Child Meal Price (Optional)";
       case 'transfer': return transferMode === 'ticket' ? "Child Ticket Price (Optional)" : null;
       case 'hotel': return "Default Extra Bed Rate (Optional)";
-      default: return null; // Hidden for misc and transfer-vehicle
+      default: return null;
     }
   };
   
@@ -153,7 +146,7 @@ export function ServicePriceForm({ initialData, onSubmit, onCancel }: ServicePri
     switch (selectedCategory) {
         case 'activity': return "Activity Type (e.g., Guided, Entrance)";
         case 'meal': return "Meal Type (e.g., Set Menu, Buffet)";
-        case 'transfer': return transferMode === 'vehicle' ? "Vehicle Type (e.g., Sedan, Van)" : null; // Hidden for ticket mode
+        case 'transfer': return transferMode === 'vehicle' ? "Vehicle Type (e.g., Sedan, Van)" : null;
         case 'hotel': return "Default Room Type (e.g., Deluxe King)";
         case 'misc': return "Item Sub-Type (e.g., Visa Fee, Souvenir)";
         default: return "Sub-category (Optional)";
@@ -169,12 +162,20 @@ export function ServicePriceForm({ initialData, onSubmit, onCancel }: ServicePri
   const handleAddSeasonalRate = () => {
     const newRate: SeasonalRate = { 
       id: generateGUID(), 
-      startDate: new Date(), 
-      endDate: new Date(), 
+      startDate: new Date().toISOString().split('T')[0], 
+      endDate: new Date().toISOString().split('T')[0], 
       roomRate: 0, 
       extraBedRate: 0 
     };
-    form.setValue('seasonalRates', [...(form.getValues('seasonalRates') || []), newRate]);
+    const currentRates = form.getValues('seasonalRates') || [];
+    const newRatesForForm = [...currentRates, { 
+        id: newRate.id, 
+        startDate: new Date(), 
+        endDate: new Date(), 
+        roomRate: 0, 
+        extraBedRate: 0 
+    }];
+    form.setValue('seasonalRates', newRatesForForm as any[]);
   };
 
   const handleRemoveSeasonalRate = (index: number) => {
@@ -189,21 +190,19 @@ export function ServicePriceForm({ initialData, onSubmit, onCancel }: ServicePri
         if (values.transferMode === 'ticket') {
             dataToSubmit.subCategory = 'ticket';
         } else if (values.transferMode === 'vehicle') {
-            // If subCategory is empty for vehicle, default it to 'vehicle', otherwise use user's input
             dataToSubmit.subCategory = dataToSubmit.subCategory?.trim() || 'vehicle';
         }
     }
     if (dataToSubmit.category !== 'hotel') {
-        delete dataToSubmit.seasonalRates; // Ensure seasonal rates are not saved for non-hotel
+        delete dataToSubmit.seasonalRates;
     } else {
         dataToSubmit.seasonalRates = dataToSubmit.seasonalRates?.map(sr => ({
             ...sr,
-            startDate: sr.startDate.toISOString().split('T')[0], 
-            endDate: sr.endDate.toISOString().split('T')[0],
+            startDate: (sr.startDate as Date).toISOString().split('T')[0], 
+            endDate: (sr.endDate as Date).toISOString().split('T')[0],
         }));
     }
     
-    // Ensure price2 is undefined if not applicable
     if (!getPrice2Label()) {
         dataToSubmit.price2 = undefined;
     }
@@ -218,14 +217,24 @@ export function ServicePriceForm({ initialData, onSubmit, onCancel }: ServicePri
       <form onSubmit={form.handleSubmit(handleActualSubmit)} className="space-y-6">
         <ScrollArea className="h-[60vh] md:h-[70vh] pr-3">
             <div className="space-y-6 p-1">
-                {/* Common Fields */}
                 <FormField
                     control={form.control}
                     name="name"
                     render={({ field }) => (
                         <FormItem>
                         <FormLabel>Service Name</FormLabel>
-                        <FormControl><Input placeholder="e.g., City Tour, Airport Transfer, Deluxe Room" {...field} /></FormControl>
+                        <FormControl><Input placeholder="e.g., City Tour, Airport Transfer" {...field} /></FormControl>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                />
+                <FormField
+                    control={form.control}
+                    name="province"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>Province / Location (Optional)</FormLabel>
+                        <FormControl><Input placeholder="e.g., Bangkok, Pattaya, Phuket" {...field} /></FormControl>
                         <FormMessage />
                         </FormItem>
                     )}
@@ -265,7 +274,6 @@ export function ServicePriceForm({ initialData, onSubmit, onCancel }: ServicePri
                     />
                 </div>
                 
-                {/* Category Specific Fields */}
                 <div className="space-y-4 pt-4 border-t mt-4">
                     <h3 className="text-md font-medium text-muted-foreground">Category Specific Details: {selectedCategory.charAt(0).toUpperCase() + selectedCategory.slice(1)}</h3>
                     
@@ -445,5 +453,3 @@ export function ServicePriceForm({ initialData, onSubmit, onCancel }: ServicePri
     </Form>
   );
 }
-
-    

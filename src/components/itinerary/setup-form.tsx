@@ -31,6 +31,10 @@ export function SetupForm({ onStartPlanning }: SetupFormProps) {
     const parsedChildren = parseInt(globalChildren, 10);
     const parsedBudget = budget ? parseFloat(budget) : undefined;
 
+    if (!startDate) {
+      setError("Start date is required.");
+      return;
+    }
     if (isNaN(parsedNumDays) || parsedNumDays < 1) {
       setError("Number of days must be at least 1.");
       return;
@@ -55,7 +59,7 @@ export function SetupForm({ onStartPlanning }: SetupFormProps) {
     setError(null);
 
     onStartPlanning(
-      { numDays: parsedNumDays, startDate: startDate || null, budget: parsedBudget },
+      { numDays: parsedNumDays, startDate, budget: parsedBudget },
       { adults: parsedAdults, children: parsedChildren, currency }
     );
   };
@@ -75,12 +79,12 @@ export function SetupForm({ onStartPlanning }: SetupFormProps) {
             </Alert>
           )}
           <div className="space-y-2">
-            <Label htmlFor="numDays" className="text-foreground/80">Number of Days</Label>
-            <Input id="numDays" type="number" value={numDays} onChange={(e) => setNumDays(e.target.value)} min="1" className="text-base"/>
+            <Label htmlFor="startDate" className="text-foreground/80">Start Date</Label>
+            <Input id="startDate" type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="text-base" required />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="startDate" className="text-foreground/80">Start Date (Optional)</Label>
-            <Input id="startDate" type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="text-base"/>
+            <Label htmlFor="numDays" className="text-foreground/80">Number of Days</Label>
+            <Input id="numDays" type="number" value={numDays} onChange={(e) => setNumDays(e.target.value)} min="1" className="text-base"/>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
