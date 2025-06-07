@@ -22,22 +22,28 @@ export function TransferItemForm({ item, travelers, currency, onUpdate, onDelete
 
   React.useEffect(() => {
     if (!isLoadingServices) {
-      // Filter by category 'transfer', current currency, AND item.mode (via service.subCategory)
-      const allTransfers = getServicePrices('transfer').filter(s => s.currency === currency);
-      const modeSpecificTransfers = allTransfers.filter(s => {
+      const allCategoryServices = getServicePrices('transfer').filter(s => s.currency === currency);
+      let modeAndProvinceFilteredServices = allCategoryServices;
+
+      // Filter by mode (ticket or vehicle)
+      modeAndProvinceFilteredServices = modeAndProvinceFilteredServices.filter(s => {
         if (item.mode === 'ticket') return s.subCategory === 'ticket';
         if (item.mode === 'vehicle') return s.subCategory !== 'ticket'; // 'vehicle' or specific vehicle types like 'Sedan'
         return false;
       });
-      setTransferServices(modeSpecificTransfers);
+      
+      // Further filter by province if item.province is set
+      if (item.province) {
+        modeAndProvinceFilteredServices = modeAndProvinceFilteredServices.filter(s => s.province === item.province || !s.province);
+      }
+      setTransferServices(modeAndProvinceFilteredServices);
     }
-  }, [isLoadingServices, getServicePrices, currency, item.mode]);
+  }, [isLoadingServices, getServicePrices, currency, item.mode, item.province]);
 
   const handleInputChange = (field: keyof TransferItemType, value: any) => {
     if (field === 'mode') {
-        onUpdate({ ...item, [field]: value, selectedServicePriceId: undefined, adultTicketPrice: 0, childTicketPrice: 0, costPerVehicle: 0, vehicles: 1 });
+        onUpdate({ ...item, [field]: value, selectedServicePriceId: undefined, adultTicketPrice: 0, childTicketPrice: undefined, costPerVehicle: 0, vehicles: 1 });
     } else {
-        // For other direct inputs, if they affect price, clear selectedServicePriceId
         onUpdate({ ...item, [field]: value, selectedServicePriceId: undefined });
     }
   };
@@ -52,10 +58,9 @@ export function TransferItemForm({ item, travelers, currency, onUpdate, onDelete
       onUpdate({
         ...item,
         selectedServicePriceId: undefined,
-        adultTicketPrice: item.mode === 'ticket' ? (item.adultTicketPrice ?? 0) : undefined,
-        childTicketPrice: item.mode === 'ticket' ? (item.childTicketPrice ?? 0) : undefined,
-        costPerVehicle: item.mode === 'vehicle' ? (item.costPerVehicle ?? 0) : undefined,
-        // vehicleType and vehicles are specific to this item instance, keep them unless service implies a type
+        adultTicketPrice: item.mode === 'ticket' ? 0 : undefined,
+        childTicketPrice: item.mode === 'ticket' ? undefined : undefined,
+        costPerVehicle: item.mode === 'vehicle' ? 0 : undefined,
       });
     } else {
       const selectedService = getServicePriceById(selectedValue);
@@ -63,19 +68,18 @@ export function TransferItemForm({ item, travelers, currency, onUpdate, onDelete
         const updatedItemPartial: Partial<TransferItemType> = {
           name: (item.name === `New transfer` || !item.name || item.selectedServicePriceId) ? selectedService.name : item.name,
           selectedServicePriceId: selectedService.id,
+          // Do not override item.province
         };
         if (item.mode === 'ticket') {
           updatedItemPartial.adultTicketPrice = selectedService.price1;
           updatedItemPartial.childTicketPrice = selectedService.price2;
         } else if (item.mode === 'vehicle') {
           updatedItemPartial.costPerVehicle = selectedService.price1;
-          // If service subCategory is a specific vehicle type (not 'vehicle' itself), use it.
           if (selectedService.subCategory && selectedService.subCategory !== 'ticket' && selectedService.subCategory !== 'vehicle') {
             updatedItemPartial.vehicleType = selectedService.subCategory as TransferItemType['vehicleType'];
-          } else if (!item.vehicleType) { // If item doesn't have a type and service subCat is 'vehicle', default it
+          } else if (!item.vehicleType) { 
             updatedItemPartial.vehicleType = 'Sedan';
           }
-          // `vehicles` count kept as is, as it's specific to this item instance.
         }
         onUpdate({ ...item, ...updatedItemPartial });
       }
@@ -105,9 +109,9 @@ export function TransferItemForm({ item, travelers, currency, onUpdate, onDelete
         </FormField>
         
         {transferServices.length > 0 && (
-            <FormField label="Select Predefined Transfer (Optional)" id={`predefined-transfer-${item.id}`}>
+            <FormField label={`Select Predefined Transfer (${item.province || 'Any Province'})`} id={`predefined-transfer-${item.id}`}>
                 <Select
-                value={item.selectedServicePriceId || ""} // Shows placeholder if undefined/empty
+                value={item.selectedServicePriceId || "none"}
                 onValueChange={handlePredefinedServiceSelect}
                 >
                 <SelectTrigger>
@@ -117,7 +121,7 @@ export function TransferItemForm({ item, travelers, currency, onUpdate, onDelete
                     <SelectItem value="none">None (Custom Price)</SelectItem>
                     {transferServices.map(service => (
                     <SelectItem key={service.id} value={service.id}>
-                        {service.name} ({service.subCategory !== 'ticket' && service.subCategory !== 'vehicle' ? service.subCategory : service.unitDescription}) - {currency} {service.price1}
+                        {service.name} ({service.province || 'Generic'} - {service.subCategory !== 'ticket' && service.subCategory !== 'vehicle' ? service.subCategory : service.unitDescription}) - {currency} {service.price1}
                         {item.mode === 'ticket' && service.price2 !== undefined ? ` / Ch: ${service.price2}` : ''}
                     </SelectItem>
                     ))}
@@ -158,7 +162,7 @@ export function TransferItemForm({ item, travelers, currency, onUpdate, onDelete
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
           <FormField label="Vehicle Type" id={`vehicleType-${item.id}`}>
             <Select
-              value={item.vehicleType || 'Sedan'} // Default to Sedan if not set
+              value={item.vehicleType || 'Sedan'} 
               onValueChange={(value: 'Sedan' | 'SUV' | 'Van' | 'Bus' | 'Other') => handleInputChange('vehicleType', value)}
             >
               <SelectTrigger><SelectValue /></SelectTrigger>

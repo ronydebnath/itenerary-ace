@@ -22,13 +22,17 @@ export function MealItemForm({ item, travelers, currency, onUpdate, onDelete }: 
 
   React.useEffect(() => {
     if (!isLoadingServices) {
-      setMealServices(getServicePrices('meal').filter(s => s.currency === currency));
+      const allCategoryServices = getServicePrices('meal').filter(s => s.currency === currency);
+      let filteredServices = allCategoryServices;
+      if (item.province) {
+        filteredServices = allCategoryServices.filter(s => s.province === item.province || !s.province);
+      }
+      setMealServices(filteredServices);
     }
-  }, [isLoadingServices, getServicePrices, currency]);
+  }, [isLoadingServices, getServicePrices, currency, item.province]);
 
   const handleNumericInputChange = (field: keyof MealItemType, value: string) => {
     const numValue = value === '' ? undefined : parseFloat(value);
-    // If user manually changes price or quantity, clear the selected service ID
     onUpdate({ ...item, [field]: numValue, selectedServicePriceId: undefined });
   };
 
@@ -37,9 +41,8 @@ export function MealItemForm({ item, travelers, currency, onUpdate, onDelete }: 
       onUpdate({
         ...item,
         selectedServicePriceId: undefined,
-        adultMealPrice: item.adultMealPrice ?? 0,
-        childMealPrice: item.childMealPrice ?? 0,
-        // totalMeals is specific to this item instance, keep it.
+        adultMealPrice: 0,
+        childMealPrice: undefined,
       });
     } else {
       const selectedService = getServicePriceById(selectedValue);
@@ -50,7 +53,7 @@ export function MealItemForm({ item, travelers, currency, onUpdate, onDelete }: 
           adultMealPrice: selectedService.price1,
           childMealPrice: selectedService.price2,
           selectedServicePriceId: selectedService.id,
-          // totalMeals is kept as is, as it's specific to this item instance
+          // Do not override item.province
         });
       }
     }
@@ -62,9 +65,9 @@ export function MealItemForm({ item, travelers, currency, onUpdate, onDelete }: 
     <BaseItemForm item={item} travelers={travelers} currency={currency} onUpdate={onUpdate} onDelete={onDelete} itemTypeLabel="Meal">
       {mealServices.length > 0 && (
         <div className="pt-2">
-          <FormField label="Select Predefined Meal (Optional)" id={`predefined-meal-${item.id}`}>
+          <FormField label={`Select Predefined Meal (${item.province || 'Any Province'})`} id={`predefined-meal-${item.id}`}>
             <Select
-              value={item.selectedServicePriceId || ""} // Shows placeholder if undefined/empty
+              value={item.selectedServicePriceId || "none"}
               onValueChange={handlePredefinedServiceSelect}
             >
               <SelectTrigger>
@@ -74,7 +77,7 @@ export function MealItemForm({ item, travelers, currency, onUpdate, onDelete }: 
                 <SelectItem value="none">None (Custom Price)</SelectItem>
                 {mealServices.map(service => (
                   <SelectItem key={service.id} value={service.id}>
-                    {service.name} ({service.unitDescription}) - {currency} {service.price1}
+                    {service.name} ({service.province || 'Generic'}) - {currency} {service.price1}
                     {service.price2 !== undefined ? ` / Ch: ${service.price2}` : ''}
                   </SelectItem>
                 ))}

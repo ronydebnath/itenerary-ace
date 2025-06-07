@@ -7,7 +7,7 @@ import { BaseItemForm, FormField } from './base-item-form';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useServicePrices } from '@/hooks/useServicePrices'; // Import the hook
+import { useServicePrices } from '@/hooks/useServicePrices'; 
 
 interface ActivityItemFormProps {
   item: ActivityItemType;
@@ -25,13 +25,17 @@ export function ActivityItemForm({ item, travelers, currency, dayNumber, tripSet
   
   React.useEffect(() => {
     if (!isLoadingServices) {
-      setActivityServices(getServicePrices('activity').filter(s => s.currency === currency));
+      const allCategoryServices = getServicePrices('activity').filter(s => s.currency === currency);
+      let filteredServices = allCategoryServices;
+      if (item.province) {
+        filteredServices = allCategoryServices.filter(s => s.province === item.province || !s.province);
+      }
+      setActivityServices(filteredServices);
     }
-  }, [isLoadingServices, getServicePrices, currency]);
+  }, [isLoadingServices, getServicePrices, currency, item.province]);
 
   const handleNumericInputChange = (field: keyof ActivityItemType, value: string) => {
     const numValue = value === '' ? undefined : parseFloat(value);
-    // If user manually changes price, clear the selected service ID
     onUpdate({ ...item, [field]: numValue, selectedServicePriceId: undefined });
   };
 
@@ -48,8 +52,8 @@ export function ActivityItemForm({ item, travelers, currency, dayNumber, tripSet
       onUpdate({
         ...item,
         selectedServicePriceId: undefined,
-        adultPrice: item.adultPrice ?? 0, // Keep existing or default to 0
-        childPrice: item.childPrice ?? 0, // Keep existing or default to 0
+        adultPrice: 0, 
+        childPrice: undefined,
       });
     } else {
       const selectedService = getServicePriceById(selectedValue);
@@ -60,6 +64,7 @@ export function ActivityItemForm({ item, travelers, currency, dayNumber, tripSet
           adultPrice: selectedService.price1,
           childPrice: selectedService.price2,
           selectedServicePriceId: selectedService.id,
+          // Do not override item.province if user manually selected it
         });
       }
     }
@@ -74,9 +79,9 @@ export function ActivityItemForm({ item, travelers, currency, dayNumber, tripSet
     <BaseItemForm item={item} travelers={travelers} currency={currency} onUpdate={onUpdate} onDelete={onDelete} itemTypeLabel="Activity">
       {activityServices.length > 0 && (
         <div className="pt-2">
-          <FormField label="Select Predefined Activity (Optional)" id={`predefined-activity-${item.id}`}>
+          <FormField label={`Select Predefined Activity (${item.province || 'Any Province'})`} id={`predefined-activity-${item.id}`}>
             <Select
-              value={item.selectedServicePriceId || ""} // Shows placeholder if undefined/empty
+              value={item.selectedServicePriceId || "none"}
               onValueChange={handlePredefinedServiceSelect}
             >
               <SelectTrigger>
@@ -86,7 +91,7 @@ export function ActivityItemForm({ item, travelers, currency, dayNumber, tripSet
                 <SelectItem value="none">None (Custom Price)</SelectItem>
                 {activityServices.map(service => (
                   <SelectItem key={service.id} value={service.id}>
-                    {service.name} ({service.unitDescription}) - {currency} {service.price1}
+                    {service.name} ({service.province || 'Generic'}) - {currency} {service.price1}
                     {service.price2 !== undefined ? ` / Ch: ${service.price2}` : ''}
                   </SelectItem>
                 ))}

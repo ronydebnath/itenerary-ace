@@ -30,11 +30,12 @@ function calculateTransferCost(item: TransferItem, allTravelers: Traveler[], cur
   let childCost = 0;
   let totalCost = 0;
   let specificDetails = `Mode: ${item.mode}`;
+  if (item.province) specificDetails = `Prov: ${item.province}; ${specificDetails}`;
   const individualContributions: { [travelerId: string]: number } = {};
 
   if (item.mode === 'ticket') {
     const adultPrice = item.adultTicketPrice || 0;
-    const childPrice = item.childTicketPrice ?? adultPrice; // Child price defaults to adult price if not specified
+    const childPrice = item.childTicketPrice ?? adultPrice; 
     
     adultCost = adultCount * adultPrice;
     childCost = childCount * childPrice;
@@ -43,7 +44,7 @@ function calculateTransferCost(item: TransferItem, allTravelers: Traveler[], cur
     participatingIds.forEach(id => {
       individualContributions[id] = (allTravelers.find(t=>t.id===id)?.type === 'adult' ? adultPrice : childPrice);
     });
-  } else { // vehicle mode
+  } else { 
     const costPerVehicle = item.costPerVehicle || 0;
     const numVehicles = item.vehicles || 1;
     const vehicleTotalCost = costPerVehicle * numVehicles;
@@ -60,7 +61,7 @@ function calculateTransferCost(item: TransferItem, allTravelers: Traveler[], cur
       });
     }
   }
-  return { adultCost, childCost, totalCost, participatingIds, excludedTravelerLabels, specificDetails, individualContributions };
+  return { adultCost, childCost, totalCost, participatingIds, excludedTravelerLabels, specificDetails, individualContributions, province: item.province };
 }
 
 function calculateActivityCost(item: ActivityItem, allTravelers: Traveler[], currency: string) {
@@ -76,13 +77,15 @@ function calculateActivityCost(item: ActivityItem, allTravelers: Traveler[], cur
   const endDay = item.endDay || startDay;
   const duration = Math.max(1, endDay - startDay + 1);
 
-  const specificDetails = `Day ${startDay}${duration > 1 ? '-' + endDay : ''} (Dur: ${duration}d). Ad: ${formatCurrency(adultPrice, currency)}, Ch: ${formatCurrency(childPrice, currency)}. Fixed Price.`;
+  let specificDetails = `Day ${startDay}${duration > 1 ? '-' + endDay : ''} (Dur: ${duration}d). Ad: ${formatCurrency(adultPrice, currency)}, Ch: ${formatCurrency(childPrice, currency)}. Fixed Price.`;
+  if (item.province) specificDetails = `Prov: ${item.province}; ${specificDetails}`;
+
   const individualContributions: { [travelerId: string]: number } = {};
   participatingIds.forEach(id => {
     individualContributions[id] = (allTravelers.find(t=>t.id===id)?.type === 'adult' ? adultPrice : childPrice);
   });
 
-  return { adultCost, childCost, totalCost, participatingIds, excludedTravelerLabels, specificDetails, individualContributions };
+  return { adultCost, childCost, totalCost, participatingIds, excludedTravelerLabels, specificDetails, individualContributions, province: item.province };
 }
 
 function calculateHotelCost(item: HotelItem, allTravelers: Traveler[], currency: string) {
@@ -92,8 +95,12 @@ function calculateHotelCost(item: HotelItem, allTravelers: Traveler[], currency:
   const checkoutDay = item.checkoutDay;
   const nights = Math.max(0, checkoutDay - checkinDay);
 
+  let baseSpecificDetails = `In: Day ${checkinDay}, Out: Day ${checkoutDay} (${nights}n). Child Share: ${item.childrenSharingBed ? "Yes" : "No"}`;
+  if (item.province) baseSpecificDetails = `Prov: ${item.province}; ${baseSpecificDetails}`;
+
+
   if (nights <= 0) {
-    return { adultCost: 0, childCost: 0, totalCost: 0, participatingIds: itemOverallParticipatingIds, excludedTravelerLabels, specificDetails: `In: Day ${checkinDay}, Out: Day ${checkoutDay}. Invalid nights: ${nights}. No cost.`, occupancyDetails: [], individualContributions: {} };
+    return { adultCost: 0, childCost: 0, totalCost: 0, participatingIds: itemOverallParticipatingIds, excludedTravelerLabels, specificDetails: `${baseSpecificDetails}. Invalid nights: ${nights}. No cost.`, occupancyDetails: [], individualContributions: {}, province: item.province };
   }
 
   let overallHotelTotalCost = 0;
@@ -136,14 +143,12 @@ function calculateHotelCost(item: HotelItem, allTravelers: Traveler[], currency:
         individualContributions[id] = (individualContributions[id] || 0) + costPerAssignedAdult;
         assignedTravelerIdsInHotel.add(id);
       });
-      itemTotalAdultCost += roomConfigurationTotalCost; // All cost assigned to adults in this room
+      itemTotalAdultCost += roomConfigurationTotalCost; 
     } else if (roomConfigurationTotalCost > 0) {
-      // If no adults assigned to this specific room config, add cost to pool
       unassignedRoomCostPool += roomConfigurationTotalCost;
     }
   });
   
-  // Distribute unassignedRoomCostPool among remaining participating travelers
   if (unassignedRoomCostPool > 0) {
     const potentialPayers = itemOverallParticipatingIds.filter(id => !assignedTravelerIdsInHotel.has(id));
     const adultPotentialPayers = potentialPayers.filter(id => allTravelers.find(t=>t.id===id)?.type === 'adult');
@@ -171,7 +176,7 @@ function calculateHotelCost(item: HotelItem, allTravelers: Traveler[], currency:
           itemTotalChildCost += perPoolPayerShare;
         });
       }
-    } else { // If no specific pool payers, distribute amongst all participating adults, then children
+    } else { 
         const allParticipatingAdults = itemOverallParticipatingIds.filter(id => allTravelers.find(t => t.id === id)?.type === 'adult');
         const allParticipatingChildren = itemOverallParticipatingIds.filter(id => allTravelers.find(t => t.id === id)?.type === 'child');
         if (allParticipatingAdults.length > 0) {
@@ -190,8 +195,7 @@ function calculateHotelCost(item: HotelItem, allTravelers: Traveler[], currency:
     }
   }
 
-  const specificDetails = `In: Day ${checkinDay}, Out: Day ${checkoutDay} (${nights}n). Child Share: ${item.childrenSharingBed ? "Yes" : "No"}`;
-  return { adultCost: itemTotalAdultCost, childCost: itemTotalChildCost, totalCost: overallHotelTotalCost, participatingIds: itemOverallParticipatingIds, excludedTravelerLabels, specificDetails, occupancyDetails, individualContributions };
+  return { adultCost: itemTotalAdultCost, childCost: itemTotalChildCost, totalCost: overallHotelTotalCost, participatingIds: itemOverallParticipatingIds, excludedTravelerLabels, specificDetails: baseSpecificDetails, occupancyDetails, individualContributions, province: item.province };
 }
 
 
@@ -205,7 +209,8 @@ function calculateMealCost(item: MealItem, allTravelers: Traveler[], currency: s
   const childCost = childCount * childPrice * numMeals;
   const totalCost = adultCost + childCost;
 
-  const specificDetails = `# Meals: ${numMeals}, Ad: ${formatCurrency(adultPrice, currency)}, Ch: ${formatCurrency(childPrice, currency)}`;
+  let specificDetails = `# Meals: ${numMeals}, Ad: ${formatCurrency(adultPrice, currency)}, Ch: ${formatCurrency(childPrice, currency)}`;
+  if (item.province) specificDetails = `Prov: ${item.province}; ${specificDetails}`;
   const individualContributions: { [travelerId: string]: number } = {};
   const adultMealTotal = adultPrice * numMeals;
   const childMealTotal = childPrice * numMeals;
@@ -213,7 +218,7 @@ function calculateMealCost(item: MealItem, allTravelers: Traveler[], currency: s
   participatingIds.forEach(id => {
     individualContributions[id] = (allTravelers.find(t=>t.id===id)?.type === 'adult' ? adultMealTotal : childMealTotal);
   });
-  return { adultCost, childCost, totalCost, participatingIds, excludedTravelerLabels, specificDetails, individualContributions };
+  return { adultCost, childCost, totalCost, participatingIds, excludedTravelerLabels, specificDetails, individualContributions, province: item.province };
 }
 
 function calculateMiscCost(item: MiscItem, allTravelers: Traveler[], currency: string) {
@@ -226,6 +231,7 @@ function calculateMiscCost(item: MiscItem, allTravelers: Traveler[], currency: s
   let childCost = 0;
   let totalCost = 0;
   let specificDetails = `Assign: ${item.costAssignment}, Cost: ${formatCurrency(unitCost, currency)}, Qty: ${quantity}`;
+  if (item.province) specificDetails = `Prov: ${item.province}; ${specificDetails}`;
   const individualContributions: { [travelerId: string]: number } = {};
 
   if (item.costAssignment === 'perPerson') {
@@ -236,7 +242,7 @@ function calculateMiscCost(item: MiscItem, allTravelers: Traveler[], currency: s
     participatingIds.forEach(id => {
       individualContributions[id] = itemTotalForCalculation;
     });
-  } else { // 'total' or shared
+  } else { 
     totalCost = itemTotalForCalculation;
     const totalParticipants = adultCount + childCount;
     if (totalParticipants > 0) {
@@ -249,7 +255,7 @@ function calculateMiscCost(item: MiscItem, allTravelers: Traveler[], currency: s
     }
     specificDetails += `; Total Shared: ${formatCurrency(totalCost, currency)}`;
   }
-  return { adultCost, childCost, totalCost, participatingIds, excludedTravelerLabels, specificDetails, individualContributions };
+  return { adultCost, childCost, totalCost, participatingIds, excludedTravelerLabels, specificDetails, individualContributions, province: item.province };
 }
 
 
@@ -292,10 +298,11 @@ export function calculateAllCosts(tripData: TripData): CostSummary {
 
       detailedItems.push({
         id: item.id,
-        type: item.type.charAt(0).toUpperCase() + item.type.slice(1) + 's', // Capitalize and pluralize
+        type: item.type.charAt(0).toUpperCase() + item.type.slice(1) + 's', 
         day: tripData.settings.numDays > 1 ? item.day : undefined,
         name: item.name,
         note: item.note,
+        province: calculationResult.province,
         configurationDetails: calculationResult.specificDetails,
         excludedTravelers: calculationResult.excludedTravelerLabels.join(', ') || 'None',
         adultCost: calculationResult.adultCost,
@@ -306,7 +313,6 @@ export function calculateAllCosts(tripData: TripData): CostSummary {
     });
   });
   
-  // Round totals at the very end to avoid compounding floating point issues
   grandTotal = parseFloat(grandTotal.toFixed(2));
   Object.keys(perPersonTotals).forEach(id => {
     perPersonTotals[id] = parseFloat(perPersonTotals[id].toFixed(2));
@@ -325,4 +331,3 @@ export function calculateAllCosts(tripData: TripData): CostSummary {
 
   return { grandTotal, perPersonTotals, detailedItems };
 }
-

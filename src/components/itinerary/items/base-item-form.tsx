@@ -9,7 +9,9 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Trash2, ChevronDown, ChevronUp } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
-import { cn } from '@/lib/utils'; // Added cn for FormField
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useProvinces } from '@/hooks/useProvinces'; // Import useProvinces
+import { cn } from '@/lib/utils';
 
 export interface BaseItemFormProps<T extends ItineraryItem> {
   item: T;
@@ -21,6 +23,15 @@ export interface BaseItemFormProps<T extends ItineraryItem> {
   itemTypeLabel: string;
 }
 
+export function FormField({label, id, children, className}: {label: string, id: string, children: React.ReactNode, className?: string}) {
+  return (
+    <div className={cn("space-y-1", className)}>
+      <Label htmlFor={id}>{label}</Label>
+      {children}
+    </div>
+  );
+}
+
 export function BaseItemForm<T extends ItineraryItem>({
   item,
   travelers,
@@ -30,6 +41,7 @@ export function BaseItemForm<T extends ItineraryItem>({
   itemTypeLabel,
 }: BaseItemFormProps<T>) {
   const [isOptOutOpen, setIsOptOutOpen] = React.useState(item.excludedTravelerIds.length > 0);
+  const { provinces, isLoading: isLoadingProvinces } = useProvinces();
 
   const handleInputChange = (field: keyof T, value: any) => {
     onUpdate({ ...item, [field]: value });
@@ -44,29 +56,49 @@ export function BaseItemForm<T extends ItineraryItem>({
     }
     onUpdate({ ...item, excludedTravelerIds: newExcludedIds });
   };
+  
+  const handleProvinceChange = (value: string) => {
+    const provinceValue = value === "none" ? undefined : value;
+    onUpdate({ ...item, province: provinceValue, selectedServicePriceId: undefined }); // Reset selected service if province changes
+  };
 
   return (
     <Card className="mb-4 shadow-sm border border-border hover:shadow-md transition-shadow duration-200">
       <CardContent className="p-4 space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="space-y-1">
-            <Label htmlFor={`itemName-${item.id}`}>{itemTypeLabel} Name</Label>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <FormField label={`${itemTypeLabel} Name`} id={`itemName-${item.id}`} className="md:col-span-1">
             <Input
               id={`itemName-${item.id}`}
               value={item.name}
               onChange={(e) => handleInputChange('name', e.target.value)}
               placeholder={`e.g., ${itemTypeLabel} Details`}
             />
-          </div>
-          <div className="space-y-1">
-            <Label htmlFor={`itemNote-${item.id}`}>Note (Optional)</Label>
+          </FormField>
+          <FormField label="Province (Optional)" id={`itemProvince-${item.id}`} className="md:col-span-1">
+            <Select
+              value={item.province || "none"}
+              onValueChange={handleProvinceChange}
+              disabled={isLoadingProvinces}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select province..." />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">None / Generic</SelectItem>
+                {provinces.map(p => (
+                  <SelectItem key={p.id} value={p.name}>{p.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </FormField>
+          <FormField label="Note (Optional)" id={`itemNote-${item.id}`} className="md:col-span-1">
             <Input
               id={`itemNote-${item.id}`}
               value={item.note || ''}
               onChange={(e) => handleInputChange('note', e.target.value)}
               placeholder="e.g., Specific details or reminders"
             />
-          </div>
+          </FormField>
         </div>
 
         {children}
@@ -110,11 +142,3 @@ export function BaseItemForm<T extends ItineraryItem>({
     </Card>
   );
 }
-
-// Helper for specific item forms to create controlled inputs
-export const FormField: React.FC<{label: string, id: string, children: React.ReactNode, className?: string}> = ({label, id, children, className}) => (
-  <div className={cn("space-y-1", className)}>
-    <Label htmlFor={id}>{label}</Label>
-    {children}
-  </div>
-);

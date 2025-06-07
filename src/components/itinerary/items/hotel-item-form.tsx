@@ -13,7 +13,7 @@ import { HotelRoomCardForm } from './hotel-room-card-form';
 import { generateGUID, formatCurrency } from '@/lib/utils';
 import { useServicePrices } from '@/hooks/useServicePrices';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { addDays, parseISO } from 'date-fns'; // For date calculations
+import { addDays, parseISO } from 'date-fns'; 
 
 interface HotelItemFormProps {
   item: HotelItemType;
@@ -31,20 +31,22 @@ export function HotelItemForm({ item, travelers, currency, dayNumber, tripSettin
 
   React.useEffect(() => {
     if (!isLoadingServices) {
-      setHotelServices(getServicePrices('hotel').filter(s => s.currency === currency));
+      const allCategoryServices = getServicePrices('hotel').filter(s => s.currency === currency);
+      let filteredServices = allCategoryServices;
+      if (item.province) {
+        filteredServices = allCategoryServices.filter(s => s.province === item.province || !s.province);
+      }
+      setHotelServices(filteredServices);
     }
-  }, [isLoadingServices, getServicePrices, currency]);
+  }, [isLoadingServices, getServicePrices, currency, item.province]);
 
   const handleNumericInputChange = (field: keyof HotelItemType, value: string) => {
     const numValue = value === '' ? undefined : parseInt(value, 10);
     if (field === 'checkoutDay' && numValue !== undefined) {
-      if (numValue <= dayNumber || numValue > tripSettings.numDays + 1) { // Allow one day past trip end for checkout
+      if (numValue <= dayNumber || numValue > tripSettings.numDays + 1) { 
         // Potentially show error or clamp, for now allow update
       }
     }
-    // Note: Manually changing checkout day doesn't clear selectedServicePriceId,
-    // as the service might still be relevant, but rates might need re-evaluation if dates change significantly.
-    // For simplicity, we assume rate for the first room linked to service is based on initial check-in.
     onUpdate({ ...item, [field]: numValue });
   };
 
@@ -73,8 +75,12 @@ export function HotelItemForm({ item, travelers, currency, dayNumber, tripSettin
       onUpdate({
         ...item,
         selectedServicePriceId: undefined,
-        // Keep existing name and room configurations when detaching from service.
-        // This allows user to start with a service and then customize fully.
+        // Reset rates on first room if it was previously linked
+        rooms: item.rooms.map((room, index) => 
+          index === 0 
+            ? { ...room, roomRate: 0, extraBedRate: 0, category: 'Standard Room' }
+            : room
+        ),
       });
       return;
     }
@@ -101,11 +107,11 @@ export function HotelItemForm({ item, travelers, currency, dayNumber, tripSettin
       }
     }
     
-    const updatedRooms = [...item.rooms];
+    const updatedRooms = item.rooms.length > 0 ? [...item.rooms] : [];
     if (updatedRooms.length > 0) {
       updatedRooms[0] = {
         ...updatedRooms[0],
-        category: item.rooms[0].category === 'Standard Room' || !item.rooms[0].category || item.selectedServicePriceId ? defaultRoomCategoryName : updatedRooms[0].category,
+        category: defaultRoomCategoryName,
         roomRate: applicableRoomRate,
         extraBedRate: applicableExtraBedRate ?? 0, 
       };
@@ -130,17 +136,16 @@ export function HotelItemForm({ item, travelers, currency, dayNumber, tripSettin
       name: item.name === `New hotel` || !item.name || item.selectedServicePriceId ? selectedService.name : item.name,
       selectedServicePriceId: selectedService.id,
       rooms: updatedRooms,
+      // Do not override item.province if user manually selected it
     });
   };
 
 
   const handleUpdateRoomConfig = (updatedConfig: HotelRoomConfiguration) => {
-    // If a room linked to a service is manually edited, we should detach the hotel item from the service
-    // to indicate that prices are now custom. This applies if it's the first room and a service is selected.
     let newSelectedServicePriceId = item.selectedServicePriceId;
     if (item.selectedServicePriceId && item.rooms.length > 0 && item.rooms[0].id === updatedConfig.id) {
         if (item.rooms[0].roomRate !== updatedConfig.roomRate || item.rooms[0].extraBedRate !== updatedConfig.extraBedRate || item.rooms[0].category !== updatedConfig.category) {
-            newSelectedServicePriceId = undefined; // Detach from service if linked room's core rate/category changes
+            newSelectedServicePriceId = undefined; 
         }
     }
     const newRooms = item.rooms.map(rc => rc.id === updatedConfig.id ? updatedConfig : rc);
@@ -150,7 +155,6 @@ export function HotelItemForm({ item, travelers, currency, dayNumber, tripSettin
   const handleDeleteRoomConfig = (configId: string) => {
     const newRooms = item.rooms.filter(rc => rc.id !== configId);
     if (newRooms.length === 0) {
-        // If all rooms are deleted, also detach from any selected service as there's nothing to apply its rates to.
         const defaultRoomConfig: HotelRoomConfiguration = {
             id: generateGUID(), category: 'Standard Room', roomType: 'Double sharing',
             adultsInRoom: 2, childrenInRoom: 0, extraBeds: 0, numRooms: 1,
@@ -163,13 +167,11 @@ export function HotelItemForm({ item, travelers, currency, dayNumber, tripSettin
   };
   
   React.useEffect(() => {
-    // If no rooms exist and no service is selected, add a default empty room.
-    // If a service is selected and no rooms exist, handlePredefinedServiceSelect would add one.
     if ((!item.rooms || item.rooms.length === 0) && !item.selectedServicePriceId) {
       handleAddRoomConfig();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [item.rooms, item.selectedServicePriceId]); // Effect dependencies are simplified as addRoomConfig doesn't depend on them directly
+  }, [item.rooms, item.selectedServicePriceId]); 
 
 
   const calculatedNights = Math.max(0, (item.checkoutDay || dayNumber + 1) - dayNumber);
@@ -179,9 +181,9 @@ export function HotelItemForm({ item, travelers, currency, dayNumber, tripSettin
     <BaseItemForm item={item} travelers={travelers} currency={currency} onUpdate={onUpdate} onDelete={onDelete} itemTypeLabel="Hotel Stay">
       {hotelServices.length > 0 && (
         <div className="pt-2">
-          <FormField label="Select Predefined Hotel Service (Optional)" id={`predefined-hotel-${item.id}`}>
+          <FormField label={`Select Predefined Hotel Service (${item.province || 'Any Province'})`} id={`predefined-hotel-${item.id}`}>
             <Select
-              value={item.selectedServicePriceId || ""} // Shows placeholder if undefined/empty
+              value={item.selectedServicePriceId || "none"}
               onValueChange={handlePredefinedServiceSelect}
             >
               <SelectTrigger>
@@ -191,8 +193,8 @@ export function HotelItemForm({ item, travelers, currency, dayNumber, tripSettin
                 <SelectItem value="none">None (Custom Rates)</SelectItem>
                 {hotelServices.map(service => (
                   <SelectItem key={service.id} value={service.id}>
-                    {service.name} ({service.subCategory || 'Hotel'}) - Default: {formatCurrency(service.price1, currency)}
-                    {service.seasonalRates && service.seasonalRates.length > 0 ? ` (Seasonal Rates Apply)` : ''}
+                    {service.name} ({service.province || 'Generic'} - {service.subCategory || 'Hotel'}) - Default: {formatCurrency(service.price1, currency)}
+                    {service.seasonalRates && service.seasonalRates.length > 0 ? ` (Seasonal)` : ''}
                   </SelectItem>
                 ))}
               </SelectContent>
