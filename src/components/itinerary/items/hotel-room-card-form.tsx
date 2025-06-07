@@ -9,10 +9,12 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Trash2, ChevronDown, ChevronUp, Users } from 'lucide-react';
-import { FormField } from './base-item-form'; // Re-using FormField for layout consistency
+import { Trash2, ChevronDown, ChevronUp, Users, Info } from 'lucide-react';
+import { FormField } from './base-item-form'; 
 import { formatCurrency } from '@/lib/utils';
 import { CurrencyCode } from '@/types/itinerary';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+
 
 interface HotelRoomCardFormProps {
   roomConfig: HotelRoomConfiguration;
@@ -21,9 +23,11 @@ interface HotelRoomCardFormProps {
   onUpdateRoomConfig: (updatedConfig: HotelRoomConfiguration) => void;
   onDeleteRoomConfig: () => void;
   isOnlyRoom: boolean;
+  isFirstRoom: boolean; // Is this the first room config in the list?
+  isLinkedToService: boolean; // Is the parent HotelItem linked to a service?
 }
 
-export function HotelRoomCardForm({ roomConfig, travelers, currency, onUpdateRoomConfig, onDeleteRoomConfig, isOnlyRoom }: HotelRoomCardFormProps) {
+export function HotelRoomCardForm({ roomConfig, travelers, currency, onUpdateRoomConfig, onDeleteRoomConfig, isOnlyRoom, isFirstRoom, isLinkedToService }: HotelRoomCardFormProps) {
   const [isTravelerAssignmentOpen, setIsTravelerAssignmentOpen] = React.useState(roomConfig.assignedTravelerIds.length > 0);
 
   const handleInputChange = (field: keyof HotelRoomConfiguration, value: any) => {
@@ -31,7 +35,7 @@ export function HotelRoomCardForm({ roomConfig, travelers, currency, onUpdateRoo
   };
 
   const handleNumericInputChange = (field: keyof HotelRoomConfiguration, value: string) => {
-    const numValue = value === '' ? 0 : parseFloat(value); // Default to 0 if empty for numeric fields
+    const numValue = value === '' ? 0 : parseFloat(value);
     onUpdateRoomConfig({ ...roomConfig, [field]: numValue });
   };
   
@@ -49,56 +53,22 @@ export function HotelRoomCardForm({ roomConfig, travelers, currency, onUpdateRoo
     let updatedAdults = roomConfig.adultsInRoom;
     let updatedChildren = roomConfig.childrenInRoom;
     let updatedExtraBeds = roomConfig.extraBeds;
-    let enableChildrenInput = false;
-    let enableExtraBedsInput = false;
-
-    switch (roomConfig.roomType) {
-      case 'Single room':
-        updatedAdults = 1;
-        updatedChildren = 0;
-        updatedExtraBeds = 0;
-        break;
-      case 'Double sharing':
-        updatedAdults = Math.max(1, roomConfig.adultsInRoom || 2); // Default to 2 if not set
-        updatedChildren = 0;
-        updatedExtraBeds = 0;
-        break;
-      case 'Triple sharing':
-        updatedAdults = Math.max(1, roomConfig.adultsInRoom || 2); // Default to 2 if not set
-        enableExtraBedsInput = true;
-        // updatedExtraBeds remains as is or default 0
-        updatedChildren = 0;
-        break;
-      case 'Family with child':
-        updatedAdults = Math.max(1, roomConfig.adultsInRoom || 1); // Default to 1 if not set
-        enableChildrenInput = true;
-        enableExtraBedsInput = true; // Often family rooms might allow extra beds
-        // updatedChildren remains as is or default 0
-        // updatedExtraBeds remains as is or default 0
-        break;
-    }
     
-    // Only update if there's an actual change to avoid infinite loops
-    if (updatedAdults !== roomConfig.adultsInRoom || 
-        updatedChildren !== roomConfig.childrenInRoom || 
-        updatedExtraBeds !== roomConfig.extraBeds ||
-        (enableChildrenInput !== !((roomConfig.childrenInRoom || 0) > 0)) || // A bit complex logic to check if state needs update
-        (enableExtraBedsInput !== !((roomConfig.extraBeds || 0) > 0))
-        ) {
-            // This effect should only adjust based on roomType, not create feedback loop with user input for those values
-    }
-
-  }, [roomConfig.roomType]); // Only re-run if roomType changes
+    // This effect should ideally only adjust based on roomType if specific capacities are implied
+    // but it's tricky not to interfere with user input or service-derived rates.
+    // For now, this effect is more of a placeholder or for future refinement if types have hardcoded capacities.
+  }, [roomConfig.roomType, roomConfig.adultsInRoom, roomConfig.childrenInRoom, roomConfig.extraBeds]);
 
   const isChildrenInputDisabled = roomConfig.roomType !== 'Family with child';
   const isExtraBedsInputDisabled = roomConfig.roomType !== 'Triple sharing' && roomConfig.roomType !== 'Family with child';
+  const areRatesReadOnly = isFirstRoom && isLinkedToService;
 
 
   return (
     <Card className="mb-4 bg-background/70 border border-primary/20 shadow-inner">
       <CardHeader className="py-3 px-4 bg-muted/40 rounded-t-md">
         <CardTitle className="text-base font-medium flex justify-between items-center">
-          <span>Room Category: {roomConfig.category || "Not Set"}</span>
+          <span>Room: {roomConfig.category || "Not Set"}</span>
            {!isOnlyRoom && (
              <Button variant="ghost" size="icon" onClick={onDeleteRoomConfig} className="h-7 w-7 text-destructive hover:bg-destructive/10">
               <Trash2 className="h-4 w-4" />
@@ -107,12 +77,19 @@ export function HotelRoomCardForm({ roomConfig, travelers, currency, onUpdateRoo
         </CardTitle>
       </CardHeader>
       <CardContent className="p-4 space-y-3">
+        {areRatesReadOnly && (
+            <div className="p-2 mb-2 text-xs text-primary bg-primary/10 border border-primary/20 rounded-md flex items-start">
+                <Info className="h-4 w-4 mr-2 shrink-0 mt-0.5" />
+                <span>Rates for this room type are currently based on the selected hotel service and check-in date. To set custom rates, first deselect the main hotel service above, or add a new room type.</span>
+            </div>
+        )}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <FormField label="Room Category Name" id={`roomCat-${roomConfig.id}`}>
             <Input 
               value={roomConfig.category} 
               onChange={e => handleInputChange('category', e.target.value)}
               placeholder="e.g., Deluxe King"
+              disabled={areRatesReadOnly} // Category name also comes from service for first room
             />
           </FormField>
           <FormField label="Occupancy Type" id={`roomType-${roomConfig.id}`}>
@@ -133,7 +110,7 @@ export function HotelRoomCardForm({ roomConfig, travelers, currency, onUpdateRoo
             <Input type="number" min="1" value={roomConfig.adultsInRoom} onChange={e => handleNumericInputChange('adultsInRoom', e.target.value)} />
           </FormField>
           <FormField label="Children/Room" id={`childrenInRoom-${roomConfig.id}`}>
-            <Input type="number" min="0" value={roomConfig.childrenInRoom} onChange={e => handleNumericInputChange('childrenInRoom', e.target.value)} disabled={isChildrenInputDisabled}/>
+            <Input type="number" min="0" value={roomConfig.childrenInRoom} onChange={e => handleNumericInputChange('childrenInRoom', e.target.value)} disabled={isChildrenInputDisabled && roomConfig.extraBeds === 0}/>
           </FormField>
           <FormField label="Extra Beds/Room" id={`extraBeds-${roomConfig.id}`}>
             <Input type="number" min="0" value={roomConfig.extraBeds} onChange={e => handleNumericInputChange('extraBeds', e.target.value)} disabled={isExtraBedsInputDisabled}/>
@@ -145,10 +122,24 @@ export function HotelRoomCardForm({ roomConfig, travelers, currency, onUpdateRoo
             <Input type="number" min="1" value={roomConfig.numRooms} onChange={e => handleNumericInputChange('numRooms', e.target.value)} />
           </FormField>
           <FormField label={`Room Rate (Nightly, ${currency})`} id={`roomRate-${roomConfig.id}`}>
-            <Input type="number" min="0" value={roomConfig.roomRate} onChange={e => handleNumericInputChange('roomRate', e.target.value)} placeholder="0.00" />
+            <Input 
+                type="number" 
+                min="0" 
+                value={roomConfig.roomRate} 
+                onChange={e => handleNumericInputChange('roomRate', e.target.value)} 
+                placeholder="0.00"
+                disabled={areRatesReadOnly} 
+            />
           </FormField>
           <FormField label={`Extra Bed Rate (Nightly, ${currency})`} id={`extraBedRate-${roomConfig.id}`}>
-            <Input type="number" min="0" value={roomConfig.extraBedRate} onChange={e => handleNumericInputChange('extraBedRate', e.target.value)} placeholder="0.00" disabled={isExtraBedsInputDisabled} />
+            <Input 
+                type="number" 
+                min="0" 
+                value={roomConfig.extraBedRate} 
+                onChange={e => handleNumericInputChange('extraBedRate', e.target.value)} 
+                placeholder="0.00" 
+                disabled={areRatesReadOnly || isExtraBedsInputDisabled || roomConfig.extraBeds === 0}
+            />
           </FormField>
         </div>
 
