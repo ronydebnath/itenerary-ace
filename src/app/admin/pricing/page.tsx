@@ -1,6 +1,4 @@
 
-// This file enables the /admin/pricing route.
-// The actual UI is in PricingManager component.
 "use client";
 
 import { PricingManager } from '@/components/admin/pricing-manager';
