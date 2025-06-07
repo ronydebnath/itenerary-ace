@@ -2,10 +2,12 @@
 "use client";
 
 import * as React from 'react';
-import type { ActivityItem as ActivityItemType, Traveler, CurrencyCode, TripSettings } from '@/types/itinerary';
+import type { ActivityItem as ActivityItemType, Traveler, CurrencyCode, TripSettings, ServicePriceItem } from '@/types/itinerary';
 import { BaseItemForm, FormField } from './base-item-form';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useServicePrices } from '@/hooks/useServicePrices'; // Import the hook
 
 interface ActivityItemFormProps {
   item: ActivityItemType;
@@ -18,25 +20,74 @@ interface ActivityItemFormProps {
 }
 
 export function ActivityItemForm({ item, travelers, currency, dayNumber, tripSettings, onUpdate, onDelete }: ActivityItemFormProps) {
+  const { getServicePrices, getServicePriceById, isLoading: isLoadingServices } = useServicePrices();
+  const [activityServices, setActivityServices] = React.useState<ServicePriceItem[]>([]);
+  
+  React.useEffect(() => {
+    if (!isLoadingServices) {
+      setActivityServices(getServicePrices('activity').filter(s => s.currency === currency));
+    }
+  }, [isLoadingServices, getServicePrices, currency]);
+
   const handleNumericInputChange = (field: keyof ActivityItemType, value: string) => {
     const numValue = value === '' ? undefined : parseFloat(value);
-    onUpdate({ ...item, [field]: numValue });
+    // If user manually changes price, clear the selected service ID
+    onUpdate({ ...item, [field]: numValue, selectedServicePriceId: undefined });
   };
 
   const handleEndDayChange = (value: string) => {
     const numValue = value === '' ? undefined : parseInt(value, 10);
     if (numValue !== undefined && (numValue < dayNumber || numValue > tripSettings.numDays)) {
-      // Invalid input, perhaps show an error or clamp value. For now, allow update and let validation handle.
+      // Invalid input
     }
     onUpdate({ ...item, endDay: numValue });
+  };
+
+  const handlePredefinedServiceSelect = (serviceId: string) => {
+    const selectedService = getServicePriceById(serviceId);
+    if (selectedService) {
+      onUpdate({
+        ...item,
+        name: item.name === `New activity` || item.selectedServicePriceId ? selectedService.name : item.name, // Update name if it's default or was from another service
+        adultPrice: selectedService.price1,
+        childPrice: selectedService.price2,
+        selectedServicePriceId: selectedService.id,
+      });
+    }
   };
   
   const calculatedEndDay = item.endDay || dayNumber;
   const duration = Math.max(1, calculatedEndDay - dayNumber + 1);
 
+  const selectedServiceName = item.selectedServicePriceId ? getServicePriceById(item.selectedServicePriceId)?.name : null;
 
   return (
     <BaseItemForm item={item} travelers={travelers} currency={currency} onUpdate={onUpdate} onDelete={onDelete} itemTypeLabel="Activity">
+      {activityServices.length > 0 && (
+        <div className="pt-2">
+          <FormField label="Select Predefined Activity (Optional)" id={`predefined-activity-${item.id}`}>
+            <Select
+              value={item.selectedServicePriceId || ""}
+              onValueChange={handlePredefinedServiceSelect}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Choose a predefined activity..." />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">None (Custom Price)</SelectItem>
+                {activityServices.map(service => (
+                  <SelectItem key={service.id} value={service.id}>
+                    {service.name} ({service.unitDescription}) - {currency} {service.price1}
+                    {service.price2 !== undefined ? ` / Ch: ${service.price2}` : ''}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </FormField>
+           {selectedServiceName && <p className="text-xs text-muted-foreground pt-1">Using: {selectedServiceName}</p>}
+        </div>
+      )}
+
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
         <FormField label={`Adult Price (${currency})`} id={`adultPrice-${item.id}`}>
           <Input

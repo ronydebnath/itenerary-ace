@@ -25,6 +25,7 @@ export interface BaseItem {
   name: string;
   note?: string;
   excludedTravelerIds: string[];
+  selectedServicePriceId?: string; // ID of the predefined service, if selected
   // For AI suggestions, we might store original values if AI modifies them
   aiSuggested?: boolean; 
   originalCost?: number;
@@ -81,6 +82,7 @@ export interface MiscItem extends BaseItem {
   costAssignment: 'perPerson' | 'total'; // 'total' means shared
 }
 
+export type ItineraryItemType = 'transfer' | 'activity' | 'hotel' | 'meal' | 'misc';
 export type ItineraryItem = TransferItem | ActivityItem | HotelItem | MealItem | MiscItem;
 
 export interface DayItinerary {
@@ -136,3 +138,18 @@ export type AISuggestion = {
   estimatedCostSavings: number;
   reasoning: string;
 };
+
+// For Service Price Management
+export const SERVICE_CATEGORIES: ItineraryItemType[] = ['transfer', 'activity', 'hotel', 'meal', 'misc'];
+
+export interface ServicePriceItem {
+  id: string;
+  name: string;
+  category: ItineraryItemType;
+  subCategory?: string; // e.g., for Transfer: 'ticket' or 'vehicle'. For Hotel: 'Room Type A'
+  price1: number; // Main price (e.g., adult price, unit cost, vehicle cost, room rate)
+  price2?: number; // Secondary price (e.g., child price, extra bed rate)
+  currency: CurrencyCode;
+  unitDescription: string; // e.g., "per adult", "per vehicle", "per night", "per item"
+  notes?: string;
+}
