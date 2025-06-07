@@ -29,6 +29,7 @@ export interface BaseItem {
   // For AI suggestions, we might store original values if AI modifies them
   aiSuggested?: boolean; 
   originalCost?: number;
+  province?: string; // Province where the service is located/starts
 }
 
 export interface TransferItem extends BaseItem {
@@ -109,6 +110,7 @@ export interface DetailedSummaryItem {
   day?: number; // Optional day display
   name: string;
   note?: string;
+  province?: string; // Province of the service
   configurationDetails: string;
   excludedTravelers: string; // Comma-separated labels
   adultCost: number;
@@ -162,4 +164,10 @@ export interface ServicePriceItem {
   unitDescription: string; // e.g., "per adult", "per vehicle", "per night", "per item"
   notes?: string;
   seasonalRates?: SeasonalRate[]; // Specific to 'hotel' category
+}
+
+// For Province Management
+export interface ProvinceItem {
+  id: string;
+  name: string;
 }

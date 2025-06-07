@@ -2,19 +2,17 @@
 "use client";
 
 import * as React from 'react';
-import Link from 'next/link'; // Import Link
+import Link from 'next/link';
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { PlusCircle, Edit, Trash2, Home } from 'lucide-react'; // Import Home icon
+import { PlusCircle, Edit, Trash2, Home, MapPinned } from 'lucide-react'; 
 import type { ServicePriceItem, CurrencyCode } from '@/types/itinerary';
-import { CURRENCIES } from '@/types/itinerary'; // Import CURRENCIES
+import { CURRENCIES } from '@/types/itinerary'; 
 import { ServicePriceForm } from './service-price-form';
 import { ServicePriceTable } from './service-price-table';
 import { generateGUID } from '@/lib/utils';
 import { useToast } from "@/hooks/use-toast";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Badge } from "@/components/ui/badge";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 
 const SERVICE_PRICES_STORAGE_KEY = 'itineraryAceServicePrices';
@@ -32,7 +30,7 @@ export function PricingManager() {
         const parsedData = JSON.parse(storedPrices);
         if (Array.isArray(parsedData)) {
             setServicePrices(parsedData.map(p => {
-              const category = p.category || "misc"; // Default category
+              const category = p.category || "misc"; 
               const seasonalRatesValid = category === 'hotel' && Array.isArray(p.seasonalRates)
                 ? p.seasonalRates.map((sr: any) => ({
                     id: sr.id || generateGUID(),
@@ -46,12 +44,12 @@ export function PricingManager() {
               return {
                 id: p.id || generateGUID(),
                 name: p.name || "Unnamed Service",
-                province: p.province || undefined, // Handle new province field
+                province: p.province || undefined, 
                 category: category,
                 subCategory: p.subCategory,
                 price1: typeof p.price1 === 'number' ? p.price1 : 0,
                 price2: typeof p.price2 === 'number' ? p.price2 : undefined,
-                currency: CURRENCIES.includes(p.currency as CurrencyCode) ? p.currency : "USD" as CurrencyCode,
+                currency: CURRENCIES.includes(p.currency as CurrencyCode) ? p.currency : "THB" as CurrencyCode,
                 unitDescription: p.unitDescription || "N/A",
                 notes: p.notes,
                 seasonalRates: seasonalRatesValid,
@@ -145,6 +143,14 @@ export function PricingManager() {
             />
           </DialogContent>
         </Dialog>
+      </div>
+
+      <div className="mb-6">
+        <Link href="/admin/provinces">
+          <Button variant="link" className="text-primary flex items-center">
+            <MapPinned className="mr-2 h-5 w-5" /> Manage Provinces
+          </Button>
+        </Link>
       </div>
 
       {servicePrices.length > 0 ? (

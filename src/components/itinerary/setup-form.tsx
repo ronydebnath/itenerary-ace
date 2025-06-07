@@ -22,7 +22,7 @@ export function SetupForm({ onStartPlanning }: SetupFormProps) {
   const [globalAdults, setGlobalAdults] = React.useState<string>("2");
   const [globalChildren, setGlobalChildren] = React.useState<string>("0");
   const [budget, setBudget] = React.useState<string>("");
-  const [currency, setCurrency] = React.useState<CurrencyCode>("THB");
+  const [currency, setCurrency] = React.useState<CurrencyCode>("THB"); // Default to THB
   const [error, setError] = React.useState<string | null>(null);
 
   const handleSubmit = () => {
@@ -79,7 +79,7 @@ export function SetupForm({ onStartPlanning }: SetupFormProps) {
             </Alert>
           )}
           <div className="space-y-2">
-            <Label htmlFor="startDate" className="text-foreground/80">Start Date</Label>
+            <Label htmlFor="startDate" className="text-foreground/80">Start Date (Required)</Label>
             <Input id="startDate" type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="text-base" required />
           </div>
           <div className="space-y-2">

@@ -16,6 +16,7 @@ import { DayView } from './day-view';
 import { CostBreakdownTable } from './cost-breakdown-table';
 import { DetailsSummaryTable } from './details-summary-table';
 import { calculateAllCosts } from '@/lib/calculation-utils'; 
+import { addDays, format, parseISO } from 'date-fns';
 
 interface ItineraryPlannerProps {
   tripData: TripData;
@@ -55,7 +56,8 @@ export function ItineraryPlanner({ tripData, onReset, onUpdateTripData }: Itiner
       id: generateGUID(), 
       day, 
       name: `New ${itemType}`, 
-      excludedTravelerIds: [] 
+      excludedTravelerIds: [],
+      province: undefined, // Initialize province
     };
 
     switch (itemType) {
@@ -99,7 +101,19 @@ export function ItineraryPlanner({ tripData, onReset, onUpdateTripData }: Itiner
     }, 100); 
   };
 
-  const displayStartDate = tripData.settings.startDate ? new Date(tripData.settings.startDate).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' }) : 'N/A';
+  const getFormattedDateForDay = (dayNum: number): string => {
+    if (!tripData.settings.startDate) return `Day ${dayNum}`;
+    try {
+      const date = addDays(parseISO(tripData.settings.startDate), dayNum - 1);
+      return `Day ${dayNum} - ${format(date, "MMM d, yyyy (EEEE)")}`;
+    } catch (e) {
+      console.error("Error formatting date:", e);
+      return `Day ${dayNum}`;
+    }
+  };
+  
+  const displayStartDate = tripData.settings.startDate ? format(parseISO(tripData.settings.startDate), "MMMM d, yyyy") : 'N/A';
+
 
   if (isPrinting && costSummary) {
     return <PrintLayout tripData={tripData} costSummary={costSummary} showCosts={showCosts} />;
@@ -138,7 +152,7 @@ export function ItineraryPlanner({ tripData, onReset, onUpdateTripData }: Itiner
             </SelectTrigger>
             <SelectContent>
                 {Array.from({ length: tripData.settings.numDays }, (_, i) => i + 1).map(dayNum => (
-                    <SelectItem key={dayNum} value={String(dayNum)}>Day {dayNum}</SelectItem>
+                    <SelectItem key={dayNum} value={String(dayNum)}>{getFormattedDateForDay(dayNum)}</SelectItem>
                 ))}
             </SelectContent>
         </Select>
@@ -152,7 +166,7 @@ export function ItineraryPlanner({ tripData, onReset, onUpdateTripData }: Itiner
         >
           <ChevronLeft className="h-5 w-5 mr-1" /> Previous Day
         </Button>
-        <h2 className="text-xl font-semibold text-primary">Day {currentDayView}</h2>
+        <h2 className="text-xl font-semibold text-primary">{getFormattedDateForDay(currentDayView)}</h2>
         <Button 
           onClick={() => setCurrentDayView(prev => Math.min(tripData.settings.numDays, prev + 1))} 
           disabled={currentDayView === tripData.settings.numDays}
