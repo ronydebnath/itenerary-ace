@@ -2,10 +2,13 @@
 "use client";
 
 import React from 'react';
+import Link from 'next/link';
+import { Button } from '@/components/ui/button';
 import { SetupForm } from '@/components/itinerary/setup-form';
 import { ItineraryPlanner } from '@/components/itinerary/itinerary-planner';
 import type { TripSettings, PaxDetails, TripData } from '@/types/itinerary';
 import { generateGUID } from '@/lib/utils';
+import { Cog } from 'lucide-react';
 
 const LOCAL_STORAGE_KEY = 'itineraryAceData';
 
@@ -79,17 +82,27 @@ export default function HomePage() {
   }, []);
 
   if (!isInitialized) {
-    // Optional: Show a loading spinner or placeholder
-    return <div className="flex justify-center items-center min-h-screen"><p>Loading Itinerary Ace...</p></div>;
+    return <div className="flex justify-center items-center min-h-screen bg-background"><p>Loading Itinerary Ace...</p></div>;
   }
 
   return (
-    <main className="min-h-screen bg-background">
+    <div className="relative min-h-screen bg-background"> {/* Changed main to div for positioning context */}
+      <div className="absolute top-4 right-4 md:top-6 md:right-6 z-10">
+        <Link href="/admin/pricing" passHref legacyBehavior>
+          <Button variant="outline" size="sm" className="bg-card hover:bg-muted shadow-md">
+            <Cog className="mr-2 h-4 w-4" />
+            Manage Service Prices
+          </Button>
+        </Link>
+      </div>
+      
       {tripData ? (
+        // ItineraryPlanner includes its own container and padding
         <ItineraryPlanner tripData={tripData} onReset={handleReset} onUpdateTripData={handleUpdateTripData} />
       ) : (
+        // SetupForm is designed to be centered on the screen
         <SetupForm onStartPlanning={handleStartPlanning} />
       )}
-    </main>
+    </div>
   );
 }
