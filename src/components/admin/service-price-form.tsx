@@ -23,6 +23,7 @@ import { CURRENCIES, SERVICE_CATEGORIES } from '@/types/itinerary';
 import { PlusCircle, Trash2 } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { generateGUID } from '@/lib/utils';
+import { useProvinces } from '@/hooks/useProvinces'; // Import useProvinces
 
 const seasonalRateSchema = z.object({
   id: z.string(),
@@ -58,16 +59,17 @@ interface ServicePriceFormProps {
 }
 
 export function ServicePriceForm({ initialData, onSubmit, onCancel }: ServicePriceFormProps) {
+  const { provinces, isLoading: isLoadingProvinces } = useProvinces();
   const form = useForm<ServicePriceFormValues>({
     resolver: zodResolver(servicePriceSchema),
     defaultValues: {
       name: initialData?.name || "",
-      province: initialData?.province || "",
+      province: initialData?.province || undefined, // Ensure it's undefined if not present
       category: initialData?.category || "activity",
       subCategory: initialData?.subCategory || "",
       price1: initialData?.price1 || 0,
       price2: initialData?.price2,
-      currency: initialData?.currency || "USD",
+      currency: initialData?.currency || "THB",
       unitDescription: initialData?.unitDescription || "",
       notes: initialData?.notes || "",
       seasonalRates: initialData?.category === 'hotel' && initialData?.seasonalRates
@@ -88,16 +90,12 @@ export function ServicePriceForm({ initialData, onSubmit, onCancel }: ServicePri
   const transferMode = form.watch("transferMode");
 
   React.useEffect(() => {
-    // Handles transitions when selectedCategory changes
     if (selectedCategory !== 'hotel') {
       form.setValue('seasonalRates', []);
     }
-
     if (selectedCategory !== 'transfer') {
       form.setValue('transferMode', undefined);
     } else {
-      // If switching to 'transfer' and transferMode isn't set (or isn't valid for initialData),
-      // set a default. This also handles initial load if form.defaultValues didn't set it.
       const currentTransferMode = form.getValues('transferMode');
       if (!currentTransferMode) {
         if (initialData?.category === 'transfer' && initialData.subCategory) {
@@ -109,32 +107,27 @@ export function ServicePriceForm({ initialData, onSubmit, onCancel }: ServicePri
           form.setValue('subCategory', 'ticket');
         }
       } else {
-         // If transferMode is already set (e.g. from defaultValues), ensure subCategory is consistent for ticket mode
         if (currentTransferMode === 'ticket') {
             form.setValue('subCategory', 'ticket');
         }
-        // For 'vehicle' mode, subCategory is user-editable, so it's handled by the transferMode effect if it was 'ticket'
       }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedCategory, form.setValue]); // initialData is handled by defaultValues due to form key
+  }, [selectedCategory, form.setValue, initialData?.category, initialData?.subCategory]);
 
 
   React.useEffect(() => {
-    // Handles transitions when transferMode changes, only if category is 'transfer'
     if (selectedCategory === 'transfer') {
       if (transferMode === 'ticket') {
         form.setValue('subCategory', 'ticket');
       } else if (transferMode === 'vehicle') {
-        // If we just switched to 'vehicle' mode and subCategory was 'ticket', clear it for user input.
-        if (form.getValues('subCategory') === 'ticket') {
-           form.setValue('subCategory', '');
+        if (form.getValues('subCategory') === 'ticket' || !form.getValues('subCategory')) {
+           form.setValue('subCategory', initialData?.category === 'transfer' && initialData?.subCategory && initialData.subCategory !== 'ticket' ? initialData.subCategory : '');
         }
-        // If subCategory is already a vehicle type (e.g. user typed, or loaded from initialData), leave it.
       }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [transferMode, selectedCategory, form.setValue]);
+  }, [transferMode, selectedCategory, form.setValue, initialData?.subCategory, initialData?.category]);
 
 
   const getPrice1Label = (): string => {
@@ -222,6 +215,10 @@ export function ServicePriceForm({ initialData, onSubmit, onCancel }: ServicePri
     if (!getPrice2Label()) {
         dataToSubmit.price2 = undefined;
     }
+    
+    if (dataToSubmit.province === "none") {
+      dataToSubmit.province = undefined;
+    }
 
     onSubmit({ ...dataToSubmit } as Omit<ServicePriceItem, 'id'>);
   };
@@ -245,15 +242,31 @@ export function ServicePriceForm({ initialData, onSubmit, onCancel }: ServicePri
                     )}
                 />
                 <FormField
-                    control={form.control}
-                    name="province"
-                    render={({ field }) => (
-                        <FormItem>
-                        <FormLabel>Province / Location (Optional)</FormLabel>
-                        <FormControl><Input placeholder="e.g., Bangkok, Pattaya, Phuket" {...field} value={field.value || ''} /></FormControl>
-                        <FormMessage />
-                        </FormItem>
-                    )}
+                  control={form.control}
+                  name="province"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Province / Location (Optional)</FormLabel>
+                      <Select
+                        onValueChange={(value) => field.onChange(value === "none" ? undefined : value)}
+                        value={field.value || "none"}
+                        disabled={isLoadingProvinces}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select province..." />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="none">None / Generic</SelectItem>
+                          {provinces.map(p => (
+                            <SelectItem key={p.id} value={p.name}>{p.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
                 />
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <FormField
