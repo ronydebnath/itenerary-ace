@@ -16,6 +16,11 @@ const isValidVehicleType = (val: unknown): val is VehicleType => {
   return VEHICLE_TYPES.includes(val as VehicleType);
 };
 
+// Define the validation function for CurrencyCode separately
+const isValidCurrencyCode = (val: unknown): val is CurrencyCode => {
+  return CURRENCIES.includes(val as CurrencyCode);
+};
+
 // Define a more flexible output schema for AI extraction
 export const AIContractDataOutputSchema = z.object({
   name: z.string().optional().describe('The name of the service or hotel.'),
@@ -24,14 +29,14 @@ export const AIContractDataOutputSchema = z.object({
   subCategory: z.string().optional().describe('A sub-category or specific type (e.g., room type for hotels, activity type, vehicle type for transfers).'),
   price1: z.number().optional().describe('Primary price (e.g., adult price, room rate, cost per vehicle).'),
   price2: z.number().optional().describe('Secondary price (e.g., child price, extra bed rate). Only if applicable and clearly distinct.'),
-  currency: z.custom<CurrencyCode>((val) => CURRENCIES.includes(val as CurrencyCode), "Invalid currency").optional().describe(`The currency code. Must be one of: ${CURRENCIES.join(', ')}`),
+  currency: z.custom<CurrencyCode>(isValidCurrencyCode, "Invalid currency").optional().describe(`The currency code. Must be one of: ${CURRENCIES.join(', ')}`),
   unitDescription: z.string().optional().describe('Description of what the price unit refers to (e.g., "per person", "per night", "per vehicle").'),
   notes: z.string().optional().describe('Any additional notes or important details about the service.'),
   maxPassengers: z.number().int().min(1).optional().describe('Maximum number of passengers for vehicle transfers, if specified.'),
   // We are omitting seasonalRates for direct extraction into ServicePriceItem as it's too complex for a single pass.
   // For transfers, try to identify if it's 'ticket' or 'vehicle' basis and extract vehicle type if applicable.
   transferModeAttempt: z.enum(['ticket', 'vehicle']).optional().describe('If the service is a transfer, attempt to identify if it is priced per ticket or per vehicle.'),
-  vehicleTypeAttempt: z.custom(isValidVehicleType).optional().describe(`If a vehicle transfer, attempt to identify the vehicle type (e.g., ${VEHICLE_TYPES.join(', ')})`)
+  vehicleTypeAttempt: z.custom<VehicleType>(isValidVehicleType).optional().describe(`If a vehicle transfer, attempt to identify the vehicle type (e.g., ${VEHICLE_TYPES.join(', ')})`)
 });
 export type AIContractDataOutput = z.infer<typeof AIContractDataOutputSchema>;
 
