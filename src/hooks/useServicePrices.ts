@@ -1,6 +1,6 @@
 
 import * as React from 'react';
-import type { ServicePriceItem, ItineraryItemType, CurrencyCode, OldSeasonalRate, HotelDefinition, HotelRoomTypeDefinition, RoomTypeSeasonalPrice } from '@/types/itinerary';
+import type { ServicePriceItem, ItineraryItemType, CurrencyCode, HotelDefinition } from '@/types/itinerary';
 import { generateGUID } from '@/lib/utils';
 
 const SERVICE_PRICES_STORAGE_KEY = 'itineraryAceServicePrices';
@@ -50,22 +50,26 @@ const DEFAULT_DEMO_SERVICE_PRICES: ServicePriceItem[] = [
   // == Bangkok - Hotels (using hotelDetails) ==
   {
     id: generateGUID(), name: 'Riverside Luxury Hotel', province: 'Bangkok', category: 'hotel', currency: 'THB', unitDescription: 'per night',
-    notes: '5-star, riverside location',
+    notes: '5-star, riverside location with excellent amenities and dining options.', // General hotel notes
     hotelDetails: {
       id: generateGUID(), name: 'Riverside Luxury Hotel', province: 'Bangkok',
       roomTypes: [
         {
-          id: generateGUID(), name: 'Deluxe River View', characteristics: [],
+          id: generateGUID(), name: 'Deluxe River View', extraBedAllowed: true,
+          notes: 'Spacious 40sqm room with panoramic river views, king-size bed, Nespresso machine, and luxury toiletries. Ideal for couples.',
+          characteristics: [], // Keep for future, but info now in notes
           seasonalPrices: [
-            { id: generateGUID(), startDate: '2024-11-01', endDate: '2025-02-28', rate: 6500, extraBedAllowed: true, extraBedRate: 1200 },
-            { id: generateGUID(), startDate: '2024-05-01', endDate: '2024-09-30', rate: 4000, extraBedAllowed: true, extraBedRate: 800 }
+            { id: generateGUID(), startDate: '2024-11-01', endDate: '2025-02-28', rate: 6500, extraBedRate: 1200 },
+            { id: generateGUID(), startDate: '2024-05-01', endDate: '2024-09-30', rate: 4000, extraBedRate: 800 }
           ]
         },
         {
-          id: generateGUID(), name: 'Standard City View', characteristics: [],
+          id: generateGUID(), name: 'Standard City View', extraBedAllowed: false,
+          notes: 'Comfortable 30sqm room with city views, queen-size bed, work desk, and standard amenities. Good for business travelers.',
+          characteristics: [],
           seasonalPrices: [
-            { id: generateGUID(), startDate: '2024-11-01', endDate: '2025-02-28', rate: 5000, extraBedAllowed: false },
-            { id: generateGUID(), startDate: '2024-05-01', endDate: '2024-09-30', rate: 3200, extraBedAllowed: false }
+            { id: generateGUID(), startDate: '2024-11-01', endDate: '2025-02-28', rate: 5000 },
+            { id: generateGUID(), startDate: '2024-05-01', endDate: '2024-09-30', rate: 3200 }
           ]
         }
       ]
@@ -73,14 +77,16 @@ const DEFAULT_DEMO_SERVICE_PRICES: ServicePriceItem[] = [
   },
   {
     id: generateGUID(), name: 'Sukhumvit Boutique Hotel', province: 'Bangkok', category: 'hotel', currency: 'THB', unitDescription: 'per night',
-    notes: '4-star, near BTS Asok',
+    notes: 'Chic 4-star hotel in the heart of Sukhumvit, steps from Asok BTS. Rooftop pool and bar.',
     hotelDetails: {
       id: generateGUID(), name: 'Sukhumvit Boutique Hotel', province: 'Bangkok',
       roomTypes: [
         {
-          id: generateGUID(), name: 'Superior Room', characteristics: [],
+          id: generateGUID(), name: 'Superior Room', extraBedAllowed: true,
+          notes: 'Modern 28sqm room with choice of king or twin beds, rain shower, smart TV, and city views. Minibar included.',
+          characteristics: [],
           seasonalPrices: [
-            { id: generateGUID(), startDate: '2024-01-01', endDate: '2024-12-31', rate: 2500, extraBedAllowed: true, extraBedRate: 600 }
+            { id: generateGUID(), startDate: '2024-01-01', endDate: '2024-12-31', rate: 2500, extraBedRate: 600 }
           ]
         }
       ]
@@ -157,22 +163,24 @@ const DEFAULT_DEMO_SERVICE_PRICES: ServicePriceItem[] = [
   // == Pattaya - Hotels (using hotelDetails) ==
   {
     id: generateGUID(), name: 'Pattaya Beachfront Resort', province: 'Pattaya (Chonburi)', category: 'hotel', currency: 'THB', unitDescription: 'per night',
-    notes: '4-star, on Beach Road',
+    notes: 'Popular 4-star resort directly on Pattaya Beach Road, offering stunning sea views and multiple pools.',
     hotelDetails: {
         id: generateGUID(), name: 'Pattaya Beachfront Resort', province: 'Pattaya (Chonburi)',
         roomTypes: [
             {
-                id: generateGUID(), name: 'Sea View Room', characteristics: [],
+                id: generateGUID(), name: 'Sea View Room', extraBedAllowed: true,
+                notes: '32sqm room with private balcony overlooking the ocean. King bed, bathtub, minibar, and free Wi-Fi.', characteristics: [],
                 seasonalPrices: [
-                    { id: generateGUID(), startDate: '2024-12-01', endDate: '2025-03-31', rate: 5500, extraBedAllowed: true, extraBedRate: 1000 },
-                    { id: generateGUID(), startDate: '2024-06-01', endDate: '2024-10-31', rate: 3000, extraBedAllowed: true, extraBedRate: 600 }
+                    { id: generateGUID(), startDate: '2024-12-01', endDate: '2025-03-31', rate: 5500, extraBedRate: 1000 },
+                    { id: generateGUID(), startDate: '2024-06-01', endDate: '2024-10-31', rate: 3000, extraBedRate: 600 }
                 ]
             },
             {
-                id: generateGUID(), name: 'Garden View Bungalow', characteristics: [],
+                id: generateGUID(), name: 'Garden View Bungalow', extraBedAllowed: false,
+                notes: 'Quiet 45sqm bungalow set in lush tropical gardens. Features a private terrace, separate living area, and king bed.', characteristics: [],
                 seasonalPrices: [
-                    { id: generateGUID(), startDate: '2024-12-01', endDate: '2025-03-31', rate: 4800, extraBedAllowed: false },
-                    { id: generateGUID(), startDate: '2024-06-01', endDate: '2024-10-31', rate: 2500, extraBedAllowed: false }
+                    { id: generateGUID(), startDate: '2024-12-01', endDate: '2025-03-31', rate: 4800 },
+                    { id: generateGUID(), startDate: '2024-06-01', endDate: '2024-10-31', rate: 2500 }
                 ]
             }
         ]
@@ -200,15 +208,16 @@ const DEFAULT_DEMO_SERVICE_PRICES: ServicePriceItem[] = [
   },
   {
     id: generateGUID(), name: 'Lanna Boutique Resort', province: 'Chiang Mai', category: 'hotel', currency: 'THB', unitDescription: 'per night',
-    notes: '4-star, near Old City',
+    notes: 'Charming 4-star resort in traditional Lanna style, located near Chiang Mai\'s Old City. Features a spa and cooking classes.',
     hotelDetails: {
       id: generateGUID(), name: 'Lanna Boutique Resort', province: 'Chiang Mai',
       roomTypes: [
         {
-          id: generateGUID(), name: 'Deluxe Room', characteristics: [],
+          id: generateGUID(), name: 'Deluxe Room', extraBedAllowed: true,
+          notes: 'Spacious 38sqm room with teak wood furnishings, private balcony, king bed or twin beds, and an ensuite bathroom with a separate shower and bathtub.', characteristics: [],
           seasonalPrices: [
-            { id: generateGUID(), startDate: '2024-11-01', endDate: '2025-02-15', rate: 3500, extraBedAllowed: true, extraBedRate: 1000 },
-            { id: generateGUID(), startDate: '2024-05-01', endDate: '2024-09-30', rate: 2200, extraBedAllowed: true, extraBedRate: 600 }
+            { id: generateGUID(), startDate: '2024-11-01', endDate: '2025-02-15', rate: 3500, extraBedRate: 1000 },
+            { id: generateGUID(), startDate: '2024-05-01', endDate: '2024-09-30', rate: 2200, extraBedRate: 600 }
           ]
         }
       ]
@@ -236,14 +245,15 @@ export function useServicePrices() {
       if (storedPricesString) {
         const parsedPrices = JSON.parse(storedPricesString);
         if (Array.isArray(parsedPrices) && parsedPrices.length > 0) {
-          // Validate essential fields for all items, and hotelDetails if category is hotel
           const validatedPrices = parsedPrices.filter(p => {
             const basicValid = p.id && p.name && p.category && p.currency;
             if (!basicValid) return false;
             if (p.category === 'hotel') {
-              return p.hotelDetails && p.hotelDetails.id && p.hotelDetails.name && Array.isArray(p.hotelDetails.roomTypes);
+              const hd = p.hotelDetails as HotelDefinition | undefined; // Cast for checking
+              return hd && hd.id && hd.name && Array.isArray(hd.roomTypes) &&
+                     hd.roomTypes.every(rt => rt.id && rt.name && Array.isArray(rt.seasonalPrices));
             }
-            return typeof p.price1 === 'number'; // For non-hotels, price1 is expected
+            return typeof p.price1 === 'number';
           });
 
           if (validatedPrices.length > 0) {
@@ -262,7 +272,7 @@ export function useServicePrices() {
       }
     } catch (error) {
       console.error("Failed to load or initialize service prices from localStorage:", error);
-      pricesToSet = DEFAULT_DEMO_SERVICE_PRICES; // Fallback to demo
+      pricesToSet = DEFAULT_DEMO_SERVICE_PRICES; 
       try {
         localStorage.setItem(SERVICE_PRICES_STORAGE_KEY, JSON.stringify(DEFAULT_DEMO_SERVICE_PRICES));
       } catch (saveError) {
@@ -282,8 +292,6 @@ export function useServicePrices() {
       }
       if (subCategory) {
         if (category === 'transfer' && subCategory === 'vehicle') {
-          // For 'vehicle' transfers, we want services where subCategory is NOT 'ticket'
-          // (as 'ticket' is the explicit subCategory for ticket-based transfers)
           filtered = filtered.filter(service => service.subCategory !== 'ticket');
         } else {
           filtered = filtered.filter(service => service.subCategory === subCategory);
