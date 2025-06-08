@@ -11,11 +11,11 @@ import type {
   DetailedSummaryItem,
   HotelOccupancyDetail,
   Traveler,
-  ServicePriceItem, // Added
-  TripSettings // Added
+  ServicePriceItem, 
+  TripSettings 
 } from '@/types/itinerary';
 import { formatCurrency } from './utils';
-import { addDays, isWithinInterval, parseISO } from 'date-fns'; // Added
+import { addDays, isWithinInterval, parseISO } from 'date-fns'; 
 
 function getParticipatingTravelers(item: ItineraryItem, allTravelers: Traveler[]) {
   const participatingTravelers = allTravelers.filter(t => !item.excludedTravelerIds.includes(t.id));
@@ -95,8 +95,8 @@ function calculateHotelCost(
   item: HotelItem,
   allTravelers: Traveler[],
   currency: string,
-  tripSettings: TripSettings, // Added
-  allServicePrices: ServicePriceItem[] // Added
+  tripSettings: TripSettings,
+  allServicePrices: ServicePriceItem[]
 ) {
   const { participatingIds: itemOverallParticipatingIds, excludedTravelerLabels } = getParticipatingTravelers(item, allTravelers);
   
@@ -109,6 +109,16 @@ function calculateHotelCost(
 
   if (nights <= 0) {
     return { adultCost: 0, childCost: 0, totalCost: 0, participatingIds: itemOverallParticipatingIds, excludedTravelerLabels, specificDetails: `${baseSpecificDetails}. Invalid nights: ${nights}. No cost.`, occupancyDetails: [], individualContributions: {}, province: item.province };
+  }
+
+  if (!tripSettings.startDate || typeof tripSettings.startDate !== 'string' || tripSettings.startDate.trim() === '') {
+    console.error("CRITICAL: Invalid tripSettings.startDate in calculateHotelCost:", tripSettings.startDate);
+    return { 
+      adultCost: 0, childCost: 0, totalCost: 0, 
+      participatingIds: itemOverallParticipatingIds, excludedTravelerLabels, 
+      specificDetails: `${baseSpecificDetails}. Error: Invalid trip start date. Cannot calculate hotel cost.`, 
+      occupancyDetails: [], individualContributions: {}, province: item.province 
+    };
   }
 
   let overallHotelTotalCost = 0;
@@ -131,31 +141,44 @@ function calculateHotelCost(
 
     for (let currentNight = 0; currentNight < nights; currentNight++) {
       const currentDayOfStay = checkinDay + currentNight;
-      const currentDateOfStay = addDays(parseISO(tripSettings.startDate), currentDayOfStay - 1);
+      let currentDateOfStay: Date;
+      try {
+         currentDateOfStay = addDays(parseISO(tripSettings.startDate), currentDayOfStay - 1);
+      } catch (e) {
+        // This should be caught by the top-level startDate check now, but as a fallback:
+        console.error("Error parsing tripSettings.startDate in nightly loop:", tripSettings.startDate, e);
+        // Skip cost calculation for this night if date is invalid
+        continue;
+      }
       
       let nightlyRoomRate = roomConfig.roomRate || 0;
       let nightlyExtraBedRate = roomConfig.extraBedRate || 0;
 
       if (selectedService && selectedService.seasonalRates && selectedService.seasonalRates.length > 0) {
         for (const sr of selectedService.seasonalRates) {
-          const seasonalStartDate = parseISO(sr.startDate);
-          const seasonalEndDate = parseISO(sr.endDate);
-          if (isWithinInterval(currentDateOfStay, { start: seasonalStartDate, end: seasonalEndDate })) {
-            nightlyRoomRate = sr.roomRate;
-            nightlyExtraBedRate = sr.extraBedRate ?? 0; // Use seasonal extra bed rate if available
-            break; 
+          if (sr.startDate && sr.endDate && typeof sr.startDate === 'string' && typeof sr.endDate === 'string') {
+            try {
+              const seasonalStartDate = parseISO(sr.startDate);
+              const seasonalEndDate = parseISO(sr.endDate);
+              if (isWithinInterval(currentDateOfStay, { start: seasonalStartDate, end: seasonalEndDate })) {
+                nightlyRoomRate = sr.roomRate;
+                nightlyExtraBedRate = sr.extraBedRate ?? 0;
+                break; 
+              }
+            } catch (dateParseError) {
+              console.warn(`Skipping seasonal rate due to invalid date format: Start='${sr.startDate}', End='${sr.endDate}' for service '${selectedService.name}'`, dateParseError);
+            }
+          } else {
+            console.warn(`Skipping seasonal rate due to missing or invalid date strings: Start='${sr.startDate}', End='${sr.endDate}' for service '${selectedService.name}'`);
           }
         }
       }
-      // If no applicable seasonal rate, nightlyRoomRate and nightlyExtraBedRate remain as roomConfig.roomRate/extraBedRate
-
       const costForThisNightForOneRoom = nightlyRoomRate + (extraBedsInConfig * nightlyExtraBedRate);
       roomConfigurationTotalCost += costForThisNightForOneRoom * numRoomsInConfig;
     }
     
     overallHotelTotalCost += roomConfigurationTotalCost;
 
-    // Occupancy details use the base rates from roomConfig for display simplicity
     occupancyDetails.push({
       roomCategory: roomConfig.category || "N/A",
       roomType: roomConfig.roomType,
@@ -164,9 +187,9 @@ function calculateHotelCost(
       extraBeds: extraBedsInConfig,
       nights,
       numRooms: numRoomsInConfig,
-      roomRate: roomConfig.roomRate || 0, // Base rate for display
-      extraBedRate: roomConfig.extraBedRate || 0, // Base extra bed rate for display
-      totalOccupancyCost: roomConfigurationTotalCost, // This is the accurately calculated total for this config
+      roomRate: roomConfig.roomRate || 0, 
+      extraBedRate: roomConfig.extraBedRate || 0, 
+      totalOccupancyCost: roomConfigurationTotalCost,
       assignedTravelerLabels: roomConfig.assignedTravelerIds.map(id => allTravelers.find(t => t.id === id)?.label || id).join(", ") || "None",
     });
 
@@ -359,7 +382,6 @@ export function calculateAllCosts(tripData: TripData, allServicePrices: ServiceP
     if (item.occupancyDetails) {
         item.occupancyDetails.forEach(od => {
             od.totalOccupancyCost = parseFloat(od.totalOccupancyCost.toFixed(2));
-            // Ensure roomRate and extraBedRate in occupancyDetails are also rounded if displayed directly
             od.roomRate = parseFloat(od.roomRate.toFixed(2));
             od.extraBedRate = parseFloat(od.extraBedRate.toFixed(2));
         });

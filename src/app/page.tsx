@@ -23,14 +23,24 @@ export default function HomePage() {
         const parsedData = JSON.parse(savedData) as TripData;
         // Basic validation
         if (parsedData && parsedData.settings && parsedData.pax && parsedData.days) {
-           setTripData(parsedData);
+           // More specific validation for startDate
+           if (parsedData.settings.startDate && typeof parsedData.settings.startDate === 'string' && parsedData.settings.startDate.trim() !== '') {
+             setTripData(parsedData);
+           } else {
+             console.warn("Loaded trip data has invalid or missing startDate. Clearing data to re-initialize.");
+             localStorage.removeItem(LOCAL_STORAGE_KEY); // Clear corrupted/outdated data
+             setTripData(null); // Ensure UI resets to setup form
+           }
         } else {
+          console.warn("Loaded trip data is structurally invalid. Clearing data.");
           localStorage.removeItem(LOCAL_STORAGE_KEY); // Clear corrupted data
+          setTripData(null);
         }
       }
     } catch (error) {
       console.error("Failed to load data from localStorage:", error);
       localStorage.removeItem(LOCAL_STORAGE_KEY); // Clear potentially corrupted data
+      setTripData(null);
     }
     setIsInitialized(true);
   }, []);
