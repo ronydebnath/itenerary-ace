@@ -9,9 +9,10 @@
 import { 
   AIContractDataOutputSchema, 
   type AIContractDataOutput,
-  type ExtractContractDataInput
-} from '@/types/ai-contract-schemas'; // Import schemas and types
-import { CURRENCIES, VEHICLE_TYPES } from '@/types/itinerary'; // Keep for prompt generation
+  type ExtractContractDataInput,
+  AISeasonalRateSchema // Import if you need to reference its structure, though it's used within AIContractDataOutputSchema
+} from '@/types/ai-contract-schemas';
+import { CURRENCIES, VEHICLE_TYPES } from '@/types/itinerary';
 
 
 export async function extractContractData(input: ExtractContractDataInput): Promise<AIContractDataOutput> {
@@ -46,8 +47,8 @@ export async function extractContractData(input: ExtractContractDataInput): Prom
     - name: The main name of the service, tour, or hotel.
     - province: The city or province where the service is located (e.g., "Bangkok", "Phuket"). Only if explicitly mentioned.
     - category: The type of service. Choose one from: "hotel", "activity", "transfer", "meal", "misc".
-    - subCategory: More specific type. For 'hotel', this could be a default room type. For 'transfer', if it's 'vehicle' mode, this should be the vehicle type (e.g., "Sedan", "Van"). For 'activity', a type like "Tour", "Entrance Fee".
-    - price1: The primary price. For hotels, this is the default room rate. For activities/meals, adult price. For transfers on ticket basis, adult ticket price. For transfers on vehicle basis, cost per vehicle.
+    - subCategory: More specific type. For 'hotel', this could be a default room type (e.g., "Deluxe King"). For 'transfer', if it's 'vehicle' mode, this should be the vehicle type (e.g., "Sedan", "Van"). For 'activity', a type like "Tour", "Entrance Fee".
+    - price1: The primary price. For hotels, this is the **default/standard room rate per night** if explicitly mentioned. If seasonal rates cover all periods, this default rate might be omitted by you if not separately stated. For activities/meals, adult price. For transfers on ticket basis, adult ticket price. For transfers on vehicle basis, cost per vehicle.
     - price2: A secondary price if applicable. For hotels, default extra bed rate. For activities/meals, child price. For ticket transfers, child ticket price. Omit if not applicable.
     - currency: The currency code (e.g., "THB", "USD"). Must be one of ${CURRENCIES.join(', ')}.
     - unitDescription: What the price refers to (e.g., "per night", "per person", "per vehicle", "per ticket").
@@ -55,8 +56,16 @@ export async function extractContractData(input: ExtractContractDataInput): Prom
     - maxPassengers: For 'transfer' category with 'vehicle' mode, the maximum number of passengers the vehicle can hold.
     - transferModeAttempt: If category is 'transfer', attempt to infer if it's "ticket" basis or "vehicle" basis.
     - vehicleTypeAttempt: If transferModeAttempt is 'vehicle', attempt to infer one of these vehicle types: ${VEHICLE_TYPES.join(', ')}. Match this to subCategory if possible.
+    - seasonalRates: An array of seasonal rate objects, ONLY if the category is 'hotel' AND specific seasonal pricing periods WITH THEIR OWN RATES are explicitly mentioned in the contract.
+      Each object in the array should represent a distinct pricing period and MUST include:
+      - seasonName: (Optional) A name for the season (e.g., "High Season", "Peak Offer", "Booking Period").
+      - startDate: (Required) The start date of the season. Convert to YYYY-MM-DD format (e.g., "November 1st, 2024" becomes "2024-11-01").
+      - endDate: (Required) The end date of the season. Convert to YYYY-MM-DD format.
+      - rate: (Required) The numerical room rate (price per night) for THIS SPECIFIC SEASON/PERIOD. This rate MUST be explicitly stated in the contract alongside, or clearly linked to, this period. Do not infer a rate or use a general hotel rate unless the text explicitly states it applies to this specific period.
+      If multiple distinct seasonal periods with different rates are found, extract each as a separate object in the array.
+      If a period is mentioned (like a 'Booking Period' or 'Validity Period') but NO specific numerical rate is explicitly associated with IT in the contract text, DO NOT include that period in the seasonalRates array.
 
-    Prioritize accuracy. If unsure, omit the field. For prices, provide numbers only.
+    Prioritize accuracy. If unsure, omit the field or part of the structure. For prices, provide numbers only.
     Return ONLY the JSON object.
   `;
 
@@ -95,7 +104,9 @@ export async function extractContractData(input: ExtractContractDataInput): Prom
         } else {
           console.error('OpenRouter response JSON does not match AIContractDataOutputSchema:', validationResult.error.errors);
           console.error('Received JSON string for contract parsing:', content);
-          return parsedJson; 
+          // Return the potentially partially valid data for debugging or partial prefill
+          // It's up to the calling function to handle this less-than-perfect data
+          return parsedJson as AIContractDataOutput; // Cast, but be aware it might not be fully valid
         }
       } catch (jsonError: any) {
         console.error('Error parsing JSON from OpenRouter for contract data:', jsonError);
