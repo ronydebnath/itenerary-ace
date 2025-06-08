@@ -10,9 +10,12 @@ import type {
   CostSummary,
   DetailedSummaryItem,
   HotelOccupancyDetail,
-  Traveler
+  Traveler,
+  ServicePriceItem, // Added
+  TripSettings // Added
 } from '@/types/itinerary';
 import { formatCurrency } from './utils';
+import { addDays, isWithinInterval, parseISO } from 'date-fns'; // Added
 
 function getParticipatingTravelers(item: ItineraryItem, allTravelers: Traveler[]) {
   const participatingTravelers = allTravelers.filter(t => !item.excludedTravelerIds.includes(t.id));
@@ -88,7 +91,13 @@ function calculateActivityCost(item: ActivityItem, allTravelers: Traveler[], cur
   return { adultCost, childCost, totalCost, participatingIds, excludedTravelerLabels, specificDetails, individualContributions, province: item.province };
 }
 
-function calculateHotelCost(item: HotelItem, allTravelers: Traveler[], currency: string) {
+function calculateHotelCost(
+  item: HotelItem,
+  allTravelers: Traveler[],
+  currency: string,
+  tripSettings: TripSettings, // Added
+  allServicePrices: ServicePriceItem[] // Added
+) {
   const { participatingIds: itemOverallParticipatingIds, excludedTravelerLabels } = getParticipatingTravelers(item, allTravelers);
   
   const checkinDay = item.day;
@@ -97,7 +106,6 @@ function calculateHotelCost(item: HotelItem, allTravelers: Traveler[], currency:
 
   let baseSpecificDetails = `In: Day ${checkinDay}, Out: Day ${checkoutDay} (${nights}n). Child Share: ${item.childrenSharingBed ? "Yes" : "No"}`;
   if (item.province) baseSpecificDetails = `Prov: ${item.province}; ${baseSpecificDetails}`;
-
 
   if (nights <= 0) {
     return { adultCost: 0, childCost: 0, totalCost: 0, participatingIds: itemOverallParticipatingIds, excludedTravelerLabels, specificDetails: `${baseSpecificDetails}. Invalid nights: ${nights}. No cost.`, occupancyDetails: [], individualContributions: {}, province: item.province };
@@ -112,26 +120,53 @@ function calculateHotelCost(item: HotelItem, allTravelers: Traveler[], currency:
   let unassignedRoomCostPool = 0;
   const assignedTravelerIdsInHotel = new Set<string>();
 
-  item.rooms.forEach(roomConfig => {
-    const roomRate = roomConfig.roomRate || 0;
-    const numRooms = roomConfig.numRooms || 0;
-    const extraBeds = roomConfig.extraBeds || 0;
-    const extraBedRate = roomConfig.extraBedRate || 0;
+  const selectedService = item.selectedServicePriceId 
+    ? allServicePrices.find(sp => sp.id === item.selectedServicePriceId) 
+    : undefined;
 
-    const roomConfigurationTotalCost = (roomRate + (extraBeds * extraBedRate)) * nights * numRooms;
+  item.rooms.forEach(roomConfig => {
+    let roomConfigurationTotalCost = 0;
+    const numRoomsInConfig = roomConfig.numRooms || 0;
+    const extraBedsInConfig = roomConfig.extraBeds || 0;
+
+    for (let currentNight = 0; currentNight < nights; currentNight++) {
+      const currentDayOfStay = checkinDay + currentNight;
+      const currentDateOfStay = addDays(parseISO(tripSettings.startDate), currentDayOfStay - 1);
+      
+      let nightlyRoomRate = roomConfig.roomRate || 0;
+      let nightlyExtraBedRate = roomConfig.extraBedRate || 0;
+
+      if (selectedService && selectedService.seasonalRates && selectedService.seasonalRates.length > 0) {
+        for (const sr of selectedService.seasonalRates) {
+          const seasonalStartDate = parseISO(sr.startDate);
+          const seasonalEndDate = parseISO(sr.endDate);
+          if (isWithinInterval(currentDateOfStay, { start: seasonalStartDate, end: seasonalEndDate })) {
+            nightlyRoomRate = sr.roomRate;
+            nightlyExtraBedRate = sr.extraBedRate ?? 0; // Use seasonal extra bed rate if available
+            break; 
+          }
+        }
+      }
+      // If no applicable seasonal rate, nightlyRoomRate and nightlyExtraBedRate remain as roomConfig.roomRate/extraBedRate
+
+      const costForThisNightForOneRoom = nightlyRoomRate + (extraBedsInConfig * nightlyExtraBedRate);
+      roomConfigurationTotalCost += costForThisNightForOneRoom * numRoomsInConfig;
+    }
+    
     overallHotelTotalCost += roomConfigurationTotalCost;
 
+    // Occupancy details use the base rates from roomConfig for display simplicity
     occupancyDetails.push({
       roomCategory: roomConfig.category || "N/A",
       roomType: roomConfig.roomType,
       adults: roomConfig.adultsInRoom,
       children: roomConfig.childrenInRoom,
-      extraBeds,
+      extraBeds: extraBedsInConfig,
       nights,
-      numRooms,
-      roomRate,
-      extraBedRate,
-      totalOccupancyCost: roomConfigurationTotalCost,
+      numRooms: numRoomsInConfig,
+      roomRate: roomConfig.roomRate || 0, // Base rate for display
+      extraBedRate: roomConfig.extraBedRate || 0, // Base extra bed rate for display
+      totalOccupancyCost: roomConfigurationTotalCost, // This is the accurately calculated total for this config
       assignedTravelerLabels: roomConfig.assignedTravelerIds.map(id => allTravelers.find(t => t.id === id)?.label || id).join(", ") || "None",
     });
 
@@ -259,7 +294,7 @@ function calculateMiscCost(item: MiscItem, allTravelers: Traveler[], currency: s
 }
 
 
-export function calculateAllCosts(tripData: TripData): CostSummary {
+export function calculateAllCosts(tripData: TripData, allServicePrices: ServicePriceItem[]): CostSummary {
   let grandTotal = 0;
   const perPersonTotals: { [travelerId: string]: number } = {};
   tripData.travelers.forEach(t => perPersonTotals[t.id] = 0);
@@ -277,7 +312,7 @@ export function calculateAllCosts(tripData: TripData): CostSummary {
           calculationResult = calculateActivityCost(item, tripData.travelers, currency);
           break;
         case 'hotel':
-          calculationResult = calculateHotelCost(item, tripData.travelers, currency);
+          calculationResult = calculateHotelCost(item, tripData.travelers, currency, tripData.settings, allServicePrices);
           break;
         case 'meal':
           calculationResult = calculateMealCost(item, tripData.travelers, currency);
@@ -324,6 +359,9 @@ export function calculateAllCosts(tripData: TripData): CostSummary {
     if (item.occupancyDetails) {
         item.occupancyDetails.forEach(od => {
             od.totalOccupancyCost = parseFloat(od.totalOccupancyCost.toFixed(2));
+            // Ensure roomRate and extraBedRate in occupancyDetails are also rounded if displayed directly
+            od.roomRate = parseFloat(od.roomRate.toFixed(2));
+            od.extraBedRate = parseFloat(od.extraBedRate.toFixed(2));
         });
     }
   });

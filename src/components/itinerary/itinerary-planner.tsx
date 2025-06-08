@@ -2,7 +2,7 @@
 "use client";
 
 import * as React from 'react';
-import type { TripData, ItineraryItem, CostSummary } from '@/types/itinerary';
+import type { TripData, ItineraryItem, CostSummary, ServicePriceItem } from '@/types/itinerary'; // Added ServicePriceItem
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -16,6 +16,7 @@ import { DayView } from './day-view';
 import { CostBreakdownTable } from './cost-breakdown-table';
 import { DetailsSummaryTable } from './details-summary-table';
 import { calculateAllCosts } from '@/lib/calculation-utils'; 
+import { useServicePrices } from '@/hooks/useServicePrices'; // Added
 import { addDays, format, parseISO } from 'date-fns';
 
 interface ItineraryPlannerProps {
@@ -29,15 +30,16 @@ export function ItineraryPlanner({ tripData, onReset, onUpdateTripData }: Itiner
   const [costSummary, setCostSummary] = React.useState<CostSummary | null>(null);
   const [isPrinting, setIsPrinting] = React.useState(false);
   const [showCosts, setShowCosts] = React.useState<boolean>(true);
+  const { allServicePrices, isLoading: isLoadingServices } = useServicePrices(); // Added
 
   React.useEffect(() => {
-    if (tripData) {
-      const summary = calculateAllCosts(tripData);
+    if (tripData && !isLoadingServices) { // check isLoadingServices
+      const summary = calculateAllCosts(tripData, allServicePrices); // Pass allServicePrices
       setCostSummary(summary);
     } else {
       setCostSummary(null);
     }
-  }, [tripData]);
+  }, [tripData, allServicePrices, isLoadingServices]); // Added allServicePrices and isLoadingServices
 
   const handleUpdateItem = (day: number, updatedItem: ItineraryItem) => {
     const newDays = { ...tripData.days };
@@ -57,7 +59,7 @@ export function ItineraryPlanner({ tripData, onReset, onUpdateTripData }: Itiner
       day, 
       name: `New ${itemType}`, 
       excludedTravelerIds: [],
-      province: undefined, // Initialize province
+      province: undefined, 
     };
 
     switch (itemType) {
@@ -207,7 +209,7 @@ export function ItineraryPlanner({ tripData, onReset, onUpdateTripData }: Itiner
               <CardTitle className="text-xl text-primary">Cost Summary</CardTitle>
             </CardHeader>
             <CardContent>
-              {costSummary ? (
+              {isLoadingServices ? <p>Loading service data...</p> : costSummary ? (
                 <>
                   <CostBreakdownTable summary={costSummary} currency={tripData.pax.currency} travelers={tripData.travelers} showCosts={showCosts} />
                   {showCosts && (
@@ -242,7 +244,7 @@ export function ItineraryPlanner({ tripData, onReset, onUpdateTripData }: Itiner
           </div>
         </CardHeader>
         <CardContent>
-           {costSummary ? (
+           {isLoadingServices ? <p>Loading service data...</p> : costSummary ? (
             <DetailsSummaryTable summary={costSummary} currency={tripData.pax.currency} showCosts={showCosts} />
           ) : <p>Loading details...</p>}
         </CardContent>
