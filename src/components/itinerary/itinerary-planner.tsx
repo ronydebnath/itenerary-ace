@@ -2,13 +2,13 @@
 "use client";
 
 import * as React from 'react';
-import type { TripData, ItineraryItem, CostSummary, ServicePriceItem } from '@/types/itinerary'; // Added ServicePriceItem
+import type { TripData, ItineraryItem, CostSummary, ServicePriceItem, HotelDefinition, HotelItem as HotelItemType, SelectedHotelRoomConfiguration } from '@/types/itinerary';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
-import { ChevronLeft, ChevronRight, Printer, RotateCcw, MapPin, CalendarDays, Users, Eye, EyeOff } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Printer, RotateCcw, MapPin, CalendarDays, Users, Eye, EyeOff, Hotel } from 'lucide-react';
 import { formatCurrency, generateGUID } from '@/lib/utils';
 import { AISuggestions } from './ai-suggestions'; 
 import { PrintLayout } from './print-layout'; 
@@ -16,7 +16,8 @@ import { DayView } from './day-view';
 import { CostBreakdownTable } from './cost-breakdown-table';
 import { DetailsSummaryTable } from './details-summary-table';
 import { calculateAllCosts } from '@/lib/calculation-utils'; 
-import { useServicePrices } from '@/hooks/useServicePrices'; // Added
+import { useServicePrices } from '@/hooks/useServicePrices';
+import { useHotelDefinitions } from '@/hooks/useHotelDefinitions'; // New hook
 import { addDays, format, parseISO } from 'date-fns';
 
 interface ItineraryPlannerProps {
@@ -30,16 +31,18 @@ export function ItineraryPlanner({ tripData, onReset, onUpdateTripData }: Itiner
   const [costSummary, setCostSummary] = React.useState<CostSummary | null>(null);
   const [isPrinting, setIsPrinting] = React.useState(false);
   const [showCosts, setShowCosts] = React.useState<boolean>(true);
-  const { allServicePrices, isLoading: isLoadingServices } = useServicePrices(); // Added
+  const { allServicePrices, isLoading: isLoadingServices } = useServicePrices();
+  const { allHotelDefinitions, isLoading: isLoadingHotelDefinitions } = useHotelDefinitions(); // New
 
   React.useEffect(() => {
-    if (tripData && !isLoadingServices) { // check isLoadingServices
-      const summary = calculateAllCosts(tripData, allServicePrices); // Pass allServicePrices
+    if (tripData && !isLoadingServices && !isLoadingHotelDefinitions) { 
+      // Pass both allServicePrices and allHotelDefinitions
+      const summary = calculateAllCosts(tripData, allServicePrices, allHotelDefinitions); 
       setCostSummary(summary);
     } else {
       setCostSummary(null);
     }
-  }, [tripData, allServicePrices, isLoadingServices]); // Added allServicePrices and isLoadingServices
+  }, [tripData, allServicePrices, allHotelDefinitions, isLoadingServices, isLoadingHotelDefinitions]);
 
   const handleUpdateItem = (day: number, updatedItem: ItineraryItem) => {
     const newDays = { ...tripData.days };
@@ -70,7 +73,15 @@ export function ItineraryPlanner({ tripData, onReset, onUpdateTripData }: Itiner
         newItem = { ...baseNewItem, type: 'activity', adultPrice: 0, childPrice: 0 };
         break;
       case 'hotel':
-        newItem = { ...baseNewItem, type: 'hotel', checkoutDay: day + 1, childrenSharingBed: false, rooms: [] };
+        // For Phase 1, adding a hotel item via UI is problematic as the form isn't ready.
+        // This will create a shell that calculation logic might not fully process without valid IDs.
+        newItem = { 
+            ...baseNewItem, 
+            type: 'hotel', 
+            checkoutDay: day + 1, 
+            hotelDefinitionId: '', // Needs to be set by a new form
+            selectedRooms: []       // Needs to be populated by a new form
+        } as HotelItemType; 
         break;
       case 'meal':
         newItem = { ...baseNewItem, type: 'meal', adultMealPrice: 0, childMealPrice: 0, totalMeals: 1 };
@@ -121,6 +132,8 @@ export function ItineraryPlanner({ tripData, onReset, onUpdateTripData }: Itiner
     return <PrintLayout tripData={tripData} costSummary={costSummary} showCosts={showCosts} />;
   }
   
+  const isLoadingAnything = isLoadingServices || isLoadingHotelDefinitions;
+
   return (
     <div className="container mx-auto p-4 md:p-6 lg:p-8">
       <Card className="mb-6 shadow-lg">
@@ -192,6 +205,8 @@ export function ItineraryPlanner({ tripData, onReset, onUpdateTripData }: Itiner
                   onUpdateItem={handleUpdateItem}
                   onDeleteItem={handleDeleteItem}
                   tripSettings={tripData.settings}
+                  // Pass hotel definitions for the (currently disabled) hotel form in future
+                  allHotelDefinitions={allHotelDefinitions} 
                 />
               </div>
             ))}
@@ -209,7 +224,7 @@ export function ItineraryPlanner({ tripData, onReset, onUpdateTripData }: Itiner
               <CardTitle className="text-xl text-primary">Cost Summary</CardTitle>
             </CardHeader>
             <CardContent>
-              {isLoadingServices ? <p>Loading service data...</p> : costSummary ? (
+              {isLoadingAnything ? <p>Loading service data...</p> : costSummary ? (
                 <>
                   <CostBreakdownTable summary={costSummary} currency={tripData.pax.currency} travelers={tripData.travelers} showCosts={showCosts} />
                   {showCosts && (
@@ -244,7 +259,7 @@ export function ItineraryPlanner({ tripData, onReset, onUpdateTripData }: Itiner
           </div>
         </CardHeader>
         <CardContent>
-           {isLoadingServices ? <p>Loading service data...</p> : costSummary ? (
+           {isLoadingAnything ? <p>Loading service data...</p> : costSummary ? (
             <DetailsSummaryTable summary={costSummary} currency={tripData.pax.currency} showCosts={showCosts} />
           ) : <p>Loading details...</p>}
         </CardContent>

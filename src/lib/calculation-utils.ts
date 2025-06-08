@@ -4,18 +4,22 @@ import type {
   ItineraryItem,
   TransferItem,
   ActivityItem,
-  HotelItem,
+  HotelItem, // Now the new HotelItem type
   MealItem,
   MiscItem,
   CostSummary,
   DetailedSummaryItem,
-  HotelOccupancyDetail,
+  HotelOccupancyDetail, // Updated type
   Traveler,
   ServicePriceItem, 
-  TripSettings 
+  TripSettings,
+  HotelDefinition, // New type for hotel definitions
+  HotelRoomTypeDefinition,
+  RoomTypeSeasonalPrice,
+  SelectedHotelRoomConfiguration
 } from '@/types/itinerary';
 import { formatCurrency } from './utils';
-import { addDays, isWithinInterval, parseISO } from 'date-fns'; 
+import { addDays, isWithinInterval, parseISO, format } from 'date-fns'; 
 
 function getParticipatingTravelers(item: ItineraryItem, allTravelers: Traveler[]) {
   const participatingTravelers = allTravelers.filter(t => !item.excludedTravelerIds.includes(t.id));
@@ -94,21 +98,38 @@ function calculateActivityCost(item: ActivityItem, allTravelers: Traveler[], cur
 function calculateHotelCost(
   item: HotelItem,
   allTravelers: Traveler[],
-  currency: string,
+  currency: string, // Currency is for display in specificDetails, rates are assumed to be in this currency from definition
   tripSettings: TripSettings,
-  allServicePrices: ServicePriceItem[]
+  allHotelDefinitions: HotelDefinition[] // New parameter
 ) {
   const { participatingIds: itemOverallParticipatingIds, excludedTravelerLabels } = getParticipatingTravelers(item, allTravelers);
   
   const checkinDay = item.day;
-  const checkoutDay = item.checkoutDay;
+  const checkoutDay = item.checkoutDay; // This is the day number OF checkout.
   const nights = Math.max(0, checkoutDay - checkinDay);
 
-  let baseSpecificDetails = `In: Day ${checkinDay}, Out: Day ${checkoutDay} (${nights}n). Child Share: ${item.childrenSharingBed ? "Yes" : "No"}`;
-  if (item.province) baseSpecificDetails = `Prov: ${item.province}; ${baseSpecificDetails}`;
+  const hotelDefinition = allHotelDefinitions.find(hd => hd.id === item.hotelDefinitionId);
+
+  let baseSpecificDetails = `Hotel: ${hotelDefinition?.name || 'Unknown Hotel'} (ID: ${item.hotelDefinitionId || 'N/A'})`;
+  if (item.province) baseSpecificDetails += `; Prov: ${item.province}`;
+  baseSpecificDetails += `. Check-in: Day ${checkinDay}, Check-out: Day ${checkoutDay} (${nights} nights).`;
+
+  if (!hotelDefinition) {
+    return { 
+      adultCost: 0, childCost: 0, totalCost: 0, 
+      participatingIds: itemOverallParticipatingIds, excludedTravelerLabels, 
+      specificDetails: `${baseSpecificDetails} Error: Hotel definition not found.`, 
+      occupancyDetails: [], individualContributions: {}, province: item.province 
+    };
+  }
 
   if (nights <= 0) {
-    return { adultCost: 0, childCost: 0, totalCost: 0, participatingIds: itemOverallParticipatingIds, excludedTravelerLabels, specificDetails: `${baseSpecificDetails}. Invalid nights: ${nights}. No cost.`, occupancyDetails: [], individualContributions: {}, province: item.province };
+    return { 
+      adultCost: 0, childCost: 0, totalCost: 0, 
+      participatingIds: itemOverallParticipatingIds, excludedTravelerLabels, 
+      specificDetails: `${baseSpecificDetails} Invalid nights: ${nights}. No cost.`, 
+      occupancyDetails: [], individualContributions: {}, province: item.province 
+    };
   }
 
   if (!tripSettings.startDate || typeof tripSettings.startDate !== 'string' || tripSettings.startDate.trim() === '') {
@@ -116,144 +137,120 @@ function calculateHotelCost(
     return { 
       adultCost: 0, childCost: 0, totalCost: 0, 
       participatingIds: itemOverallParticipatingIds, excludedTravelerLabels, 
-      specificDetails: `${baseSpecificDetails}. Error: Invalid trip start date. Cannot calculate hotel cost.`, 
+      specificDetails: `${baseSpecificDetails} Error: Invalid trip start date for cost calculation.`, 
       occupancyDetails: [], individualContributions: {}, province: item.province 
     };
   }
-
-  let overallHotelTotalCost = 0;
-  let itemTotalAdultCost = 0;
-  let itemTotalChildCost = 0;
-  const individualContributions: { [travelerId: string]: number } = {};
-  const occupancyDetails: HotelOccupancyDetail[] = [];
   
-  let unassignedRoomCostPool = 0;
-  const assignedTravelerIdsInHotel = new Set<string>();
+  let overallHotelTotalCost = 0;
+  const occupancyDetailsForSummary: HotelOccupancyDetail[] = [];
+  // Cost distribution per traveler needs to be re-evaluated based on the new structure.
+  // For now, sum total cost. Per-person distribution is complex if rooms have different occupancies.
+  // Let's simplify for now and attribute total cost to adults primarily, or distribute among participants.
+  const individualContributions: { [travelerId: string]: number } = {};
 
-  const selectedService = item.selectedServicePriceId 
-    ? allServicePrices.find(sp => sp.id === item.selectedServicePriceId) 
-    : undefined;
 
-  item.rooms.forEach(roomConfig => {
-    let roomConfigurationTotalCost = 0;
-    const numRoomsInConfig = roomConfig.numRooms || 0;
-    const extraBedsInConfig = roomConfig.extraBeds || 0;
+  item.selectedRooms.forEach((selectedRoom: SelectedHotelRoomConfiguration) => {
+    const roomTypeDef = hotelDefinition.roomTypes.find(rt => rt.id === selectedRoom.roomTypeDefinitionId);
+    if (!roomTypeDef) {
+      console.warn(`Room type definition ${selectedRoom.roomTypeDefinitionId} not found for hotel ${hotelDefinition.name}. Skipping cost.`);
+      return; // Skip this selected room configuration
+    }
 
-    for (let currentNight = 0; currentNight < nights; currentNight++) {
-      const currentDayOfStay = checkinDay + currentNight;
+    let costForThisRoomBlock = 0;
+    for (let currentNightIndex = 0; currentNightIndex < nights; currentNightIndex++) {
+      const dayNumberOfStay = checkinDay + currentNightIndex;
       let currentDateOfStay: Date;
       try {
-         currentDateOfStay = addDays(parseISO(tripSettings.startDate), currentDayOfStay - 1);
+         currentDateOfStay = addDays(parseISO(tripSettings.startDate), dayNumberOfStay - 1);
       } catch (e) {
-        // This should be caught by the top-level startDate check now, but as a fallback:
-        console.error("Error parsing tripSettings.startDate in nightly loop:", tripSettings.startDate, e);
-        // Skip cost calculation for this night if date is invalid
-        continue;
+        console.error("Error parsing tripSettings.startDate in nightly loop for hotel cost:", tripSettings.startDate, e);
+        continue; // Skip this night if date is invalid
       }
-      
-      let nightlyRoomRate = roomConfig.roomRate || 0;
-      let nightlyExtraBedRate = roomConfig.extraBedRate || 0;
 
-      if (selectedService && selectedService.seasonalRates && selectedService.seasonalRates.length > 0) {
-        for (const sr of selectedService.seasonalRates) {
-          if (sr.startDate && sr.endDate && typeof sr.startDate === 'string' && typeof sr.endDate === 'string') {
-            try {
-              const seasonalStartDate = parseISO(sr.startDate);
-              const seasonalEndDate = parseISO(sr.endDate);
-              if (isWithinInterval(currentDateOfStay, { start: seasonalStartDate, end: seasonalEndDate })) {
-                nightlyRoomRate = sr.roomRate;
-                nightlyExtraBedRate = sr.extraBedRate ?? 0;
-                break; 
-              }
-            } catch (dateParseError) {
-              console.warn(`Skipping seasonal rate due to invalid date format: Start='${sr.startDate}', End='${sr.endDate}' for service '${selectedService.name}'`, dateParseError);
+      let nightlyRateForRoomType = 0;
+      let foundSeasonalRate = false;
+
+      // Find the applicable seasonal rate for the current date of stay
+      for (const seasonalPrice of roomTypeDef.seasonalPrices) {
+        if (seasonalPrice.startDate && seasonalPrice.endDate && typeof seasonalPrice.startDate === 'string' && typeof seasonalPrice.endDate === 'string') {
+          try {
+            const seasonStartDate = parseISO(seasonalPrice.startDate);
+            const seasonEndDate = parseISO(seasonalPrice.endDate);
+            if (isWithinInterval(currentDateOfStay, { start: seasonStartDate, end: seasonEndDate })) {
+              nightlyRateForRoomType = seasonalPrice.rate;
+              foundSeasonalRate = true;
+              break; 
             }
-          } else {
-            console.warn(`Skipping seasonal rate due to missing or invalid date strings: Start='${sr.startDate}', End='${sr.endDate}' for service '${selectedService.name}'`);
+          } catch (dateParseError) {
+            console.warn(`Skipping seasonal rate due to invalid date format: Start='${seasonalPrice.startDate}', End='${seasonalPrice.endDate}' for room type '${roomTypeDef.name}'`, dateParseError);
           }
+        } else {
+           console.warn(`Skipping seasonal rate due to missing or invalid date strings for room type '${roomTypeDef.name}'`);
         }
       }
-      const costForThisNightForOneRoom = nightlyRoomRate + (extraBedsInConfig * nightlyExtraBedRate);
-      roomConfigurationTotalCost += costForThisNightForOneRoom * numRoomsInConfig;
+      
+      if (!foundSeasonalRate) {
+        // Fallback logic if no seasonal rate covers the date - could be an error, or use a default if defined
+        // For now, if no rate is found for a night, it means 0 cost for that night (or could be an error state)
+        console.warn(`No seasonal rate found for room type '${roomTypeDef.name}' on ${format(currentDateOfStay, 'yyyy-MM-dd')}. Assuming 0 rate for this night.`);
+        nightlyRateForRoomType = 0; 
+      }
+      costForThisRoomBlock += nightlyRateForRoomType * selectedRoom.numRooms;
     }
-    
-    overallHotelTotalCost += roomConfigurationTotalCost;
+    overallHotelTotalCost += costForThisRoomBlock;
 
-    occupancyDetails.push({
-      roomCategory: roomConfig.category || "N/A",
-      roomType: roomConfig.roomType,
-      adults: roomConfig.adultsInRoom,
-      children: roomConfig.childrenInRoom,
-      extraBeds: extraBedsInConfig,
+    occupancyDetailsForSummary.push({
+      roomTypeName: roomTypeDef.name,
+      numRooms: selectedRoom.numRooms,
       nights,
-      numRooms: numRoomsInConfig,
-      roomRate: roomConfig.roomRate || 0, 
-      extraBedRate: roomConfig.extraBedRate || 0, 
-      totalOccupancyCost: roomConfigurationTotalCost,
-      assignedTravelerLabels: roomConfig.assignedTravelerIds.map(id => allTravelers.find(t => t.id === id)?.label || id).join(", ") || "None",
+      characteristics: roomTypeDef.characteristics.map(c => `${c.key}: ${c.value}`).join('; '),
+      assignedTravelerLabels: selectedRoom.assignedTravelerIds.map(id => allTravelers.find(t => t.id === id)?.label || id).join(", ") || "None",
+      totalRoomBlockCost: costForThisRoomBlock,
     });
 
-    const assignedAdultsInRoom = roomConfig.assignedTravelerIds.filter(id => allTravelers.find(t=>t.id===id)?.type === 'adult');
-    
-    if (assignedAdultsInRoom.length > 0 && roomConfigurationTotalCost > 0) {
-      const costPerAssignedAdult = roomConfigurationTotalCost / assignedAdultsInRoom.length;
-      assignedAdultsInRoom.forEach(id => {
-        individualContributions[id] = (individualContributions[id] || 0) + costPerAssignedAdult;
-        assignedTravelerIdsInHotel.add(id);
-      });
-      itemTotalAdultCost += roomConfigurationTotalCost; 
-    } else if (roomConfigurationTotalCost > 0) {
-      unassignedRoomCostPool += roomConfigurationTotalCost;
+    // Simplified cost distribution for this room block among its assigned travelers
+    const assignedParticipants = allTravelers.filter(t => selectedRoom.assignedTravelerIds.includes(t.id));
+    if (assignedParticipants.length > 0 && costForThisRoomBlock > 0) {
+        const costPerAssignedPerson = costForThisRoomBlock / assignedParticipants.length;
+        assignedParticipants.forEach(p => {
+            individualContributions[p.id] = (individualContributions[p.id] || 0) + costPerAssignedPerson;
+        });
+    } else if (costForThisRoomBlock > 0 && itemOverallParticipatingIds.length > 0) {
+        // If no one assigned to this specific room, or if cost remains, distribute among all item participants
+        const costPerOverallParticipant = costForThisRoomBlock / itemOverallParticipatingIds.length;
+         itemOverallParticipatingIds.forEach(id => {
+            individualContributions[id] = (individualContributions[id] || 0) + costPerOverallParticipant;
+        });
     }
   });
   
-  if (unassignedRoomCostPool > 0) {
-    const potentialPayers = itemOverallParticipatingIds.filter(id => !assignedTravelerIdsInHotel.has(id));
-    const adultPotentialPayers = potentialPayers.filter(id => allTravelers.find(t=>t.id===id)?.type === 'adult');
-    const childPotentialPayers = potentialPayers.filter(id => allTravelers.find(t=>t.id===id)?.type === 'child');
-
-    let numPoolPayers = adultPotentialPayers.length;
-    let childrenPayFromPool = false;
-
-    if (!item.childrenSharingBed || adultPotentialPayers.length === 0) {
-      if (childPotentialPayers.length > 0) {
-        numPoolPayers += childPotentialPayers.length;
-        childrenPayFromPool = true;
+  // Consolidate adult/child costs from individualContributions
+  let itemTotalAdultCost = 0;
+  let itemTotalChildCost = 0;
+  itemOverallParticipatingIds.forEach(id => {
+    const traveler = allTravelers.find(t => t.id === id);
+    if (traveler && individualContributions[id]) {
+      if (traveler.type === 'adult') {
+        itemTotalAdultCost += individualContributions[id];
+      } else {
+        itemTotalChildCost += individualContributions[id];
       }
     }
-    
-    if (numPoolPayers > 0) {
-      const perPoolPayerShare = unassignedRoomCostPool / numPoolPayers;
-      adultPotentialPayers.forEach(id => {
-        individualContributions[id] = (individualContributions[id] || 0) + perPoolPayerShare;
-        itemTotalAdultCost += perPoolPayerShare;
-      });
-      if (childrenPayFromPool) {
-        childPotentialPayers.forEach(id => {
-          individualContributions[id] = (individualContributions[id] || 0) + perPoolPayerShare;
-          itemTotalChildCost += perPoolPayerShare;
-        });
-      }
-    } else { 
-        const allParticipatingAdults = itemOverallParticipatingIds.filter(id => allTravelers.find(t => t.id === id)?.type === 'adult');
-        const allParticipatingChildren = itemOverallParticipatingIds.filter(id => allTravelers.find(t => t.id === id)?.type === 'child');
-        if (allParticipatingAdults.length > 0) {
-            const share = unassignedRoomCostPool / allParticipatingAdults.length;
-            allParticipatingAdults.forEach(id => {
-                individualContributions[id] = (individualContributions[id] || 0) + share;
-            });
-            itemTotalAdultCost += unassignedRoomCostPool;
-        } else if (allParticipatingChildren.length > 0 && !item.childrenSharingBed) {
-             const share = unassignedRoomCostPool / allParticipatingChildren.length;
-            allParticipatingChildren.forEach(id => {
-                individualContributions[id] = (individualContributions[id] || 0) + share;
-            });
-            itemTotalChildCost += unassignedRoomCostPool;
-        }
-    }
-  }
+  });
 
-  return { adultCost: itemTotalAdultCost, childCost: itemTotalChildCost, totalCost: overallHotelTotalCost, participatingIds: itemOverallParticipatingIds, excludedTravelerLabels, specificDetails: baseSpecificDetails, occupancyDetails, individualContributions, province: item.province };
+
+  return { 
+    adultCost: itemTotalAdultCost, 
+    childCost: itemTotalChildCost, 
+    totalCost: overallHotelTotalCost, 
+    participatingIds: itemOverallParticipatingIds, 
+    excludedTravelerLabels, 
+    specificDetails: baseSpecificDetails, 
+    occupancyDetails: occupancyDetailsForSummary, 
+    individualContributions, 
+    province: item.province 
+  };
 }
 
 
@@ -317,7 +314,11 @@ function calculateMiscCost(item: MiscItem, allTravelers: Traveler[], currency: s
 }
 
 
-export function calculateAllCosts(tripData: TripData, allServicePrices: ServicePriceItem[]): CostSummary {
+export function calculateAllCosts(
+  tripData: TripData, 
+  allServicePrices: ServicePriceItem[], // For non-hotel items
+  allHotelDefinitions: HotelDefinition[] // For hotel items
+): CostSummary {
   let grandTotal = 0;
   const perPersonTotals: { [travelerId: string]: number } = {};
   tripData.travelers.forEach(t => perPersonTotals[t.id] = 0);
@@ -335,7 +336,8 @@ export function calculateAllCosts(tripData: TripData, allServicePrices: ServiceP
           calculationResult = calculateActivityCost(item, tripData.travelers, currency);
           break;
         case 'hotel':
-          calculationResult = calculateHotelCost(item, tripData.travelers, currency, tripData.settings, allServicePrices);
+          // Pass allHotelDefinitions to calculateHotelCost
+          calculationResult = calculateHotelCost(item, tripData.travelers, currency, tripData.settings, allHotelDefinitions);
           break;
         case 'meal':
           calculationResult = calculateMealCost(item, tripData.travelers, currency);
@@ -344,6 +346,8 @@ export function calculateAllCosts(tripData: TripData, allServicePrices: ServiceP
           calculationResult = calculateMiscCost(item, tripData.travelers, currency);
           break;
         default:
+          // Should not happen with TypeScript, but good for safety
+          console.warn("Unknown item type encountered in calculation:", (item as any).type);
           return; 
       }
       
@@ -375,19 +379,16 @@ export function calculateAllCosts(tripData: TripData, allServicePrices: ServiceP
   Object.keys(perPersonTotals).forEach(id => {
     perPersonTotals[id] = parseFloat(perPersonTotals[id].toFixed(2));
   });
-  detailedItems.forEach(item => {
-    item.adultCost = parseFloat(item.adultCost.toFixed(2));
-    item.childCost = parseFloat(item.childCost.toFixed(2));
-    item.totalCost = parseFloat(item.totalCost.toFixed(2));
-    if (item.occupancyDetails) {
-        item.occupancyDetails.forEach(od => {
-            od.totalOccupancyCost = parseFloat(od.totalOccupancyCost.toFixed(2));
-            od.roomRate = parseFloat(od.roomRate.toFixed(2));
-            od.extraBedRate = parseFloat(od.extraBedRate.toFixed(2));
+  detailedItems.forEach(dItem => {
+    dItem.adultCost = parseFloat(dItem.adultCost.toFixed(2));
+    dItem.childCost = parseFloat(dItem.childCost.toFixed(2));
+    dItem.totalCost = parseFloat(dItem.totalCost.toFixed(2));
+    if (dItem.occupancyDetails) {
+        dItem.occupancyDetails.forEach(od => {
+            od.totalRoomBlockCost = parseFloat(od.totalRoomBlockCost.toFixed(2));
         });
     }
   });
-
 
   return { grandTotal, perPersonTotals, detailedItems };
 }

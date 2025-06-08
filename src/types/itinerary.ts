@@ -34,62 +34,92 @@ export interface BaseItem {
   name: string;
   note?: string;
   excludedTravelerIds: string[];
-  selectedServicePriceId?: string; // ID of the predefined service, if selected
-  // For AI suggestions, we might store original values if AI modifies them
+  selectedServicePriceId?: string; 
   aiSuggested?: boolean; 
   originalCost?: number;
-  province?: string; // Province where the service is located/starts
+  province?: string; 
 }
 
 export interface TransferItem extends BaseItem {
   type: 'transfer';
-  mode: 'ticket' | 'vehicle'; // Determines if pricing is per ticket or per vehicle
-  adultTicketPrice?: number; // Used if mode is 'ticket'
-  childTicketPrice?: number; // Used if mode is 'ticket'
-  vehicleType?: VehicleType; // Used if mode is 'vehicle'
-  costPerVehicle?: number; // Used if mode is 'vehicle'
-  vehicles?: number; // Used if mode is 'vehicle'
+  mode: 'ticket' | 'vehicle'; 
+  adultTicketPrice?: number; 
+  childTicketPrice?: number; 
+  vehicleType?: VehicleType; 
+  costPerVehicle?: number; 
+  vehicles?: number; 
 }
 
 export interface ActivityItem extends BaseItem {
   type: 'activity';
   adultPrice: number;
   childPrice?: number;
-  endDay?: number; // Optional, defaults to current item's day
+  endDay?: number; 
 }
 
-export interface HotelRoomConfiguration {
-  id: string; // Unique ID for this room configuration within a hotel item
-  category: string; // User-defined room category name, e.g., "Deluxe King with View"
-  roomType: 'Double sharing' | 'Single room' | 'Triple sharing' | 'Family with child'; // Occupancy type
-  adultsInRoom: number;
-  childrenInRoom: number;
-  extraBeds: number;
+// New Hotel Data Structure Definitions
+export interface HotelCharacteristic {
+  id: string;
+  key: string; // e.g., "Bed Type", "View", "Size", "Amenities"
+  value: string; // e.g., "Queen", "City View", "25 m²", "Wi-Fi, Air Conditioning"
+}
+
+export interface RoomTypeSeasonalPrice {
+  id: string;
+  seasonName: string; // e.g., "High Season", "Low Season"
+  startDate: string; // YYYY-MM-DD
+  endDate: string;   // YYYY-MM-DD
+  rate: number;      // Price per night for this room type during this season
+}
+
+export interface HotelRoomTypeDefinition {
+  id: string;
+  name: string; // e.g., "Standard Room", "Deluxe Room"
+  characteristics: HotelCharacteristic[];
+  notes?: string;
+  seasonalPrices: RoomTypeSeasonalPrice[];
+}
+
+export interface HotelDefinition {
+  id: string;
+  name: string; // e.g., "Grand Riverside Hotel"
+  province: string;
+  roomTypes: HotelRoomTypeDefinition[];
+}
+// End of New Hotel Data Structure Definitions
+
+
+// Updated HotelItem for the itinerary
+export interface SelectedHotelRoomConfiguration {
+  id: string; // Unique ID for this specific booking of a room type
+  roomTypeDefinitionId: string; // Links to HotelRoomTypeDefinition.id
+  roomTypeName: string; // Copied from HotelRoomTypeDefinition.name for easy display
   numRooms: number;
-  roomRate: number; // Nightly rate for this specific configuration
-  extraBedRate: number; // Nightly extra bed rate for this specific configuration
   assignedTravelerIds: string[];
 }
 
 export interface HotelItem extends BaseItem {
   type: 'hotel';
   checkoutDay: number; // Day number for checkout
-  childrenSharingBed: boolean; // Applies if children are not specifically assigned to rooms
-  rooms: HotelRoomConfiguration[]; // Array of different room types/configs for this stay
+  hotelDefinitionId: string; // Links to HotelDefinition.id
+  selectedRooms: SelectedHotelRoomConfiguration[];
+  // childrenSharingBed is removed, occupancy is handled by room type characteristics and traveler assignment
+  // Old 'rooms' field (HotelRoomConfiguration) is removed
 }
+
 
 export interface MealItem extends BaseItem {
   type: 'meal';
   adultMealPrice: number;
   childMealPrice?: number;
-  totalMeals: number; // Number of units/meals
+  totalMeals: number; 
 }
 
 export interface MiscItem extends BaseItem {
   type: 'misc';
   unitCost: number;
   quantity: number;
-  costAssignment: 'perPerson' | 'total'; // 'total' means shared
+  costAssignment: 'perPerson' | 'total'; 
 }
 
 export type ItineraryItemType = 'transfer' | 'activity' | 'hotel' | 'meal' | 'misc';
@@ -106,7 +136,6 @@ export interface TripData {
   days: { [dayNumber: number]: DayItinerary };
 }
 
-// For calculated summaries
 export interface CostSummary {
   grandTotal: number;
   perPersonTotals: { [travelerId: string]: number };
@@ -114,71 +143,63 @@ export interface CostSummary {
 }
 
 export interface DetailedSummaryItem {
-  id: string; // original item id
-  type: string; // e.g., 'Transfers', 'Hotels'
-  day?: number; // Optional day display
+  id: string; 
+  type: string; 
+  day?: number; 
   name: string;
   note?: string;
-  province?: string; // Province of the service
+  province?: string; 
   configurationDetails: string;
-  excludedTravelers: string; // Comma-separated labels
+  excludedTravelers: string; 
   adultCost: number;
   childCost: number;
   totalCost: number;
-  // For hotels, additional occupancy details
-  occupancyDetails?: HotelOccupancyDetail[];
+  occupancyDetails?: HotelOccupancyDetail[]; // For hotels
 }
 
+// Updated for new Hotel Structure
 export interface HotelOccupancyDetail {
-  roomCategory: string;
+  roomTypeName: string;
   numRooms: number;
   nights: number;
-  roomType: string;
-  adults: number;
-  children: number;
-  extraBeds: number;
-  roomRate: number;
-  extraBedRate: number;
-  totalOccupancyCost: number;
+  characteristics?: string; // Comma-separated key: value pairs
   assignedTravelerLabels: string;
+  totalRoomBlockCost: number;
 }
 
-// For AI suggestions
+
 export type AISuggestion = {
   suggestion: string;
   estimatedCostSavings: number;
   reasoning: string;
 };
 
-// For Service Price Management
 export const SERVICE_CATEGORIES: ItineraryItemType[] = ['transfer', 'activity', 'hotel', 'meal', 'misc'];
 
-export interface SeasonalRate {
+export interface SeasonalRate { // This is for the old ServicePriceItem 'hotel' type, will be deprecated for hotels
   id: string;
-  startDate: string; // Stored as YYYY-MM-DD string
-  endDate: string;   // Stored as YYYY-MM-DD string
+  startDate: string; 
+  endDate: string;   
   roomRate: number;
   extraBedRate?: number;
 }
 
-export interface ServicePriceItem {
+export interface ServicePriceItem { // This will no longer be primarily used for hotels, HotelDefinition takes over
   id: string;
   name: string;
   province?: string; 
   category: ItineraryItemType;
-  subCategory?: string; // Hotel: Default room type name; Transfer (vehicle basis): VehicleType; Transfer (ticket basis): 'ticket'; Activity/Meal/Misc: Specific type
-  price1: number; // Main price: Activity/Meal: Adult Price; Transfer-Ticket: Adult Ticket; Transfer-Vehicle: Cost per Vehicle; Hotel: Default Room Rate; Misc: Unit Cost
-  price2?: number; // Secondary price: Activity/Meal: Child Price; Transfer-Ticket: Child Ticket; Hotel: Default Extra Bed Rate. Not used for Transfer-Vehicle or Misc.
+  subCategory?: string; 
+  price1: number; 
+  price2?: number; 
   currency: CurrencyCode;
-  unitDescription: string; // e.g., "per adult", "per vehicle", "per night", "per item"
+  unitDescription: string; 
   notes?: string;
-  seasonalRates?: SeasonalRate[]; // Specific to 'hotel' category
-  maxPassengers?: number; // Specific to 'transfer' category with 'vehicle' mode
+  seasonalRates?: SeasonalRate[]; // Specific to 'hotel' category (old system)
+  maxPassengers?: number; 
 }
 
-// For Province Management
 export interface ProvinceItem {
   id: string;
   name: string;
 }
-

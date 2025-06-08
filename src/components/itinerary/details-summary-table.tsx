@@ -1,7 +1,7 @@
 
 "use client";
 import React from 'react';
-import type { CostSummary, CurrencyCode, DetailedSummaryItem } from '@/types/itinerary';
+import type { CostSummary, CurrencyCode, DetailedSummaryItem, HotelOccupancyDetail } from '@/types/itinerary';
 import { Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { formatCurrency } from '@/lib/utils';
 
@@ -24,23 +24,22 @@ export function DetailsSummaryTable({ summary, currency, showCosts }: DetailsSum
         {showCosts && !isPrintView && <TableCell className="text-right font-code">{formatCurrency(item.childCost, currency)}</TableCell>}
         {showCosts && <TableCell className="text-right font-semibold font-code">{formatCurrency(item.totalCost, currency)}</TableCell>}
       </TableRow>
-      {item.occupancyDetails && item.occupancyDetails.map((occDetail, index) => (
+      {item.occupancyDetails && item.occupancyDetails.map((occDetail: HotelOccupancyDetail, index) => ( // Ensure occDetail is typed
         <TableRow 
             key={`${item.id}-occ-${index}-${isPrintView ? 'print' : 'screen'}-${showCosts ? 'costs' : 'no-costs'}`} 
             className={`bg-muted/30 text-xs ${isPrintView ? 'print-hotel-occupancy-detail-item' : 'hotel-occupancy-detail-item'}`}
         >
           <TableCell></TableCell>
-          <TableCell className="pl-6">└ Room: {occDetail.roomCategory}</TableCell>
-          <TableCell>#R: {occDetail.numRooms}, Nights: {occDetail.nights}</TableCell>
+          <TableCell className="pl-6">└ Room Type: {occDetail.roomTypeName}</TableCell>
+          <TableCell>#Rooms: {occDetail.numRooms}, Nights: {occDetail.nights}</TableCell>
           <TableCell className="font-code whitespace-pre-wrap max-w-xs">
-            Type: {occDetail.roomType}, Ad: {occDetail.adults}, Ch: {occDetail.children}, EB: {occDetail.extraBeds}<br/>
-            {showCosts && `R.Rate: ${formatCurrency(occDetail.roomRate, currency)}, EB Rate: ${formatCurrency(occDetail.extraBedRate, currency)}`}
+            {occDetail.characteristics && `Details: ${occDetail.characteristics}`}<br/>
             {occDetail.assignedTravelerLabels && <><br/>Assigned: {occDetail.assignedTravelerLabels}</>}
           </TableCell>
           {!isPrintView && <TableCell></TableCell>}
           {showCosts && !isPrintView && <TableCell></TableCell>}
           {showCosts && !isPrintView && <TableCell></TableCell>}
-          {showCosts && <TableCell className="text-right font-code">{formatCurrency(occDetail.totalOccupancyCost, currency)}</TableCell>}
+          {showCosts && <TableCell className="text-right font-code">{formatCurrency(occDetail.totalRoomBlockCost, currency)}</TableCell>}
         </TableRow>
       ))}
     </React.Fragment>
