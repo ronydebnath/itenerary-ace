@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { PlusCircle, Edit, Trash2, Home, MapPinned, Loader2, LayoutDashboard, ListPlus, FileText, Sparkles, Image as ImageIcon, ClipboardPaste } from 'lucide-react';
-import type { ServicePriceItem } from '@/types/itinerary';
+import type { ServicePriceItem, SeasonalRate } from '@/types/itinerary'; // Added SeasonalRate
 import { VEHICLE_TYPES } from '@/types/itinerary'; 
 import { ServicePriceForm } from './service-price-form';
 import { ServicePriceTable } from './service-price-table';
@@ -19,7 +19,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { extractContractData } from '@/ai/flows/extract-contract-data-flow';
 import { describeImage } from '@/ai/flows/describe-image-flow';
-import type { AIContractDataOutput, ExtractContractDataInput } from '@/types/ai-contract-schemas';
+import type { AIContractDataOutput } from '@/types/ai-contract-schemas'; // Simplified import
 import { ExtractContractDataInputSchema } from '@/types/ai-contract-schemas';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import type { ZodError } from 'zod';
@@ -33,13 +33,12 @@ export function PricingManager() {
   const [isFormOpen, setIsFormOpen] = React.useState(false);
   const [editingService, setEditingService] = React.useState<ServicePriceItem | undefined>(undefined);
   
-  // States for AI Contract Import Dialog
   const [isContractImportOpen, setIsContractImportOpen] = React.useState(false);
   const [contractText, setContractText] = React.useState("");
   const [uploadedFile, setUploadedFile] = React.useState<File | null>(null);
   const [uploadedFilePreviewUrl, setUploadedFilePreviewUrl] = React.useState<string | null>(null);
   const [pastedImagePreviewUrl, setPastedImagePreviewUrl] = React.useState<string | null>(null);
-  const [isImageSource, setIsImageSource] = React.useState(false); // True if source is uploaded/pasted image
+  const [isImageSource, setIsImageSource] = React.useState(false); 
 
   const [isParsingContract, setIsParsingContract] = React.useState(false);
   const [contractParseError, setContractParseError] = React.useState<string | null>(null);
@@ -104,9 +103,9 @@ export function PricingManager() {
   
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    resetImportDialogState(); // Clear other sources
+    resetImportDialogState(); 
     if (file) {
-      if (file.size > 4 * 1024 * 1024) { // 4MB limit
+      if (file.size > 4 * 1024 * 1024) { 
         setContractParseError("File size exceeds 4MB. Please choose a smaller file.");
         return;
       }
@@ -129,7 +128,6 @@ export function PricingManager() {
   const handleTextareaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setContractText(e.target.value);
     setContractParseError(null);
-    // Clear other sources if text is manually entered
     if (uploadedFile) setUploadedFile(null);
     if (uploadedFilePreviewUrl) setUploadedFilePreviewUrl(null);
     if (pastedImagePreviewUrl) setPastedImagePreviewUrl(null);
@@ -150,9 +148,9 @@ export function PricingManager() {
 
     if (imageFile) {
       event.preventDefault();
-      resetImportDialogState(); // Clear other sources
+      resetImportDialogState(); 
 
-      if (imageFile.size > 4 * 1024 * 1024) { // 4MB limit
+      if (imageFile.size > 4 * 1024 * 1024) { 
         setContractParseError("Pasted image size exceeds 4MB. Please use a smaller image.");
         toast({ title: "Image Too Large", description: "Pasted image exceeds 4MB limit.", variant: "destructive" });
         return;
@@ -170,7 +168,7 @@ export function PricingManager() {
 
   React.useEffect(() => {
     const area = pasteAreaRef.current;
-    if (area && isContractImportOpen) { // Only attach listener when dialog is open
+    if (area && isContractImportOpen) { 
       area.addEventListener('paste', handleImagePaste);
       return () => {
         area.removeEventListener('paste', handleImagePaste);
@@ -191,12 +189,12 @@ export function PricingManager() {
         finalDataUriForParsing = uploadedFilePreviewUrl;
     }
     
-    if (finalDataUriForParsing) { // Image source (pasted or uploaded)
+    if (finalDataUriForParsing) { 
       setParsingStatusMessage("Extracting text from image...");
       try {
         const ocrResult = await describeImage({ imageDataUri: finalDataUriForParsing });
         textToParse = ocrResult.description;
-        if (!textToParse || textToParse.trim().length < 10) { // Arbitrary short length check
+        if (!textToParse || textToParse.trim().length < 10) { 
           setContractParseError("AI could not extract sufficient text from the image. Please try a clearer image or paste text directly.");
           setIsParsingContract(false);
           return;
@@ -208,7 +206,7 @@ export function PricingManager() {
         setIsParsingContract(false);
         return;
       }
-    } else if (!textToParse.trim()) { // Text source but empty
+    } else if (!textToParse.trim()) { 
       setContractParseError("Please paste contract text or upload a text/image file.");
       setIsParsingContract(false);
       return;
@@ -216,7 +214,6 @@ export function PricingManager() {
     
     setParsingStatusMessage("Parsing contract data...");
     try {
-      // Validate input for extractContractData (textToParse)
       ExtractContractDataInputSchema.parse({ contractText: textToParse });
     } catch (e) {
       const zodError = e as ZodError;
@@ -239,13 +236,14 @@ export function PricingManager() {
         unitDescription: extractedData.unitDescription || "",
         notes: extractedData.notes || "",
         maxPassengers: extractedData.maxPassengers,
+        seasonalRates: [], // Initialize as empty array
       };
       
       if (prefillData.category === 'transfer') {
         if (extractedData.transferModeAttempt === 'vehicle') {
           if (extractedData.vehicleTypeAttempt) {
             prefillData.subCategory = extractedData.vehicleTypeAttempt;
-          } else if (!prefillData.subCategory || prefillData.subCategory === 'ticket') { // ensure subCategory is a vehicle type if mode is vehicle
+          } else if (!prefillData.subCategory || prefillData.subCategory === 'ticket') { 
             prefillData.subCategory = VEHICLE_TYPES[0]; 
           }
         } else if (extractedData.transferModeAttempt === 'ticket') {
@@ -253,27 +251,62 @@ export function PricingManager() {
         }
       }
 
-      // Handle seasonal rates for hotels from AI
-      if (prefillData.category === 'hotel' && extractedData.seasonalRates && extractedData.seasonalRates.length > 0) {
-        prefillData.seasonalRates = extractedData.seasonalRates.map(sr => {
-          let startDate, endDate;
-          try { startDate = sr.startDate ? new Date(sr.startDate) : new Date(); } catch { startDate = new Date(); }
-          try { endDate = sr.endDate ? new Date(sr.endDate) : new Date(); } catch { endDate = new Date(); }
-          
-          // Basic validation: if end date is before start date, adjust it
-          if (endDate < startDate) {
-            endDate = new Date(startDate);
-            endDate.setDate(startDate.getDate() + 30); // Default to 30 days if end < start
-          }
+      if (prefillData.category === 'hotel' && extractedData.seasonalRates && Array.isArray(extractedData.seasonalRates)) {
+        prefillData.seasonalRates = extractedData.seasonalRates
+          .map(aiSr => {
+            // Validate rate: must be a number and > 0
+            if (typeof aiSr.rate !== 'number' || aiSr.rate <= 0) {
+              console.warn('AI Seasonal rate skipped due to missing or invalid rate:', aiSr);
+              return null;
+            }
 
-          return {
-            id: generateGUID(),
-            startDate: startDate.toISOString().split('T')[0], // Keep as string for ServicePriceItem
-            endDate: endDate.toISOString().split('T')[0],   // Keep as string for ServicePriceItem
-            roomRate: sr.rate || 0,
-            extraBedRate: undefined, // AI doesn't extract this specifically for seasonal part of ServicePriceItem
-          };
-        }).filter(sr => sr.rate > 0); // Only include rates that have a price
+            let startDate: Date | null = null;
+            if (aiSr.startDate && typeof aiSr.startDate === 'string') {
+              const parsed = new Date(aiSr.startDate);
+              // Check if the date is valid; new Date('invalid_string') results in Invalid Date
+              if (!isNaN(parsed.getTime())) {
+                startDate = parsed;
+              } else {
+                console.warn(`AI extracted invalid start date string: ${aiSr.startDate}`);
+              }
+            } else {
+                console.warn(`AI Seasonal rate skipped due to missing or invalid start date string:`, aiSr.startDate);
+            }
+
+            let endDate: Date | null = null;
+            if (aiSr.endDate && typeof aiSr.endDate === 'string') {
+              const parsed = new Date(aiSr.endDate);
+              if (!isNaN(parsed.getTime())) {
+                endDate = parsed;
+              } else {
+                console.warn(`AI extracted invalid end date string: ${aiSr.endDate}`);
+              }
+            } else {
+                console.warn(`AI Seasonal rate skipped due to missing or invalid end date string:`, aiSr.endDate);
+            }
+
+            if (!startDate || !endDate) {
+              return null; // Skip if dates are invalid
+            }
+
+            // Ensure end date is not before start date
+            if (endDate < startDate) {
+              console.warn(`AI extracted end date ${aiSr.endDate} before start date ${aiSr.startDate}. Adjusting end date to 30 days after start.`);
+              endDate = new Date(startDate);
+              endDate.setDate(startDate.getDate() + 30);
+            }
+
+            return {
+              id: generateGUID(),
+              startDate: startDate.toISOString().split('T')[0], // Store as YYYY-MM-DD string for ServicePriceItem
+              endDate: endDate.toISOString().split('T')[0],     // Store as YYYY-MM-DD string for ServicePriceItem
+              roomRate: aiSr.rate, // Already validated as number > 0
+              extraBedRate: undefined, // AI is not prompted to extract this specific field for seasonal rates
+            };
+          })
+          .filter(sr => sr !== null) as SeasonalRate[]; // Filter out nulls and assert type
+      } else if (prefillData.category === 'hotel') {
+         prefillData.seasonalRates = []; // Ensure it's an empty array if no valid rates extracted
       }
 
 
@@ -314,7 +347,7 @@ export function PricingManager() {
         <div className="flex gap-2">
           <Dialog open={isContractImportOpen} onOpenChange={(isOpen) => {
             setIsContractImportOpen(isOpen);
-            if (!isOpen) resetImportDialogState(); // Reset when dialog closes
+            if (!isOpen) resetImportDialogState(); 
           }}>
             <DialogTrigger asChild>
               <Button variant="outline" className="border-accent text-accent hover:bg-accent/10 hover:text-accent">
@@ -339,7 +372,7 @@ export function PricingManager() {
 
                 <div 
                   ref={pasteAreaRef}
-                  tabIndex={0} // Make it focusable to receive paste events
+                  tabIndex={0} 
                   className="mt-2 p-4 border-2 border-dashed border-muted-foreground/30 rounded-md text-center cursor-pointer hover:border-primary"
                   title="Click or focus and then paste an image (Ctrl+V or Cmd+V)"
                 >
@@ -487,3 +520,4 @@ export function PricingManager() {
   );
 }
 
+    
