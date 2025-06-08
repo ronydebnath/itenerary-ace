@@ -2,18 +2,17 @@
 "use client";
 
 import * as React from 'react';
-import type { HotelItem as HotelItemType, HotelRoomConfiguration, Traveler, CurrencyCode, TripSettings, ServicePriceItem } from '@/types/itinerary';
+import type { HotelItem as HotelItemType, SelectedHotelRoomConfiguration, Traveler, CurrencyCode, TripSettings, HotelDefinition, HotelRoomTypeDefinition } from '@/types/itinerary';
 import { BaseItemForm, FormField } from './base-item-form';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
-import { PlusCircle } from 'lucide-react';
-import { HotelRoomCardForm } from './hotel-room-card-form';
-import { generateGUID, formatCurrency } from '@/lib/utils';
-import { useServicePrices } from '@/hooks/useServicePrices';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { addDays, parseISO } from 'date-fns'; 
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
+import { PlusCircle, Trash2, ChevronDown, ChevronUp, Users, BedDouble, Info } from 'lucide-react';
+import { useHotelDefinitions } from '@/hooks/useHotelDefinitions';
+import { generateGUID } from '@/lib/utils';
 
 interface HotelItemFormProps {
   item: HotelItemType;
@@ -23,186 +22,152 @@ interface HotelItemFormProps {
   tripSettings: TripSettings;
   onUpdate: (item: HotelItemType) => void;
   onDelete: () => void;
+  allHotelDefinitions: HotelDefinition[]; // Passed from DayView
 }
 
-export function HotelItemForm({ item, travelers, currency, dayNumber, tripSettings, onUpdate, onDelete }: HotelItemFormProps) {
-  const { getServicePrices, getServicePriceById, isLoading: isLoadingServices } = useServicePrices();
-  const [hotelServices, setHotelServices] = React.useState<ServicePriceItem[]>([]);
+export function HotelItemForm({ item, travelers, currency, dayNumber, tripSettings, onUpdate, onDelete, allHotelDefinitions }: HotelItemFormProps) {
+  const { getHotelDefinitionById, getHotelDefinitions } = useHotelDefinitions(); // Using the context hook directly
+
+  const [availableHotels, setAvailableHotels] = React.useState<HotelDefinition[]>([]);
+  const [selectedHotelDef, setSelectedHotelDef] = React.useState<HotelDefinition | undefined>(undefined);
+  
+  // For managing traveler assignment visibility for each selected room
+  const [openTravelerAssignments, setOpenTravelerAssignments] = React.useState<{[key: string]: boolean}>({});
+
 
   React.useEffect(() => {
-    if (!isLoadingServices) {
-      const allCategoryServices = getServicePrices('hotel').filter(s => s.currency === currency);
-      let filteredServices = allCategoryServices;
-      if (item.province) {
-        filteredServices = allCategoryServices.filter(s => s.province === item.province || !s.province);
-      }
-      setHotelServices(filteredServices);
+    if (item.province) {
+      setAvailableHotels(getHotelDefinitions(item.province));
+    } else {
+      setAvailableHotels(getHotelDefinitions()); // Or an empty array if province is mandatory for hotel selection
     }
-  }, [isLoadingServices, getServicePrices, currency, item.province]);
+  }, [item.province, getHotelDefinitions]);
 
-  const handleNumericInputChange = (field: keyof HotelItemType, value: string) => {
+  React.useEffect(() => {
+    if (item.hotelDefinitionId) {
+      setSelectedHotelDef(getHotelDefinitionById(item.hotelDefinitionId));
+    } else {
+      setSelectedHotelDef(undefined);
+    }
+  }, [item.hotelDefinitionId, getHotelDefinitionById]);
+
+
+  const handleHotelDefinitionChange = (hotelDefId: string) => {
+    const newHotelDef = getHotelDefinitionById(hotelDefId);
+    if (newHotelDef) {
+      onUpdate({ 
+        ...item, 
+        hotelDefinitionId: hotelDefId, 
+        name: item.name === 'New hotel' || !item.name || !item.hotelDefinitionId ? newHotelDef.name : item.name, // Update name if default
+        selectedRooms: [] // Reset selected rooms when hotel changes
+      });
+    } else { // "None" selected
+       onUpdate({ 
+        ...item, 
+        hotelDefinitionId: '', 
+        selectedRooms: [] 
+      });
+    }
+  };
+
+  const handleCheckoutDayChange = (value: string) => {
     const numValue = value === '' ? undefined : parseInt(value, 10);
-    if (field === 'checkoutDay' && numValue !== undefined) {
-      if (numValue <= dayNumber || numValue > tripSettings.numDays + 1) { 
-        // Potentially show error or clamp, for now allow update
-      }
+    if (numValue !== undefined && (numValue <= dayNumber || numValue > tripSettings.numDays + 1)) {
+      // Invalid input, could add validation feedback
     }
-    onUpdate({ ...item, [field]: numValue });
+    onUpdate({ ...item, checkoutDay: numValue || (dayNumber + 1) });
   };
 
-  const handleChildrenSharingBedChange = (checked: boolean) => {
-    onUpdate({ ...item, childrenSharingBed: checked });
-  };
-
-  const handleAddRoomConfig = (prefillRates?: { roomRate: number; extraBedRate?: number, categoryName?: string }) => {
-    const newRoomConfig: HotelRoomConfiguration = {
+  const handleAddRoomBooking = () => {
+    if (!selectedHotelDef || selectedHotelDef.roomTypes.length === 0) return; // Cannot add if no hotel or no room types
+    
+    const defaultRoomType = selectedHotelDef.roomTypes[0];
+    const newRoomBooking: SelectedHotelRoomConfiguration = {
       id: generateGUID(),
-      category: prefillRates?.categoryName || 'Standard Room',
-      roomType: 'Double sharing',
-      adultsInRoom: 2,
-      childrenInRoom: 0,
-      extraBeds: 0,
+      roomTypeDefinitionId: defaultRoomType.id,
+      roomTypeNameCache: defaultRoomType.name,
       numRooms: 1,
-      roomRate: prefillRates?.roomRate || 0,
-      extraBedRate: prefillRates?.extraBedRate || 0,
       assignedTravelerIds: [],
     };
-    onUpdate({ ...item, rooms: [...item.rooms, newRoomConfig] });
+    onUpdate({ ...item, selectedRooms: [...item.selectedRooms, newRoomBooking] });
+  };
+
+  const handleUpdateRoomBooking = (updatedBooking: SelectedHotelRoomConfiguration) => {
+    const newSelectedRooms = item.selectedRooms.map(rb => rb.id === updatedBooking.id ? updatedBooking : rb);
+    onUpdate({ ...item, selectedRooms: newSelectedRooms });
   };
   
-  const handlePredefinedServiceSelect = (selectedValue: string) => {
-    if (selectedValue === "none") {
-      onUpdate({
-        ...item,
-        selectedServicePriceId: undefined,
-        // Reset rates on first room if it was previously linked
-        rooms: item.rooms.map((room, index) => 
-          index === 0 
-            ? { ...room, roomRate: 0, extraBedRate: 0, category: 'Standard Room' }
-            : room
-        ),
-      });
-      return;
-    }
-
-    const selectedService = getServicePriceById(selectedValue);
-    if (!selectedService) return;
-
-    let applicableRoomRate = selectedService.price1; 
-    let applicableExtraBedRate = selectedService.price2; 
-    const defaultRoomCategoryName = selectedService.subCategory || 'Standard Room';
-
-    const tripStartDate = parseISO(tripSettings.startDate); 
-    const checkInDate = addDays(tripStartDate, dayNumber - 1);
-
-    if (selectedService.seasonalRates && selectedService.seasonalRates.length > 0) {
-      for (const sr of selectedService.seasonalRates) {
-        const seasonalStartDate = parseISO(sr.startDate);
-        const seasonalEndDate = parseISO(sr.endDate);
-        if (checkInDate >= seasonalStartDate && checkInDate <= seasonalEndDate) {
-          applicableRoomRate = sr.roomRate;
-          applicableExtraBedRate = sr.extraBedRate;
-          break; 
+  const handleRoomTypeChangeForBooking = (bookingId: string, roomTypeDefinitionId: string) => {
+    const roomTypeDef = selectedHotelDef?.roomTypes.find(rt => rt.id === roomTypeDefinitionId);
+    if (roomTypeDef) {
+        const updatedBooking = item.selectedRooms.find(rb => rb.id === bookingId);
+        if (updatedBooking) {
+            handleUpdateRoomBooking({ ...updatedBooking, roomTypeDefinitionId, roomTypeNameCache: roomTypeDef.name });
         }
+    }
+  };
+
+  const handleNumRoomsChangeForBooking = (bookingId: string, numRoomsStr: string) => {
+      const numRooms = parseInt(numRoomsStr, 10) || 1;
+      const updatedBooking = item.selectedRooms.find(rb => rb.id === bookingId);
+      if (updatedBooking) {
+          handleUpdateRoomBooking({ ...updatedBooking, numRooms: Math.max(1, numRooms) });
       }
-    }
-    
-    const updatedRooms = item.rooms.length > 0 ? [...item.rooms] : [];
-    if (updatedRooms.length > 0) {
-      updatedRooms[0] = {
-        ...updatedRooms[0],
-        category: defaultRoomCategoryName,
-        roomRate: applicableRoomRate,
-        extraBedRate: applicableExtraBedRate ?? 0, 
-      };
-    } else {
-      const newRoomConfig: HotelRoomConfiguration = {
-        id: generateGUID(),
-        category: defaultRoomCategoryName,
-        roomType: 'Double sharing',
-        adultsInRoom: 2,
-        childrenInRoom: 0,
-        extraBeds: 0,
-        numRooms: 1,
-        roomRate: applicableRoomRate,
-        extraBedRate: applicableExtraBedRate ?? 0,
-        assignedTravelerIds: [],
-      };
-      updatedRooms.push(newRoomConfig);
-    }
-
-    onUpdate({
-      ...item,
-      name: item.name === `New hotel` || !item.name || item.selectedServicePriceId ? selectedService.name : item.name,
-      selectedServicePriceId: selectedService.id,
-      rooms: updatedRooms,
-      // Do not override item.province if user manually selected it
-    });
   };
 
-
-  const handleUpdateRoomConfig = (updatedConfig: HotelRoomConfiguration) => {
-    let newSelectedServicePriceId = item.selectedServicePriceId;
-    if (item.selectedServicePriceId && item.rooms.length > 0 && item.rooms[0].id === updatedConfig.id) {
-        if (item.rooms[0].roomRate !== updatedConfig.roomRate || item.rooms[0].extraBedRate !== updatedConfig.extraBedRate || item.rooms[0].category !== updatedConfig.category) {
-            newSelectedServicePriceId = undefined; 
-        }
-    }
-    const newRooms = item.rooms.map(rc => rc.id === updatedConfig.id ? updatedConfig : rc);
-    onUpdate({ ...item, rooms: newRooms, selectedServicePriceId: newSelectedServicePriceId });
-  };
-
-  const handleDeleteRoomConfig = (configId: string) => {
-    const newRooms = item.rooms.filter(rc => rc.id !== configId);
-    if (newRooms.length === 0) {
-        const defaultRoomConfig: HotelRoomConfiguration = {
-            id: generateGUID(), category: 'Standard Room', roomType: 'Double sharing',
-            adultsInRoom: 2, childrenInRoom: 0, extraBeds: 0, numRooms: 1,
-            roomRate: 0, extraBedRate: 0, assignedTravelerIds: [],
-        };
-        onUpdate({ ...item, rooms: [defaultRoomConfig], selectedServicePriceId: undefined });
-    } else {
-        onUpdate({ ...item, rooms: newRooms });
-    }
+  const handleDeleteRoomBooking = (bookingId: string) => {
+    const newSelectedRooms = item.selectedRooms.filter(rb => rb.id !== bookingId);
+    onUpdate({ ...item, selectedRooms: newSelectedRooms });
   };
   
-  React.useEffect(() => {
-    if ((!item.rooms || item.rooms.length === 0) && !item.selectedServicePriceId) {
-      handleAddRoomConfig();
+  const handleToggleTravelerAssignment = (bookingId: string) => {
+    setOpenTravelerAssignments(prev => ({...prev, [bookingId]: !prev[bookingId]}));
+  };
+
+  const handleTravelerAssignmentChange = (bookingId: string, travelerId: string, checked: boolean) => {
+    const roomBooking = item.selectedRooms.find(rb => rb.id === bookingId);
+    if (!roomBooking) return;
+
+    let newAssignedTravelerIds;
+    if (checked) {
+      newAssignedTravelerIds = [...roomBooking.assignedTravelerIds, travelerId];
+    } else {
+      newAssignedTravelerIds = roomBooking.assignedTravelerIds.filter(id => id !== travelerId);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [item.rooms, item.selectedServicePriceId]); 
+    handleUpdateRoomBooking({ ...roomBooking, assignedTravelerIds: newAssignedTravelerIds });
+  };
 
-
-  const calculatedNights = Math.max(0, (item.checkoutDay || dayNumber + 1) - dayNumber);
-  const selectedServiceName = item.selectedServicePriceId ? getServicePriceById(item.selectedServicePriceId)?.name : null;
+  const calculatedNights = Math.max(0, (item.checkoutDay || (dayNumber + 1)) - dayNumber);
 
   return (
     <BaseItemForm item={item} travelers={travelers} currency={currency} onUpdate={onUpdate} onDelete={onDelete} itemTypeLabel="Hotel Stay">
-      {hotelServices.length > 0 && (
-        <div className="pt-2">
-          <FormField label={`Select Predefined Hotel Service (${item.province || 'Any Province'})`} id={`predefined-hotel-${item.id}`}>
-            <Select
-              value={item.selectedServicePriceId || "none"}
-              onValueChange={handlePredefinedServiceSelect}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Choose a predefined hotel service..." />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">None (Custom Rates)</SelectItem>
-                {hotelServices.map(service => (
-                  <SelectItem key={service.id} value={service.id}>
-                    {service.name} ({service.province || 'Generic'} - {service.subCategory || 'Hotel'}) - Default: {formatCurrency(service.price1, currency)}
-                    {service.seasonalRates && service.seasonalRates.length > 0 ? ` (Seasonal)` : ''}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </FormField>
-          {selectedServiceName && <p className="text-xs text-muted-foreground pt-1">Using: {selectedServiceName}. Rates for the first room below are based on this service and your check-in date. Modifying its rates will switch to custom pricing.</p>}
-        </div>
-      )}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+        <FormField label="Select Hotel" id={`hotel-def-${item.id}`}>
+          <Select
+            value={item.hotelDefinitionId || "none"}
+            onValueChange={handleHotelDefinitionChange}
+            disabled={!item.province && availableHotels.length === 0} // Disable if no province selected and no generic hotels
+          >
+            <SelectTrigger>
+              <SelectValue placeholder={item.province ? "Choose a hotel..." : "Select province first..."} />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">None</SelectItem>
+              {availableHotels.map(hotelDef => (
+                <SelectItem key={hotelDef.id} value={hotelDef.id}>
+                  {hotelDef.name} ({hotelDef.province})
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </FormField>
+        {selectedHotelDef && (
+          <div className="md:col-span-1">
+             {/* Placeholder for future hotel details if needed */}
+          </div>
+        )}
+      </div>
+      
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
         <FormField label="Check-in Day" id={`checkinDay-${item.id}`}>
           <p className="font-code text-sm p-2.5 bg-muted rounded-md h-10 flex items-center">Day {dayNumber}</p>
@@ -212,9 +177,9 @@ export function HotelItemForm({ item, travelers, currency, dayNumber, tripSettin
             type="number"
             id={`checkoutDay-${item.id}`}
             value={item.checkoutDay ?? ''}
-            onChange={(e) => handleNumericInputChange('checkoutDay', e.target.value)}
+            onChange={(e) => handleCheckoutDayChange(e.target.value)}
             min={dayNumber + 1}
-            max={tripSettings.numDays + 1}
+            max={tripSettings.numDays + 1} // Max checkout is one day after trip ends
             placeholder={`Day ${dayNumber + 1}`}
           />
         </FormField>
@@ -224,42 +189,117 @@ export function HotelItemForm({ item, travelers, currency, dayNumber, tripSettin
           </p>
         </FormField>
       </div>
-      
-      <div className="pt-4">
-        <Label className="text-md font-semibold">Room Configurations</Label>
-        <p className="text-xs text-muted-foreground mb-2">
-            {item.selectedServicePriceId ? "Rates for the first room type are based on the selected hotel service and check-in date. Add more room types or customize as needed." : "Define room types, occupancy, and rates below."}
-        </p>
-        <div className="space-y-3 mt-2">
-          {item.rooms.map((roomConfig, index) => (
-            <HotelRoomCardForm
-              key={roomConfig.id}
-              roomConfig={roomConfig}
-              travelers={travelers}
-              currency={currency}
-              onUpdateRoomConfig={handleUpdateRoomConfig}
-              onDeleteRoomConfig={() => handleDeleteRoomConfig(roomConfig.id)}
-              isOnlyRoom={item.rooms.length === 1}
-              isFirstRoom={index === 0}
-              isLinkedToService={!!item.selectedServicePriceId}
-            />
-          ))}
-        </div>
-        <Button variant="outline" size="sm" onClick={() => handleAddRoomConfig()} className="mt-3 border-primary text-primary hover:bg-primary/10">
-          <PlusCircle className="mr-2 h-4 w-4" /> Add Another Room/Occupancy Type
-        </Button>
-      </div>
 
-      <div className="flex items-center space-x-2 pt-4">
-        <Checkbox
-          id={`childrenSharing-${item.id}`}
-          checked={item.childrenSharingBed}
-          onCheckedChange={(checked) => handleChildrenSharingBedChange(!!checked)}
-        />
-        <Label htmlFor={`childrenSharing-${item.id}`} className="text-sm font-normal cursor-pointer">
-          Children Share Existing Beds (if not assigned to a room with child capacity/extra bed)
-        </Label>
-      </div>
+      {item.hotelDefinitionId && selectedHotelDef && (
+        <div className="pt-4 space-y-4">
+          <div className="flex justify-between items-center">
+            <Label className="text-md font-semibold">Selected Room Bookings for {selectedHotelDef.name}</Label>
+            <Button variant="outline" size="sm" onClick={handleAddRoomBooking} className="border-primary text-primary hover:bg-primary/10">
+              <PlusCircle className="mr-2 h-4 w-4" /> Add Room Booking
+            </Button>
+          </div>
+          
+          {item.selectedRooms.length === 0 && (
+              <p className="text-sm text-muted-foreground text-center py-4">No room types booked for this hotel yet. Click "Add Room Booking".</p>
+          )}
+
+          {item.selectedRooms.map((roomBooking, index) => {
+            const currentRoomTypeDef = selectedHotelDef.roomTypes.find(rt => rt.id === roomBooking.roomTypeDefinitionId);
+            return (
+            <Card key={roomBooking.id} className="bg-background/70 border border-primary/20 shadow-inner">
+              <CardHeader className="py-3 px-4 bg-muted/40 rounded-t-md flex flex-row justify-between items-center">
+                <CardTitle className="text-base font-medium flex items-center">
+                  <BedDouble className="mr-2 h-5 w-5 text-primary/80"/> Booking {index + 1}: {currentRoomTypeDef?.name || 'Select Room Type'}
+                </CardTitle>
+                <Button variant="ghost" size="icon" onClick={() => handleDeleteRoomBooking(roomBooking.id)} className="h-7 w-7 text-destructive hover:bg-destructive/10">
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </CardHeader>
+              <CardContent className="p-4 space-y-3">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <FormField label="Room Type" id={`room-type-${roomBooking.id}`}>
+                    <Select
+                      value={roomBooking.roomTypeDefinitionId}
+                      onValueChange={(rtId) => handleRoomTypeChangeForBooking(roomBooking.id, rtId)}
+                    >
+                      <SelectTrigger><SelectValue placeholder="Select room type..." /></SelectTrigger>
+                      <SelectContent>
+                        {selectedHotelDef.roomTypes.map(rtDef => (
+                          <SelectItem key={rtDef.id} value={rtDef.id}>{rtDef.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </FormField>
+                  <FormField label="# of these Rooms" id={`num-rooms-${roomBooking.id}`}>
+                    <Input
+                      type="number"
+                      min="1"
+                      value={roomBooking.numRooms}
+                      onChange={(e) => handleNumRoomsChangeForBooking(roomBooking.id, e.target.value)}
+                    />
+                  </FormField>
+                </div>
+
+                {currentRoomTypeDef && (
+                  <div className="mt-2 p-2 border rounded-md bg-muted/20 text-xs">
+                    <p className="font-medium mb-1">About {currentRoomTypeDef.name}:</p>
+                    <ul className="list-disc list-inside pl-2 space-y-0.5">
+                      {currentRoomTypeDef.characteristics.map(char => (
+                        <li key={char.id}><strong>{char.key}:</strong> {char.value}</li>
+                      ))}
+                    </ul>
+                    {currentRoomTypeDef.notes && <p className="mt-1 italic"><strong>Note:</strong> {currentRoomTypeDef.notes}</p>}
+                  </div>
+                )}
+                
+                <div>
+                  <button
+                    onClick={() => handleToggleTravelerAssignment(roomBooking.id)}
+                    className="flex items-center justify-between w-full text-sm font-medium text-left text-foreground/80 hover:text-primary py-2 px-3 rounded-md hover:bg-muted/50 transition-colors mt-2 border-t pt-3"
+                  >
+                    <span className="flex items-center"><Users className="mr-2 h-4 w-4"/> Assign Travelers to this Booking</span>
+                    {openTravelerAssignments[roomBooking.id] ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                  </button>
+                  {openTravelerAssignments[roomBooking.id] && (
+                    <div className="mt-2 p-3 border rounded-md bg-muted/30 max-h-40 overflow-y-auto">
+                      {travelers.length > 0 ? (
+                        travelers.map(traveler => (
+                          <div key={traveler.id} className="flex items-center space-x-2 mb-1 py-1">
+                            <Checkbox
+                              id={`assign-${roomBooking.id}-${traveler.id}`}
+                              checked={roomBooking.assignedTravelerIds.includes(traveler.id)}
+                              onCheckedChange={(checked) => handleTravelerAssignmentChange(roomBooking.id, traveler.id, !!checked)}
+                            />
+                            <Label htmlFor={`assign-${roomBooking.id}-${traveler.id}`} className="text-sm font-normal cursor-pointer">
+                              {traveler.label}
+                            </Label>
+                          </div>
+                        ))
+                      ) : (
+                        <p className="text-sm text-muted-foreground">No travelers defined to assign.</p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+            );
+          })}
+           {item.selectedRooms.length > 0 && (
+                <p className="text-xs text-muted-foreground text-center pt-2">
+                    Hotel costs are calculated night-by-night based on selected room types and seasonal rates defined in the hotel's master data.
+                </p>
+           )}
+        </div>
+      )}
+      {!item.hotelDefinitionId && item.province && (
+          <p className="text-sm text-muted-foreground text-center pt-4">Please select a hotel to configure room bookings.</p>
+      )}
+       {!item.province && (
+          <p className="text-sm text-muted-foreground text-center pt-4">Please select a province first to see available hotels.</p>
+      )}
+
+
     </BaseItemForm>
   );
 }

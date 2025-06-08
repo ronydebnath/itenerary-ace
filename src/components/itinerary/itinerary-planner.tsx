@@ -17,7 +17,7 @@ import { CostBreakdownTable } from './cost-breakdown-table';
 import { DetailsSummaryTable } from './details-summary-table';
 import { calculateAllCosts } from '@/lib/calculation-utils'; 
 import { useServicePrices } from '@/hooks/useServicePrices';
-import { useHotelDefinitions } from '@/hooks/useHotelDefinitions'; // New hook
+import { useHotelDefinitions } from '@/hooks/useHotelDefinitions'; 
 import { addDays, format, parseISO } from 'date-fns';
 
 interface ItineraryPlannerProps {
@@ -32,11 +32,10 @@ export function ItineraryPlanner({ tripData, onReset, onUpdateTripData }: Itiner
   const [isPrinting, setIsPrinting] = React.useState(false);
   const [showCosts, setShowCosts] = React.useState<boolean>(true);
   const { allServicePrices, isLoading: isLoadingServices } = useServicePrices();
-  const { allHotelDefinitions, isLoading: isLoadingHotelDefinitions } = useHotelDefinitions(); // New
+  const { allHotelDefinitions, isLoading: isLoadingHotelDefinitions } = useHotelDefinitions(); 
 
   React.useEffect(() => {
     if (tripData && !isLoadingServices && !isLoadingHotelDefinitions) { 
-      // Pass both allServicePrices and allHotelDefinitions
       const summary = calculateAllCosts(tripData, allServicePrices, allHotelDefinitions); 
       setCostSummary(summary);
     } else {
@@ -73,14 +72,12 @@ export function ItineraryPlanner({ tripData, onReset, onUpdateTripData }: Itiner
         newItem = { ...baseNewItem, type: 'activity', adultPrice: 0, childPrice: 0 };
         break;
       case 'hotel':
-        // For Phase 1, adding a hotel item via UI is problematic as the form isn't ready.
-        // This will create a shell that calculation logic might not fully process without valid IDs.
         newItem = { 
             ...baseNewItem, 
             type: 'hotel', 
             checkoutDay: day + 1, 
-            hotelDefinitionId: '', // Needs to be set by a new form
-            selectedRooms: []       // Needs to be populated by a new form
+            hotelDefinitionId: '', 
+            selectedRooms: []       
         } as HotelItemType; 
         break;
       case 'meal':
@@ -205,7 +202,6 @@ export function ItineraryPlanner({ tripData, onReset, onUpdateTripData }: Itiner
                   onUpdateItem={handleUpdateItem}
                   onDeleteItem={handleDeleteItem}
                   tripSettings={tripData.settings}
-                  // Pass hotel definitions for the (currently disabled) hotel form in future
                   allHotelDefinitions={allHotelDefinitions} 
                 />
               </div>

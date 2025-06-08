@@ -93,7 +93,7 @@ export interface HotelDefinition {
 export interface SelectedHotelRoomConfiguration {
   id: string; // Unique ID for this specific booking of a room type
   roomTypeDefinitionId: string; // Links to HotelRoomTypeDefinition.id
-  roomTypeName: string; // Copied from HotelRoomTypeDefinition.name for easy display
+  roomTypeNameCache: string; // Cached from HotelRoomTypeDefinition.name for display
   numRooms: number;
   assignedTravelerIds: string[];
 }
@@ -103,8 +103,6 @@ export interface HotelItem extends BaseItem {
   checkoutDay: number; // Day number for checkout
   hotelDefinitionId: string; // Links to HotelDefinition.id
   selectedRooms: SelectedHotelRoomConfiguration[];
-  // childrenSharingBed is removed, occupancy is handled by room type characteristics and traveler assignment
-  // Old 'rooms' field (HotelRoomConfiguration) is removed
 }
 
 
@@ -195,7 +193,7 @@ export interface ServicePriceItem { // This will no longer be primarily used for
   currency: CurrencyCode;
   unitDescription: string; 
   notes?: string;
-  seasonalRates?: SeasonalRate[]; // Specific to 'hotel' category (old system)
+  seasonalRates?: SeasonalRate[]; // Specific to 'hotel' category (old system) - for reference/migration
   maxPassengers?: number; 
 }
 

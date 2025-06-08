@@ -1,178 +1,273 @@
-
 "use client";
 
 import * as React from 'react';
-import type { HotelRoomConfiguration, Traveler } from '@/types/itinerary';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import type { TripData, ItineraryItem, CostSummary, ServicePriceItem, HotelDefinition, HotelItem as HotelItemType, SelectedHotelRoomConfiguration } from '@/types/itinerary';
 import { Button } from '@/components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Trash2, ChevronDown, ChevronUp, Users, Info } from 'lucide-react';
-import { FormField } from './base-item-form'; 
-import { formatCurrency } from '@/lib/utils';
-import { CurrencyCode } from '@/types/itinerary';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Separator } from "@/components/ui/separator";
+import { ChevronLeft, ChevronRight, Printer, RotateCcw, MapPin, CalendarDays, Users, Eye, EyeOff, Hotel } from 'lucide-react';
+import { formatCurrency, generateGUID } from '@/lib/utils';
+import { AISuggestions } from './ai-suggestions'; 
+import { PrintLayout } from './print-layout'; 
+import { DayView } from './day-view';
+import { CostBreakdownTable } from './cost-breakdown-table';
+import { DetailsSummaryTable } from './details-summary-table';
+import { calculateAllCosts } from '@/lib/calculation-utils'; 
+import { useServicePrices } from '@/hooks/useServicePrices';
+import { useHotelDefinitions } from '@/hooks/useHotelDefinitions'; 
+import { addDays, format, parseISO } from 'date-fns';
 
-
-interface HotelRoomCardFormProps {
-  roomConfig: HotelRoomConfiguration;
-  travelers: Traveler[];
-  currency: CurrencyCode;
-  onUpdateRoomConfig: (updatedConfig: HotelRoomConfiguration) => void;
-  onDeleteRoomConfig: () => void;
-  isOnlyRoom: boolean;
-  isFirstRoom: boolean; // Is this the first room config in the list?
-  isLinkedToService: boolean; // Is the parent HotelItem linked to a service?
+interface ItineraryPlannerProps {
+  tripData: TripData;
+  onReset: () => void;
+  onUpdateTripData: (updatedTripData: TripData) => void;
 }
 
-export function HotelRoomCardForm({ roomConfig, travelers, currency, onUpdateRoomConfig, onDeleteRoomConfig, isOnlyRoom, isFirstRoom, isLinkedToService }: HotelRoomCardFormProps) {
-  const [isTravelerAssignmentOpen, setIsTravelerAssignmentOpen] = React.useState(roomConfig.assignedTravelerIds.length > 0);
-
-  const handleInputChange = (field: keyof HotelRoomConfiguration, value: any) => {
-    onUpdateRoomConfig({ ...roomConfig, [field]: value });
-  };
-
-  const handleNumericInputChange = (field: keyof HotelRoomConfiguration, value: string) => {
-    const numValue = value === '' ? 0 : parseFloat(value);
-    onUpdateRoomConfig({ ...roomConfig, [field]: numValue });
-  };
-  
-  const handleTravelerAssignmentChange = (travelerId: string, checked: boolean) => {
-    let newAssignedTravelerIds;
-    if (checked) {
-      newAssignedTravelerIds = [...roomConfig.assignedTravelerIds, travelerId];
-    } else {
-      newAssignedTravelerIds = roomConfig.assignedTravelerIds.filter(id => id !== travelerId);
-    }
-    onUpdateRoomConfig({ ...roomConfig, assignedTravelerIds: newAssignedTravelerIds });
-  };
+export function ItineraryPlanner({ tripData, onReset, onUpdateTripData }: ItineraryPlannerProps) {
+  const [currentDayView, setCurrentDayView] = React.useState<number>(1);
+  const [costSummary, setCostSummary] = React.useState<CostSummary | null>(null);
+  const [isPrinting, setIsPrinting] = React.useState(false);
+  const [showCosts, setShowCosts] = React.useState<boolean>(true);
+  const { allServicePrices, isLoading: isLoadingServices } = useServicePrices();
+  const { allHotelDefinitions, isLoading: isLoadingHotelDefinitions } = useHotelDefinitions(); 
 
   React.useEffect(() => {
-    let updatedAdults = roomConfig.adultsInRoom;
-    let updatedChildren = roomConfig.childrenInRoom;
-    let updatedExtraBeds = roomConfig.extraBeds;
-    
-    // This effect should ideally only adjust based on roomType if specific capacities are implied
-    // but it's tricky not to interfere with user input or service-derived rates.
-    // For now, this effect is more of a placeholder or for future refinement if types have hardcoded capacities.
-  }, [roomConfig.roomType, roomConfig.adultsInRoom, roomConfig.childrenInRoom, roomConfig.extraBeds]);
+    if (tripData && !isLoadingServices && !isLoadingHotelDefinitions) { 
+      const summary = calculateAllCosts(tripData, allServicePrices, allHotelDefinitions); 
+      setCostSummary(summary);
+    } else {
+      setCostSummary(null);
+    }
+  }, [tripData, allServicePrices, allHotelDefinitions, isLoadingServices, isLoadingHotelDefinitions]);
 
-  const isChildrenInputDisabled = roomConfig.roomType !== 'Family with child';
-  const isExtraBedsInputDisabled = roomConfig.roomType !== 'Triple sharing' && roomConfig.roomType !== 'Family with child';
-  const areRatesReadOnly = isFirstRoom && isLinkedToService;
+  const handleUpdateItem = (day: number, updatedItem: ItineraryItem) => {
+    const newDays = { ...tripData.days };
+    const dayItems = [...(newDays[day]?.items || [])];
+    const itemIndex = dayItems.findIndex(item => item.id === updatedItem.id);
+    if (itemIndex > -1) {
+      dayItems[itemIndex] = updatedItem;
+    }
+    newDays[day] = { items: dayItems };
+    onUpdateTripData({ ...tripData, days: newDays });
+  };
 
+  const handleAddItem = (day: number, itemType: ItineraryItem['type']) => {
+    let newItem: ItineraryItem;
+    const baseNewItem = { 
+      id: generateGUID(), 
+      day, 
+      name: `New ${itemType}`, 
+      excludedTravelerIds: [],
+      province: undefined, 
+    };
+
+    switch (itemType) {
+      case 'transfer':
+        newItem = { ...baseNewItem, type: 'transfer', mode: 'ticket', adultTicketPrice: 0, childTicketPrice: 0 };
+        break;
+      case 'activity':
+        newItem = { ...baseNewItem, type: 'activity', adultPrice: 0, childPrice: 0 };
+        break;
+      case 'hotel':
+        newItem = { 
+            ...baseNewItem, 
+            type: 'hotel', 
+            checkoutDay: day + 1, 
+            hotelDefinitionId: '', 
+            selectedRooms: []       
+        } as HotelItemType; 
+        break;
+      case 'meal':
+        newItem = { ...baseNewItem, type: 'meal', adultMealPrice: 0, childMealPrice: 0, totalMeals: 1 };
+        break;
+      case 'misc':
+        newItem = { ...baseNewItem, type: 'misc', unitCost: 0, quantity: 1, costAssignment: 'perPerson' };
+        break;
+      default:
+        return; 
+    }
+
+    const newDays = { ...tripData.days };
+    const dayItems = [...(newDays[day]?.items || []), newItem];
+    newDays[day] = { items: dayItems };
+    onUpdateTripData({ ...tripData, days: newDays });
+  };
+
+  const handleDeleteItem = (day: number, itemId: string) => {
+    const newDays = { ...tripData.days };
+    const dayItems = (newDays[day]?.items || []).filter(item => item.id !== itemId);
+    newDays[day] = { items: dayItems };
+    onUpdateTripData({ ...tripData, days: newDays });
+  };
+  
+  const handlePrint = () => {
+    setIsPrinting(true);
+    setTimeout(() => {
+      window.print();
+      setIsPrinting(false);
+    }, 100); 
+  };
+
+  const getFormattedDateForDay = (dayNum: number): string => {
+    if (!tripData.settings.startDate) return `Day ${dayNum}`;
+    try {
+      const date = addDays(parseISO(tripData.settings.startDate), dayNum - 1);
+      return `Day ${dayNum} - ${format(date, "MMM d, yyyy (EEEE)")}`;
+    } catch (e) {
+      console.error("Error formatting date:", e);
+      return `Day ${dayNum}`;
+    }
+  };
+  
+  const displayStartDate = tripData.settings.startDate ? format(parseISO(tripData.settings.startDate), "MMMM d, yyyy") : 'N/A';
+
+
+  if (isPrinting && costSummary) {
+    return <PrintLayout tripData={tripData} costSummary={costSummary} showCosts={showCosts} />;
+  }
+  
+  const isLoadingAnything = isLoadingServices || isLoadingHotelDefinitions;
 
   return (
-    <Card className="mb-4 bg-background/70 border border-primary/20 shadow-inner">
-      <CardHeader className="py-3 px-4 bg-muted/40 rounded-t-md">
-        <CardTitle className="text-base font-medium flex justify-between items-center">
-          <span>Room: {roomConfig.category || "Not Set"}</span>
-           {!isOnlyRoom && (
-             <Button variant="ghost" size="icon" onClick={onDeleteRoomConfig} className="h-7 w-7 text-destructive hover:bg-destructive/10">
-              <Trash2 className="h-4 w-4" />
+    <div className="container mx-auto p-4 md:p-6 lg:p-8">
+      <Card className="mb-6 shadow-lg">
+        <CardHeader className="bg-primary/10">
+          <div className="flex justify-between items-center">
+            <CardTitle className="text-3xl font-headline text-primary">Itinerary Ace Planner</CardTitle>
+            <Button variant="outline" onClick={onReset} size="sm" className="border-destructive text-destructive hover:bg-destructive/10">
+              <RotateCcw className="mr-2 h-4 w-4" /> Reset All
             </Button>
-           )}
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="p-4 space-y-3">
-        {areRatesReadOnly && (
-            <div className="p-2 mb-2 text-xs text-primary bg-primary/10 border border-primary/20 rounded-md flex items-start">
-                <Info className="h-4 w-4 mr-2 shrink-0 mt-0.5" />
-                <span>Rates for this room type are currently based on the selected hotel service and check-in date. To set custom rates, first deselect the main hotel service above, or add a new room type.</span>
+          </div>
+          <CardDescription className="text-foreground/70 pt-2">
+            Plan and calculate costs for your upcoming trip.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="pt-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm mb-6 p-4 bg-secondary/30 rounded-lg border border-secondary">
+                <div className="flex items-center"><CalendarDays className="mr-2 h-5 w-5 text-primary" /> <strong>Days:</strong><span className="ml-1 font-code">{tripData.settings.numDays}</span></div>
+                <div className="flex items-center"><Users className="mr-2 h-5 w-5 text-primary" /> <strong>Adults:</strong><span className="ml-1 font-code">{tripData.pax.adults}</span>, <strong>Children:</strong><span className="ml-1 font-code">{tripData.pax.children}</span></div>
+                <div className="flex items-center"><MapPin className="mr-2 h-5 w-5 text-primary" /> <strong>Start Date:</strong><span className="ml-1 font-code">{displayStartDate}</span></div>
+                <div className="flex items-center col-span-1 md:col-span-3"><Users className="mr-2 h-5 w-5 text-primary" /> <strong>Currency:</strong><span className="ml-1 font-code">{tripData.pax.currency}</span>
+                  {showCosts && tripData.settings.budget && (<span className="ml-4"><strong>Budget:</strong> <span className="ml-1 font-code">{formatCurrency(tripData.settings.budget, tripData.pax.currency)}</span></span>)}
+                </div>
             </div>
-        )}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <FormField label="Room Category Name" id={`roomCat-${roomConfig.id}`}>
-            <Input 
-              value={roomConfig.category} 
-              onChange={e => handleInputChange('category', e.target.value)}
-              placeholder="e.g., Deluxe King"
-              disabled={areRatesReadOnly} // Category name also comes from service for first room
-            />
-          </FormField>
-          <FormField label="Occupancy Type" id={`roomType-${roomConfig.id}`}>
-            <Select value={roomConfig.roomType} onValueChange={value => handleInputChange('roomType', value as HotelRoomConfiguration['roomType'])}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Single room">Single</SelectItem>
-                <SelectItem value="Double sharing">Double</SelectItem>
-                <SelectItem value="Triple sharing">Triple</SelectItem>
-                <SelectItem value="Family with child">Family</SelectItem>
-              </SelectContent>
-            </Select>
-          </FormField>
+        </CardContent>
+      </Card>
+
+      <div className="md:hidden mb-4">
+        <Select value={String(currentDayView)} onValueChange={(val) => setCurrentDayView(Number(val))}>
+            <SelectTrigger className="w-full">
+                <SelectValue placeholder="Select Day" />
+            </SelectTrigger>
+            <SelectContent>
+                {Array.from({ length: tripData.settings.numDays }, (_, i) => i + 1).map(dayNum => (
+                    <SelectItem key={dayNum} value={String(dayNum)}>{getFormattedDateForDay(dayNum)}</SelectItem>
+                ))}
+            </SelectContent>
+        </Select>
+      </div>
+
+      <div className="hidden md:flex justify-between items-center mb-6 p-3 bg-card border rounded-lg shadow-sm">
+        <Button 
+          onClick={() => setCurrentDayView(prev => Math.max(1, prev - 1))} 
+          disabled={currentDayView === 1}
+          variant="outline"
+        >
+          <ChevronLeft className="h-5 w-5 mr-1" /> Previous Day
+        </Button>
+        <h2 className="text-xl font-semibold text-primary">{getFormattedDateForDay(currentDayView)}</h2>
+        <Button 
+          onClick={() => setCurrentDayView(prev => Math.min(tripData.settings.numDays, prev + 1))} 
+          disabled={currentDayView === tripData.settings.numDays}
+          variant="outline"
+        >
+          Next Day <ChevronRight className="h-5 w-5 ml-1" />
+        </Button>
+      </div>
+      
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div className="lg:col-span-8">
+          <ScrollArea className="h-auto lg:max-h-[calc(100vh-280px)] pr-2">
+            {Array.from({ length: tripData.settings.numDays }, (_, i) => i + 1).map(dayNum => (
+              <div key={dayNum} style={{ display: dayNum === currentDayView ? 'block' : 'none' }}>
+                <DayView
+                  dayNumber={dayNum}
+                  items={tripData.days[dayNum]?.items || []}
+                  travelers={tripData.travelers}
+                  currency={tripData.pax.currency}
+                  onAddItem={handleAddItem}
+                  onUpdateItem={handleUpdateItem}
+                  onDeleteItem={handleDeleteItem}
+                  tripSettings={tripData.settings}
+                  allHotelDefinitions={allHotelDefinitions} 
+                />
+              </div>
+            ))}
+          </ScrollArea>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          <FormField label="Adults/Room" id={`adultsInRoom-${roomConfig.id}`}>
-            <Input type="number" min="1" value={roomConfig.adultsInRoom} onChange={e => handleNumericInputChange('adultsInRoom', e.target.value)} />
-          </FormField>
-          <FormField label="Children/Room" id={`childrenInRoom-${roomConfig.id}`}>
-            <Input type="number" min="0" value={roomConfig.childrenInRoom} onChange={e => handleNumericInputChange('childrenInRoom', e.target.value)} disabled={isChildrenInputDisabled && roomConfig.extraBeds === 0}/>
-          </FormField>
-          <FormField label="Extra Beds/Room" id={`extraBeds-${roomConfig.id}`}>
-            <Input type="number" min="0" value={roomConfig.extraBeds} onChange={e => handleNumericInputChange('extraBeds', e.target.value)} disabled={isExtraBedsInputDisabled}/>
-          </FormField>
+        <div className="lg:col-span-4 space-y-6">
+          <AISuggestions 
+            tripData={tripData} 
+            onApplySuggestion={(modifiedTripData) => onUpdateTripData(modifiedTripData)} 
+            showCosts={showCosts}
+          />
+          <Card className="shadow-lg">
+            <CardHeader>
+              <CardTitle className="text-xl text-primary">Cost Summary</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {isLoadingAnything ? <p>Loading service data...</p> : costSummary ? (
+                <>
+                  <CostBreakdownTable summary={costSummary} currency={tripData.pax.currency} travelers={tripData.travelers} showCosts={showCosts} />
+                  {showCosts && (
+                    <>
+                      <Separator className="my-4" />
+                      <div className="text-right">
+                        <p className="text-lg font-semibold">Grand Total:</p>
+                        <p className="text-2xl font-bold text-accent font-code">
+                          {formatCurrency(costSummary.grandTotal, tripData.pax.currency)}
+                        </p>
+                      </div>
+                    </>
+                  )}
+                  {!showCosts && (
+                    <p className="text-sm text-muted-foreground text-center mt-4">Cost details are hidden.</p>
+                  )}
+                </>
+              ) : <p>Calculating costs...</p>}
+            </CardContent>
+          </Card>
         </div>
-        
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          <FormField label="# Rooms" id={`numRooms-${roomConfig.id}`}>
-            <Input type="number" min="1" value={roomConfig.numRooms} onChange={e => handleNumericInputChange('numRooms', e.target.value)} />
-          </FormField>
-          <FormField label={`Room Rate (Nightly, ${currency})`} id={`roomRate-${roomConfig.id}`}>
-            <Input 
-                type="number" 
-                min="0" 
-                value={roomConfig.roomRate} 
-                onChange={e => handleNumericInputChange('roomRate', e.target.value)} 
-                placeholder="0.00"
-                disabled={areRatesReadOnly} 
-            />
-          </FormField>
-          <FormField label={`Extra Bed Rate (Nightly, ${currency})`} id={`extraBedRate-${roomConfig.id}`}>
-            <Input 
-                type="number" 
-                min="0" 
-                value={roomConfig.extraBedRate} 
-                onChange={e => handleNumericInputChange('extraBedRate', e.target.value)} 
-                placeholder="0.00" 
-                disabled={areRatesReadOnly || isExtraBedsInputDisabled || roomConfig.extraBeds === 0}
-            />
-          </FormField>
-        </div>
+      </div>
 
-        <div>
-          <button
-            onClick={() => setIsTravelerAssignmentOpen(!isTravelerAssignmentOpen)}
-            className="flex items-center justify-between w-full text-sm font-medium text-left text-foreground/80 hover:text-primary py-2 px-3 rounded-md hover:bg-muted/50 transition-colors mt-2 border-t pt-3"
-          >
-            <span className="flex items-center"><Users className="mr-2 h-4 w-4"/> Assign Travelers to this Room Type</span>
-            {isTravelerAssignmentOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-          </button>
-          {isTravelerAssignmentOpen && (
-            <div className="mt-2 p-3 border rounded-md bg-muted/30 max-h-40 overflow-y-auto">
-              {travelers.length > 0 ? (
-                travelers.map(traveler => (
-                  <div key={traveler.id} className="flex items-center space-x-2 mb-1 py-1">
-                    <Checkbox
-                      id={`assign-${roomConfig.id}-${traveler.id}`}
-                      checked={roomConfig.assignedTravelerIds.includes(traveler.id)}
-                      onCheckedChange={(checked) => handleTravelerAssignmentChange(traveler.id, !!checked)}
-                    />
-                    <Label htmlFor={`assign-${roomConfig.id}-${traveler.id}`} className="text-sm font-normal cursor-pointer">
-                      {traveler.label}
-                    </Label>
-                  </div>
-                ))
-              ) : (
-                <p className="text-sm text-muted-foreground">No travelers defined to assign.</p>
-              )}
-            </div>
-          )}
-        </div>
-      </CardContent>
-    </Card>
+      <Card className="mt-8 shadow-lg">
+        <CardHeader>
+          <div className="flex justify-between items-center">
+            <CardTitle className="text-2xl font-headline text-primary">Full Itinerary Details</CardTitle>
+            <Button variant="outline" size="sm" onClick={() => setShowCosts(!showCosts)} className="ml-4">
+              {showCosts ? <EyeOff className="mr-2 h-4 w-4" /> : <Eye className="mr-2 h-4 w-4" />}
+              {showCosts ? 'Hide Costs' : 'Show Costs'}
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+           {isLoadingAnything ? <p>Loading service data...</p> : costSummary ? (
+            <DetailsSummaryTable summary={costSummary} currency={tripData.pax.currency} showCosts={showCosts} />
+          ) : <p>Loading details...</p>}
+        </CardContent>
+      </Card>
+
+      <div className="mt-8 py-6 border-t border-border flex flex-col sm:flex-row justify-center items-center gap-4 no-print">
+        <Button onClick={onReset} variant="destructive" className="w-full sm:w-auto">
+          <RotateCcw className="mr-2 h-4 w-4" /> Reset Calculator
+        </Button>
+        <Button onClick={handlePrint} className="w-full sm:w-auto bg-accent hover:bg-accent/90 text-accent-foreground">
+          <Printer className="mr-2 h-4 w-4" /> Print Itinerary
+        </Button>
+      </div>
+    </div>
   );
 }
