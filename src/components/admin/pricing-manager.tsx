@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { PlusCircle, Edit, Trash2, Home, MapPinned, Loader2, LayoutDashboard, ListPlus, FileText, Sparkles } from 'lucide-react';
 import type { ServicePriceItem } from '@/types/itinerary';
+import { VEHICLE_TYPES } from '@/types/itinerary'; // Keep for default assignment
 import { ServicePriceForm } from './service-price-form';
 import { ServicePriceTable } from './service-price-table';
 import { generateGUID } from '@/lib/utils';
@@ -16,7 +17,8 @@ import { useServicePrices } from '@/hooks/useServicePrices';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { extractContractData, AIContractDataOutput, ExtractContractDataInputSchema } from '@/ai/flows/extract-contract-data-flow';
+import { extractContractData } from '@/ai/flows/extract-contract-data-flow';
+import { AIContractDataOutput, ExtractContractDataInputSchema } from '@/types/ai-contract-schemas'; // Updated import
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import type { ZodError } from 'zod';
 
@@ -51,10 +53,10 @@ export function PricingManager() {
 
   const handleFormSubmit = (data: Omit<ServicePriceItem, 'id'>) => {
     let updatedPrices;
-    if (editingService && editingService.id) { // Ensure editingService has an ID for update
+    if (editingService && editingService.id) { 
       updatedPrices = currentServicePrices.map(sp => sp.id === editingService.id ? { ...editingService, ...data } : sp);
       toast({ title: "Success", description: `Service price "${data.name}" updated.` });
-    } else { // New service price (could be from AI or fresh)
+    } else { 
       const newServicePrice: ServicePriceItem = { ...data, id: generateGUID() };
       updatedPrices = [...currentServicePrices, newServicePrice];
       toast({ title: "Success", description: `Service price "${data.name}" added.` });
@@ -99,7 +101,7 @@ export function PricingManager() {
       return;
     }
     try {
-      ExtractContractDataInputSchema.parse({ contractText }); // Validate input
+      ExtractContractDataInputSchema.parse({ contractText }); 
     } catch (e) {
       const zodError = e as ZodError;
       setContractParseError(`Input validation error: ${zodError.errors.map(err => err.message).join(', ')}`);
@@ -110,11 +112,10 @@ export function PricingManager() {
     try {
       const extractedData: AIContractDataOutput = await extractContractData({ contractText });
       
-      // Transform AI output to ServicePriceItem (or a subset for pre-filling)
       const prefillData: Partial<ServicePriceItem> = {
         name: extractedData.name || "",
-        province: extractedData.province || undefined, // "none" or actual
-        category: extractedData.category || "misc", // Default category
+        province: extractedData.province || undefined, 
+        category: extractedData.category || "misc", 
         subCategory: extractedData.subCategory || "",
         price1: extractedData.price1 ?? 0,
         price2: extractedData.price2,
@@ -124,26 +125,23 @@ export function PricingManager() {
         maxPassengers: extractedData.maxPassengers,
       };
       
-      // If AI detected transfer, try to set mode and subCategory appropriately
       if (prefillData.category === 'transfer') {
         if (extractedData.transferModeAttempt === 'vehicle') {
           if (extractedData.vehicleTypeAttempt) {
             prefillData.subCategory = extractedData.vehicleTypeAttempt;
           } else if (!prefillData.subCategory) {
-            prefillData.subCategory = VEHICLE_TYPES[0]; // Default vehicle type if none identified
+            prefillData.subCategory = VEHICLE_TYPES[0]; 
           }
         } else if (extractedData.transferModeAttempt === 'ticket') {
            prefillData.subCategory = 'ticket';
         }
-        // price1 would be costPerVehicle or adultTicketPrice
-        // price2 would be childTicketPrice
       }
 
 
-      setEditingService(prefillData as ServicePriceItem); // Cast, knowing ID will be generated on submit if new
+      setEditingService(prefillData as ServicePriceItem); 
       setIsContractImportOpen(false);
-      setIsFormOpen(true); // Open the main form pre-filled
-      setContractText(""); // Clear textarea
+      setIsFormOpen(true); 
+      setContractText(""); 
       toast({ title: "Contract Parsed", description: "Review and complete the service details." });
     } catch (error: any) {
       console.error("Error parsing contract with AI:", error);
@@ -232,7 +230,7 @@ export function PricingManager() {
                 <DialogTitle>{editingService?.id ? 'Edit' : 'Add'} Service Price {editingService && !editingService.id ? "(from AI)" : ""}</DialogTitle>
               </DialogHeader>
               <ServicePriceForm
-                key={editingService?.id || JSON.stringify(editingService) || 'new'} // Ensure re-render for pre-filled data
+                key={editingService?.id || JSON.stringify(editingService) || 'new'} 
                 initialData={editingService}
                 onSubmit={handleFormSubmit}
                 onCancel={() => {
@@ -295,4 +293,3 @@ export function PricingManager() {
     </div>
   );
 }
-

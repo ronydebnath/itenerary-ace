@@ -4,52 +4,14 @@
  * @fileOverview An AI flow to extract service pricing information from contract text.
  *
  * - extractContractData - A function that takes contract text and returns structured service data.
- * - ExtractContractDataInput - The input type for the extractContractData function.
- * - ExtractContractDataOutput - The return type for the extractContractData function.
  */
 
-import { z } from 'genkit';
-import { CURRENCIES, SERVICE_CATEGORIES, ItineraryItemType, CurrencyCode, VEHICLE_TYPES, VehicleType } from '@/types/itinerary';
-
-// Define the validation function for VehicleType separately
-const isValidVehicleType = (val: unknown): val is VehicleType => {
-  return VEHICLE_TYPES.includes(val as VehicleType);
-};
-
-// Define the validation function for CurrencyCode separately
-const isValidCurrencyCode = (val: unknown): val is CurrencyCode => {
-  return CURRENCIES.includes(val as CurrencyCode);
-};
-
-// Define the validation function for ItineraryItemType separately
-const isValidItineraryItemType = (val: unknown): val is ItineraryItemType => {
-  return SERVICE_CATEGORIES.includes(val as ItineraryItemType);
-};
-
-
-// Define a more flexible output schema for AI extraction
-export const AIContractDataOutputSchema = z.object({
-  name: z.string().optional().describe('The name of the service or hotel.'),
-  province: z.string().optional().describe('The province or location of the service. Extract if explicitly mentioned.'),
-  category: z.custom<ItineraryItemType>(isValidItineraryItemType, "Invalid category").optional().describe(`The category of the service. Must be one of: ${SERVICE_CATEGORIES.join(', ')}`),
-  subCategory: z.string().optional().describe('A sub-category or specific type (e.g., room type for hotels, activity type, vehicle type for transfers).'),
-  price1: z.number().optional().describe('Primary price (e.g., adult price, room rate, cost per vehicle).'),
-  price2: z.number().optional().describe('Secondary price (e.g., child price, extra bed rate). Only if applicable and clearly distinct.'),
-  currency: z.custom<CurrencyCode>(isValidCurrencyCode, "Invalid currency").optional().describe(`The currency code. Must be one of: ${CURRENCIES.join(', ')}`),
-  unitDescription: z.string().optional().describe('Description of what the price unit refers to (e.g., "per person", "per night", "per vehicle").'),
-  notes: z.string().optional().describe('Any additional notes or important details about the service.'),
-  maxPassengers: z.number().int().min(1).optional().describe('Maximum number of passengers for vehicle transfers, if specified.'),
-  // We are omitting seasonalRates for direct extraction into ServicePriceItem as it's too complex for a single pass.
-  // For transfers, try to identify if it's 'ticket' or 'vehicle' basis and extract vehicle type if applicable.
-  transferModeAttempt: z.enum(['ticket', 'vehicle']).optional().describe('If the service is a transfer, attempt to identify if it is priced per ticket or per vehicle.'),
-  vehicleTypeAttempt: z.custom<VehicleType>(isValidVehicleType).optional().describe(`If a vehicle transfer, attempt to identify the vehicle type (e.g., ${VEHICLE_TYPES.join(', ')})`)
-});
-export type AIContractDataOutput = z.infer<typeof AIContractDataOutputSchema>;
-
-export const ExtractContractDataInputSchema = z.object({
-  contractText: z.string().min(50, { message: "Contract text must be at least 50 characters." }).describe('The full text content of the service contract.'),
-});
-export type ExtractContractDataInput = z.infer<typeof ExtractContractDataInputSchema>;
+import { 
+  AIContractDataOutputSchema, 
+  type AIContractDataOutput,
+  type ExtractContractDataInput
+} from '@/types/ai-contract-schemas'; // Import schemas and types
+import { CURRENCIES, VEHICLE_TYPES } from '@/types/itinerary'; // Keep for prompt generation
 
 
 export async function extractContractData(input: ExtractContractDataInput): Promise<AIContractDataOutput> {
@@ -103,7 +65,7 @@ export async function extractContractData(input: ExtractContractDataInput): Prom
       method: "POST",
       headers: headers,
       body: JSON.stringify({
-        "model": "google/gemma-3-27b-it:free", // Or your preferred model
+        "model": "google/gemma-3-27b-it:free", 
         "messages": [{ "role": "user", "content": promptText }],
         "response_format": { "type": "json_object" }
       })
@@ -127,16 +89,13 @@ export async function extractContractData(input: ExtractContractDataInput): Prom
       }
       try {
         const parsedJson = JSON.parse(content);
-        // Validate with Zod schema before returning
         const validationResult = AIContractDataOutputSchema.safeParse(parsedJson);
         if (validationResult.success) {
           return validationResult.data;
         } else {
           console.error('OpenRouter response JSON does not match AIContractDataOutputSchema:', validationResult.error.errors);
           console.error('Received JSON string for contract parsing:', content);
-          // Return the raw parsed JSON if validation fails, client can try to make sense of it or show an error.
-          // Or throw new Error to indicate partial failure
-          return parsedJson; // Or throw new Error('AI response validation failed');
+          return parsedJson; 
         }
       } catch (jsonError: any) {
         console.error('Error parsing JSON from OpenRouter for contract data:', jsonError);
