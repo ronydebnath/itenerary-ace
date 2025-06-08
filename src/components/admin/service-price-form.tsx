@@ -3,7 +3,7 @@
 
 import * as React from 'react';
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm, Controller } from "react-hook-form";
+import { useForm, Controller, useFieldArray } from "react-hook-form";
 import * as z from "zod";
 import { Button } from "@/components/ui/button";
 import {
@@ -18,37 +18,85 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DatePicker } from "@/components/ui/date-picker";
-import type { ServicePriceItem, CurrencyCode, ItineraryItemType, SeasonalRate, VehicleType } from '@/types/itinerary';
+import type { ServicePriceItem, CurrencyCode, ItineraryItemType, VehicleType, HotelDefinition, HotelRoomTypeDefinition, RoomTypeSeasonalPrice } from '@/types/itinerary';
 import { CURRENCIES, SERVICE_CATEGORIES, VEHICLE_TYPES } from '@/types/itinerary';
-import { PlusCircle, Trash2 } from 'lucide-react';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { PlusCircle, Trash2, XIcon } from 'lucide-react';
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { generateGUID } from '@/lib/utils';
-import { useProvinces } from '@/hooks/useProvinces'; 
+import { useProvinces } from '@/hooks/useProvinces';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Card } from '@/components/ui/card';
 
-const seasonalRateSchema = z.object({
+
+const hotelRoomSeasonalPriceSchema = z.object({
   id: z.string(),
+  seasonName: z.string().optional(), // Kept for data model, not in UI per HTML
   startDate: z.date({ required_error: "Start date is required." }),
   endDate: z.date({ required_error: "End date is required." }),
-  roomRate: z.coerce.number().min(0, "Room rate must be non-negative"),
+  rate: z.coerce.number().min(0, "Nightly rate must be non-negative"),
   extraBedRate: z.coerce.number().min(0, "Extra bed rate must be non-negative").optional(),
 }).refine(data => data.endDate >= data.startDate, {
   message: "End date cannot be before start date",
   path: ["endDate"],
 });
 
+const hotelRoomTypeSchema = z.object({
+  id: z.string(),
+  name: z.string().min(1, "Room type name is required"),
+  characteristics: z.array(z.object({ id: z.string(), key: z.string(), value: z.string() })).optional(), // Kept for data model
+  notes: z.string().optional(), // Kept for data model
+  seasonalPrices: z.array(hotelRoomSeasonalPriceSchema).min(1, "At least one seasonal price is required."),
+});
+
+const hotelDetailsSchema = z.object({
+  id: z.string(),
+  name: z.string(), // Hotel name is part of the main ServicePriceItem
+  province: z.string(), // Province is part of the main ServicePriceItem
+  roomTypes: z.array(hotelRoomTypeSchema).min(1, "At least one room type is required for detailed hotel pricing."),
+});
+
 const servicePriceSchema = z.object({
   name: z.string().min(1, "Service name is required"),
   province: z.string().optional(),
   category: z.custom<ItineraryItemType>((val) => SERVICE_CATEGORIES.includes(val as ItineraryItemType), "Invalid category"),
-  subCategory: z.string().optional(),
-  price1: z.coerce.number().min(0, "Price must be non-negative"),
-  price2: z.coerce.number().min(0, "Price must be non-negative").optional(),
+  subCategory: z.string().optional(), // Used for non-hotel or simple hotel
+  price1: z.coerce.number().min(0, "Price must be non-negative").optional(), // Used for non-hotel or simple hotel
+  price2: z.coerce.number().min(0, "Price must be non-negative").optional(), // Used for non-hotel or simple hotel
   currency: z.custom<CurrencyCode>((val) => CURRENCIES.includes(val as CurrencyCode), "Invalid currency"),
   unitDescription: z.string().min(1, "Unit description is required (e.g., per adult, per night)"),
   notes: z.string().optional(),
-  seasonalRates: z.array(seasonalRateSchema).optional(),
   transferMode: z.enum(['ticket', 'vehicle']).optional(),
   maxPassengers: z.coerce.number().min(1, "Max passengers must be at least 1").optional(),
+  // Conditional validation for hotelDetails
+  hotelDetails: hotelDetailsSchema.optional(),
+}).superRefine((data, ctx) => {
+  if (data.category === 'hotel') {
+    if (!data.hotelDetails) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Detailed hotel pricing (room types and seasons) is required for hotel category.",
+        path: ["hotelDetails"],
+      });
+    }
+  } else {
+    // For non-hotel, ensure price1 is set (unless it's a transfer vehicle, where costPerVehicle is used)
+    if (data.category !== 'transfer' || data.transferMode !== 'vehicle') {
+        if (typeof data.price1 !== 'number') {
+             ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: "Price 1 / Default Rate is required.",
+                path: ["price1"],
+            });
+        }
+    }
+    if (data.category === 'transfer' && data.transferMode === 'vehicle' && typeof data.price1 !== 'number') {
+         ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Cost Per Vehicle is required.",
+            path: ["price1"],
+        });
+    }
+  }
 });
 
 type ServicePriceFormValues = z.infer<typeof servicePriceSchema>;
@@ -61,84 +109,136 @@ interface ServicePriceFormProps {
 
 export function ServicePriceForm({ initialData, onSubmit, onCancel }: ServicePriceFormProps) {
   const { provinces, isLoading: isLoadingProvinces } = useProvinces();
+  
+  const transformInitialData = (data?: ServicePriceItem): Partial<ServicePriceFormValues> => {
+    if (!data) return { category: "activity", currency: "THB", unitDescription: "per person" };
+
+    const baseTransformed: Partial<ServicePriceFormValues> = {
+      name: data.name || "",
+      province: data.province || "none",
+      category: data.category || "activity",
+      currency: data.currency || "THB",
+      unitDescription: data.unitDescription || "",
+      notes: data.notes || "",
+    };
+
+    if (data.category === 'hotel' && data.hotelDetails) {
+      baseTransformed.hotelDetails = {
+        ...data.hotelDetails,
+        roomTypes: data.hotelDetails.roomTypes.map(rt => ({
+          ...rt,
+          seasonalPrices: rt.seasonalPrices.map(sp => ({
+            ...sp,
+            startDate: sp.startDate ? new Date(sp.startDate) : new Date(),
+            endDate: sp.endDate ? new Date(sp.endDate) : new Date(),
+          })),
+        })),
+      };
+    } else if (data.category === 'hotel') {
+      // If it's a hotel but no hotelDetails (old data or AI prefill), create a basic structure
+      baseTransformed.hotelDetails = {
+        id: data.id, // Or generateGUID() if no id from initialData
+        name: data.name,
+        province: data.province || "none",
+        roomTypes: [{
+          id: generateGUID(),
+          name: data.subCategory || 'Default Room',
+          seasonalPrices: data.seasonalRates && data.seasonalRates.length > 0 ? 
+            data.seasonalRates.map(sr => ({
+              id: sr.id || generateGUID(),
+              startDate: sr.startDate ? new Date(sr.startDate) : new Date(),
+              endDate: sr.endDate ? new Date(sr.endDate) : new Date(),
+              rate: sr.roomRate,
+              extraBedRate: sr.extraBedRate,
+            })) : [{ id: generateGUID(), startDate: new Date(), endDate: new Date(), rate: data.price1 || 0, extraBedRate: data.price2 }]
+        }]
+      };
+      // Clear out simpler hotel fields if we are using hotelDetails
+      baseTransformed.subCategory = undefined;
+      baseTransformed.price1 = undefined;
+      baseTransformed.price2 = undefined;
+    } else {
+      // Non-hotel categories
+      baseTransformed.subCategory = data.subCategory || "";
+      baseTransformed.price1 = data.price1 || 0;
+      baseTransformed.price2 = data.price2;
+      if (data.category === 'transfer') {
+        baseTransformed.transferMode = data.subCategory === 'ticket' ? 'ticket' : 'vehicle';
+        baseTransformed.maxPassengers = data.maxPassengers || undefined;
+      }
+    }
+    return baseTransformed;
+  };
+
+
   const form = useForm<ServicePriceFormValues>({
     resolver: zodResolver(servicePriceSchema),
-    defaultValues: {
-      name: initialData?.name || "",
-      province: initialData?.province || "none", 
-      category: initialData?.category || "activity",
-      subCategory: initialData?.subCategory || "",
-      price1: initialData?.price1 || 0,
-      price2: initialData?.price2,
-      currency: initialData?.currency || "THB",
-      unitDescription: initialData?.unitDescription || "",
-      notes: initialData?.notes || "",
-      seasonalRates: initialData?.category === 'hotel' && initialData?.seasonalRates
-        ? initialData.seasonalRates.map(sr => ({
-            ...sr,
-            startDate: sr.startDate ? new Date(sr.startDate) : new Date(),
-            endDate: sr.endDate ? new Date(sr.endDate) : new Date(),
-          }))
-        : [],
-      transferMode: initialData?.category === 'transfer'
-        ? (initialData.subCategory === 'ticket' ? 'ticket' : 'vehicle')
-        : undefined,
-      maxPassengers: initialData?.maxPassengers || undefined,
-    },
+    defaultValues: transformInitialData(initialData),
   });
-
+  
   const selectedCategory = form.watch("category");
-  const seasonalRates = form.watch("seasonalRates") || [];
   const transferMode = form.watch("transferMode");
 
+  const { fields: roomTypeFields, append: appendRoomType, remove: removeRoomType } = useFieldArray({
+    control: form.control,
+    name: "hotelDetails.roomTypes",
+    keyName: "fieldId" // To prevent re-rendering issues with default key 'id'
+  });
+
   React.useEffect(() => {
-    if (selectedCategory !== 'hotel') {
-      form.setValue('seasonalRates', []);
-    }
-    if (selectedCategory !== 'transfer') {
-      form.setValue('transferMode', undefined);
-      form.setValue('maxPassengers', undefined);
-      if (form.getValues('subCategory') === 'ticket' && initialData?.category !== 'transfer') {
-        form.setValue('subCategory', '');
+    if (selectedCategory === 'hotel' && !form.getValues('hotelDetails')) {
+      form.setValue('hotelDetails', {
+        id: initialData?.id || generateGUID(),
+        name: form.getValues('name'), // Use main service name for hotelDetails name
+        province: form.getValues('province') || 'none',
+        roomTypes: [],
+      });
+      if (initialData?.hotelDetails?.roomTypes?.length === 0 || (!initialData?.hotelDetails && initialData?.category ==='hotel' && roomTypeFields.length === 0) ) {
+         setTimeout(() => appendRoomType({ 
+            id: generateGUID(), 
+            name: 'Standard Room', 
+            seasonalPrices: [{ id: generateGUID(), startDate: new Date(), endDate: new Date(), rate: 0, extraBedRate: 0 }]
+        }), 0);
       }
-    } else {
+    } else if (selectedCategory !== 'hotel') {
+      form.setValue('hotelDetails', undefined);
+    }
+  }, [selectedCategory, form, initialData, appendRoomType, roomTypeFields.length]);
+
+
+  React.useEffect(() => {
+    if (selectedCategory === 'transfer') {
       const currentTransferMode = form.getValues('transferMode');
       if (!currentTransferMode) {
-        if (initialData?.category === 'transfer' && initialData.subCategory) {
-          const mode = initialData.subCategory === 'ticket' ? 'ticket' : 'vehicle';
-          form.setValue('transferMode', mode);
-          form.setValue('subCategory', initialData.subCategory); 
-        } else {
-          form.setValue('transferMode', 'ticket');
-          form.setValue('subCategory', 'ticket');
-        }
+        form.setValue('transferMode', 'ticket');
+        form.setValue('subCategory', 'ticket'); // Default subCategory for ticket mode
       } else {
          if (currentTransferMode === 'ticket') {
             form.setValue('subCategory', 'ticket');
             form.setValue('maxPassengers', undefined);
         } else if (currentTransferMode === 'vehicle' && (form.getValues('subCategory') === 'ticket' || !form.getValues('subCategory'))){
+            // If switching to vehicle and subCategory is ticket or empty, set to a default vehicle type
             form.setValue('subCategory', initialData?.category === 'transfer' && initialData?.subCategory && initialData.subCategory !== 'ticket' ? initialData.subCategory : VEHICLE_TYPES[0]);
         }
       }
+    } else {
+       form.setValue('transferMode', undefined);
+       form.setValue('maxPassengers', undefined);
+       // If not transfer, and subCategory was 'ticket', clear it
+       if (form.getValues('subCategory') === 'ticket' && selectedCategory !== 'transfer') {
+           form.setValue('subCategory', '');
+       }
     }
   }, [selectedCategory, form, initialData?.category, initialData?.subCategory]);
-
-
-  React.useEffect(() => {
-    if (selectedCategory === 'transfer') {
-      if (transferMode === 'ticket') {
-        form.setValue('subCategory', 'ticket');
-        form.setValue('maxPassengers', undefined);
-      } else if (transferMode === 'vehicle') {
-        const currentSubCategory = form.getValues('subCategory');
-        if (currentSubCategory === 'ticket' || !VEHICLE_TYPES.includes(currentSubCategory as VehicleType)) {
-           form.setValue('subCategory', initialData?.category === 'transfer' && initialData?.subCategory && VEHICLE_TYPES.includes(initialData.subCategory as VehicleType) ? initialData.subCategory : VEHICLE_TYPES[0]);
+  
+    React.useEffect(() => {
+        if (selectedCategory === 'transfer' && transferMode === 'vehicle') {
+            const currentSubCategory = form.getValues('subCategory');
+            if (currentSubCategory === 'ticket' || !VEHICLE_TYPES.includes(currentSubCategory as VehicleType)) {
+               form.setValue('subCategory', initialData?.category === 'transfer' && initialData?.subCategory && VEHICLE_TYPES.includes(initialData.subCategory as VehicleType) ? initialData.subCategory : VEHICLE_TYPES[0]);
+            }
         }
-      }
-    } else {
-        form.setValue('maxPassengers', undefined);
-    }
-  }, [transferMode, selectedCategory, form, initialData?.subCategory, initialData?.category]);
+    }, [transferMode, selectedCategory, form, initialData?.subCategory, initialData?.category]);
 
 
   const getPrice1Label = (): string => {
@@ -146,9 +246,9 @@ export function ServicePriceForm({ initialData, onSubmit, onCancel }: ServicePri
       case 'activity': return "Adult Price";
       case 'meal': return "Adult Meal Price";
       case 'transfer': return transferMode === 'ticket' ? "Adult Ticket Price" : "Cost Per Vehicle";
-      case 'hotel': return "Default Room Rate (Nightly)";
+      // Hotel simple pricing is deprecated in favor of hotelDetails
       case 'misc': return "Unit Cost";
-      default: return "Price 1";
+      default: return "Price 1 / Default Rate";
     }
   };
 
@@ -157,7 +257,7 @@ export function ServicePriceForm({ initialData, onSubmit, onCancel }: ServicePri
       case 'activity': return "Child Price (Optional)";
       case 'meal': return "Child Meal Price (Optional)";
       case 'transfer': return transferMode === 'ticket' ? "Child Ticket Price (Optional)" : null;
-      case 'hotel': return "Default Extra Bed Rate (Optional)";
+      // Hotel simple pricing is deprecated
       default: return null;
     }
   };
@@ -167,48 +267,44 @@ export function ServicePriceForm({ initialData, onSubmit, onCancel }: ServicePri
         case 'activity': return "Activity Type (e.g., Guided, Entrance)";
         case 'meal': return "Meal Type (e.g., Set Menu, Buffet)";
         case 'transfer': return transferMode === 'vehicle' ? "Vehicle Type" : null;
-        case 'hotel': return "Default Room Type (e.g., Deluxe King)";
+        // Hotel simple pricing is deprecated
         case 'misc': return "Item Sub-Type (e.g., Visa Fee, Souvenir)";
         default: return "Sub-category (Optional)";
     }
   };
 
-  const showPrice2 = (): boolean => getPrice2Label() !== null;
+  const showSimplePricingFields = selectedCategory !== 'hotel';
   const showSubCategoryInput = (): boolean => {
+    if (selectedCategory === 'hotel') return false;
     if (selectedCategory === 'transfer' && transferMode === 'ticket') return false;
     if (selectedCategory === 'transfer' && transferMode === 'vehicle') return false; 
     return getSubCategoryLabel() !== null;
   };
   const showMaxPassengers = (): boolean => selectedCategory === 'transfer' && transferMode === 'vehicle';
 
-
-  const handleAddSeasonalRate = () => {
-    const newRate: SeasonalRate = {
-      id: generateGUID(),
-      startDate: new Date().toISOString().split('T')[0],
-      endDate: new Date().toISOString().split('T')[0],
-      roomRate: 0,
-      extraBedRate: 0
-    };
-    const currentRates = form.getValues('seasonalRates') || [];
-    const newRatesForForm = [...currentRates, {
-        id: newRate.id,
-        startDate: new Date(),
-        endDate: new Date(),
-        roomRate: 0,
-        extraBedRate: 0
-    }];
-    form.setValue('seasonalRates', newRatesForForm as any[]);
-  };
-
-  const handleRemoveSeasonalRate = (index: number) => {
-    const currentRates = form.getValues('seasonalRates') || [];
-    form.setValue('seasonalRates', currentRates.filter((_, i) => i !== index));
-  };
-
   const handleActualSubmit = (values: ServicePriceFormValues) => {
     const { transferMode: _formTransferMode, ...dataToSubmit } = values;
 
+    // Ensure hotelDetails has the main service name and province
+    if (dataToSubmit.category === 'hotel' && dataToSubmit.hotelDetails) {
+      dataToSubmit.hotelDetails.name = dataToSubmit.name;
+      dataToSubmit.hotelDetails.province = dataToSubmit.province || 'none'; // Ensure province is set
+      dataToSubmit.hotelDetails.roomTypes = dataToSubmit.hotelDetails.roomTypes.map(rt => ({
+        ...rt,
+        seasonalPrices: rt.seasonalPrices.map(sp => ({
+            ...sp,
+            startDate: (sp.startDate as Date).toISOString().split('T')[0],
+            endDate: (sp.endDate as Date).toISOString().split('T')[0],
+        })),
+      }));
+      // Clear simpler hotel fields when using detailed pricing
+      dataToSubmit.subCategory = undefined;
+      dataToSubmit.price1 = undefined;
+      dataToSubmit.price2 = undefined;
+    } else if (dataToSubmit.category !== 'hotel') {
+      dataToSubmit.hotelDetails = undefined; // Ensure hotelDetails is undefined for non-hotels
+    }
+    
     if (dataToSubmit.category === 'transfer') {
         if (values.transferMode === 'ticket') {
             dataToSubmit.subCategory = 'ticket';
@@ -217,20 +313,6 @@ export function ServicePriceForm({ initialData, onSubmit, onCancel }: ServicePri
     } else {
         dataToSubmit.maxPassengers = undefined;
     }
-
-    if (dataToSubmit.category !== 'hotel') {
-        delete dataToSubmit.seasonalRates;
-    } else {
-        dataToSubmit.seasonalRates = dataToSubmit.seasonalRates?.map(sr => ({
-            ...sr,
-            startDate: (sr.startDate as Date).toISOString().split('T')[0],
-            endDate: (sr.endDate as Date).toISOString().split('T')[0],
-        }));
-    }
-
-    if (!getPrice2Label()) {
-        dataToSubmit.price2 = undefined;
-    }
     
     if (dataToSubmit.province === "none") {
       dataToSubmit.province = undefined;
@@ -238,7 +320,7 @@ export function ServicePriceForm({ initialData, onSubmit, onCancel }: ServicePri
 
     onSubmit({ ...dataToSubmit } as Omit<ServicePriceItem, 'id'>);
   };
-
+  
   const subCategoryLabel = getSubCategoryLabel();
 
   return (
@@ -246,285 +328,292 @@ export function ServicePriceForm({ initialData, onSubmit, onCancel }: ServicePri
       <form onSubmit={form.handleSubmit(handleActualSubmit)} className="space-y-6">
         <ScrollArea className="h-[60vh] md:h-[70vh] pr-3">
             <div className="space-y-6 p-1">
-                <FormField
-                    control={form.control}
-                    name="name"
-                    render={({ field }) => (
-                        <FormItem>
-                        <FormLabel>Service Name</FormLabel>
-                        <FormControl><Input placeholder="e.g., City Tour, Airport Transfer" {...field} /></FormControl>
-                        <FormMessage />
-                        </FormItem>
-                    )}
-                />
-                <FormField
-                  control={form.control}
-                  name="province"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Province / Location (Optional)</FormLabel>
-                      <Select
-                        onValueChange={(value) => field.onChange(value)}
-                        value={field.value || "none"}
-                        disabled={isLoadingProvinces}
-                      >
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select province..." />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="none">None / Generic</SelectItem>
-                          {provinces.map(p => (
-                            <SelectItem key={p.id} value={p.name}>{p.name}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <FormField
-                        control={form.control}
-                        name="category"
-                        render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>Category</FormLabel>
-                            <Select onValueChange={field.onChange} value={field.value}>
-                            <FormControl><SelectTrigger><SelectValue placeholder="Select category" /></SelectTrigger></FormControl>
-                            <SelectContent>
-                                {SERVICE_CATEGORIES.map(cat => <SelectItem key={cat} value={cat}>{cat.charAt(0).toUpperCase() + cat.slice(1)}</SelectItem>)}
-                            </SelectContent>
-                            </Select>
-                            <FormMessage />
-                        </FormItem>
-                        )}
-                    />
-                    <FormField
-                        control={form.control}
-                        name="currency"
-                        render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>Currency</FormLabel>
-                            <Select onValueChange={field.onChange} value={field.value}>
-                            <FormControl><SelectTrigger><SelectValue placeholder="Select currency" /></SelectTrigger></FormControl>
-                            <SelectContent>
-                                {CURRENCIES.map(curr => <SelectItem key={curr} value={curr}>{curr}</SelectItem>)}
-                            </SelectContent>
-                            </Select>
-                            <FormMessage />
-                        </FormItem>
-                        )}
-                    />
-                </div>
-
-                <div className="space-y-4 pt-4 border-t mt-4">
-                    <h3 className="text-md font-medium text-muted-foreground">Category Specific Details: {selectedCategory.charAt(0).toUpperCase() + selectedCategory.slice(1)}</h3>
-
-                    {selectedCategory === 'transfer' && (
+                {/* BASIC SERVICE DETAILS FIELDSET */}
+                <div className="border border-border rounded-md p-4">
+                    <p className="text-sm font-semibold -mt-6 px-1 bg-background inline-block mb-4">Basic Service Details</p>
+                    <div className="space-y-4">
                         <FormField
                             control={form.control}
-                            name="transferMode"
-                            render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>Transfer Mode</FormLabel>
-                                <Select onValueChange={field.onChange} value={field.value || undefined}>
-                                <FormControl><SelectTrigger><SelectValue placeholder="Select transfer mode" /></SelectTrigger></FormControl>
-                                <SelectContent>
-                                    <SelectItem value="ticket">Ticket Basis</SelectItem>
-                                    <SelectItem value="vehicle">Vehicle Basis</SelectItem>
-                                </SelectContent>
-                                </Select>
-                                <FormMessage />
-                            </FormItem>
-                            )}
-                        />
-                    )}
-                    
-                    {selectedCategory === 'transfer' && transferMode === 'vehicle' && (
-                         <FormField
-                            control={form.control}
-                            name="subCategory" 
-                            render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>Vehicle Type</FormLabel>
-                                <Select onValueChange={field.onChange} value={field.value || undefined}>
-                                <FormControl><SelectTrigger><SelectValue placeholder="Select vehicle type" /></SelectTrigger></FormControl>
-                                <SelectContent>
-                                    {VEHICLE_TYPES.map(vType => <SelectItem key={vType} value={vType}>{vType}</SelectItem>)}
-                                </SelectContent>
-                                </Select>
-                                <FormMessage />
-                            </FormItem>
-                            )}
-                        />
-                    )}
-
-                    {showSubCategoryInput() && subCategoryLabel && (
-                        <FormField
-                            control={form.control}
-                            name="subCategory"
-                            render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>{subCategoryLabel}</FormLabel>
-                                <FormControl><Input placeholder={subCategoryLabel.startsWith("Vehicle Type") ? "e.g., Sedan, SUV" : "Details..."} {...field} value={field.value || ''}/></FormControl>
-                                <FormMessage />
-                            </FormItem>
-                            )}
-                        />
-                    )}
-
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <FormField
-                            control={form.control}
-                            name="price1"
-                            render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>{getPrice1Label()}</FormLabel>
-                                <FormControl><Input type="number" placeholder="0.00" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || 0)}/></FormControl>
-                                <FormMessage />
-                            </FormItem>
-                            )}
-                        />
-                        {showPrice2() && getPrice2Label() && (
-                            <FormField
-                            control={form.control}
-                            name="price2"
+                            name="province"
                             render={({ field }) => (
                                 <FormItem>
-                                <FormLabel>{getPrice2Label()}</FormLabel>
-                                <FormControl><Input type="number" placeholder="0.00" {...field} value={field.value ?? ''} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)} /></FormControl>
+                                <FormLabel>Province / Location (Optional)</FormLabel>
+                                <Select
+                                    onValueChange={(value) => field.onChange(value === "none" ? undefined : value)}
+                                    value={field.value || "none"}
+                                    disabled={isLoadingProvinces}
+                                >
+                                    <FormControl>
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Select province..." />
+                                    </SelectTrigger>
+                                    </FormControl>
+                                    <SelectContent>
+                                    <SelectItem value="none">— Select —</SelectItem>
+                                    {provinces.map(p => (
+                                        <SelectItem key={p.id} value={p.name}>{p.name}</SelectItem>
+                                    ))}
+                                    </SelectContent>
+                                </Select>
                                 <FormMessage />
                                 </FormItem>
                             )}
+                        />
+                        <FormField
+                            control={form.control}
+                            name="category"
+                            render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Category</FormLabel>
+                                <Select onValueChange={field.onChange} value={field.value}>
+                                <FormControl><SelectTrigger><SelectValue placeholder="Select category" /></SelectTrigger></FormControl>
+                                <SelectContent>
+                                    {SERVICE_CATEGORIES.map(cat => <SelectItem key={cat} value={cat}>{cat.charAt(0).toUpperCase() + cat.slice(1)}</SelectItem>)}
+                                </SelectContent>
+                                </Select>
+                                <FormMessage />
+                            </FormItem>
+                            )}
+                        />
+                         <FormField
+                            control={form.control}
+                            name="name"
+                            render={({ field }) => (
+                                <FormItem>
+                                <FormLabel>Service / Hotel Name</FormLabel>
+                                <FormControl><Input placeholder="e.g., City Tour, Oceanview Resort" {...field} /></FormControl>
+                                <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                         <FormField
+                            control={form.control}
+                            name="currency"
+                            render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Currency</FormLabel>
+                                <Select onValueChange={field.onChange} value={field.value}>
+                                <FormControl><SelectTrigger><SelectValue placeholder="Select currency" /></SelectTrigger></FormControl>
+                                <SelectContent>
+                                    {CURRENCIES.map(curr => <SelectItem key={curr} value={curr}>{curr}</SelectItem>)}
+                                </SelectContent>
+                                </Select>
+                                <FormMessage />
+                            </FormItem>
+                            )}
+                        />
+                         <FormField
+                            control={form.control}
+                            name="notes"
+                            render={({ field }) => (
+                                <FormItem>
+                                <FormLabel>Notes (Optional)</FormLabel>
+                                <FormControl><Textarea placeholder="Additional details about the service or pricing" {...field} value={field.value || ''} rows={2} /></FormControl>
+                                <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                    </div>
+                </div>
+
+
+                {/* CONDITIONAL PRICING FIELDS (NON-HOTEL OR SIMPLE HOTEL) */}
+                {showSimplePricingFields && (
+                    <div className="border border-border rounded-md p-4 mt-6">
+                        <p className="text-sm font-semibold -mt-6 px-1 bg-background inline-block mb-4">Pricing Details: {selectedCategory.charAt(0).toUpperCase() + selectedCategory.slice(1)}</p>
+                        <div className="space-y-4">
+                            {selectedCategory === 'transfer' && (
+                                <FormField
+                                    control={form.control}
+                                    name="transferMode"
+                                    render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Transfer Mode</FormLabel>
+                                        <Select onValueChange={field.onChange} value={field.value || undefined}>
+                                        <FormControl><SelectTrigger><SelectValue placeholder="Select transfer mode" /></SelectTrigger></FormControl>
+                                        <SelectContent>
+                                            <SelectItem value="ticket">Ticket Basis</SelectItem>
+                                            <SelectItem value="vehicle">Vehicle Basis</SelectItem>
+                                        </SelectContent>
+                                        </Select>
+                                        <FormMessage />
+                                    </FormItem>
+                                    )}
+                                />
+                            )}
+                            
+                            {selectedCategory === 'transfer' && transferMode === 'vehicle' && (
+                                <FormField
+                                    control={form.control}
+                                    name="subCategory" 
+                                    render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Vehicle Type</FormLabel>
+                                        <Select onValueChange={field.onChange} value={field.value || undefined}>
+                                        <FormControl><SelectTrigger><SelectValue placeholder="Select vehicle type" /></SelectTrigger></FormControl>
+                                        <SelectContent>
+                                            {VEHICLE_TYPES.map(vType => <SelectItem key={vType} value={vType}>{vType}</SelectItem>)}
+                                        </SelectContent>
+                                        </Select>
+                                        <FormMessage />
+                                    </FormItem>
+                                    )}
+                                />
+                            )}
+
+                            {showSubCategoryInput() && subCategoryLabel && (
+                                <FormField
+                                    control={form.control}
+                                    name="subCategory"
+                                    render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>{subCategoryLabel}</FormLabel>
+                                        <FormControl><Input placeholder={subCategoryLabel.startsWith("Vehicle Type") ? "e.g., Sedan, SUV" : "Details..."} {...field} value={field.value || ''}/></FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                    )}
+                                />
+                            )}
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <FormField
+                                    control={form.control}
+                                    name="price1"
+                                    render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>{getPrice1Label()}</FormLabel>
+                                        <FormControl><Input type="number" placeholder="0.00" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || 0)}/></FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                    )}
+                                />
+                                {getPrice2Label() && (
+                                    <FormField
+                                    control={form.control}
+                                    name="price2"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                        <FormLabel>{getPrice2Label()}</FormLabel>
+                                        <FormControl><Input type="number" placeholder="0.00" {...field} value={field.value ?? ''} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)} /></FormControl>
+                                        <FormMessage />
+                                        </FormItem>
+                                    )}
+                                    />
+                                )}
+                            </div>
+                            {showMaxPassengers() && (
+                                <FormField
+                                    control={form.control}
+                                    name="maxPassengers"
+                                    render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Max Passengers (per vehicle)</FormLabel>
+                                        <FormControl><Input type="number" placeholder="e.g., 4" {...field} value={field.value ?? ''} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)} min="1" /></FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                    )}
+                                />
+                            )}
+                             <FormField
+                                control={form.control}
+                                name="unitDescription"
+                                render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Unit Description</FormLabel>
+                                    <FormControl><Input placeholder="e.g., per adult, per vehicle" {...field} /></FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                                )}
                             />
-                        )}
+                        </div>
                     </div>
-                     {showMaxPassengers() && (
-                        <FormField
-                            control={form.control}
-                            name="maxPassengers"
-                            render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>Max Passengers (per vehicle)</FormLabel>
-                                <FormControl><Input type="number" placeholder="e.g., 4" {...field} value={field.value ?? ''} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)} min="1" /></FormControl>
-                                <FormMessage />
-                            </FormItem>
-                            )}
-                        />
-                    )}
-                </div>
+                )}
 
-                <FormField
-                    control={form.control}
-                    name="unitDescription"
-                    render={({ field }) => (
-                    <FormItem>
-                        <FormLabel>Unit Description</FormLabel>
-                        <FormControl><Input placeholder="e.g., per adult, per night, per vehicle" {...field} /></FormControl>
-                        <FormMessage />
-                    </FormItem>
-                    )}
-                />
-                <FormField
-                    control={form.control}
-                    name="notes"
-                    render={({ field }) => (
-                        <FormItem>
-                        <FormLabel>Notes (Optional)</FormLabel>
-                        <FormControl><Textarea placeholder="Additional details about the service or pricing" {...field} value={field.value || ''} /></FormControl>
-                        <FormMessage />
-                        </FormItem>
-                    )}
-                />
 
+                {/* HOTEL DETAILS FIELDSET (ROOM TYPES & SEASONS) */}
                 {selectedCategory === 'hotel' && (
-                <div className="space-y-4 pt-4 border-t mt-4">
-                    <div className="flex justify-between items-center">
-                    <h3 className="text-lg font-medium text-primary">Seasonal Rates (Optional for Hotels)</h3>
-                    <Button type="button" variant="outline" size="sm" onClick={handleAddSeasonalRate} className="border-primary text-primary hover:bg-primary/10">
-                        <PlusCircle className="mr-2 h-4 w-4" /> Add Seasonal Rate
-                    </Button>
+                    <div className="border border-border rounded-md p-4 mt-6">
+                        <p className="text-sm font-semibold -mt-6 px-1 bg-background inline-block mb-4">Room Types &amp; Nightly Rates</p>
+                        
+                        <div id="roomTypesContainer" className="space-y-6">
+                        {roomTypeFields.map((roomField, roomIndex) => {
+                            const roomTypeName = form.watch(`hotelDetails.roomTypes.${roomIndex}.name`);
+                            return (
+                            <div key={roomField.fieldId} className="border border-border rounded-md p-4 pt-8 relative bg-card shadow-sm"> {/* Adjusted pt for legend */}
+                                <p className="text-base font-medium -mt-11 px-1 bg-card inline-block mb-3 absolute left-2 top-4"> {/* Legend styling */}
+                                {roomTypeName || `Room Type`}
+                                </p>
+                                <button
+                                    type="button"
+                                    onClick={() => removeRoomType(roomIndex)}
+                                    className="absolute top-2 right-2 h-7 w-7 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center text-sm hover:bg-destructive/80"
+                                    aria-label="Remove Room Type"
+                                >
+                                    <XIcon size={16}/>
+                                </button>
+
+                                <div className="form-group mb-3"> {/* From HTML example */}
+                                  <FormField
+                                      control={form.control}
+                                      name={`hotelDetails.roomTypes.${roomIndex}.name`}
+                                      render={({ field }) => (
+                                          <FormItem>
+                                          <FormLabel className="text-sm text-muted-foreground">Room Type Name</FormLabel> {/* From HTML example */}
+                                          <FormControl><Input placeholder="e.g., Deluxe Pool View" {...field} /></FormControl>
+                                          <FormMessage />
+                                          </FormItem>
+                                      )}
+                                  />
+                                </div>
+                                
+                                <SeasonalRatesTable roomIndex={roomIndex} form={form} currency={form.getValues('currency')} />
+
+                                <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                className="mt-3 border-primary text-primary hover:bg-primary/10 add-btn" // Added add-btn like class for consistency if needed
+                                onClick={() => {
+                                    const currentRoomSeasonalPrices = form.getValues(`hotelDetails.roomTypes.${roomIndex}.seasonalPrices`) || [];
+                                    form.setValue(`hotelDetails.roomTypes.${roomIndex}.seasonalPrices`, [
+                                        ...currentRoomSeasonalPrices,
+                                        { id: generateGUID(), startDate: new Date(), endDate: new Date(), rate: 0, extraBedRate: 0 }
+                                    ]);
+                                }}
+                                >
+                                <PlusCircle className="mr-2 h-4 w-4" /> Add Season
+                                </Button>
+                            </div>
+                            );
+                        })}
+                        </div>
+                        <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => appendRoomType({ 
+                                id: generateGUID(), 
+                                name: `Room Type ${roomTypeFields.length + 1}`, 
+                                seasonalPrices: [{ id: generateGUID(), startDate: new Date(), endDate: new Date(), rate: 0, extraBedRate: 0 }]
+                            })}
+                            className="mt-4 border-accent text-accent hover:bg-accent/10 add-btn" // Added add-btn like class
+                        >
+                            <PlusCircle className="mr-2 h-4 w-4" /> Add Room Type
+                        </Button>
+                         {form.formState.errors.hotelDetails?.roomTypes && typeof form.formState.errors.hotelDetails.roomTypes === 'string' && (
+                             <FormMessage className="mt-2">{form.formState.errors.hotelDetails.roomTypes}</FormMessage>
+                         )}
+                         {form.formState.errors.hotelDetails?.root?.message && (
+                            <FormMessage className="mt-2">{form.formState.errors.hotelDetails.root.message}</FormMessage>
+                         )}
+
                     </div>
-                    {seasonalRates.map((rate, index) => (
-                    <div key={rate.id || index} className="p-4 border rounded-md shadow-sm bg-card space-y-3">
-                        <div className="flex justify-between items-center">
-                            <p className="font-medium">Seasonal Period {index + 1}</p>
-                            <Button type="button" variant="ghost" size="icon" onClick={() => handleRemoveSeasonalRate(index)} className="text-destructive hover:bg-destructive/10">
-                                <Trash2 className="h-4 w-4" />
-                            </Button>
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        <Controller
-                            control={form.control}
-                            name={`seasonalRates.${index}.startDate`}
-                            render={({ field, fieldState: { error } }) => (
-                            <FormItem>
-                                <FormLabel>Start Date</FormLabel>
-                                <FormControl>
-                                    <DatePicker date={field.value} onDateChange={field.onChange} />
-                                </FormControl>
-                                {error && <FormMessage>{error.message}</FormMessage>}
-                            </FormItem>
-                            )}
-                        />
-                        <Controller
-                            control={form.control}
-                            name={`seasonalRates.${index}.endDate`}
-                            render={({ field, fieldState: { error } }) => (
-                            <FormItem>
-                                <FormLabel>End Date</FormLabel>
-                                <FormControl>
-                                    <DatePicker date={field.value} onDateChange={field.onChange} minDate={form.getValues(`seasonalRates.${index}.startDate`)}/>
-                                </FormControl>
-                                {error && <FormMessage>{error.message}</FormMessage>}
-                                {form.formState.errors.seasonalRates?.[index]?.endDate && <FormMessage>{form.formState.errors.seasonalRates[index]?.endDate?.message}</FormMessage>}
-                            </FormItem>
-                            )}
-                        />
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        <FormField
-                            control={form.control}
-                            name={`seasonalRates.${index}.roomRate`}
-                            render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>Room Rate ({form.getValues('currency')})</FormLabel>
-                                <FormControl><Input type="number" placeholder="0.00" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || 0)} /></FormControl>
-                                <FormMessage />
-                            </FormItem>
-                            )}
-                        />
-                        <FormField
-                            control={form.control}
-                            name={`seasonalRates.${index}.extraBedRate`}
-                            render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>Extra Bed Rate ({form.getValues('currency')}) (Optional)</FormLabel>
-                                <FormControl><Input type="number" placeholder="0.00" {...field} value={field.value ?? ''} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)} /></FormControl>
-                                <FormMessage />
-                            </FormItem>
-                            )}
-                        />
-                        </div>
-                    </div>
-                    ))}
-                    {form.formState.errors.seasonalRates && typeof form.formState.errors.seasonalRates === 'string' && (
-                        <FormMessage>{form.formState.errors.seasonalRates}</FormMessage>
-                    )}
-                    {Array.isArray(form.formState.errors.seasonalRates) && form.formState.errors.seasonalRates.map((error, index) => (
-                        error && <FormMessage key={index}>Error in seasonal rate {index + 1}: {Object.values(error).map(e => (e as any)?.message).filter(Boolean).join(', ')}</FormMessage>
-                    ))}
-                </div>
                 )}
             </div>
         </ScrollArea>
         <div className="flex justify-end space-x-3 pt-4 border-t mt-4">
           <Button type="button" variant="outline" onClick={onCancel}>Cancel</Button>
           <Button type="submit" className="bg-accent hover:bg-accent/90 text-accent-foreground">
-            {initialData ? 'Update' : 'Create'} Service Price
+            {initialData?.id ? 'Update' : 'Create'} Service Price
           </Button>
         </div>
       </form>
@@ -532,3 +621,123 @@ export function ServicePriceForm({ initialData, onSubmit, onCancel }: ServicePri
   );
 }
 
+
+interface SeasonalRatesTableProps {
+  roomIndex: number;
+  form: any; // Control from react-hook-form
+  currency: CurrencyCode;
+}
+
+function SeasonalRatesTable({ roomIndex, form, currency }: SeasonalRatesTableProps) {
+  const { fields, append, remove } = useFieldArray({
+    control: form.control,
+    name: `hotelDetails.roomTypes.${roomIndex}.seasonalPrices`,
+    keyName: "seasonFieldId" 
+  });
+  
+  // Ensure there's always at least one row if fields is empty initially
+  React.useEffect(() => {
+    if (fields.length === 0) {
+      append({ id: generateGUID(), startDate: new Date(), endDate: new Date(), rate: 0, extraBedRate: 0 });
+    }
+  }, [fields, append]);
+
+
+  return (
+    <div className="space-y-1"> {/* Reduced space for tighter table layout */}
+      {/* <Label className="text-sm">Seasonal Periods</Label> // Removed as per HTML structure */}
+      <Table className="mb-1 border"> {/* Reduced margin */}
+        <TableHeader className="bg-muted/30"> {/* Closer to HTML's th background */}
+          <TableRow>
+            <TableHead className="w-[180px] px-2 py-1 text-xs">Start Date</TableHead> {/* Adjusted padding & font size */}
+            <TableHead className="w-[180px] px-2 py-1 text-xs">End Date</TableHead>
+            <TableHead className="px-2 py-1 text-xs">Nightly Rate ({currency})</TableHead>
+            <TableHead className="px-2 py-1 text-xs">Extra Bed ({currency})</TableHead>
+            <TableHead className="w-[40px] px-1 py-1 text-center text-xs">Del</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {fields.map((seasonField, seasonIndex) => (
+            <TableRow key={seasonField.seasonFieldId}>
+              <TableCell className="px-2 py-1">
+                <Controller
+                  control={form.control}
+                  name={`hotelDetails.roomTypes.${roomIndex}.seasonalPrices.${seasonIndex}.startDate`}
+                  render={({ field, fieldState: { error } }) => (
+                    <FormItem>
+                      <FormControl>
+                        <DatePicker date={field.value} onDateChange={field.onChange} />
+                      </FormControl>
+                      {error && <FormMessage className="text-xs">{error.message}</FormMessage>}
+                    </FormItem>
+                  )}
+                />
+              </TableCell>
+              <TableCell className="px-2 py-1">
+                <Controller
+                  control={form.control}
+                  name={`hotelDetails.roomTypes.${roomIndex}.seasonalPrices.${seasonIndex}.endDate`}
+                  render={({ field, fieldState: { error } }) => (
+                    <FormItem>
+                      <FormControl>
+                        <DatePicker 
+                            date={field.value} 
+                            onDateChange={field.onChange} 
+                            minDate={form.getValues(`hotelDetails.roomTypes.${roomIndex}.seasonalPrices.${seasonIndex}.startDate`)}
+                        />
+                      </FormControl>
+                       {error && <FormMessage className="text-xs">{error.message}</FormMessage>}
+                       {form.formState.errors.hotelDetails?.roomTypes?.[roomIndex]?.seasonalPrices?.[seasonIndex]?.endDate?.message && (
+                         <FormMessage className="text-xs">{form.formState.errors.hotelDetails.roomTypes[roomIndex].seasonalPrices[seasonIndex].endDate.message}</FormMessage>
+                       )}
+                    </FormItem>
+                  )}
+                />
+              </TableCell>
+              <TableCell className="px-2 py-1">
+                <FormField
+                  control={form.control}
+                  name={`hotelDetails.roomTypes.${roomIndex}.seasonalPrices.${seasonIndex}.rate`}
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormControl><Input type="number" placeholder="0.00" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || 0)} className="h-9 text-sm" /></FormControl> {/* Adjusted height & text size */}
+                      <FormMessage className="text-xs" />
+                    </FormItem>
+                  )}
+                />
+              </TableCell>
+              <TableCell className="px-2 py-1">
+                <FormField
+                  control={form.control}
+                  name={`hotelDetails.roomTypes.${roomIndex}.seasonalPrices.${seasonIndex}.extraBedRate`}
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormControl><Input type="number" placeholder="0.00" {...field} value={field.value ?? ''} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)} className="h-9 text-sm" /></FormControl> {/* Adjusted height & text size */}
+                      <FormMessage className="text-xs" />
+                    </FormItem>
+                  )}
+                />
+              </TableCell>
+              <TableCell className="text-center px-1 py-1">
+                <button
+                  type="button"
+                  onClick={() => fields.length > 1 ? remove(seasonIndex) : null}
+                  disabled={fields.length <= 1}
+                  className="h-7 w-7 text-destructive hover:text-destructive/80 disabled:opacity-50 remove-season" // Added remove-season class
+                  aria-label="Remove Season"
+                >
+                  <XIcon size={18} /> {/* Slightly larger X for visibility */}
+                </button>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+        {form.formState.errors.hotelDetails?.roomTypes?.[roomIndex]?.seasonalPrices && typeof form.formState.errors.hotelDetails.roomTypes[roomIndex].seasonalPrices === 'string' && (
+            <FormMessage className="text-xs">{ (form.formState.errors.hotelDetails.roomTypes[roomIndex].seasonalPrices as any).message || form.formState.errors.hotelDetails.roomTypes[roomIndex].seasonalPrices }</FormMessage>
+        )}
+    </div>
+  );
+}
+
+```
