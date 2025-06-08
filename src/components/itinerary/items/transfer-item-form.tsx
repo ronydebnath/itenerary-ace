@@ -2,7 +2,8 @@
 "use client";
 
 import * as React from 'react';
-import type { TransferItem as TransferItemType, Traveler, CurrencyCode, ServicePriceItem } from '@/types/itinerary';
+import type { TransferItem as TransferItemType, Traveler, CurrencyCode, ServicePriceItem, VehicleType } from '@/types/itinerary';
+import { VEHICLE_TYPES } from '@/types/itinerary';
 import { BaseItemForm, FormField } from './base-item-form';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -25,14 +26,12 @@ export function TransferItemForm({ item, travelers, currency, onUpdate, onDelete
       const allCategoryServices = getServicePrices('transfer').filter(s => s.currency === currency);
       let modeAndProvinceFilteredServices = allCategoryServices;
 
-      // Filter by mode (ticket or vehicle)
       modeAndProvinceFilteredServices = modeAndProvinceFilteredServices.filter(s => {
         if (item.mode === 'ticket') return s.subCategory === 'ticket';
-        if (item.mode === 'vehicle') return s.subCategory !== 'ticket'; // 'vehicle' or specific vehicle types like 'Sedan'
+        if (item.mode === 'vehicle') return s.subCategory !== 'ticket'; 
         return false;
       });
       
-      // Further filter by province if item.province is set
       if (item.province) {
         modeAndProvinceFilteredServices = modeAndProvinceFilteredServices.filter(s => s.province === item.province || !s.province);
       }
@@ -42,7 +41,7 @@ export function TransferItemForm({ item, travelers, currency, onUpdate, onDelete
 
   const handleInputChange = (field: keyof TransferItemType, value: any) => {
     if (field === 'mode') {
-        onUpdate({ ...item, [field]: value, selectedServicePriceId: undefined, adultTicketPrice: 0, childTicketPrice: undefined, costPerVehicle: 0, vehicles: 1 });
+        onUpdate({ ...item, [field]: value, selectedServicePriceId: undefined, adultTicketPrice: 0, childTicketPrice: undefined, costPerVehicle: 0, vehicles: 1, vehicleType: value === 'vehicle' ? VEHICLE_TYPES[0] : undefined });
     } else {
         onUpdate({ ...item, [field]: value, selectedServicePriceId: undefined });
     }
@@ -61,6 +60,7 @@ export function TransferItemForm({ item, travelers, currency, onUpdate, onDelete
         adultTicketPrice: item.mode === 'ticket' ? 0 : undefined,
         childTicketPrice: item.mode === 'ticket' ? undefined : undefined,
         costPerVehicle: item.mode === 'vehicle' ? 0 : undefined,
+        vehicleType: item.mode === 'vehicle' ? item.vehicleType || VEHICLE_TYPES[0] : undefined,
       });
     } else {
       const selectedService = getServicePriceById(selectedValue);
@@ -68,18 +68,20 @@ export function TransferItemForm({ item, travelers, currency, onUpdate, onDelete
         const updatedItemPartial: Partial<TransferItemType> = {
           name: (item.name === `New transfer` || !item.name || item.selectedServicePriceId) ? selectedService.name : item.name,
           selectedServicePriceId: selectedService.id,
-          // Do not override item.province
         };
         if (item.mode === 'ticket') {
           updatedItemPartial.adultTicketPrice = selectedService.price1;
           updatedItemPartial.childTicketPrice = selectedService.price2;
+          updatedItemPartial.vehicleType = undefined;
         } else if (item.mode === 'vehicle') {
           updatedItemPartial.costPerVehicle = selectedService.price1;
-          if (selectedService.subCategory && selectedService.subCategory !== 'ticket' && selectedService.subCategory !== 'vehicle') {
-            updatedItemPartial.vehicleType = selectedService.subCategory as TransferItemType['vehicleType'];
-          } else if (!item.vehicleType) { 
-            updatedItemPartial.vehicleType = 'Sedan';
+          if (selectedService.subCategory && VEHICLE_TYPES.includes(selectedService.subCategory as VehicleType)) {
+            updatedItemPartial.vehicleType = selectedService.subCategory as VehicleType;
+          } else {
+            updatedItemPartial.vehicleType = item.vehicleType || VEHICLE_TYPES[0];
           }
+          updatedItemPartial.adultTicketPrice = undefined;
+          updatedItemPartial.childTicketPrice = undefined;
         }
         onUpdate({ ...item, ...updatedItemPartial });
       }
@@ -121,7 +123,7 @@ export function TransferItemForm({ item, travelers, currency, onUpdate, onDelete
                     <SelectItem value="none">None (Custom Price)</SelectItem>
                     {transferServices.map(service => (
                     <SelectItem key={service.id} value={service.id}>
-                        {service.name} ({service.province || 'Generic'} - {service.subCategory !== 'ticket' && service.subCategory !== 'vehicle' ? service.subCategory : service.unitDescription}) - {currency} {service.price1}
+                        {service.name} ({service.province || 'Generic'} - {service.subCategory && service.subCategory !== 'ticket' && service.subCategory !== 'vehicle' ? service.subCategory : service.unitDescription}) - {currency} {service.price1}
                         {item.mode === 'ticket' && service.price2 !== undefined ? ` / Ch: ${service.price2}` : ''}
                     </SelectItem>
                     ))}
@@ -162,16 +164,14 @@ export function TransferItemForm({ item, travelers, currency, onUpdate, onDelete
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
           <FormField label="Vehicle Type" id={`vehicleType-${item.id}`}>
             <Select
-              value={item.vehicleType || 'Sedan'} 
-              onValueChange={(value: 'Sedan' | 'SUV' | 'Van' | 'Bus' | 'Other') => handleInputChange('vehicleType', value)}
+              value={item.vehicleType || VEHICLE_TYPES[0]} 
+              onValueChange={(value: VehicleType) => handleInputChange('vehicleType', value)}
             >
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="Sedan">Sedan</SelectItem>
-                <SelectItem value="SUV">SUV</SelectItem>
-                <SelectItem value="Van">Van</SelectItem>
-                <SelectItem value="Bus">Bus</SelectItem>
-                <SelectItem value="Other">Other</SelectItem>
+                {VEHICLE_TYPES.map(vType => (
+                  <SelectItem key={vType} value={vType}>{vType}</SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </FormField>

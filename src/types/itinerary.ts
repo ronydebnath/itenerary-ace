@@ -1,3 +1,4 @@
+
 export interface Traveler {
   id: string; // e.g., "A1", "C1"
   label: string; // e.g., "Adult 1", "Child 1"
@@ -19,6 +20,14 @@ export interface TripSettings {
   budget?: number;
 }
 
+export const VEHICLE_TYPES = [
+  'Sedan', 'MPV', 'SUV', 'Van', 'Minibus', 'Bus', 
+  'Ferry', 'Longtail Boat', 'Speedboat', 
+  'Motorbike Taxi', 'Tuk-tuk', 'Other'
+] as const;
+export type VehicleType = typeof VEHICLE_TYPES[number];
+
+
 export interface BaseItem {
   id: string;
   day: number;
@@ -37,7 +46,7 @@ export interface TransferItem extends BaseItem {
   mode: 'ticket' | 'vehicle'; // Determines if pricing is per ticket or per vehicle
   adultTicketPrice?: number; // Used if mode is 'ticket'
   childTicketPrice?: number; // Used if mode is 'ticket'
-  vehicleType?: 'Sedan' | 'SUV' | 'Van' | 'Bus' | 'Other'; // Used if mode is 'vehicle'
+  vehicleType?: VehicleType; // Used if mode is 'vehicle'
   costPerVehicle?: number; // Used if mode is 'vehicle'
   vehicles?: number; // Used if mode is 'vehicle'
 }
@@ -155,9 +164,9 @@ export interface SeasonalRate {
 export interface ServicePriceItem {
   id: string;
   name: string;
-  province?: string; // New field for province/location
+  province?: string; 
   category: ItineraryItemType;
-  subCategory?: string; // Hotel: Default room type name; Transfer: 'ticket' or 'vehicle' (or specific vehicle type like 'Sedan')
+  subCategory?: string; // Hotel: Default room type name; Transfer (vehicle basis): VehicleType; Transfer (ticket basis): 'ticket'; Activity/Meal/Misc: Specific type
   price1: number; // Main price: Activity/Meal: Adult Price; Transfer-Ticket: Adult Ticket; Transfer-Vehicle: Cost per Vehicle; Hotel: Default Room Rate; Misc: Unit Cost
   price2?: number; // Secondary price: Activity/Meal: Child Price; Transfer-Ticket: Child Ticket; Hotel: Default Extra Bed Rate. Not used for Transfer-Vehicle or Misc.
   currency: CurrencyCode;
