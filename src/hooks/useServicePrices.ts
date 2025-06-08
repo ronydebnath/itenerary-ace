@@ -49,19 +49,19 @@ const DEFAULT_DEMO_SERVICE_PRICES: ServicePriceItem[] = [
 
   // == Bangkok - Hotels (using hotelDetails) ==
   {
-    id: generateGUID(), name: 'Riverside Luxury Hotel', province: 'Bangkok', category: 'hotel', currency: 'THB', unitDescription: 'per night', 
+    id: generateGUID(), name: 'Riverside Luxury Hotel', province: 'Bangkok', category: 'hotel', currency: 'THB', unitDescription: 'per night',
     notes: '5-star, riverside location',
     hotelDetails: {
       id: generateGUID(), name: 'Riverside Luxury Hotel', province: 'Bangkok',
       roomTypes: [
-        { 
+        {
           id: generateGUID(), name: 'Deluxe River View', characteristics: [],
           seasonalPrices: [
             { id: generateGUID(), startDate: '2024-11-01', endDate: '2025-02-28', rate: 6500, extraBedAllowed: true, extraBedRate: 1200 },
             { id: generateGUID(), startDate: '2024-05-01', endDate: '2024-09-30', rate: 4000, extraBedAllowed: true, extraBedRate: 800 }
           ]
         },
-        { 
+        {
           id: generateGUID(), name: 'Standard City View', characteristics: [],
           seasonalPrices: [
             { id: generateGUID(), startDate: '2024-11-01', endDate: '2025-02-28', rate: 5000, extraBedAllowed: false },
@@ -156,7 +156,7 @@ const DEFAULT_DEMO_SERVICE_PRICES: ServicePriceItem[] = [
 
   // == Pattaya - Hotels (using hotelDetails) ==
   {
-    id: generateGUID(), name: 'Pattaya Beachfront Resort', province: 'Pattaya (Chonburi)', category: 'hotel', currency: 'THB', unitDescription: 'per night', 
+    id: generateGUID(), name: 'Pattaya Beachfront Resort', province: 'Pattaya (Chonburi)', category: 'hotel', currency: 'THB', unitDescription: 'per night',
     notes: '4-star, on Beach Road',
     hotelDetails: {
         id: generateGUID(), name: 'Pattaya Beachfront Resort', province: 'Pattaya (Chonburi)',
@@ -293,7 +293,7 @@ export function useServicePrices() {
     },
     [allServicePrices, isLoading]
   );
-  
+
   const getServicePriceById = React.useCallback(
     (id: string): ServicePriceItem | undefined => {
       if (isLoading) return undefined;

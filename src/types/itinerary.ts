@@ -21,8 +21,8 @@ export interface TripSettings {
 }
 
 export const VEHICLE_TYPES = [
-  'Sedan', 'MPV', 'SUV', 'Van', 'Minibus', 'Bus', 
-  'Ferry', 'Longtail Boat', 'Speedboat', 
+  'Sedan', 'MPV', 'SUV', 'Van', 'Minibus', 'Bus',
+  'Ferry', 'Longtail Boat', 'Speedboat',
   'Motorbike Taxi', 'Tuk-tuk', 'Other'
 ] as const;
 export type VehicleType = typeof VEHICLE_TYPES[number];
@@ -34,27 +34,27 @@ export interface BaseItem {
   name: string;
   note?: string;
   excludedTravelerIds: string[];
-  selectedServicePriceId?: string; 
-  aiSuggested?: boolean; 
+  selectedServicePriceId?: string;
+  aiSuggested?: boolean;
   originalCost?: number;
-  province?: string; 
+  province?: string;
 }
 
 export interface TransferItem extends BaseItem {
   type: 'transfer';
-  mode: 'ticket' | 'vehicle'; 
-  adultTicketPrice?: number; 
-  childTicketPrice?: number; 
-  vehicleType?: VehicleType; 
-  costPerVehicle?: number; 
-  vehicles?: number; 
+  mode: 'ticket' | 'vehicle';
+  adultTicketPrice?: number;
+  childTicketPrice?: number;
+  vehicleType?: VehicleType;
+  costPerVehicle?: number;
+  vehicles?: number;
 }
 
 export interface ActivityItem extends BaseItem {
   type: 'activity';
   adultPrice: number;
   childPrice?: number;
-  endDay?: number; 
+  endDay?: number;
 }
 
 // New Hotel Data Structure Definitions
@@ -66,7 +66,7 @@ export interface HotelCharacteristic {
 
 export interface RoomTypeSeasonalPrice {
   id: string;
-  seasonName?: string; 
+  seasonName?: string;
   startDate: string; // YYYY-MM-DD
   endDate: string;   // YYYY-MM-DD
   rate: number;      // Price per night for this room type during this season
@@ -112,14 +112,14 @@ export interface MealItem extends BaseItem {
   type: 'meal';
   adultMealPrice: number;
   childMealPrice?: number;
-  totalMeals: number; 
+  totalMeals: number;
 }
 
 export interface MiscItem extends BaseItem {
   type: 'misc';
   unitCost: number;
   quantity: number;
-  costAssignment: 'perPerson' | 'total'; 
+  costAssignment: 'perPerson' | 'total';
 }
 
 export type ItineraryItemType = 'transfer' | 'activity' | 'hotel' | 'meal' | 'misc';
@@ -143,14 +143,14 @@ export interface CostSummary {
 }
 
 export interface DetailedSummaryItem {
-  id: string; 
-  type: string; 
-  day?: number; 
+  id: string;
+  type: string;
+  day?: number;
   name: string;
   note?: string;
-  province?: string; 
+  province?: string;
   configurationDetails: string;
-  excludedTravelers: string; 
+  excludedTravelers: string;
   adultCost: number;
   childCost: number;
   totalCost: number;
@@ -178,25 +178,25 @@ export const SERVICE_CATEGORIES: ItineraryItemType[] = ['transfer', 'activity', 
 
 export interface OldSeasonalRate { // This is for the old ServicePriceItem 'hotel' type, will be deprecated for hotels
   id: string;
-  startDate: string; 
-  endDate: string;   
+  startDate: string;
+  endDate: string;
   roomRate: number;
   extraBedRate?: number;
 }
 
-export interface ServicePriceItem { 
+export interface ServicePriceItem {
   id: string;
   name: string;
-  province?: string; 
+  province?: string;
   category: ItineraryItemType;
-  subCategory?: string; 
+  subCategory?: string;
   price1?: number; // Made optional as hotels will use hotelDetails
   price2?: number; // Made optional
   currency: CurrencyCode;
-  unitDescription: string; 
+  unitDescription: string;
   notes?: string;
   seasonalRates?: OldSeasonalRate[]; // This is the old flat structure for AI parsing / fallback
-  maxPassengers?: number; 
+  maxPassengers?: number;
   hotelDetails?: HotelDefinition; // New structure for detailed hotel pricing
 }
 
@@ -204,3 +204,4 @@ export interface ProvinceItem {
   id: string;
   name: string;
 }
+

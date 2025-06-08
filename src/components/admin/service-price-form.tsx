@@ -30,7 +30,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 
 const hotelRoomSeasonalPriceSchema = z.object({
   id: z.string(),
-  seasonName: z.string().optional(), 
+  seasonName: z.string().optional(),
   startDate: z.date({ required_error: "Start date is required." }),
   endDate: z.date({ required_error: "End date is required." }),
   rate: z.coerce.number().min(0, "Nightly rate must be non-negative"),
@@ -56,15 +56,15 @@ const hotelRoomSeasonalPriceSchema = z.object({
 const hotelRoomTypeSchema = z.object({
   id: z.string(),
   name: z.string().min(1, "Room type name is required"),
-  characteristics: z.array(z.object({ id: z.string(), key: z.string(), value: z.string() })).optional(), 
-  notes: z.string().optional(), 
+  characteristics: z.array(z.object({ id: z.string(), key: z.string(), value: z.string() })).optional(),
+  notes: z.string().optional(),
   seasonalPrices: z.array(hotelRoomSeasonalPriceSchema).min(1, "At least one seasonal price is required."),
 });
 
 const hotelDetailsSchema = z.object({
   id: z.string(),
-  name: z.string(), 
-  province: z.string(), 
+  name: z.string(),
+  province: z.string(),
   roomTypes: z.array(hotelRoomTypeSchema).min(1, "At least one room type is required for detailed hotel pricing."),
 });
 
@@ -72,9 +72,9 @@ const servicePriceSchema = z.object({
   name: z.string().min(1, "Service name is required"),
   province: z.string().optional(),
   category: z.custom<ItineraryItemType>((val) => SERVICE_CATEGORIES.includes(val as ItineraryItemType), "Invalid category"),
-  subCategory: z.string().optional(), 
-  price1: z.coerce.number().min(0, "Price must be non-negative").optional(), 
-  price2: z.coerce.number().min(0, "Price must be non-negative").optional(), 
+  subCategory: z.string().optional(),
+  price1: z.coerce.number().min(0, "Price must be non-negative").optional(),
+  price2: z.coerce.number().min(0, "Price must be non-negative").optional(),
   currency: z.custom<CurrencyCode>((val) => CURRENCIES.includes(val as CurrencyCode), "Invalid currency"),
   unitDescription: z.string().min(1, "Unit description is required (e.g., per adult, per night)"),
   notes: z.string().optional(),
@@ -131,7 +131,7 @@ interface ServicePriceFormProps {
 
 export function ServicePriceForm({ initialData, onSubmit, onCancel }: ServicePriceFormProps) {
   const { provinces, isLoading: isLoadingProvinces } = useProvinces();
-  
+
   const transformInitialDataToFormValues = (data?: Partial<ServicePriceItem>): Partial<ServicePriceFormValues> => {
     if (!data) return { category: "activity", currency: "THB", unitDescription: "per person" };
 
@@ -163,28 +163,28 @@ export function ServicePriceForm({ initialData, onSubmit, onCancel }: ServicePri
             };
         } else { // Fallback if hotelDetails is missing or empty, try to use flat seasonalRates / price1/2 from AI
             baseTransformed.hotelDetails = {
-                id: data.id || generateGUID(), 
+                id: data.id || generateGUID(),
                 name: data.name || "",
                 province: data.province || "none",
                 roomTypes: [{
                     id: generateGUID(),
                     name: data.subCategory || 'Default Room',
                     characteristics: [],
-                    seasonalPrices: data.seasonalRates && data.seasonalRates.length > 0 ? 
+                    seasonalPrices: data.seasonalRates && data.seasonalRates.length > 0 ?
                         data.seasonalRates.map(sr => ({
                             id: sr.id || generateGUID(),
-                            seasonName: undefined, 
+                            seasonName: undefined,
                             startDate: sr.startDate ? new Date(sr.startDate) : new Date(),
                             endDate: sr.endDate ? new Date(sr.endDate) : new Date(),
                             rate: sr.roomRate,
                             extraBedAllowed: typeof sr.extraBedRate === 'number',
                             extraBedRate: sr.extraBedRate,
-                        })) 
-                        : [{ 
-                            id: generateGUID(), seasonName: undefined, startDate: new Date(), endDate: new Date(), 
-                            rate: data.price1 || 0, 
+                        }))
+                        : [{
+                            id: generateGUID(), seasonName: undefined, startDate: new Date(), endDate: new Date(),
+                            rate: data.price1 || 0,
                             extraBedAllowed: typeof data.price2 === 'number',
-                            extraBedRate: data.price2 
+                            extraBedRate: data.price2
                           }]
                 }]
             };
@@ -211,14 +211,14 @@ export function ServicePriceForm({ initialData, onSubmit, onCancel }: ServicePri
     resolver: zodResolver(servicePriceSchema),
     defaultValues: transformInitialDataToFormValues(initialData),
   });
-  
+
   const selectedCategory = form.watch("category");
   const transferMode = form.watch("transferMode");
 
   const { fields: roomTypeFields, append: appendRoomType, remove: removeRoomType } = useFieldArray({
     control: form.control,
     name: "hotelDetails.roomTypes",
-    keyName: "fieldId" 
+    keyName: "fieldId"
   });
 
   React.useEffect(() => {
@@ -233,9 +233,9 @@ export function ServicePriceForm({ initialData, onSubmit, onCancel }: ServicePri
       }
       if (roomTypeFields.length === 0) {
           // This timeout ensures that the field array is ready for append
-          setTimeout(() => appendRoomType({ 
-            id: generateGUID(), 
-            name: initialData?.subCategory || 'Standard Room', 
+          setTimeout(() => appendRoomType({
+            id: generateGUID(),
+            name: initialData?.subCategory || 'Standard Room',
             characteristics: [],
             seasonalPrices: initialData?.seasonalRates && initialData.seasonalRates.length > 0 ?
                 initialData.seasonalRates.map(sr => ({
@@ -247,11 +247,11 @@ export function ServicePriceForm({ initialData, onSubmit, onCancel }: ServicePri
                     extraBedAllowed: typeof sr.extraBedRate === 'number',
                     extraBedRate: sr.extraBedRate
                 }))
-                : [{ 
-                    id: generateGUID(), seasonName: undefined, startDate: new Date(), endDate: new Date(), 
-                    rate: initialData?.price1 || 0, 
+                : [{
+                    id: generateGUID(), seasonName: undefined, startDate: new Date(), endDate: new Date(),
+                    rate: initialData?.price1 || 0,
                     extraBedAllowed: typeof initialData?.price2 === 'number',
-                    extraBedRate: initialData?.price2 
+                    extraBedRate: initialData?.price2
                   }]
         }), 0);
       }
@@ -273,7 +273,7 @@ export function ServicePriceForm({ initialData, onSubmit, onCancel }: ServicePri
       const currentTransferMode = form.getValues('transferMode');
       if (!currentTransferMode) {
         form.setValue('transferMode', 'ticket');
-        form.setValue('subCategory', 'ticket'); 
+        form.setValue('subCategory', 'ticket');
       } else {
          if (currentTransferMode === 'ticket') {
             form.setValue('subCategory', 'ticket');
@@ -290,7 +290,7 @@ export function ServicePriceForm({ initialData, onSubmit, onCancel }: ServicePri
        }
     }
   }, [selectedCategory, form, initialData?.category, initialData?.subCategory]);
-  
+
     React.useEffect(() => {
         if (selectedCategory === 'transfer' && transferMode === 'vehicle') {
             const currentSubCategory = form.getValues('subCategory');
@@ -334,7 +334,7 @@ export function ServicePriceForm({ initialData, onSubmit, onCancel }: ServicePri
   const showSubCategoryInput = (): boolean => {
     if (selectedCategory === 'hotel') return false;
     if (selectedCategory === 'transfer' && transferMode === 'ticket') return false;
-    if (selectedCategory === 'transfer' && transferMode === 'vehicle') return false; 
+    if (selectedCategory === 'transfer' && transferMode === 'vehicle') return false;
     return getSubCategoryLabel() !== null;
   };
   const showMaxPassengers = (): boolean => selectedCategory === 'transfer' && transferMode === 'vehicle';
@@ -359,10 +359,10 @@ export function ServicePriceForm({ initialData, onSubmit, onCancel }: ServicePri
       dataToSubmit.price2 = undefined;
       dataToSubmit.unitDescription = dataToSubmit.unitDescription || "per night";
     } else if (dataToSubmit.category !== 'hotel') {
-      dataToSubmit.hotelDetails = undefined; 
+      dataToSubmit.hotelDetails = undefined;
       dataToSubmit.unitDescription = dataToSubmit.unitDescription || (dataToSubmit.category === 'transfer' && values.transferMode === 'vehicle' ? 'per vehicle' : 'per person');
     }
-    
+
     if (dataToSubmit.category === 'transfer') {
         if (values.transferMode === 'ticket') {
             dataToSubmit.subCategory = 'ticket';
@@ -371,14 +371,14 @@ export function ServicePriceForm({ initialData, onSubmit, onCancel }: ServicePri
     } else {
         dataToSubmit.maxPassengers = undefined;
     }
-    
+
     if (dataToSubmit.province === "none") {
       dataToSubmit.province = undefined;
     }
 
     onSubmit({ ...dataToSubmit } as Omit<ServicePriceItem, 'id'>);
   };
-  
+
   const subCategoryLabel = getSubCategoryLabel();
 
   return (
@@ -388,7 +388,7 @@ export function ServicePriceForm({ initialData, onSubmit, onCancel }: ServicePri
             <div className="space-y-6 p-1">
                 {/* BASIC SERVICE DETAILS FIELDSET */}
                 <div className="border border-border rounded-md p-4 relative">
-                    <p className="text-sm font-semibold -mt-7 ml-2 px-1 bg-background inline-block absolute left-2 top-[-0.7rem]">Basic Service Details</p>
+                    <p className="text-sm font-semibold -mt-6 ml-2 px-1 bg-background inline-block absolute left-2 top-[-0.7rem]">Basic Service Details</p>
                     <div className="space-y-4 pt-2">
                         <FormField
                             control={form.control}
@@ -478,7 +478,7 @@ export function ServicePriceForm({ initialData, onSubmit, onCancel }: ServicePri
                 {/* CONDITIONAL PRICING FIELDS (NON-HOTEL) */}
                 {showSimplePricingFields && (
                     <div className="border border-border rounded-md p-4 relative mt-6">
-                        <p className="text-sm font-semibold -mt-7 ml-2 px-1 bg-background inline-block absolute left-2 top-[-0.7rem]">Pricing Details: {selectedCategory.charAt(0).toUpperCase() + selectedCategory.slice(1)}</p>
+                        <p className="text-sm font-semibold -mt-6 ml-2 px-1 bg-background inline-block absolute left-2 top-[-0.7rem]">Pricing Details: {selectedCategory.charAt(0).toUpperCase() + selectedCategory.slice(1)}</p>
                         <div className="space-y-4 pt-2">
                             {selectedCategory === 'transfer' && (
                                 <FormField
@@ -499,11 +499,11 @@ export function ServicePriceForm({ initialData, onSubmit, onCancel }: ServicePri
                                     )}
                                 />
                             )}
-                            
+
                             {selectedCategory === 'transfer' && transferMode === 'vehicle' && (
                                 <FormField
                                     control={form.control}
-                                    name="subCategory" 
+                                    name="subCategory"
                                     render={({ field }) => (
                                     <FormItem>
                                         <FormLabel>Vehicle Type</FormLabel>
@@ -591,14 +591,14 @@ export function ServicePriceForm({ initialData, onSubmit, onCancel }: ServicePri
                 {/* HOTEL DETAILS FIELDSET (ROOM TYPES & SEASONS) */}
                 {selectedCategory === 'hotel' && (
                     <div className="border border-border rounded-md p-4 mt-6 relative">
-                         <p className="text-sm font-semibold -mt-7 ml-2 px-1 bg-background inline-block absolute left-2 top-[-0.7rem]">Room Types &amp; Nightly Rates</p>
-                        
+                         <p className="text-sm font-semibold -mt-6 ml-2 px-1 bg-background inline-block absolute left-2 top-[-0.7rem]">Room Types &amp; Nightly Rates</p>
+
                         <div id="roomTypesContainer" className="space-y-6 pt-2">
                         {roomTypeFields.map((roomField, roomIndex) => {
                             const roomTypeName = form.watch(`hotelDetails.roomTypes.${roomIndex}.name`);
                             return (
                             <div key={roomField.fieldId} className="border border-border rounded-md p-4 pt-6 relative bg-card shadow-sm">
-                                <p className="text-base font-medium -mt-6 ml-2 px-1 bg-card inline-block absolute left-2 top-[0.1rem]">
+                                <p className="text-base font-medium -mt-6 ml-2 px-1 bg-card inline-block absolute left-2 top-[0.1rem] max-w-[calc(100%-3rem)] truncate">
                                 {roomTypeName || `Room Type ${roomIndex + 1}`}
                                 </p>
                                 <button
@@ -610,13 +610,13 @@ export function ServicePriceForm({ initialData, onSubmit, onCancel }: ServicePri
                                     <XIcon size={16}/>
                                 </button>
 
-                                <div className="form-group mb-3 pt-2"> 
+                                <div className="form-group mb-3 pt-2">
                                   <FormField
                                       control={form.control}
                                       name={`hotelDetails.roomTypes.${roomIndex}.name`}
                                       render={({ field }) => (
                                           <FormItem>
-                                          <FormLabel className="text-sm text-muted-foreground">Room Type Name</FormLabel> 
+                                          <FormLabel className="text-sm text-muted-foreground">Room Type Name</FormLabel>
                                           <FormControl><Input placeholder="e.g., Deluxe Pool View" {...field} onChange={(e) => {
                                             field.onChange(e.target.value);
                                           }}/></FormControl>
@@ -625,14 +625,14 @@ export function ServicePriceForm({ initialData, onSubmit, onCancel }: ServicePri
                                       )}
                                   />
                                 </div>
-                                
+
                                 <SeasonalRatesTable roomIndex={roomIndex} form={form} currency={form.getValues('currency')} />
 
                                 <Button
                                 type="button"
                                 variant="outline"
                                 size="sm"
-                                className="mt-3 border-primary text-primary hover:bg-primary/10 add-btn" 
+                                className="mt-3 border-primary text-primary hover:bg-primary/10 add-btn"
                                 onClick={() => {
                                     const currentRoomSeasonalPrices = form.getValues(`hotelDetails.roomTypes.${roomIndex}.seasonalPrices`) || [];
                                     form.setValue(`hotelDetails.roomTypes.${roomIndex}.seasonalPrices`, [
@@ -650,13 +650,13 @@ export function ServicePriceForm({ initialData, onSubmit, onCancel }: ServicePri
                         <Button
                             type="button"
                             variant="outline"
-                            onClick={() => appendRoomType({ 
-                                id: generateGUID(), 
-                                name: `Room Type ${roomTypeFields.length + 1}`, 
+                            onClick={() => appendRoomType({
+                                id: generateGUID(),
+                                name: `Room Type ${roomTypeFields.length + 1}`,
                                 characteristics: [],
                                 seasonalPrices: [{ id: generateGUID(), seasonName: undefined, startDate: new Date(), endDate: new Date(), rate: 0, extraBedAllowed: true, extraBedRate: undefined }]
                             })}
-                            className="mt-4 border-accent text-accent hover:bg-accent/10 add-btn" 
+                            className="mt-4 border-accent text-accent hover:bg-accent/10 add-btn"
                         >
                             <PlusCircle className="mr-2 h-4 w-4" /> Add Room Type
                         </Button>
@@ -688,7 +688,7 @@ export function ServicePriceForm({ initialData, onSubmit, onCancel }: ServicePri
 
 interface SeasonalRatesTableProps {
   roomIndex: number;
-  form: any; 
+  form: any;
   currency: CurrencyCode;
 }
 
@@ -696,9 +696,9 @@ function SeasonalRatesTable({ roomIndex, form, currency }: SeasonalRatesTablePro
   const { fields, append, remove } = useFieldArray({
     control: form.control,
     name: `hotelDetails.roomTypes.${roomIndex}.seasonalPrices`,
-    keyName: "seasonFieldId" 
+    keyName: "seasonFieldId"
   });
-  
+
   React.useEffect(() => {
     if (fields.length === 0) {
       append({ id: generateGUID(), seasonName: undefined, startDate: new Date(), endDate: new Date(), rate: 0, extraBedAllowed: true, extraBedRate: undefined });
@@ -713,11 +713,11 @@ function SeasonalRatesTable({ roomIndex, form, currency }: SeasonalRatesTablePro
   };
 
   return (
-    <div className="space-y-1"> 
-      <Table className="mb-1 border"> 
-        <TableHeader className="bg-muted/30"> 
+    <div className="space-y-1">
+      <Table className="mb-1 border">
+        <TableHeader className="bg-muted/30">
           <TableRow>
-            <TableHead className="w-[130px] px-2 py-1 text-xs">Start Date</TableHead> 
+            <TableHead className="w-[130px] px-2 py-1 text-xs">Start Date</TableHead>
             <TableHead className="w-[130px] px-2 py-1 text-xs">End Date</TableHead>
             <TableHead className="w-[120px] px-2 py-1 text-xs">Rate ({currency})</TableHead>
             <TableHead className="w-[80px] px-2 py-1 text-xs text-center">Extra Bed?</TableHead>
@@ -751,9 +751,9 @@ function SeasonalRatesTable({ roomIndex, form, currency }: SeasonalRatesTablePro
                   render={({ field, fieldState: { error } }) => (
                     <FormItem>
                       <FormControl>
-                        <DatePicker 
-                            date={field.value} 
-                            onDateChange={field.onChange} 
+                        <DatePicker
+                            date={field.value}
+                            onDateChange={field.onChange}
                             minDate={form.getValues(`hotelDetails.roomTypes.${roomIndex}.seasonalPrices.${seasonIndex}.startDate`)}
                         />
                       </FormControl>
@@ -771,7 +771,7 @@ function SeasonalRatesTable({ roomIndex, form, currency }: SeasonalRatesTablePro
                   name={`hotelDetails.roomTypes.${roomIndex}.seasonalPrices.${seasonIndex}.rate`}
                   render={({ field }) => (
                     <FormItem>
-                      <FormControl><Input type="number" placeholder="0.00" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || 0)} className="h-9 text-sm" /></FormControl> 
+                      <FormControl><Input type="number" placeholder="0.00" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || 0)} className="h-9 text-sm" /></FormControl>
                       <FormMessage className="text-xs" />
                     </FormItem>
                   )}
@@ -797,16 +797,16 @@ function SeasonalRatesTable({ roomIndex, form, currency }: SeasonalRatesTablePro
                   render={({ field }) => (
                     <FormItem>
                       <FormControl>
-                        <Input 
-                            type="number" 
-                            placeholder="0.00" 
-                            {...field} 
-                            value={field.value ?? ''} 
-                            onChange={e => field.onChange(parseFloat(e.target.value) || undefined)} 
-                            className="h-9 text-sm" 
+                        <Input
+                            type="number"
+                            placeholder="0.00"
+                            {...field}
+                            value={field.value ?? ''}
+                            onChange={e => field.onChange(parseFloat(e.target.value) || undefined)}
+                            className="h-9 text-sm"
                             disabled={!extraBedAllowed}
                         />
-                        </FormControl> 
+                        </FormControl>
                       <FormMessage className="text-xs" />
                     </FormItem>
                   )}
@@ -817,10 +817,10 @@ function SeasonalRatesTable({ roomIndex, form, currency }: SeasonalRatesTablePro
                   type="button"
                   onClick={() => fields.length > 1 ? remove(seasonIndex) : null}
                   disabled={fields.length <= 1}
-                  className="h-7 w-7 text-destructive hover:text-destructive/80 disabled:opacity-50 remove-season flex items-center justify-center" 
+                  className="h-7 w-7 text-destructive hover:text-destructive/80 disabled:opacity-50 remove-season flex items-center justify-center"
                   aria-label="Remove Season"
                 >
-                  <XIcon size={18} /> 
+                  <XIcon size={18} />
                 </button>
               </TableCell>
             </TableRow>
@@ -837,3 +837,4 @@ function SeasonalRatesTable({ roomIndex, form, currency }: SeasonalRatesTablePro
     </div>
   );
 }
+
