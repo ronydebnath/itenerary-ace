@@ -8,12 +8,16 @@ const SERVICE_PRICES_STORAGE_KEY = 'itineraryAceServicePrices';
 const DEFAULT_DEMO_SERVICE_PRICES: ServicePriceItem[] = [
   // == Bangkok - Transfers ==
   {
-    id: generateGUID(), name: 'Suvarnabhumi Airport (BKK) to Bangkok City Hotel', province: 'Bangkok', category: 'transfer', subCategory: 'Sedan',
-    price1: 1000, currency: 'THB', unitDescription: 'per vehicle (Sedan)', notes: 'Max 3 pax, 2 luggage'
+    id: generateGUID(), name: 'Suvarnabhumi Airport (BKK) to Bangkok City Hotel (Sedan)', province: 'Bangkok', category: 'transfer', subCategory: 'Sedan',
+    price1: 1000, currency: 'THB', unitDescription: 'per vehicle', notes: 'Max 3 pax, 2 luggage', maxPassengers: 3
   },
   {
-    id: generateGUID(), name: 'Don Mueang Airport (DMK) to Bangkok City Hotel', province: 'Bangkok', category: 'transfer', subCategory: 'Van',
-    price1: 1200, currency: 'THB', unitDescription: 'per vehicle (Van)', notes: 'Max 8 pax'
+    id: generateGUID(), name: 'Suvarnabhumi Airport (BKK) to Bangkok City Hotel (Van)', province: 'Bangkok', category: 'transfer', subCategory: 'Van',
+    price1: 1500, currency: 'THB', unitDescription: 'per vehicle', notes: 'Max 8 pax, 5 luggage', maxPassengers: 8
+  },
+  {
+    id: generateGUID(), name: 'Don Mueang Airport (DMK) to Bangkok City Hotel (Van)', province: 'Bangkok', category: 'transfer', subCategory: 'Van',
+    price1: 1200, currency: 'THB', unitDescription: 'per vehicle', notes: 'Max 8 pax', maxPassengers: 8
   },
   {
     id: generateGUID(), name: 'BTS Skytrain Day Pass', province: 'Bangkok', category: 'transfer', subCategory: 'ticket',
@@ -33,6 +37,15 @@ const DEFAULT_DEMO_SERVICE_PRICES: ServicePriceItem[] = [
     id: generateGUID(), name: 'Floating Markets Tour (Damnoen Saduak & Maeklong)', province: 'Bangkok', category: 'activity', subCategory: 'Guided Tour',
     price1: 1500, price2: 1000, currency: 'THB', unitDescription: 'per person (Half Day)', notes: 'Includes transport, boat ride'
   },
+   {
+    id: generateGUID(), name: 'Muay Thai Boxing Match (Rajadamnern Stadium)', province: 'Bangkok', category: 'activity', subCategory: 'Sports Event',
+    price1: 2000, currency: 'THB', unitDescription: 'per person (Ringside)', notes: 'Cheaper seats available'
+  },
+  {
+    id: generateGUID(), name: 'Thai Cooking Class (Half Day)', province: 'Bangkok', category: 'activity', subCategory: 'Workshop',
+    price1: 1200, currency: 'THB', unitDescription: 'per person', notes: 'Includes market tour'
+  },
+
 
   // == Bangkok - Hotels ==
   {
@@ -44,9 +57,14 @@ const DEFAULT_DEMO_SERVICE_PRICES: ServicePriceItem[] = [
     ], notes: '5-star, riverside location'
   },
   {
-    id: generateGUID(), name: 'Sukhumvit Budget Inn', province: 'Bangkok', category: 'hotel', subCategory: 'Standard Room',
-    price1: 1200, price2: 300, currency: 'THB', unitDescription: 'per night', notes: '3-star, near BTS Asok'
+    id: generateGUID(), name: 'Sukhumvit Boutique Hotel', province: 'Bangkok', category: 'hotel', subCategory: 'Superior Room',
+    price1: 2500, price2: 600, currency: 'THB', unitDescription: 'per night', notes: '4-star, near BTS Asok'
   },
+  {
+    id: generateGUID(), name: 'Khaosan Road Budget Guesthouse', province: 'Bangkok', category: 'hotel', subCategory: 'Standard Double (Fan)',
+    price1: 600, price2: 0, currency: 'THB', unitDescription: 'per night', notes: 'Basic, shared bathroom options cheaper'
+  },
+
 
   // == Bangkok - Meals ==
   {
@@ -57,25 +75,43 @@ const DEFAULT_DEMO_SERVICE_PRICES: ServicePriceItem[] = [
     id: generateGUID(), name: 'Hotel Buffet Lunch (International)', province: 'Bangkok', category: 'meal', subCategory: 'Buffet',
     price1: 900, price2: 450, currency: 'THB', unitDescription: 'per person'
   },
+  {
+    id: generateGUID(), name: 'Rooftop Bar Signature Cocktail', province: 'Bangkok', category: 'meal', subCategory: 'Drinks',
+    price1: 450, currency: 'THB', unitDescription: 'per drink (average)'
+  },
+  {
+    id: generateGUID(), name: 'Local Thai Restaurant Set Menu', province: 'Bangkok', category: 'meal', subCategory: 'Set Menu',
+    price1: 350, price2: 200, currency: 'THB', unitDescription: 'per person'
+  },
+
 
   // == Bangkok - Miscellaneous ==
   {
     id: generateGUID(), name: 'Thai Massage (Traditional, 1 hour)', province: 'Bangkok', category: 'misc', subCategory: 'Wellness',
-    price1: 300, currency: 'THB', unitDescription: 'per person'
+    price1: 300, currency: 'THB', unitDescription: 'per person', costAssignment: 'perPerson'
   },
   {
     id: generateGUID(), name: 'Souvenir T-shirt (Chatuchak Market)', province: 'Bangkok', category: 'misc', subCategory: 'Shopping',
     price1: 250, currency: 'THB', unitDescription: 'per item', costAssignment: 'total'
   },
+  {
+    id: generateGUID(), name: 'Tuk-tuk Ride (Short Distance)', province: 'Bangkok', category: 'misc', subCategory: 'Local Transport',
+    price1: 150, currency: 'THB', unitDescription: 'per ride (estimated)', costAssignment: 'total'
+  },
+
 
   // == Pattaya - Transfers ==
   {
-    id: generateGUID(), name: 'Bangkok Hotel to Pattaya Hotel', province: 'Pattaya (Chonburi)', category: 'transfer', subCategory: 'Van',
-    price1: 2500, currency: 'THB', unitDescription: 'per vehicle (Van)', notes: 'One-way private transfer'
+    id: generateGUID(), name: 'Bangkok Hotel to Pattaya Hotel (Van)', province: 'Pattaya (Chonburi)', category: 'transfer', subCategory: 'Van',
+    price1: 2500, currency: 'THB', unitDescription: 'per vehicle', notes: 'One-way private transfer', maxPassengers: 8
+  },
+   {
+    id: generateGUID(), name: 'Bangkok Hotel to Pattaya Hotel (Sedan)', province: 'Pattaya (Chonburi)', category: 'transfer', subCategory: 'Sedan',
+    price1: 1800, currency: 'THB', unitDescription: 'per vehicle', notes: 'One-way private transfer', maxPassengers: 3
   },
   {
-    id: generateGUID(), name: 'Pattaya Hotel to U-Tapao Airport (UTP)', province: 'Pattaya (Chonburi)', category: 'transfer', subCategory: 'Sedan',
-    price1: 800, currency: 'THB', unitDescription: 'per vehicle (Sedan)', notes: 'Max 3 pax'
+    id: generateGUID(), name: 'Pattaya Hotel to U-Tapao Airport (UTP) (Sedan)', province: 'Pattaya (Chonburi)', category: 'transfer', subCategory: 'Sedan',
+    price1: 800, currency: 'THB', unitDescription: 'per vehicle', notes: 'Max 3 pax', maxPassengers: 3
   },
   {
     id: generateGUID(), name: 'Ferry to Koh Larn (Round Trip)', province: 'Pattaya (Chonburi)', category: 'transfer', subCategory: 'ticket',
@@ -93,7 +129,7 @@ const DEFAULT_DEMO_SERVICE_PRICES: ServicePriceItem[] = [
     price1: 500, price2: 250, currency: 'THB', unitDescription: 'per person'
   },
   {
-    id: generateGUID(), name: 'Tiffany\'s Cabaret Show', province: 'Pattaya (Chonburi)', category: 'activity', subCategory: 'Show/Entertainment',
+    id: generateGUID(), name: 'Tiffany\'s Cabaret Show (VIP)', province: 'Pattaya (Chonburi)', category: 'activity', subCategory: 'Show/Entertainment',
     price1: 1200, price2: 1000, currency: 'THB', unitDescription: 'per person (VIP Seat)', notes: 'Standard seats cheaper'
   },
   {
@@ -104,6 +140,10 @@ const DEFAULT_DEMO_SERVICE_PRICES: ServicePriceItem[] = [
     id: generateGUID(), name: 'Coral Island (Koh Larn) Day Trip Package', province: 'Pattaya (Chonburi)', category: 'activity', subCategory: 'Island Hopping',
     price1: 1200, price2: 900, currency: 'THB', unitDescription: 'per person', notes: 'Includes speedboat, lunch, basic water sports'
   },
+  {
+    id: generateGUID(), name: 'Pattaya Underwater World', province: 'Pattaya (Chonburi)', category: 'activity', subCategory: 'Aquarium',
+    price1: 500, price2: 300, currency: 'THB', unitDescription: 'per person'
+  },
 
   // == Pattaya - Hotels ==
   {
@@ -113,6 +153,10 @@ const DEFAULT_DEMO_SERVICE_PRICES: ServicePriceItem[] = [
       { id: generateGUID(), startDate: '2024-12-01', endDate: '2025-03-31', roomRate: 5500, extraBedRate: 1000 }, // Peak
       { id: generateGUID(), startDate: '2024-06-01', endDate: '2024-10-31', roomRate: 3000, extraBedRate: 600 }  // Low
     ], notes: '4-star, on Beach Road'
+  },
+  {
+    id: generateGUID(), name: 'Jomtien Family Hotel', province: 'Pattaya (Chonburi)', category: 'hotel', subCategory: 'Family Suite',
+    price1: 3200, price2: 500, currency: 'THB', unitDescription: 'per night', notes: 'Good for families, pool'
   },
   {
     id: generateGUID(), name: 'Pattaya Central Guesthouse', province: 'Pattaya (Chonburi)', category: 'hotel', subCategory: 'Basic Double Room',
@@ -128,6 +172,11 @@ const DEFAULT_DEMO_SERVICE_PRICES: ServicePriceItem[] = [
     id: generateGUID(), name: 'Walking Street Food Allowance', province: 'Pattaya (Chonburi)', category: 'meal', subCategory: 'Street Food',
     price1: 500, price2: 300, currency: 'THB', unitDescription: 'per person (estimated)'
   },
+  {
+    id: generateGUID(), name: 'Hotel Breakfast Buffet', province: 'Pattaya (Chonburi)', category: 'meal', subCategory: 'Buffet',
+    price1: 400, price2: 200, currency: 'THB', unitDescription: 'per person'
+  },
+
 
   // == Pattaya - Miscellaneous ==
   {
@@ -138,15 +187,20 @@ const DEFAULT_DEMO_SERVICE_PRICES: ServicePriceItem[] = [
     id: generateGUID(), name: 'Beach Chair & Umbrella Rental', province: 'Pattaya (Chonburi)', category: 'misc', subCategory: 'Rental',
     price1: 100, currency: 'THB', unitDescription: 'per set/day', costAssignment: 'total'
   },
+  {
+    id: generateGUID(), name: 'Pattaya Viewpoint Songthaew Ride', province: 'Pattaya (Chonburi)', category: 'misc', subCategory: 'Local Transport',
+    price1: 50, currency: 'THB', unitDescription: 'per person/trip', costAssignment: 'perPerson'
+  },
+
 
   // == General / Other Provinces (from previous demo data, adjusted or retained) ==
   {
-    id: generateGUID(), name: 'Phuket Airport to Patong Beach (Minibus)', province: 'Phuket', category: 'transfer', subCategory: 'ticket',
-    price1: 200, price2: 150, currency: 'THB', unitDescription: 'per person (Shared Minibus)'
+    id: generateGUID(), name: 'Phuket Airport to Patong Beach (Minibus)', province: 'Phuket', category: 'transfer', subCategory: 'Minibus',
+    price1: 1800, currency: 'THB', unitDescription: 'per vehicle', maxPassengers: 10
   },
   {
     id: generateGUID(), name: 'Chiang Mai Airport to Old City Hotel (Private Car)', province: 'Chiang Mai', category: 'transfer', subCategory: 'Sedan',
-    price1: 300, currency: 'THB', unitDescription: 'per vehicle (Sedan)'
+    price1: 300, currency: 'THB', unitDescription: 'per vehicle', maxPassengers: 3
   },
   {
     id: generateGUID(), name: 'Ferry: Phuket (Rassada Pier) to Phi Phi Island', province: 'Phuket', category: 'transfer', subCategory: 'ticket',
@@ -206,32 +260,26 @@ export function useServicePrices() {
       if (storedPricesString) {
         const parsedPrices = JSON.parse(storedPricesString);
         if (Array.isArray(parsedPrices) && parsedPrices.length > 0) {
-          // Validate and use stored prices if they are a non-empty array
-          // Basic validation for robustness, can be expanded
           const validatedPrices = parsedPrices.filter(p => p.id && p.name && p.category && typeof p.price1 === 'number' && p.currency);
           if (validatedPrices.length > 0) {
             pricesToSet = validatedPrices;
           } else {
-            // Stored data was an array but invalid or empty, use demo data and save
             pricesToSet = DEFAULT_DEMO_SERVICE_PRICES;
             localStorage.setItem(SERVICE_PRICES_STORAGE_KEY, JSON.stringify(DEFAULT_DEMO_SERVICE_PRICES));
             console.info("Stored service prices were empty or invalid. Initializing with demo data.");
           }
         } else {
-          // Stored data was not a valid array or was an empty array, use demo data and save
           pricesToSet = DEFAULT_DEMO_SERVICE_PRICES;
           localStorage.setItem(SERVICE_PRICES_STORAGE_KEY, JSON.stringify(DEFAULT_DEMO_SERVICE_PRICES));
           console.info("Stored service prices were not a valid array or empty. Initializing with demo data.");
         }
       } else {
-        // No data found in localStorage, initialize with demo data and save
         pricesToSet = DEFAULT_DEMO_SERVICE_PRICES;
         localStorage.setItem(SERVICE_PRICES_STORAGE_KEY, JSON.stringify(DEFAULT_DEMO_SERVICE_PRICES));
         console.info("No service prices found in localStorage. Initializing with demo data.");
       }
     } catch (error) {
       console.error("Failed to load or initialize service prices from localStorage:", error);
-      // Fallback to demo data in case of any error during load/parse and attempt to save
       pricesToSet = DEFAULT_DEMO_SERVICE_PRICES;
       try {
         localStorage.setItem(SERVICE_PRICES_STORAGE_KEY, JSON.stringify(DEFAULT_DEMO_SERVICE_PRICES));
@@ -272,3 +320,4 @@ export function useServicePrices() {
 
   return { isLoading, allServicePrices, getServicePrices, getServicePriceById };
 }
+

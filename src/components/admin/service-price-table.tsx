@@ -31,10 +31,11 @@ export function ServicePriceTable({ servicePrices, onEdit, onDeleteConfirmation 
             <TableHead className="w-[200px] min-w-[150px]">Name</TableHead>
             <TableHead>Province</TableHead>
             <TableHead>Category</TableHead>
-            <TableHead>Sub-category</TableHead>
+            <TableHead>Sub-category / Vehicle</TableHead>
             <TableHead className="text-right">Price 1 / Default Rate</TableHead>
             <TableHead className="text-right">Price 2 / Default Extra</TableHead>
             <TableHead>Currency</TableHead>
+            <TableHead>Max Pax</TableHead>
             <TableHead>Unit</TableHead>
             <TableHead className="min-w-[150px]">Notes</TableHead>
             <TableHead className="text-center w-[120px]">Actions</TableHead>
@@ -68,6 +69,9 @@ export function ServicePriceTable({ servicePrices, onEdit, onDeleteConfirmation 
                 {service.price2 !== undefined ? formatCurrency(service.price2, service.currency) : 'N/A'}
               </TableCell>
               <TableCell>{service.currency}</TableCell>
+              <TableCell className="text-center">
+                {service.category === 'transfer' && service.subCategory !== 'ticket' && service.maxPassengers ? service.maxPassengers : 'N/A'}
+              </TableCell>
               <TableCell>{service.unitDescription}</TableCell>
               <TableCell className="text-xs max-w-xs truncate">{service.notes || 'N/A'}</TableCell>
               <TableCell className="text-center">
@@ -83,3 +87,4 @@ export function ServicePriceTable({ servicePrices, onEdit, onDeleteConfirmation 
     </div>
   );
 }
+

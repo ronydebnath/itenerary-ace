@@ -173,6 +173,7 @@ export interface ServicePriceItem {
   unitDescription: string; // e.g., "per adult", "per vehicle", "per night", "per item"
   notes?: string;
   seasonalRates?: SeasonalRate[]; // Specific to 'hotel' category
+  maxPassengers?: number; // Specific to 'transfer' category with 'vehicle' mode
 }
 
 // For Province Management
@@ -180,3 +181,4 @@ export interface ProvinceItem {
   id: string;
   name: string;
 }
+

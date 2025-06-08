@@ -48,6 +48,7 @@ const servicePriceSchema = z.object({
   notes: z.string().optional(),
   seasonalRates: z.array(seasonalRateSchema).optional(),
   transferMode: z.enum(['ticket', 'vehicle']).optional(),
+  maxPassengers: z.coerce.number().min(1, "Max passengers must be at least 1").optional(),
 });
 
 type ServicePriceFormValues = z.infer<typeof servicePriceSchema>;
@@ -82,6 +83,7 @@ export function ServicePriceForm({ initialData, onSubmit, onCancel }: ServicePri
       transferMode: initialData?.category === 'transfer'
         ? (initialData.subCategory === 'ticket' ? 'ticket' : 'vehicle')
         : undefined,
+      maxPassengers: initialData?.maxPassengers || undefined,
     },
   });
 
@@ -95,7 +97,8 @@ export function ServicePriceForm({ initialData, onSubmit, onCancel }: ServicePri
     }
     if (selectedCategory !== 'transfer') {
       form.setValue('transferMode', undefined);
-      if (initialData?.category !== 'transfer' && form.getValues('subCategory') === 'ticket') {
+      form.setValue('maxPassengers', undefined);
+      if (form.getValues('subCategory') === 'ticket' && initialData?.category !== 'transfer') {
         form.setValue('subCategory', '');
       }
     } else {
@@ -112,30 +115,30 @@ export function ServicePriceForm({ initialData, onSubmit, onCancel }: ServicePri
       } else {
          if (currentTransferMode === 'ticket') {
             form.setValue('subCategory', 'ticket');
+            form.setValue('maxPassengers', undefined);
         } else if (currentTransferMode === 'vehicle' && (form.getValues('subCategory') === 'ticket' || !form.getValues('subCategory'))){
-            // If switching to vehicle mode and subCategory was 'ticket' or empty, set to initial or default vehicle type
             form.setValue('subCategory', initialData?.category === 'transfer' && initialData?.subCategory && initialData.subCategory !== 'ticket' ? initialData.subCategory : VEHICLE_TYPES[0]);
         }
       }
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedCategory, form.setValue, initialData?.category, initialData?.subCategory]);
+  }, [selectedCategory, form, initialData?.category, initialData?.subCategory]);
 
 
   React.useEffect(() => {
     if (selectedCategory === 'transfer') {
       if (transferMode === 'ticket') {
         form.setValue('subCategory', 'ticket');
+        form.setValue('maxPassengers', undefined);
       } else if (transferMode === 'vehicle') {
-         // If subCategory is 'ticket' (from previous mode) or not a valid vehicle type, set a default
         const currentSubCategory = form.getValues('subCategory');
         if (currentSubCategory === 'ticket' || !VEHICLE_TYPES.includes(currentSubCategory as VehicleType)) {
            form.setValue('subCategory', initialData?.category === 'transfer' && initialData?.subCategory && VEHICLE_TYPES.includes(initialData.subCategory as VehicleType) ? initialData.subCategory : VEHICLE_TYPES[0]);
         }
       }
+    } else {
+        form.setValue('maxPassengers', undefined);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [transferMode, selectedCategory, form.setValue, initialData?.subCategory, initialData?.category]);
+  }, [transferMode, selectedCategory, form, initialData?.subCategory, initialData?.category]);
 
 
   const getPrice1Label = (): string => {
@@ -173,10 +176,11 @@ export function ServicePriceForm({ initialData, onSubmit, onCancel }: ServicePri
   const showPrice2 = (): boolean => getPrice2Label() !== null;
   const showSubCategoryInput = (): boolean => {
     if (selectedCategory === 'transfer' && transferMode === 'ticket') return false;
-    // For vehicle transfer, we show a Select, not a generic Input
     if (selectedCategory === 'transfer' && transferMode === 'vehicle') return false; 
     return getSubCategoryLabel() !== null;
   };
+  const showMaxPassengers = (): boolean => selectedCategory === 'transfer' && transferMode === 'vehicle';
+
 
   const handleAddSeasonalRate = () => {
     const newRate: SeasonalRate = {
@@ -208,8 +212,12 @@ export function ServicePriceForm({ initialData, onSubmit, onCancel }: ServicePri
     if (dataToSubmit.category === 'transfer') {
         if (values.transferMode === 'ticket') {
             dataToSubmit.subCategory = 'ticket';
-        } // For 'vehicle' mode, subCategory is already set by the Select dropdown
+            dataToSubmit.maxPassengers = undefined;
+        }
+    } else {
+        dataToSubmit.maxPassengers = undefined;
     }
+
     if (dataToSubmit.category !== 'hotel') {
         delete dataToSubmit.seasonalRates;
     } else {
@@ -337,7 +345,7 @@ export function ServicePriceForm({ initialData, onSubmit, onCancel }: ServicePri
                     {selectedCategory === 'transfer' && transferMode === 'vehicle' && (
                          <FormField
                             control={form.control}
-                            name="subCategory" // This field will now store VehicleType
+                            name="subCategory" 
                             render={({ field }) => (
                             <FormItem>
                                 <FormLabel>Vehicle Type</FormLabel>
@@ -394,6 +402,19 @@ export function ServicePriceForm({ initialData, onSubmit, onCancel }: ServicePri
                             />
                         )}
                     </div>
+                     {showMaxPassengers() && (
+                        <FormField
+                            control={form.control}
+                            name="maxPassengers"
+                            render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Max Passengers (per vehicle)</FormLabel>
+                                <FormControl><Input type="number" placeholder="e.g., 4" {...field} value={field.value ?? ''} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)} min="1" /></FormControl>
+                                <FormMessage />
+                            </FormItem>
+                            )}
+                        />
+                    )}
                 </div>
 
                 <FormField
@@ -510,3 +531,4 @@ export function ServicePriceForm({ initialData, onSubmit, onCancel }: ServicePri
     </Form>
   );
 }
+
