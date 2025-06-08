@@ -8,7 +8,7 @@ import { SetupForm } from '@/components/itinerary/setup-form';
 import { ItineraryPlanner } from '@/components/itinerary/itinerary-planner';
 import type { TripSettings, PaxDetails, TripData } from '@/types/itinerary';
 import { generateGUID } from '@/lib/utils';
-import { Cog } from 'lucide-react';
+import { Cog, Image as ImageIconLucide } from 'lucide-react'; // Added ImageIconLucide
 
 const LOCAL_STORAGE_KEY = 'itineraryAceData';
 
@@ -21,25 +21,23 @@ export default function HomePage() {
       const savedData = localStorage.getItem(LOCAL_STORAGE_KEY);
       if (savedData) {
         const parsedData = JSON.parse(savedData) as TripData;
-        // Basic validation
         if (parsedData && parsedData.settings && parsedData.pax && parsedData.days) {
-           // More specific validation for startDate
            if (parsedData.settings.startDate && typeof parsedData.settings.startDate === 'string' && parsedData.settings.startDate.trim() !== '') {
              setTripData(parsedData);
            } else {
              console.warn("Loaded trip data has invalid or missing startDate. Clearing data to re-initialize.");
-             localStorage.removeItem(LOCAL_STORAGE_KEY); // Clear corrupted/outdated data
-             setTripData(null); // Ensure UI resets to setup form
+             localStorage.removeItem(LOCAL_STORAGE_KEY); 
+             setTripData(null); 
            }
         } else {
           console.warn("Loaded trip data is structurally invalid. Clearing data.");
-          localStorage.removeItem(LOCAL_STORAGE_KEY); // Clear corrupted data
+          localStorage.removeItem(LOCAL_STORAGE_KEY); 
           setTripData(null);
         }
       }
     } catch (error) {
       console.error("Failed to load data from localStorage:", error);
-      localStorage.removeItem(LOCAL_STORAGE_KEY); // Clear potentially corrupted data
+      localStorage.removeItem(LOCAL_STORAGE_KEY); 
       setTripData(null);
     }
     setIsInitialized(true);
@@ -97,7 +95,13 @@ export default function HomePage() {
 
   return (
     <div className="relative min-h-screen bg-background">
-      <div className="absolute top-4 right-4 md:top-6 md:right-6 z-10">
+      <div className="absolute top-4 right-4 md:top-6 md:right-6 z-10 flex gap-2">
+        <Link href="/image-describer">
+          <Button variant="outline" size="sm" className="bg-card hover:bg-muted shadow-md">
+            <ImageIconLucide className="mr-2 h-4 w-4" /> 
+            Describe Image
+          </Button>
+        </Link>
         <Link href="/admin">
           <Button variant="outline" size="sm" className="bg-card hover:bg-muted shadow-md">
             <Cog className="mr-2 h-4 w-4" />
