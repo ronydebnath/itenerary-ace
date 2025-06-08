@@ -11,6 +11,11 @@
 import { z } from 'genkit';
 import { CURRENCIES, SERVICE_CATEGORIES, ItineraryItemType, CurrencyCode, VEHICLE_TYPES, VehicleType } from '@/types/itinerary';
 
+// Define the validation function for VehicleType separately
+const isValidVehicleType = (val: unknown): val is VehicleType => {
+  return VEHICLE_TYPES.includes(val as VehicleType);
+};
+
 // Define a more flexible output schema for AI extraction
 export const AIContractDataOutputSchema = z.object({
   name: z.string().optional().describe('The name of the service or hotel.'),
@@ -26,7 +31,7 @@ export const AIContractDataOutputSchema = z.object({
   // We are omitting seasonalRates for direct extraction into ServicePriceItem as it's too complex for a single pass.
   // For transfers, try to identify if it's 'ticket' or 'vehicle' basis and extract vehicle type if applicable.
   transferModeAttempt: z.enum(['ticket', 'vehicle']).optional().describe('If the service is a transfer, attempt to identify if it is priced per ticket or per vehicle.'),
-  vehicleTypeAttempt: z.custom<VehicleType>((val) => VEHICLE_TYPES.includes(val as VehicleType)).optional().describe(`If a vehicle transfer, attempt to identify the vehicle type (e.g., ${VEHICLE_TYPES.join(', ')})`)
+  vehicleTypeAttempt: z.custom(isValidVehicleType).optional().describe(`If a vehicle transfer, attempt to identify the vehicle type (e.g., ${VEHICLE_TYPES.join(', ')})`)
 });
 export type AIContractDataOutput = z.infer<typeof AIContractDataOutputSchema>;
 
