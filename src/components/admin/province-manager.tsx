@@ -5,7 +5,7 @@ import * as React from 'react';
 import Link from 'next/link';
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { PlusCircle, Home, MapPinned } from 'lucide-react';
+import { PlusCircle, Home, MapPinned, Trash2, LayoutDashboard, ListPlus } from 'lucide-react';
 import type { ProvinceItem } from '@/types/itinerary';
 import { ProvinceForm } from './province-form';
 import { ProvinceTable } from './province-table';
@@ -84,11 +84,17 @@ export function ProvinceManager() {
   return (
     <div className="container mx-auto py-8">
       <div className="flex justify-between items-center mb-6">
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2">
           <Link href="/">
             <Button variant="outline" size="icon" className="h-10 w-10">
               <Home className="h-5 w-5" />
               <span className="sr-only">Go to Home</span>
+            </Button>
+          </Link>
+          <Link href="/admin">
+            <Button variant="outline" size="icon" className="h-10 w-10">
+              <LayoutDashboard className="h-5 w-5" />
+              <span className="sr-only">Go to Admin Dashboard</span>
             </Button>
           </Link>
           <h1 className="text-3xl font-bold text-primary flex items-center">
@@ -122,8 +128,8 @@ export function ProvinceManager() {
       </div>
       <div className="mb-6">
         <Link href="/admin/pricing">
-          <Button variant="link" className="text-primary">
-            Manage Service Prices
+          <Button variant="link" className="text-primary flex items-center">
+             <ListPlus className="mr-2 h-5 w-5" /> Manage Service Prices
           </Button>
         </Link>
       </div>
@@ -159,7 +165,7 @@ export function ProvinceManager() {
       ) : (
         <div className="text-center py-10 border-2 border-dashed border-muted-foreground/30 rounded-lg">
           <p className="text-muted-foreground text-lg">No provinces defined yet.</p>
-          <p className="text-sm text-muted-foreground mt-2">Click "Add New Province" to get started.</p>
+          <p className="text-sm text-muted-foreground mt-2">Famous Thai provinces will be added automatically. You can also click "Add New Province" to get started.</p>
         </div>
       )}
     </div>

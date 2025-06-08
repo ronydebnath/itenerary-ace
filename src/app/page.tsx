@@ -86,21 +86,19 @@ export default function HomePage() {
   }
 
   return (
-    <div className="relative min-h-screen bg-background"> {/* Changed main to div for positioning context */}
+    <div className="relative min-h-screen bg-background">
       <div className="absolute top-4 right-4 md:top-6 md:right-6 z-10">
-        <Link href="/admin/pricing">
+        <Link href="/admin">
           <Button variant="outline" size="sm" className="bg-card hover:bg-muted shadow-md">
             <Cog className="mr-2 h-4 w-4" />
-            Manage Service Prices
+            Admin Settings
           </Button>
         </Link>
       </div>
       
       {tripData ? (
-        // ItineraryPlanner includes its own container and padding
         <ItineraryPlanner tripData={tripData} onReset={handleReset} onUpdateTripData={handleUpdateTripData} />
       ) : (
-        // SetupForm is designed to be centered on the screen
         <SetupForm onStartPlanning={handleStartPlanning} />
       )}
     </div>

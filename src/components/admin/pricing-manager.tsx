@@ -5,19 +5,19 @@ import * as React from 'react';
 import Link from 'next/link';
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { PlusCircle, Edit, Trash2, Home, MapPinned, Loader2 } from 'lucide-react'; 
-import type { ServicePriceItem, CurrencyCode } from '@/types/itinerary';
+import { PlusCircle, Edit, Trash2, Home, MapPinned, Loader2, LayoutDashboard, ListPlus } from 'lucide-react'; 
+import type { ServicePriceItem } from '@/types/itinerary';
 import { ServicePriceForm } from './service-price-form';
 import { ServicePriceTable } from './service-price-table';
 import { generateGUID } from '@/lib/utils';
 import { useToast } from "@/hooks/use-toast";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { useServicePrices } from '@/hooks/useServicePrices'; // Import the hook
+import { useServicePrices } from '@/hooks/useServicePrices';
 
 const SERVICE_PRICES_STORAGE_KEY = 'itineraryAceServicePrices';
 
 export function PricingManager() {
-  const { allServicePrices, isLoading: isLoadingServices } = useServicePrices(); // Use the hook
+  const { allServicePrices, isLoading: isLoadingServices } = useServicePrices();
   const [currentServicePrices, setCurrentServicePrices] = React.useState<ServicePriceItem[]>([]);
   const [isFormOpen, setIsFormOpen] = React.useState(false);
   const [editingService, setEditingService] = React.useState<ServicePriceItem | undefined>(undefined);
@@ -70,13 +70,20 @@ export function PricingManager() {
   return (
     <div className="container mx-auto py-8">
       <div className="flex justify-between items-center mb-6">
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2">
           <Link href="/">
             <Button variant="outline" size="icon" className="h-10 w-10">
               <Home className="h-5 w-5" />
             </Button>
           </Link>
-          <h1 className="text-3xl font-bold text-primary">Manage Service Prices</h1>
+           <Link href="/admin">
+            <Button variant="outline" size="icon" className="h-10 w-10">
+              <LayoutDashboard className="h-5 w-5" />
+            </Button>
+          </Link>
+          <h1 className="text-3xl font-bold text-primary flex items-center">
+             <ListPlus className="mr-3 h-8 w-8" /> Manage Service Prices
+          </h1>
         </div>
         <Dialog open={isFormOpen} onOpenChange={(open) => {
           setIsFormOpen(open);
