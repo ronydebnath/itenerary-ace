@@ -30,7 +30,7 @@ import { Card } from '@/components/ui/card';
 
 const hotelRoomSeasonalPriceSchema = z.object({
   id: z.string(),
-  seasonName: z.string().optional(), // Kept for data model, not in UI per HTML
+  seasonName: z.string().optional(), 
   startDate: z.date({ required_error: "Start date is required." }),
   endDate: z.date({ required_error: "End date is required." }),
   rate: z.coerce.number().min(0, "Nightly rate must be non-negative"),
@@ -43,15 +43,15 @@ const hotelRoomSeasonalPriceSchema = z.object({
 const hotelRoomTypeSchema = z.object({
   id: z.string(),
   name: z.string().min(1, "Room type name is required"),
-  characteristics: z.array(z.object({ id: z.string(), key: z.string(), value: z.string() })).optional(), // Kept for data model
-  notes: z.string().optional(), // Kept for data model
+  characteristics: z.array(z.object({ id: z.string(), key: z.string(), value: z.string() })).optional(), 
+  notes: z.string().optional(), 
   seasonalPrices: z.array(hotelRoomSeasonalPriceSchema).min(1, "At least one seasonal price is required."),
 });
 
 const hotelDetailsSchema = z.object({
   id: z.string(),
-  name: z.string(), // Hotel name is part of the main ServicePriceItem
-  province: z.string(), // Province is part of the main ServicePriceItem
+  name: z.string(), 
+  province: z.string(), 
   roomTypes: z.array(hotelRoomTypeSchema).min(1, "At least one room type is required for detailed hotel pricing."),
 });
 
@@ -59,27 +59,35 @@ const servicePriceSchema = z.object({
   name: z.string().min(1, "Service name is required"),
   province: z.string().optional(),
   category: z.custom<ItineraryItemType>((val) => SERVICE_CATEGORIES.includes(val as ItineraryItemType), "Invalid category"),
-  subCategory: z.string().optional(), // Used for non-hotel or simple hotel
-  price1: z.coerce.number().min(0, "Price must be non-negative").optional(), // Used for non-hotel or simple hotel
-  price2: z.coerce.number().min(0, "Price must be non-negative").optional(), // Used for non-hotel or simple hotel
+  subCategory: z.string().optional(), 
+  price1: z.coerce.number().min(0, "Price must be non-negative").optional(), 
+  price2: z.coerce.number().min(0, "Price must be non-negative").optional(), 
   currency: z.custom<CurrencyCode>((val) => CURRENCIES.includes(val as CurrencyCode), "Invalid currency"),
   unitDescription: z.string().min(1, "Unit description is required (e.g., per adult, per night)"),
   notes: z.string().optional(),
   transferMode: z.enum(['ticket', 'vehicle']).optional(),
   maxPassengers: z.coerce.number().min(1, "Max passengers must be at least 1").optional(),
-  // Conditional validation for hotelDetails
   hotelDetails: hotelDetailsSchema.optional(),
 }).superRefine((data, ctx) => {
   if (data.category === 'hotel') {
-    if (!data.hotelDetails) {
+    if (!data.hotelDetails || !data.hotelDetails.roomTypes || data.hotelDetails.roomTypes.length === 0) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: "Detailed hotel pricing (room types and seasons) is required for hotel category.",
-        path: ["hotelDetails"],
+        message: "For hotels, please add at least one room type with seasonal pricing.",
+        path: ["hotelDetails.roomTypes"],
+      });
+    } else {
+      data.hotelDetails.roomTypes.forEach((roomType, roomIndex) => {
+        if (!roomType.seasonalPrices || roomType.seasonalPrices.length === 0) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Each room type must have at least one seasonal price period.",
+            path: [`hotelDetails.roomTypes.${roomIndex}.seasonalPrices`],
+          });
+        }
       });
     }
   } else {
-    // For non-hotel, ensure price1 is set (unless it's a transfer vehicle, where costPerVehicle is used)
     if (data.category !== 'transfer' || data.transferMode !== 'vehicle') {
         if (typeof data.price1 !== 'number') {
              ctx.addIssue({
@@ -110,7 +118,7 @@ interface ServicePriceFormProps {
 export function ServicePriceForm({ initialData, onSubmit, onCancel }: ServicePriceFormProps) {
   const { provinces, isLoading: isLoadingProvinces } = useProvinces();
   
-  const transformInitialData = (data?: ServicePriceItem): Partial<ServicePriceFormValues> => {
+  const transformInitialDataToFormValues = (data?: ServicePriceItem): Partial<ServicePriceFormValues> => {
     if (!data) return { category: "activity", currency: "THB", unitDescription: "per person" };
 
     const baseTransformed: Partial<ServicePriceFormValues> = {
@@ -125,6 +133,8 @@ export function ServicePriceForm({ initialData, onSubmit, onCancel }: ServicePri
     if (data.category === 'hotel' && data.hotelDetails) {
       baseTransformed.hotelDetails = {
         ...data.hotelDetails,
+        name: data.name, // ensure hotelDetails.name is also set
+        province: data.province || 'none', // ensure hotelDetails.province is also set
         roomTypes: data.hotelDetails.roomTypes.map(rt => ({
           ...rt,
           seasonalPrices: rt.seasonalPrices.map(sp => ({
@@ -134,31 +144,34 @@ export function ServicePriceForm({ initialData, onSubmit, onCancel }: ServicePri
           })),
         })),
       };
-    } else if (data.category === 'hotel') {
-      // If it's a hotel but no hotelDetails (old data or AI prefill), create a basic structure
+       baseTransformed.price1 = undefined;
+       baseTransformed.price2 = undefined;
+       baseTransformed.subCategory = undefined;
+    } else if (data.category === 'hotel' && (!data.hotelDetails || data.hotelDetails.roomTypes.length === 0)) {
+      // Handle case where it's a hotel but details might be from older structure or AI prefill
       baseTransformed.hotelDetails = {
-        id: data.id, // Or generateGUID() if no id from initialData
+        id: data.id, 
         name: data.name,
         province: data.province || "none",
         roomTypes: [{
           id: generateGUID(),
           name: data.subCategory || 'Default Room',
+          characteristics: [],
           seasonalPrices: data.seasonalRates && data.seasonalRates.length > 0 ? 
             data.seasonalRates.map(sr => ({
               id: sr.id || generateGUID(),
+              seasonName: undefined, 
               startDate: sr.startDate ? new Date(sr.startDate) : new Date(),
               endDate: sr.endDate ? new Date(sr.endDate) : new Date(),
               rate: sr.roomRate,
               extraBedRate: sr.extraBedRate,
-            })) : [{ id: generateGUID(), startDate: new Date(), endDate: new Date(), rate: data.price1 || 0, extraBedRate: data.price2 }]
+            })) : [{ id: generateGUID(), seasonName: undefined, startDate: new Date(), endDate: new Date(), rate: data.price1 || 0, extraBedRate: data.price2 }]
         }]
       };
-      // Clear out simpler hotel fields if we are using hotelDetails
-      baseTransformed.subCategory = undefined;
       baseTransformed.price1 = undefined;
       baseTransformed.price2 = undefined;
+      baseTransformed.subCategory = undefined;
     } else {
-      // Non-hotel categories
       baseTransformed.subCategory = data.subCategory || "";
       baseTransformed.price1 = data.price1 || 0;
       baseTransformed.price2 = data.price2;
@@ -173,7 +186,7 @@ export function ServicePriceForm({ initialData, onSubmit, onCancel }: ServicePri
 
   const form = useForm<ServicePriceFormValues>({
     resolver: zodResolver(servicePriceSchema),
-    defaultValues: transformInitialData(initialData),
+    defaultValues: transformInitialDataToFormValues(initialData),
   });
   
   const selectedCategory = form.watch("category");
@@ -182,26 +195,55 @@ export function ServicePriceForm({ initialData, onSubmit, onCancel }: ServicePri
   const { fields: roomTypeFields, append: appendRoomType, remove: removeRoomType } = useFieldArray({
     control: form.control,
     name: "hotelDetails.roomTypes",
-    keyName: "fieldId" // To prevent re-rendering issues with default key 'id'
+    keyName: "fieldId" 
   });
 
   React.useEffect(() => {
-    if (selectedCategory === 'hotel' && !form.getValues('hotelDetails')) {
-      form.setValue('hotelDetails', {
-        id: initialData?.id || generateGUID(),
-        name: form.getValues('name'), // Use main service name for hotelDetails name
-        province: form.getValues('province') || 'none',
-        roomTypes: [],
-      });
-      if (initialData?.hotelDetails?.roomTypes?.length === 0 || (!initialData?.hotelDetails && initialData?.category ==='hotel' && roomTypeFields.length === 0) ) {
+    if (selectedCategory === 'hotel') {
+      if (!form.getValues('hotelDetails')) {
+        form.setValue('hotelDetails', {
+          id: initialData?.id || generateGUID(),
+          name: form.getValues('name') || initialData?.name || 'New Hotel',
+          province: form.getValues('province') || initialData?.province || 'none',
+          roomTypes: [],
+        });
+      }
+       // Only auto-append if initialData didn't already populate hotelDetails.roomTypes
+      if (initialData?.category === 'hotel' && (!initialData.hotelDetails || initialData.hotelDetails.roomTypes.length === 0) && roomTypeFields.length === 0) {
          setTimeout(() => appendRoomType({ 
             id: generateGUID(), 
+            name: initialData?.subCategory || 'Standard Room', 
+            characteristics: [],
+            seasonalPrices: initialData?.seasonalRates && initialData.seasonalRates.length > 0 ?
+                initialData.seasonalRates.map(sr => ({
+                    id: sr.id || generateGUID(),
+                    seasonName: undefined,
+                    startDate: sr.startDate ? new Date(sr.startDate) : new Date(),
+                    endDate: sr.endDate ? new Date(sr.endDate) : new Date(),
+                    rate: sr.roomRate,
+                    extraBedRate: sr.extraBedRate
+                }))
+                : [{ id: generateGUID(), seasonName: undefined, startDate: new Date(), endDate: new Date(), rate: initialData?.price1 || 0, extraBedRate: initialData?.price2 }]
+        }), 0);
+      } else if (roomTypeFields.length === 0 && selectedCategory === 'hotel' && !initialData?.hotelDetails) {
+          setTimeout(() => appendRoomType({ 
+            id: generateGUID(), 
             name: 'Standard Room', 
-            seasonalPrices: [{ id: generateGUID(), startDate: new Date(), endDate: new Date(), rate: 0, extraBedRate: 0 }]
+            characteristics: [],
+            seasonalPrices: [{ id: generateGUID(), seasonName: undefined, startDate: new Date(), endDate: new Date(), rate: 0, extraBedRate: 0 }]
         }), 0);
       }
+      form.setValue('price1', undefined);
+      form.setValue('price2', undefined);
+      form.setValue('subCategory', undefined);
+      form.setValue('unitDescription', initialData?.unitDescription || 'per night');
+
+
     } else if (selectedCategory !== 'hotel') {
       form.setValue('hotelDetails', undefined);
+      if (!form.getValues('unitDescription') || form.getValues('unitDescription') === 'per night') {
+        form.setValue('unitDescription', 'per person'); // Reset to a more generic default
+      }
     }
   }, [selectedCategory, form, initialData, appendRoomType, roomTypeFields.length]);
 
@@ -211,20 +253,18 @@ export function ServicePriceForm({ initialData, onSubmit, onCancel }: ServicePri
       const currentTransferMode = form.getValues('transferMode');
       if (!currentTransferMode) {
         form.setValue('transferMode', 'ticket');
-        form.setValue('subCategory', 'ticket'); // Default subCategory for ticket mode
+        form.setValue('subCategory', 'ticket'); 
       } else {
          if (currentTransferMode === 'ticket') {
             form.setValue('subCategory', 'ticket');
             form.setValue('maxPassengers', undefined);
         } else if (currentTransferMode === 'vehicle' && (form.getValues('subCategory') === 'ticket' || !form.getValues('subCategory'))){
-            // If switching to vehicle and subCategory is ticket or empty, set to a default vehicle type
             form.setValue('subCategory', initialData?.category === 'transfer' && initialData?.subCategory && initialData.subCategory !== 'ticket' ? initialData.subCategory : VEHICLE_TYPES[0]);
         }
       }
     } else {
        form.setValue('transferMode', undefined);
        form.setValue('maxPassengers', undefined);
-       // If not transfer, and subCategory was 'ticket', clear it
        if (form.getValues('subCategory') === 'ticket' && selectedCategory !== 'transfer') {
            form.setValue('subCategory', '');
        }
@@ -246,7 +286,6 @@ export function ServicePriceForm({ initialData, onSubmit, onCancel }: ServicePri
       case 'activity': return "Adult Price";
       case 'meal': return "Adult Meal Price";
       case 'transfer': return transferMode === 'ticket' ? "Adult Ticket Price" : "Cost Per Vehicle";
-      // Hotel simple pricing is deprecated in favor of hotelDetails
       case 'misc': return "Unit Cost";
       default: return "Price 1 / Default Rate";
     }
@@ -257,7 +296,6 @@ export function ServicePriceForm({ initialData, onSubmit, onCancel }: ServicePri
       case 'activity': return "Child Price (Optional)";
       case 'meal': return "Child Meal Price (Optional)";
       case 'transfer': return transferMode === 'ticket' ? "Child Ticket Price (Optional)" : null;
-      // Hotel simple pricing is deprecated
       default: return null;
     }
   };
@@ -267,7 +305,6 @@ export function ServicePriceForm({ initialData, onSubmit, onCancel }: ServicePri
         case 'activity': return "Activity Type (e.g., Guided, Entrance)";
         case 'meal': return "Meal Type (e.g., Set Menu, Buffet)";
         case 'transfer': return transferMode === 'vehicle' ? "Vehicle Type" : null;
-        // Hotel simple pricing is deprecated
         case 'misc': return "Item Sub-Type (e.g., Visa Fee, Souvenir)";
         default: return "Sub-category (Optional)";
     }
@@ -285,10 +322,9 @@ export function ServicePriceForm({ initialData, onSubmit, onCancel }: ServicePri
   const handleActualSubmit = (values: ServicePriceFormValues) => {
     const { transferMode: _formTransferMode, ...dataToSubmit } = values;
 
-    // Ensure hotelDetails has the main service name and province
     if (dataToSubmit.category === 'hotel' && dataToSubmit.hotelDetails) {
       dataToSubmit.hotelDetails.name = dataToSubmit.name;
-      dataToSubmit.hotelDetails.province = dataToSubmit.province || 'none'; // Ensure province is set
+      dataToSubmit.hotelDetails.province = dataToSubmit.province || 'none'; 
       dataToSubmit.hotelDetails.roomTypes = dataToSubmit.hotelDetails.roomTypes.map(rt => ({
         ...rt,
         seasonalPrices: rt.seasonalPrices.map(sp => ({
@@ -297,12 +333,13 @@ export function ServicePriceForm({ initialData, onSubmit, onCancel }: ServicePri
             endDate: (sp.endDate as Date).toISOString().split('T')[0],
         })),
       }));
-      // Clear simpler hotel fields when using detailed pricing
       dataToSubmit.subCategory = undefined;
       dataToSubmit.price1 = undefined;
       dataToSubmit.price2 = undefined;
+      dataToSubmit.unitDescription = dataToSubmit.unitDescription || "per night";
     } else if (dataToSubmit.category !== 'hotel') {
-      dataToSubmit.hotelDetails = undefined; // Ensure hotelDetails is undefined for non-hotels
+      dataToSubmit.hotelDetails = undefined; 
+      dataToSubmit.unitDescription = dataToSubmit.unitDescription || (dataToSubmit.category === 'transfer' && values.transferMode === 'vehicle' ? 'per vehicle' : 'per person');
     }
     
     if (dataToSubmit.category === 'transfer') {
@@ -330,7 +367,7 @@ export function ServicePriceForm({ initialData, onSubmit, onCancel }: ServicePri
             <div className="space-y-6 p-1">
                 {/* BASIC SERVICE DETAILS FIELDSET */}
                 <div className="border border-border rounded-md p-4">
-                    <p className="text-sm font-semibold -mt-6 px-1 bg-background inline-block mb-4">Basic Service Details</p>
+                    <p className="text-sm font-semibold -mt-7 ml-2 px-1 bg-background inline-block mb-4">Basic Service Details</p>
                     <div className="space-y-4">
                         <FormField
                             control={form.control}
@@ -420,7 +457,7 @@ export function ServicePriceForm({ initialData, onSubmit, onCancel }: ServicePri
                 {/* CONDITIONAL PRICING FIELDS (NON-HOTEL OR SIMPLE HOTEL) */}
                 {showSimplePricingFields && (
                     <div className="border border-border rounded-md p-4 mt-6">
-                        <p className="text-sm font-semibold -mt-6 px-1 bg-background inline-block mb-4">Pricing Details: {selectedCategory.charAt(0).toUpperCase() + selectedCategory.slice(1)}</p>
+                        <p className="text-sm font-semibold -mt-7 ml-2 px-1 bg-background inline-block mb-4">Pricing Details: {selectedCategory.charAt(0).toUpperCase() + selectedCategory.slice(1)}</p>
                         <div className="space-y-4">
                             {selectedCategory === 'transfer' && (
                                 <FormField
@@ -533,14 +570,14 @@ export function ServicePriceForm({ initialData, onSubmit, onCancel }: ServicePri
                 {/* HOTEL DETAILS FIELDSET (ROOM TYPES & SEASONS) */}
                 {selectedCategory === 'hotel' && (
                     <div className="border border-border rounded-md p-4 mt-6">
-                        <p className="text-sm font-semibold -mt-6 px-1 bg-background inline-block mb-4">Room Types &amp; Nightly Rates</p>
+                         <p className="text-sm font-semibold -mt-7 ml-2 px-1 bg-background inline-block mb-4">Room Types &amp; Nightly Rates</p>
                         
                         <div id="roomTypesContainer" className="space-y-6">
                         {roomTypeFields.map((roomField, roomIndex) => {
                             const roomTypeName = form.watch(`hotelDetails.roomTypes.${roomIndex}.name`);
                             return (
-                            <div key={roomField.fieldId} className="border border-border rounded-md p-4 pt-8 relative bg-card shadow-sm"> {/* Adjusted pt for legend */}
-                                <p className="text-base font-medium -mt-11 px-1 bg-card inline-block mb-3 absolute left-2 top-4"> {/* Legend styling */}
+                            <div key={roomField.fieldId} className="border border-border rounded-md p-4 pt-8 relative bg-card shadow-sm">
+                                <p className="text-base font-medium -mt-7 ml-2 px-1 bg-card inline-block mb-3 absolute left-2 top-4">
                                 {roomTypeName || `Room Type`}
                                 </p>
                                 <button
@@ -552,14 +589,17 @@ export function ServicePriceForm({ initialData, onSubmit, onCancel }: ServicePri
                                     <XIcon size={16}/>
                                 </button>
 
-                                <div className="form-group mb-3"> {/* From HTML example */}
+                                <div className="form-group mb-3"> 
                                   <FormField
                                       control={form.control}
                                       name={`hotelDetails.roomTypes.${roomIndex}.name`}
                                       render={({ field }) => (
                                           <FormItem>
-                                          <FormLabel className="text-sm text-muted-foreground">Room Type Name</FormLabel> {/* From HTML example */}
-                                          <FormControl><Input placeholder="e.g., Deluxe Pool View" {...field} /></FormControl>
+                                          <FormLabel className="text-sm text-muted-foreground">Room Type Name</FormLabel> 
+                                          <FormControl><Input placeholder="e.g., Deluxe Pool View" {...field} onChange={(e) => {
+                                            field.onChange(e.target.value);
+                                            form.setValue(`hotelDetails.roomTypes.${roomIndex}.name`, e.target.value); // Trigger re-render for legend
+                                          }}/></FormControl>
                                           <FormMessage />
                                           </FormItem>
                                       )}
@@ -572,12 +612,12 @@ export function ServicePriceForm({ initialData, onSubmit, onCancel }: ServicePri
                                 type="button"
                                 variant="outline"
                                 size="sm"
-                                className="mt-3 border-primary text-primary hover:bg-primary/10 add-btn" // Added add-btn like class for consistency if needed
+                                className="mt-3 border-primary text-primary hover:bg-primary/10 add-btn" 
                                 onClick={() => {
                                     const currentRoomSeasonalPrices = form.getValues(`hotelDetails.roomTypes.${roomIndex}.seasonalPrices`) || [];
                                     form.setValue(`hotelDetails.roomTypes.${roomIndex}.seasonalPrices`, [
                                         ...currentRoomSeasonalPrices,
-                                        { id: generateGUID(), startDate: new Date(), endDate: new Date(), rate: 0, extraBedRate: 0 }
+                                        { id: generateGUID(), seasonName: undefined, startDate: new Date(), endDate: new Date(), rate: 0, extraBedRate: 0 }
                                     ]);
                                 }}
                                 >
@@ -593,9 +633,10 @@ export function ServicePriceForm({ initialData, onSubmit, onCancel }: ServicePri
                             onClick={() => appendRoomType({ 
                                 id: generateGUID(), 
                                 name: `Room Type ${roomTypeFields.length + 1}`, 
-                                seasonalPrices: [{ id: generateGUID(), startDate: new Date(), endDate: new Date(), rate: 0, extraBedRate: 0 }]
+                                characteristics: [],
+                                seasonalPrices: [{ id: generateGUID(), seasonName: undefined, startDate: new Date(), endDate: new Date(), rate: 0, extraBedRate: 0 }]
                             })}
-                            className="mt-4 border-accent text-accent hover:bg-accent/10 add-btn" // Added add-btn like class
+                            className="mt-4 border-accent text-accent hover:bg-accent/10 add-btn" 
                         >
                             <PlusCircle className="mr-2 h-4 w-4" /> Add Room Type
                         </Button>
@@ -604,6 +645,9 @@ export function ServicePriceForm({ initialData, onSubmit, onCancel }: ServicePri
                          )}
                          {form.formState.errors.hotelDetails?.root?.message && (
                             <FormMessage className="mt-2">{form.formState.errors.hotelDetails.root.message}</FormMessage>
+                         )}
+                         {(form.formState.errors.hotelDetails?.roomTypes as any)?.message && (
+                            <FormMessage className="mt-2 text-sm text-destructive">{(form.formState.errors.hotelDetails?.roomTypes as any).message}</FormMessage>
                          )}
 
                     </div>
@@ -624,7 +668,7 @@ export function ServicePriceForm({ initialData, onSubmit, onCancel }: ServicePri
 
 interface SeasonalRatesTableProps {
   roomIndex: number;
-  form: any; // Control from react-hook-form
+  form: any; 
   currency: CurrencyCode;
 }
 
@@ -635,21 +679,19 @@ function SeasonalRatesTable({ roomIndex, form, currency }: SeasonalRatesTablePro
     keyName: "seasonFieldId" 
   });
   
-  // Ensure there's always at least one row if fields is empty initially
   React.useEffect(() => {
     if (fields.length === 0) {
-      append({ id: generateGUID(), startDate: new Date(), endDate: new Date(), rate: 0, extraBedRate: 0 });
+      append({ id: generateGUID(), seasonName: undefined, startDate: new Date(), endDate: new Date(), rate: 0, extraBedRate: 0 });
     }
   }, [fields, append]);
 
 
   return (
-    <div className="space-y-1"> {/* Reduced space for tighter table layout */}
-      {/* <Label className="text-sm">Seasonal Periods</Label> // Removed as per HTML structure */}
-      <Table className="mb-1 border"> {/* Reduced margin */}
-        <TableHeader className="bg-muted/30"> {/* Closer to HTML's th background */}
+    <div className="space-y-1"> 
+      <Table className="mb-1 border"> 
+        <TableHeader className="bg-muted/30"> 
           <TableRow>
-            <TableHead className="w-[180px] px-2 py-1 text-xs">Start Date</TableHead> {/* Adjusted padding & font size */}
+            <TableHead className="w-[180px] px-2 py-1 text-xs">Start Date</TableHead> 
             <TableHead className="w-[180px] px-2 py-1 text-xs">End Date</TableHead>
             <TableHead className="px-2 py-1 text-xs">Nightly Rate ({currency})</TableHead>
             <TableHead className="px-2 py-1 text-xs">Extra Bed ({currency})</TableHead>
@@ -700,7 +742,7 @@ function SeasonalRatesTable({ roomIndex, form, currency }: SeasonalRatesTablePro
                   name={`hotelDetails.roomTypes.${roomIndex}.seasonalPrices.${seasonIndex}.rate`}
                   render={({ field }) => (
                     <FormItem>
-                      <FormControl><Input type="number" placeholder="0.00" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || 0)} className="h-9 text-sm" /></FormControl> {/* Adjusted height & text size */}
+                      <FormControl><Input type="number" placeholder="0.00" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || 0)} className="h-9 text-sm" /></FormControl> 
                       <FormMessage className="text-xs" />
                     </FormItem>
                   )}
@@ -712,7 +754,7 @@ function SeasonalRatesTable({ roomIndex, form, currency }: SeasonalRatesTablePro
                   name={`hotelDetails.roomTypes.${roomIndex}.seasonalPrices.${seasonIndex}.extraBedRate`}
                   render={({ field }) => (
                     <FormItem>
-                      <FormControl><Input type="number" placeholder="0.00" {...field} value={field.value ?? ''} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)} className="h-9 text-sm" /></FormControl> {/* Adjusted height & text size */}
+                      <FormControl><Input type="number" placeholder="0.00" {...field} value={field.value ?? ''} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)} className="h-9 text-sm" /></FormControl> 
                       <FormMessage className="text-xs" />
                     </FormItem>
                   )}
@@ -723,10 +765,10 @@ function SeasonalRatesTable({ roomIndex, form, currency }: SeasonalRatesTablePro
                   type="button"
                   onClick={() => fields.length > 1 ? remove(seasonIndex) : null}
                   disabled={fields.length <= 1}
-                  className="h-7 w-7 text-destructive hover:text-destructive/80 disabled:opacity-50 remove-season" // Added remove-season class
+                  className="h-7 w-7 text-destructive hover:text-destructive/80 disabled:opacity-50 remove-season" 
                   aria-label="Remove Season"
                 >
-                  <XIcon size={18} /> {/* Slightly larger X for visibility */}
+                  <XIcon size={18} /> 
                 </button>
               </TableCell>
             </TableRow>
@@ -736,8 +778,9 @@ function SeasonalRatesTable({ roomIndex, form, currency }: SeasonalRatesTablePro
         {form.formState.errors.hotelDetails?.roomTypes?.[roomIndex]?.seasonalPrices && typeof form.formState.errors.hotelDetails.roomTypes[roomIndex].seasonalPrices === 'string' && (
             <FormMessage className="text-xs">{ (form.formState.errors.hotelDetails.roomTypes[roomIndex].seasonalPrices as any).message || form.formState.errors.hotelDetails.roomTypes[roomIndex].seasonalPrices }</FormMessage>
         )}
+         {(form.formState.errors.hotelDetails?.roomTypes?.[roomIndex]?.seasonalPrices as any)?.message && (
+            <FormMessage className="text-xs text-destructive">{(form.formState.errors.hotelDetails?.roomTypes?.[roomIndex]?.seasonalPrices as any).message}</FormMessage>
+         )}
     </div>
   );
 }
-
-```
