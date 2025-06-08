@@ -21,11 +21,17 @@ const isValidCurrencyCode = (val: unknown): val is CurrencyCode => {
   return CURRENCIES.includes(val as CurrencyCode);
 };
 
+// Define the validation function for ItineraryItemType separately
+const isValidItineraryItemType = (val: unknown): val is ItineraryItemType => {
+  return SERVICE_CATEGORIES.includes(val as ItineraryItemType);
+};
+
+
 // Define a more flexible output schema for AI extraction
 export const AIContractDataOutputSchema = z.object({
   name: z.string().optional().describe('The name of the service or hotel.'),
   province: z.string().optional().describe('The province or location of the service. Extract if explicitly mentioned.'),
-  category: z.custom<ItineraryItemType>((val) => SERVICE_CATEGORIES.includes(val as ItineraryItemType), "Invalid category").optional().describe(`The category of the service. Must be one of: ${SERVICE_CATEGORIES.join(', ')}`),
+  category: z.custom<ItineraryItemType>(isValidItineraryItemType, "Invalid category").optional().describe(`The category of the service. Must be one of: ${SERVICE_CATEGORIES.join(', ')}`),
   subCategory: z.string().optional().describe('A sub-category or specific type (e.g., room type for hotels, activity type, vehicle type for transfers).'),
   price1: z.number().optional().describe('Primary price (e.g., adult price, room rate, cost per vehicle).'),
   price2: z.number().optional().describe('Secondary price (e.g., child price, extra bed rate). Only if applicable and clearly distinct.'),
