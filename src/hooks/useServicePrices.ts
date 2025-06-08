@@ -1,6 +1,6 @@
 
 import * as React from 'react';
-import type { ServicePriceItem, ItineraryItemType, CurrencyCode, SeasonalRate } from '@/types/itinerary';
+import type { ServicePriceItem, ItineraryItemType, CurrencyCode, OldSeasonalRate, HotelDefinition, HotelRoomTypeDefinition, RoomTypeSeasonalPrice } from '@/types/itinerary';
 import { generateGUID } from '@/lib/utils';
 
 const SERVICE_PRICES_STORAGE_KEY = 'itineraryAceServicePrices';
@@ -47,24 +47,45 @@ const DEFAULT_DEMO_SERVICE_PRICES: ServicePriceItem[] = [
   },
 
 
-  // == Bangkok - Hotels ==
+  // == Bangkok - Hotels (using hotelDetails) ==
   {
-    id: generateGUID(), name: 'Riverside Luxury Hotel', province: 'Bangkok', category: 'hotel', subCategory: 'Deluxe River View',
-    price1: 5000, price2: 1000, currency: 'THB', unitDescription: 'per night (default)',
-    seasonalRates: [
-      { id: generateGUID(), startDate: '2024-11-01', endDate: '2025-02-28', roomRate: 6500, extraBedRate: 1200 }, // Peak
-      { id: generateGUID(), startDate: '2024-05-01', endDate: '2024-09-30', roomRate: 4000, extraBedRate: 800 }  // Low
-    ], notes: '5-star, riverside location'
+    id: generateGUID(), name: 'Riverside Luxury Hotel', province: 'Bangkok', category: 'hotel', currency: 'THB', unitDescription: 'per night', 
+    notes: '5-star, riverside location',
+    hotelDetails: {
+      id: generateGUID(), name: 'Riverside Luxury Hotel', province: 'Bangkok',
+      roomTypes: [
+        { 
+          id: generateGUID(), name: 'Deluxe River View', characteristics: [],
+          seasonalPrices: [
+            { id: generateGUID(), startDate: '2024-11-01', endDate: '2025-02-28', rate: 6500, extraBedAllowed: true, extraBedRate: 1200 },
+            { id: generateGUID(), startDate: '2024-05-01', endDate: '2024-09-30', rate: 4000, extraBedAllowed: true, extraBedRate: 800 }
+          ]
+        },
+        { 
+          id: generateGUID(), name: 'Standard City View', characteristics: [],
+          seasonalPrices: [
+            { id: generateGUID(), startDate: '2024-11-01', endDate: '2025-02-28', rate: 5000, extraBedAllowed: false },
+            { id: generateGUID(), startDate: '2024-05-01', endDate: '2024-09-30', rate: 3200, extraBedAllowed: false }
+          ]
+        }
+      ]
+    }
   },
   {
-    id: generateGUID(), name: 'Sukhumvit Boutique Hotel', province: 'Bangkok', category: 'hotel', subCategory: 'Superior Room',
-    price1: 2500, price2: 600, currency: 'THB', unitDescription: 'per night', notes: '4-star, near BTS Asok'
+    id: generateGUID(), name: 'Sukhumvit Boutique Hotel', province: 'Bangkok', category: 'hotel', currency: 'THB', unitDescription: 'per night',
+    notes: '4-star, near BTS Asok',
+    hotelDetails: {
+      id: generateGUID(), name: 'Sukhumvit Boutique Hotel', province: 'Bangkok',
+      roomTypes: [
+        {
+          id: generateGUID(), name: 'Superior Room', characteristics: [],
+          seasonalPrices: [
+            { id: generateGUID(), startDate: '2024-01-01', endDate: '2024-12-31', rate: 2500, extraBedAllowed: true, extraBedRate: 600 }
+          ]
+        }
+      ]
+    }
   },
-  {
-    id: generateGUID(), name: 'Khaosan Road Budget Guesthouse', province: 'Bangkok', category: 'hotel', subCategory: 'Standard Double (Fan)',
-    price1: 600, price2: 0, currency: 'THB', unitDescription: 'per night', notes: 'Basic, shared bathroom options cheaper'
-  },
-
 
   // == Bangkok - Meals ==
   {
@@ -132,35 +153,30 @@ const DEFAULT_DEMO_SERVICE_PRICES: ServicePriceItem[] = [
     id: generateGUID(), name: 'Tiffany\'s Cabaret Show (VIP)', province: 'Pattaya (Chonburi)', category: 'activity', subCategory: 'Show/Entertainment',
     price1: 1200, price2: 1000, currency: 'THB', unitDescription: 'per person (VIP Seat)', notes: 'Standard seats cheaper'
   },
-  {
-    id: generateGUID(), name: 'Nong Nooch Tropical Garden Tour', province: 'Pattaya (Chonburi)', category: 'activity', subCategory: 'Garden & Show',
-    price1: 800, price2: 600, currency: 'THB', unitDescription: 'per person', notes: 'Includes entrance and cultural show'
-  },
-  {
-    id: generateGUID(), name: 'Coral Island (Koh Larn) Day Trip Package', province: 'Pattaya (Chonburi)', category: 'activity', subCategory: 'Island Hopping',
-    price1: 1200, price2: 900, currency: 'THB', unitDescription: 'per person', notes: 'Includes speedboat, lunch, basic water sports'
-  },
-  {
-    id: generateGUID(), name: 'Pattaya Underwater World', province: 'Pattaya (Chonburi)', category: 'activity', subCategory: 'Aquarium',
-    price1: 500, price2: 300, currency: 'THB', unitDescription: 'per person'
-  },
 
-  // == Pattaya - Hotels ==
+  // == Pattaya - Hotels (using hotelDetails) ==
   {
-    id: generateGUID(), name: 'Pattaya Beachfront Resort', province: 'Pattaya (Chonburi)', category: 'hotel', subCategory: 'Sea View Room',
-    price1: 4000, price2: 800, currency: 'THB', unitDescription: 'per night (default)',
-    seasonalRates: [
-      { id: generateGUID(), startDate: '2024-12-01', endDate: '2025-03-31', roomRate: 5500, extraBedRate: 1000 }, // Peak
-      { id: generateGUID(), startDate: '2024-06-01', endDate: '2024-10-31', roomRate: 3000, extraBedRate: 600 }  // Low
-    ], notes: '4-star, on Beach Road'
-  },
-  {
-    id: generateGUID(), name: 'Jomtien Family Hotel', province: 'Pattaya (Chonburi)', category: 'hotel', subCategory: 'Family Suite',
-    price1: 3200, price2: 500, currency: 'THB', unitDescription: 'per night', notes: 'Good for families, pool'
-  },
-  {
-    id: generateGUID(), name: 'Pattaya Central Guesthouse', province: 'Pattaya (Chonburi)', category: 'hotel', subCategory: 'Basic Double Room',
-    price1: 800, price2: 200, currency: 'THB', unitDescription: 'per night', notes: 'Budget-friendly, no frills'
+    id: generateGUID(), name: 'Pattaya Beachfront Resort', province: 'Pattaya (Chonburi)', category: 'hotel', currency: 'THB', unitDescription: 'per night', 
+    notes: '4-star, on Beach Road',
+    hotelDetails: {
+        id: generateGUID(), name: 'Pattaya Beachfront Resort', province: 'Pattaya (Chonburi)',
+        roomTypes: [
+            {
+                id: generateGUID(), name: 'Sea View Room', characteristics: [],
+                seasonalPrices: [
+                    { id: generateGUID(), startDate: '2024-12-01', endDate: '2025-03-31', rate: 5500, extraBedAllowed: true, extraBedRate: 1000 },
+                    { id: generateGUID(), startDate: '2024-06-01', endDate: '2024-10-31', rate: 3000, extraBedAllowed: true, extraBedRate: 600 }
+                ]
+            },
+            {
+                id: generateGUID(), name: 'Garden View Bungalow', characteristics: [],
+                seasonalPrices: [
+                    { id: generateGUID(), startDate: '2024-12-01', endDate: '2025-03-31', rate: 4800, extraBedAllowed: false },
+                    { id: generateGUID(), startDate: '2024-06-01', endDate: '2024-10-31', rate: 2500, extraBedAllowed: false }
+                ]
+            }
+        ]
+    }
   },
 
   // == Pattaya - Meals ==
@@ -168,32 +184,8 @@ const DEFAULT_DEMO_SERVICE_PRICES: ServicePriceItem[] = [
     id: generateGUID(), name: 'Seafood Dinner at Beach Restaurant', province: 'Pattaya (Chonburi)', category: 'meal', subCategory: 'A La Carte/Set',
     price1: 1000, price2: 600, currency: 'THB', unitDescription: 'per person (average)', notes: 'Fresh seafood selection'
   },
-  {
-    id: generateGUID(), name: 'Walking Street Food Allowance', province: 'Pattaya (Chonburi)', category: 'meal', subCategory: 'Street Food',
-    price1: 500, price2: 300, currency: 'THB', unitDescription: 'per person (estimated)'
-  },
-  {
-    id: generateGUID(), name: 'Hotel Breakfast Buffet', province: 'Pattaya (Chonburi)', category: 'meal', subCategory: 'Buffet',
-    price1: 400, price2: 200, currency: 'THB', unitDescription: 'per person'
-  },
 
-
-  // == Pattaya - Miscellaneous ==
-  {
-    id: generateGUID(), name: 'Jet Ski Rental (30 mins)', province: 'Pattaya (Chonburi)', category: 'misc', subCategory: 'Water Sport',
-    price1: 1500, currency: 'THB', unitDescription: 'per jet ski', costAssignment: 'total'
-  },
-  {
-    id: generateGUID(), name: 'Beach Chair & Umbrella Rental', province: 'Pattaya (Chonburi)', category: 'misc', subCategory: 'Rental',
-    price1: 100, currency: 'THB', unitDescription: 'per set/day', costAssignment: 'total'
-  },
-  {
-    id: generateGUID(), name: 'Pattaya Viewpoint Songthaew Ride', province: 'Pattaya (Chonburi)', category: 'misc', subCategory: 'Local Transport',
-    price1: 50, currency: 'THB', unitDescription: 'per person/trip', costAssignment: 'perPerson'
-  },
-
-
-  // == General / Other Provinces (from previous demo data, adjusted or retained) ==
+  // == General / Other Provinces ==
   {
     id: generateGUID(), name: 'Phuket Airport to Patong Beach (Minibus)', province: 'Phuket', category: 'transfer', subCategory: 'Minibus',
     price1: 1800, currency: 'THB', unitDescription: 'per vehicle', maxPassengers: 10
@@ -203,36 +195,24 @@ const DEFAULT_DEMO_SERVICE_PRICES: ServicePriceItem[] = [
     price1: 300, currency: 'THB', unitDescription: 'per vehicle', maxPassengers: 3
   },
   {
-    id: generateGUID(), name: 'Ferry: Phuket (Rassada Pier) to Phi Phi Island', province: 'Phuket', category: 'transfer', subCategory: 'ticket',
-    price1: 600, price2: 500, currency: 'THB', unitDescription: 'per person (One-way Standard)'
-  },
-  {
-    id: generateGUID(), name: 'Ferry: Surat Thani (Donsak) to Koh Samui (Nathon)', province: 'Surat Thani (Koh Samui, Koh Phangan)', category: 'transfer', subCategory: 'ticket',
-    price1: 150, price2: 100, currency: 'THB', unitDescription: 'per person (One-way)'
-  },
-  {
     id: generateGUID(), name: 'Elephant Sanctuary Visit', province: 'Chiang Mai', category: 'activity', subCategory: 'Ethical Tourism',
     price1: 2500, price2: 1800, currency: 'THB', unitDescription: 'per person (Full Day)', notes: 'Incl. lunch, feeding, bathing'
   },
   {
-    id: generateGUID(), name: 'Phi Phi Islands & Maya Bay Speedboat Tour', province: 'Phuket', category: 'activity', subCategory: 'Island Hopping',
-    price1: 3000, price2: 2000, currency: 'THB', unitDescription: 'per person (Full Day)', notes: 'Incl. lunch, snorkel gear'
-  },
-  {
-    id: generateGUID(), name: 'Lanna Boutique Resort', province: 'Chiang Mai', category: 'hotel', subCategory: 'Deluxe Room',
-    price1: 2800, price2: 800, currency: 'THB', unitDescription: 'per night (default)',
-    seasonalRates: [
-      { id: generateGUID(), startDate: '2024-11-01', endDate: '2025-02-15', roomRate: 3500, extraBedRate: 1000 },
-      { id: generateGUID(), startDate: '2024-05-01', endDate: '2024-09-30', roomRate: 2200, extraBedRate: 600 }
-    ], notes: '4-star, near Old City'
-  },
-  {
-    id: generateGUID(), name: 'Patong Beachfront Villa', province: 'Phuket', category: 'hotel', subCategory: 'Ocean View Villa',
-    price1: 7000, price2: 1500, currency: 'THB', unitDescription: 'per night (default)',
-    seasonalRates: [
-      { id: generateGUID(), startDate: '2024-12-15', endDate: '2025-03-31', roomRate: 9000, extraBedRate: 2000 },
-      { id: generateGUID(), startDate: '2024-05-01', endDate: '2024-10-31', roomRate: 5500, extraBedRate: 1200 }
-    ], notes: '5-star, beachfront'
+    id: generateGUID(), name: 'Lanna Boutique Resort', province: 'Chiang Mai', category: 'hotel', currency: 'THB', unitDescription: 'per night',
+    notes: '4-star, near Old City',
+    hotelDetails: {
+      id: generateGUID(), name: 'Lanna Boutique Resort', province: 'Chiang Mai',
+      roomTypes: [
+        {
+          id: generateGUID(), name: 'Deluxe Room', characteristics: [],
+          seasonalPrices: [
+            { id: generateGUID(), startDate: '2024-11-01', endDate: '2025-02-15', rate: 3500, extraBedAllowed: true, extraBedRate: 1000 },
+            { id: generateGUID(), startDate: '2024-05-01', endDate: '2024-09-30', rate: 2200, extraBedAllowed: true, extraBedRate: 600 }
+          ]
+        }
+      ]
+    }
   },
   {
     id: generateGUID(), name: 'Khantoke Dinner with Cultural Show', province: 'Chiang Mai', category: 'meal', subCategory: 'Buffet/Show',
@@ -241,10 +221,6 @@ const DEFAULT_DEMO_SERVICE_PRICES: ServicePriceItem[] = [
   {
     id: generateGUID(), name: 'Thai SIM Card (7-day unlimited data)', category: 'misc', subCategory: 'Communication',
     price1: 299, currency: 'THB', unitDescription: 'per SIM card', costAssignment: 'total'
-  },
-  {
-    id: generateGUID(), name: 'Travel Insurance (Basic, 7 days)', category: 'misc', subCategory: 'Service',
-    price1: 500, currency: 'THB', unitDescription: 'per person', costAssignment: 'perPerson'
   }
 ];
 
@@ -260,27 +236,33 @@ export function useServicePrices() {
       if (storedPricesString) {
         const parsedPrices = JSON.parse(storedPricesString);
         if (Array.isArray(parsedPrices) && parsedPrices.length > 0) {
-          const validatedPrices = parsedPrices.filter(p => p.id && p.name && p.category && typeof p.price1 === 'number' && p.currency);
+          // Validate essential fields for all items, and hotelDetails if category is hotel
+          const validatedPrices = parsedPrices.filter(p => {
+            const basicValid = p.id && p.name && p.category && p.currency;
+            if (!basicValid) return false;
+            if (p.category === 'hotel') {
+              return p.hotelDetails && p.hotelDetails.id && p.hotelDetails.name && Array.isArray(p.hotelDetails.roomTypes);
+            }
+            return typeof p.price1 === 'number'; // For non-hotels, price1 is expected
+          });
+
           if (validatedPrices.length > 0) {
             pricesToSet = validatedPrices;
           } else {
             pricesToSet = DEFAULT_DEMO_SERVICE_PRICES;
             localStorage.setItem(SERVICE_PRICES_STORAGE_KEY, JSON.stringify(DEFAULT_DEMO_SERVICE_PRICES));
-            console.info("Stored service prices were empty or invalid. Initializing with demo data.");
           }
         } else {
           pricesToSet = DEFAULT_DEMO_SERVICE_PRICES;
           localStorage.setItem(SERVICE_PRICES_STORAGE_KEY, JSON.stringify(DEFAULT_DEMO_SERVICE_PRICES));
-          console.info("Stored service prices were not a valid array or empty. Initializing with demo data.");
         }
       } else {
         pricesToSet = DEFAULT_DEMO_SERVICE_PRICES;
         localStorage.setItem(SERVICE_PRICES_STORAGE_KEY, JSON.stringify(DEFAULT_DEMO_SERVICE_PRICES));
-        console.info("No service prices found in localStorage. Initializing with demo data.");
       }
     } catch (error) {
       console.error("Failed to load or initialize service prices from localStorage:", error);
-      pricesToSet = DEFAULT_DEMO_SERVICE_PRICES;
+      pricesToSet = DEFAULT_DEMO_SERVICE_PRICES; // Fallback to demo
       try {
         localStorage.setItem(SERVICE_PRICES_STORAGE_KEY, JSON.stringify(DEFAULT_DEMO_SERVICE_PRICES));
       } catch (saveError) {
@@ -300,6 +282,8 @@ export function useServicePrices() {
       }
       if (subCategory) {
         if (category === 'transfer' && subCategory === 'vehicle') {
+          // For 'vehicle' transfers, we want services where subCategory is NOT 'ticket'
+          // (as 'ticket' is the explicit subCategory for ticket-based transfers)
           filtered = filtered.filter(service => service.subCategory !== 'ticket');
         } else {
           filtered = filtered.filter(service => service.subCategory === subCategory);
@@ -320,4 +304,3 @@ export function useServicePrices() {
 
   return { isLoading, allServicePrices, getServicePrices, getServicePriceById };
 }
-

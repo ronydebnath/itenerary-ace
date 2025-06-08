@@ -66,10 +66,12 @@ export interface HotelCharacteristic {
 
 export interface RoomTypeSeasonalPrice {
   id: string;
-  seasonName: string; // e.g., "High Season", "Low Season"
+  seasonName?: string; 
   startDate: string; // YYYY-MM-DD
   endDate: string;   // YYYY-MM-DD
   rate: number;      // Price per night for this room type during this season
+  extraBedAllowed?: boolean;
+  extraBedRate?: number;
 }
 
 export interface HotelRoomTypeDefinition {
@@ -174,7 +176,7 @@ export type AISuggestion = {
 
 export const SERVICE_CATEGORIES: ItineraryItemType[] = ['transfer', 'activity', 'hotel', 'meal', 'misc'];
 
-export interface SeasonalRate { // This is for the old ServicePriceItem 'hotel' type, will be deprecated for hotels
+export interface OldSeasonalRate { // This is for the old ServicePriceItem 'hotel' type, will be deprecated for hotels
   id: string;
   startDate: string; 
   endDate: string;   
@@ -182,19 +184,20 @@ export interface SeasonalRate { // This is for the old ServicePriceItem 'hotel' 
   extraBedRate?: number;
 }
 
-export interface ServicePriceItem { // This will no longer be primarily used for hotels, HotelDefinition takes over
+export interface ServicePriceItem { 
   id: string;
   name: string;
   province?: string; 
   category: ItineraryItemType;
   subCategory?: string; 
-  price1: number; 
-  price2?: number; 
+  price1?: number; // Made optional as hotels will use hotelDetails
+  price2?: number; // Made optional
   currency: CurrencyCode;
   unitDescription: string; 
   notes?: string;
-  seasonalRates?: SeasonalRate[]; // Specific to 'hotel' category (old system) - for reference/migration
+  seasonalRates?: OldSeasonalRate[]; // This is the old flat structure for AI parsing / fallback
   maxPassengers?: number; 
+  hotelDetails?: HotelDefinition; // New structure for detailed hotel pricing
 }
 
 export interface ProvinceItem {
