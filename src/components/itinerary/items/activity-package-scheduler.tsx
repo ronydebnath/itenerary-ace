@@ -5,20 +5,20 @@ import * as React from 'react';
 import { DatePicker } from "@/components/ui/date-picker";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Input } from "@/components/ui/input"; // Keep if specificDateInput uses it, otherwise remove if DatePicker is enough
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { XIcon, Calendar as CalendarIcon, ChevronLeft, ChevronRight } from 'lucide-react';
-import { format, parseISO, addMonths, subMonths, startOfMonth, endOfMonth, eachDayOfInterval, getDay, isSameDay, isWithinInterval, isValid } from 'date-fns';
+import { format, parseISO, addMonths, subMonths, startOfMonth, endOfMonth, eachDayOfInterval, getDay, isSameDay, isWithinInterval, isValid, isEqual } from 'date-fns';
 import type { ActivityPackageDefinition } from '@/types/itinerary';
 import { cn } from '@/lib/utils';
 
 type SchedulingData = Pick<ActivityPackageDefinition, 'validityStartDate' | 'validityEndDate' | 'closedWeekdays' | 'specificClosedDates'>;
 
 interface ActivityPackageSchedulerProps {
-  packageId: string; // For unique IDs within form elements
-  initialSchedulingData: SchedulingData;
-  onSchedulingChange: (newSchedulingData: SchedulingData) => void;
+  packageId: string;
+  initialSchedulingData: SchedulingData; // This comes from react-hook-form's field.value
+  onSchedulingChange: (newSchedulingData: SchedulingData) => void; // This is field.onChange
 }
 
 const WEEKDAYS = [
@@ -28,82 +28,135 @@ const WEEKDAYS = [
 ];
 
 export function ActivityPackageScheduler({ packageId, initialSchedulingData, onSchedulingChange }: ActivityPackageSchedulerProps) {
-  const [validityStart, setValidityStart] = React.useState<Date | undefined>(initialSchedulingData.validityStartDate ? parseISO(initialSchedulingData.validityStartDate) : undefined);
-  const [validityEnd, setValidityEnd] = React.useState<Date | undefined>(initialSchedulingData.validityEndDate ? parseISO(initialSchedulingData.validityEndDate) : undefined);
-  const [closedWeekdays, setClosedWeekdays] = React.useState<number[]>(initialSchedulingData.closedWeekdays || []);
-  const [specificClosedDates, setSpecificClosedDates] = React.useState<string[]>(initialSchedulingData.specificClosedDates || []);
+  // UI-specific state, not directly part of the form value
+  const [currentDisplayDate, setCurrentDisplayDate] = React.useState<Date>(
+    initialSchedulingData.validityStartDate ? parseISO(initialSchedulingData.validityStartDate) : new Date()
+  );
   const [specificDateInput, setSpecificDateInput] = React.useState<Date | undefined>(undefined);
 
-  const [currentDisplayDate, setCurrentDisplayDate] = React.useState<Date>(validityStart || new Date());
+  // Derived values from props for rendering and logic
+  const currentValidityStart = React.useMemo(() => 
+    initialSchedulingData.validityStartDate ? parseISO(initialSchedulingData.validityStartDate) : undefined,
+    [initialSchedulingData.validityStartDate]
+  );
+  const currentValidityEnd = React.useMemo(() =>
+    initialSchedulingData.validityEndDate ? parseISO(initialSchedulingData.validityEndDate) : undefined,
+    [initialSchedulingData.validityEndDate]
+  );
+  const currentClosedWeekdays = initialSchedulingData.closedWeekdays || [];
+  const currentSpecificClosedDates = initialSchedulingData.specificClosedDates || [];
 
-  React.useEffect(() => {
-    const newSchedulingData: SchedulingData = {
-      validityStartDate: validityStart ? format(validityStart, 'yyyy-MM-dd') : undefined,
-      validityEndDate: validityEnd ? format(validityEnd, 'yyyy-MM-dd') : undefined,
-      closedWeekdays: closedWeekdays.length > 0 ? [...closedWeekdays].sort((a,b) => a-b) : undefined,
-      specificClosedDates: specificClosedDates.length > 0 ? [...specificClosedDates].sort() : undefined,
-    };
-    onSchedulingChange(newSchedulingData);
-  }, [validityStart, validityEnd, closedWeekdays, specificClosedDates, onSchedulingChange]);
+
+  const handleValidityStartChange = (date?: Date) => {
+    const newStartDateString = date ? format(date, 'yyyy-MM-dd') : undefined;
+    // Prevent update if the string representation is identical
+    if (newStartDateString === initialSchedulingData.validityStartDate) return;
+
+    onSchedulingChange({
+      ...initialSchedulingData,
+      validityStartDate: newStartDateString,
+    });
+  };
+
+  const handleValidityEndChange = (date?: Date) => {
+    const newEndDateString = date ? format(date, 'yyyy-MM-dd') : undefined;
+    if (newEndDateString === initialSchedulingData.validityEndDate) return;
+
+    onSchedulingChange({
+      ...initialSchedulingData,
+      validityEndDate: newEndDateString,
+    });
+  };
 
   const handleWeekdayToggle = (dayIndex: number) => {
-    setClosedWeekdays(prev =>
-      prev.includes(dayIndex) ? prev.filter(d => d !== dayIndex) : [...prev, dayIndex]
-    );
+    const newClosedWeekdays = currentClosedWeekdays.includes(dayIndex)
+      ? currentClosedWeekdays.filter(d => d !== dayIndex)
+      : [...currentClosedWeekdays, dayIndex].sort((a, b) => a - b);
+
+    onSchedulingChange({
+      ...initialSchedulingData,
+      closedWeekdays: newClosedWeekdays.length > 0 ? newClosedWeekdays : undefined,
+    });
   };
 
   const handleAddSpecificDate = () => {
     if (specificDateInput) {
       const isoDate = format(specificDateInput, 'yyyy-MM-dd');
-      if (!specificClosedDates.includes(isoDate)) {
-        setSpecificClosedDates(prev => [...prev, isoDate].sort());
+      if (!currentSpecificClosedDates.includes(isoDate)) {
+        const newSpecificClosedDates = [...currentSpecificClosedDates, isoDate].sort();
+        onSchedulingChange({
+          ...initialSchedulingData,
+          specificClosedDates: newSpecificClosedDates,
+        });
       }
-      setSpecificDateInput(undefined); // Clear input
+      setSpecificDateInput(undefined);
     }
   };
 
   const handleRemoveSpecificDate = (dateToRemove: string) => {
-    setSpecificClosedDates(prev => prev.filter(d => d !== dateToRemove));
+    const newSpecificClosedDates = currentSpecificClosedDates.filter(d => d !== dateToRemove);
+    onSchedulingChange({
+      ...initialSchedulingData,
+      specificClosedDates: newSpecificClosedDates.length > 0 ? newSpecificClosedDates : undefined,
+    });
   };
 
   const handleCalendarDayClick = (day: Date) => {
     const isoDate = format(day, 'yyyy-MM-dd');
-    // Only toggle if within validity period
-    if (validityStart && validityEnd && isWithinInterval(day, { start: validityStart, end: validityEnd })) {
-      setSpecificClosedDates(prev =>
-        prev.includes(isoDate) ? prev.filter(d => d !== isoDate) : [...prev, isoDate].sort()
-      );
+    if (currentValidityStart && currentValidityEnd && !isWithinInterval(day, { start: currentValidityStart, end: currentValidityEnd })) {
+      return; // Do nothing if outside validity range
     }
+    if (currentValidityStart && !currentValidityEnd && day < currentValidityStart) return;
+    if (!currentValidityStart && currentValidityEnd && day > currentValidityEnd) return;
+
+
+    const newSpecificClosedDates = currentSpecificClosedDates.includes(isoDate)
+      ? currentSpecificClosedDates.filter(d => d !== isoDate)
+      : [...currentSpecificClosedDates, isoDate].sort();
+
+    onSchedulingChange({
+      ...initialSchedulingData,
+      specificClosedDates: newSpecificClosedDates.length > 0 ? newSpecificClosedDates : undefined,
+    });
   };
 
-  const getDayStatus = (date: Date): { status: 'open' | 'closed-weekday' | 'closed-specific' | 'invalid-range'; reason: string } => {
+  const getDayStatus = React.useCallback((date: Date): { status: 'open' | 'closed-weekday' | 'closed-specific' | 'invalid-range'; reason: string } => {
     const isoDate = format(date, 'yyyy-MM-dd');
     const dayOfWeek = getDay(date);
 
-    if (validityStart && validityEnd) {
-      if (!isWithinInterval(date, { start: validityStart, end: validityEnd })) {
+    if (currentValidityStart && currentValidityEnd) {
+      if (!isWithinInterval(date, { start: currentValidityStart, end: currentValidityEnd })) {
         return { status: 'invalid-range', reason: 'Outside validity' };
       }
-    } else if (validityStart && date < validityStart) {
+    } else if (currentValidityStart && !currentValidityEnd && !isEqual(date, currentValidityStart) && date < currentValidityStart) {
         return { status: 'invalid-range', reason: 'Before validity start' };
-    } else if (validityEnd && date > validityEnd) {
+    } else if (!currentValidityStart && currentValidityEnd && !isEqual(date, currentValidityEnd) && date > currentValidityEnd) {
         return { status: 'invalid-range', reason: 'After validity end' };
     }
 
 
-    if (specificClosedDates.includes(isoDate)) {
+    if (currentSpecificClosedDates.includes(isoDate)) {
       return { status: 'closed-specific', reason: 'Specifically Closed' };
     }
-    if (closedWeekdays.includes(dayOfWeek)) {
+    if (currentClosedWeekdays.includes(dayOfWeek)) {
       return { status: 'closed-weekday', reason: `Closed (${WEEKDAYS.find(wd => wd.id === dayOfWeek)?.label})` };
     }
     return { status: 'open', reason: 'Open' };
-  };
+  }, [currentValidityStart, currentValidityEnd, currentSpecificClosedDates, currentClosedWeekdays]);
+
 
   const monthStart = startOfMonth(currentDisplayDate);
   const monthEnd = endOfMonth(currentDisplayDate);
   const daysInMonth = eachDayOfInterval({ start: monthStart, end: monthEnd });
   const firstDayOffset = getDay(monthStart);
+
+  React.useEffect(() => {
+     if (currentValidityStart && !isValid(currentDisplayDate)) {
+        setCurrentDisplayDate(currentValidityStart);
+     } else if (!currentValidityStart && !isValid(currentDisplayDate)){
+        setCurrentDisplayDate(new Date());
+     }
+  }, [currentValidityStart, currentDisplayDate]);
 
 
   return (
@@ -112,17 +165,17 @@ export function ActivityPackageScheduler({ packageId, initialSchedulingData, onS
         <div>
           <Label htmlFor={`validityStart-${packageId}`} className="text-xs">Price Valid From</Label>
           <DatePicker
-            date={validityStart}
-            onDateChange={setValidityStart}
+            date={currentValidityStart}
+            onDateChange={handleValidityStartChange}
             placeholder="Set start date"
           />
         </div>
         <div>
           <Label htmlFor={`validityEnd-${packageId}`} className="text-xs">Price Valid To</Label>
           <DatePicker
-            date={validityEnd}
-            onDateChange={setValidityEnd}
-            minDate={validityStart}
+            date={currentValidityEnd}
+            onDateChange={handleValidityEndChange}
+            minDate={currentValidityStart}
             placeholder="Set end date"
           />
         </div>
@@ -135,7 +188,7 @@ export function ActivityPackageScheduler({ packageId, initialSchedulingData, onS
             <div key={weekday.id} className="flex items-center space-x-2">
               <Checkbox
                 id={`weekday-${packageId}-${weekday.id}`}
-                checked={closedWeekdays.includes(weekday.id)}
+                checked={currentClosedWeekdays.includes(weekday.id)}
                 onCheckedChange={() => handleWeekdayToggle(weekday.id)}
               />
               <Label htmlFor={`weekday-${packageId}-${weekday.id}`} className="font-normal cursor-pointer">{weekday.label}</Label>
@@ -150,11 +203,11 @@ export function ActivityPackageScheduler({ packageId, initialSchedulingData, onS
           <DatePicker date={specificDateInput} onDateChange={setSpecificDateInput} placeholder="Add a specific closed date" />
           <Button type="button" size="sm" onClick={handleAddSpecificDate} disabled={!specificDateInput}>Add</Button>
         </div>
-        {specificClosedDates.length > 0 && (
+        {currentSpecificClosedDates.length > 0 && (
           <div className="flex flex-wrap gap-2 mt-2">
-            {specificClosedDates.map(dateStr => (
+            {currentSpecificClosedDates.map(dateStr => (
               <Badge key={dateStr} variant="secondary" className="font-normal pr-1">
-                {format(parseISO(dateStr), 'dd-MM-yy')}
+                {isValid(parseISO(dateStr)) ? format(parseISO(dateStr), 'dd-MM-yy') : 'Invalid Date'}
                 <button type="button" onClick={() => handleRemoveSpecificDate(dateStr)} className="ml-1.5 p-0.5 rounded-full hover:bg-destructive/20">
                   <XIcon className="h-3 w-3" />
                 </button>
@@ -166,13 +219,13 @@ export function ActivityPackageScheduler({ packageId, initialSchedulingData, onS
 
       <div className="mt-4">
         <div className="flex items-center justify-between mb-2">
-          <Button variant="outline" size="icon" onClick={() => setCurrentDisplayDate(subMonths(currentDisplayDate, 1))} className="h-8 w-8">
+          <Button variant="outline" size="icon" onClick={() => setCurrentDisplayDate(prev => subMonths(prev, 1))} className="h-8 w-8">
             <ChevronLeft className="h-4 w-4" />
           </Button>
           <div className="text-sm font-medium text-center">
-            {format(currentDisplayDate, 'MMMM yyyy')}
+            {isValid(currentDisplayDate) ? format(currentDisplayDate, 'MMMM yyyy') : 'Loading...'}
           </div>
-          <Button variant="outline" size="icon" onClick={() => setCurrentDisplayDate(addMonths(currentDisplayDate, 1))} className="h-8 w-8">
+          <Button variant="outline" size="icon" onClick={() => setCurrentDisplayDate(prev => addMonths(prev, 1))} className="h-8 w-8">
             <ChevronRight className="h-4 w-4" />
           </Button>
         </div>
@@ -201,7 +254,6 @@ export function ActivityPackageScheduler({ packageId, initialSchedulingData, onS
                 )}
               >
                 <span className={cn("font-medium", isToday && "font-bold")}>{format(day, 'd')}</span>
-                {/* <span className="text-[0.6rem] hidden sm:block truncate">{dayStatus.reason}</span> */}
               </div>
             );
           })}
