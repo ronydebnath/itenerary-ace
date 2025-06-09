@@ -1,0 +1,9 @@
+
+# For OpenRouter API (used by describe-image-flow.ts)
+OPENROUTER_API_KEY=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
+OPENROUTER_HTTP_REFERER=http://localhost:9002
+OPENROUTER_X_TITLE=ItineraryAce
+
+# For Genkit Google AI Plugin (used by suggest-itinerary-refinements.ts and default model)
+# Get your key from https://aistudio.google.com/app/apikey
+GEMINI_API_KEY="your_google_ai_studio_api_key_here"
