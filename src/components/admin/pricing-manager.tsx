@@ -3,12 +3,12 @@
 
 import * as React from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation'; // Import useRouter
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { PlusCircle, Edit, Trash2, Home, MapPinned, Loader2, LayoutDashboard, ListPlus, FileText, Sparkles, Image as ImageIcon, ClipboardPaste } from 'lucide-react';
-import type { ServicePriceItem, SeasonalRate } from '@/types/itinerary'; // Added SeasonalRate
+import type { ServicePriceItem, SeasonalRate } from '@/types/itinerary';
 import { VEHICLE_TYPES } from '@/types/itinerary'; 
-import { ServicePriceForm } from './service-price-form';
+// ServicePriceForm is no longer directly used here for a dialog
 import { ServicePriceTable } from './service-price-table';
 import { generateGUID } from '@/lib/utils';
 import { useToast } from "@/hooks/use-toast";
@@ -19,19 +19,21 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { extractContractData } from '@/ai/flows/extract-contract-data-flow';
 import { describeImage } from '@/ai/flows/describe-image-flow';
-import type { AIContractDataOutput } from '@/types/ai-contract-schemas'; // Simplified import
+import type { AIContractDataOutput } from '@/types/ai-contract-schemas'; 
 import { ExtractContractDataInputSchema } from '@/types/ai-contract-schemas';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import type { ZodError } from 'zod';
-import NextImage from 'next/image'; // Renamed to avoid conflict with Lucide icon
+import NextImage from 'next/image';
+import { Dialog, DialogClose, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+
 
 const SERVICE_PRICES_STORAGE_KEY = 'itineraryAceServicePrices';
+const TEMP_PREFILL_DATA_KEY = 'tempServicePricePrefillData'; // Key for temporary prefill data
 
 export function PricingManager() {
   const { allServicePrices, isLoading: isLoadingServices } = useServicePrices();
   const [currentServicePrices, setCurrentServicePrices] = React.useState<ServicePriceItem[]>([]);
-  const [isFormOpen, setIsFormOpen] = React.useState(false);
-  const [editingService, setEditingService] = React.useState<ServicePriceItem | undefined>(undefined);
+  const router = useRouter(); // Initialize useRouter
   
   const [isContractImportOpen, setIsContractImportOpen] = React.useState(false);
   const [contractText, setContractText] = React.useState("");
@@ -62,25 +64,10 @@ export function PricingManager() {
     }
   };
 
-  const handleFormSubmit = (data: Omit<ServicePriceItem, 'id'>) => {
-    let updatedPrices;
-    if (editingService && editingService.id) { 
-      updatedPrices = currentServicePrices.map(sp => sp.id === editingService.id ? { ...editingService, ...data } : sp);
-      toast({ title: "Success", description: `Service price "${data.name}" updated.` });
-    } else { 
-      const newServicePrice: ServicePriceItem = { ...data, id: generateGUID() };
-      updatedPrices = [...currentServicePrices, newServicePrice];
-      toast({ title: "Success", description: `Service price "${data.name}" added.` });
-    }
-    setCurrentServicePrices(updatedPrices);
-    savePricesToLocalStorage(updatedPrices);
-    setIsFormOpen(false);
-    setEditingService(undefined);
-  };
+  // handleFormSubmit is removed as form is now on a separate page
 
-  const handleEdit = (service: ServicePriceItem) => {
-    setEditingService(service);
-    setIsFormOpen(true);
+  const handleEditNavigation = (serviceId: string) => {
+    router.push(`/admin/pricing/edit/${serviceId}`);
   };
 
   const handleDelete = (serviceId: string) => {
@@ -174,7 +161,7 @@ export function PricingManager() {
         area.removeEventListener('paste', handleImagePaste);
       };
     }
-  }, [isContractImportOpen, pasteAreaRef.current]);
+  }, [isContractImportOpen, pasteAreaRef]);
 
 
   const handleParseContract = async () => {
@@ -229,15 +216,73 @@ export function PricingManager() {
         name: extractedData.name || "",
         province: extractedData.province || undefined, 
         category: extractedData.category || "misc", 
-        subCategory: extractedData.subCategory || "",
-        price1: extractedData.price1 ?? 0,
-        price2: extractedData.price2,
+        subCategory: extractedData.subCategory || "", // Retain for non-hotel/activity for now
         currency: extractedData.currency || "THB",
         unitDescription: extractedData.unitDescription || "",
         notes: extractedData.notes || "",
         maxPassengers: extractedData.maxPassengers,
-        seasonalRates: [], // Initialize as empty array
       };
+
+      // Handle pricing model transition: simple (price1/price2) vs detailed (hotelDetails/activityPackages)
+      if (prefillData.category === 'hotel') {
+        prefillData.hotelDetails = {
+          id: generateGUID(), // New ID for this hotel detail structure
+          name: prefillData.name || "New Hotel",
+          province: prefillData.province || "",
+          roomTypes: [{
+            id: generateGUID(),
+            name: extractedData.subCategory || 'Standard Room', // Use AI's subCategory as initial room type name
+            extraBedAllowed: typeof extractedData.price2 === 'number' && extractedData.price2 > 0,
+            notes: '', // For user to fill
+            characteristics: [],
+            seasonalPrices: (extractedData.seasonalRates && extractedData.seasonalRates.length > 0)
+              ? extractedData.seasonalRates
+                  .map(aiSr => {
+                    if (typeof aiSr.rate !== 'number' || aiSr.rate <= 0 || !aiSr.startDate || !aiSr.endDate) return null;
+                    let startDate = new Date(aiSr.startDate);
+                    let endDate = new Date(aiSr.endDate);
+                    if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) return null;
+                    if (endDate < startDate) {
+                         endDate = new Date(startDate);
+                         endDate.setDate(startDate.getDate() + 30);
+                    }
+                    return {
+                      id: generateGUID(),
+                      startDate: startDate.toISOString().split('T')[0],
+                      endDate: endDate.toISOString().split('T')[0],
+                      rate: aiSr.rate,
+                      extraBedRate: undefined, // AI doesn't extract this for seasonal rates yet
+                    };
+                  })
+                  .filter(sr => sr !== null) as SeasonalRate[]
+              : (extractedData.price1 !== undefined ? [{ // Create a default season from simple price1
+                  id: generateGUID(),
+                  startDate: new Date().toISOString().split('T')[0],
+                  endDate: new Date(new Date().setDate(new Date().getDate() + 30)).toISOString().split('T')[0], // Default 30 day period
+                  rate: extractedData.price1,
+                  extraBedRate: extractedData.price2, // Use simple price2 as default extra bed rate
+                }] : [])
+          }]
+        };
+        prefillData.price1 = undefined; // Clear simple prices
+        prefillData.price2 = undefined;
+        prefillData.subCategory = undefined;
+      } else if (prefillData.category === 'activity') {
+        prefillData.activityPackages = (extractedData.price1 !== undefined) ? [{
+          id: generateGUID(),
+          name: extractedData.subCategory || 'Standard Package',
+          price1: extractedData.price1,
+          price2: extractedData.price2,
+          notes: ''
+        }] : [];
+        prefillData.price1 = undefined; // Clear simple prices
+        prefillData.price2 = undefined;
+        prefillData.subCategory = undefined;
+      } else {
+        // For other categories, retain simple pricing
+        prefillData.price1 = extractedData.price1 ?? 0;
+        prefillData.price2 = extractedData.price2;
+      }
       
       if (prefillData.category === 'transfer') {
         if (extractedData.transferModeAttempt === 'vehicle') {
@@ -251,70 +296,14 @@ export function PricingManager() {
         }
       }
 
-      if (prefillData.category === 'hotel' && extractedData.seasonalRates && Array.isArray(extractedData.seasonalRates)) {
-        prefillData.seasonalRates = extractedData.seasonalRates
-          .map(aiSr => {
-            // Validate rate: must be a number and > 0
-            if (typeof aiSr.rate !== 'number' || aiSr.rate <= 0) {
-              console.warn('AI Seasonal rate skipped due to missing or invalid rate:', aiSr);
-              return null;
-            }
 
-            let startDate: Date | null = null;
-            if (aiSr.startDate && typeof aiSr.startDate === 'string') {
-              const parsed = new Date(aiSr.startDate);
-              // Check if the date is valid; new Date('invalid_string') results in Invalid Date
-              if (!isNaN(parsed.getTime())) {
-                startDate = parsed;
-              } else {
-                console.warn(`AI extracted invalid start date string: ${aiSr.startDate}`);
-              }
-            } else {
-                console.warn(`AI Seasonal rate skipped due to missing or invalid start date string:`, aiSr.startDate);
-            }
-
-            let endDate: Date | null = null;
-            if (aiSr.endDate && typeof aiSr.endDate === 'string') {
-              const parsed = new Date(aiSr.endDate);
-              if (!isNaN(parsed.getTime())) {
-                endDate = parsed;
-              } else {
-                console.warn(`AI extracted invalid end date string: ${aiSr.endDate}`);
-              }
-            } else {
-                console.warn(`AI Seasonal rate skipped due to missing or invalid end date string:`, aiSr.endDate);
-            }
-
-            if (!startDate || !endDate) {
-              return null; // Skip if dates are invalid
-            }
-
-            // Ensure end date is not before start date
-            if (endDate < startDate) {
-              console.warn(`AI extracted end date ${aiSr.endDate} before start date ${aiSr.startDate}. Adjusting end date to 30 days after start.`);
-              endDate = new Date(startDate);
-              endDate.setDate(startDate.getDate() + 30);
-            }
-
-            return {
-              id: generateGUID(),
-              startDate: startDate.toISOString().split('T')[0], // Store as YYYY-MM-DD string for ServicePriceItem
-              endDate: endDate.toISOString().split('T')[0],     // Store as YYYY-MM-DD string for ServicePriceItem
-              roomRate: aiSr.rate, // Already validated as number > 0
-              extraBedRate: undefined, // AI is not prompted to extract this specific field for seasonal rates
-            };
-          })
-          .filter(sr => sr !== null) as SeasonalRate[]; // Filter out nulls and assert type
-      } else if (prefillData.category === 'hotel') {
-         prefillData.seasonalRates = []; // Ensure it's an empty array if no valid rates extracted
-      }
-
-
-      setEditingService(prefillData as ServicePriceItem); 
+      // Store prefillData in localStorage and navigate
+      localStorage.setItem(TEMP_PREFILL_DATA_KEY, JSON.stringify(prefillData));
       setIsContractImportOpen(false);
-      setIsFormOpen(true); 
       resetImportDialogState();
-      toast({ title: "Contract Parsed", description: "Review and complete the service details." });
+      router.push('/admin/pricing/new'); // Navigate to the new service price page
+      toast({ title: "Contract Parsed", description: "Review and complete the service details on the new page." });
+
     } catch (error: any) {
       console.error("Error parsing contract with AI:", error);
       setContractParseError(`AI Parsing Error: ${error.message}`);
@@ -375,6 +364,7 @@ export function PricingManager() {
                   tabIndex={0} 
                   className="mt-2 p-4 border-2 border-dashed border-muted-foreground/30 rounded-md text-center cursor-pointer hover:border-primary"
                   title="Click or focus and then paste an image (Ctrl+V or Cmd+V)"
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') pasteAreaRef.current?.focus(); }} // For accessibility
                 >
                   <ClipboardPaste className="mx-auto h-8 w-8 text-muted-foreground mb-2" />
                   <p className="text-sm text-muted-foreground">Or click here &amp; paste contract image (Ctrl+V / Cmd+V)</p>
@@ -442,30 +432,11 @@ export function PricingManager() {
             </DialogContent>
           </Dialog>
 
-          <Dialog open={isFormOpen} onOpenChange={(open) => {
-            setIsFormOpen(open);
-            if (!open) setEditingService(undefined);
-          }}>
-            <DialogTrigger asChild>
-              <Button className="bg-primary hover:bg-primary/90">
-                <PlusCircle className="mr-2 h-5 w-5" /> Add New Service Price
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-2xl"> 
-              <DialogHeader>
-                <DialogTitle>{editingService?.id ? 'Edit' : 'Add'} Service Price {editingService && !editingService.id ? "(from AI)" : ""}</DialogTitle>
-              </DialogHeader>
-              <ServicePriceForm
-                key={editingService?.id || JSON.stringify(editingService) || 'new'} 
-                initialData={editingService}
-                onSubmit={handleFormSubmit}
-                onCancel={() => {
-                  setIsFormOpen(false);
-                  setEditingService(undefined);
-                }}
-              />
-            </DialogContent>
-          </Dialog>
+          <Link href="/admin/pricing/new" passHref>
+            <Button className="bg-primary hover:bg-primary/90">
+              <PlusCircle className="mr-2 h-5 w-5" /> Add New Service Price
+            </Button>
+          </Link>
         </div>
       </div>
 
@@ -485,7 +456,7 @@ export function PricingManager() {
       ) : currentServicePrices.length > 0 ? (
         <ServicePriceTable
           servicePrices={currentServicePrices}
-          onEdit={handleEdit}
+          onEdit={handleEditNavigation} // Changed to navigate
           onDeleteConfirmation={(serviceId) => ( 
             <AlertDialog>
               <AlertDialogTrigger asChild>
@@ -519,5 +490,3 @@ export function PricingManager() {
     </div>
   );
 }
-
-    
