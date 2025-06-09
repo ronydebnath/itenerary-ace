@@ -105,7 +105,7 @@ export default function EditServicePricePage() {
 
   return (
     <main className="min-h-screen bg-background p-4 md:p-8">
-      <Card className="w-full max-w-4xl mx-auto shadow-xl">
+      <Card className="w-full max-w-6xl mx-auto shadow-xl">
         <CardHeader>
           <div className="flex justify-between items-center">
             <CardTitle className="text-2xl font-bold text-primary flex items-center">
