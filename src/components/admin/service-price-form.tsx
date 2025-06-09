@@ -45,7 +45,7 @@ const hotelRoomTypeSchema = z.object({
   id: z.string(),
   name: z.string().min(1, "Room type name is required"),
   extraBedAllowed: z.boolean().optional().default(false),
-  notes: z.string().optional().describe("Room Details: Size, Amenities, Bed Type, View etc."),
+  notes: z.string().optional().describe("Room Details: Size, Amenities, Bed Type, View etc."), // For Room Details
   seasonalPrices: z.array(hotelRoomSeasonalPriceSchema).min(1, "At least one seasonal price is required."),
 });
 
@@ -95,26 +95,16 @@ const servicePriceSchema = z.object({
             path: [`hotelDetails.roomTypes.${roomIndex}.seasonalPrices`],
           });
         }
-        roomType.seasonalPrices.forEach((season, seasonIndex) => {
-          if (!roomType.extraBedAllowed && typeof season.extraBedRate === 'number') {
-            ctx.addIssue({
-              code: z.ZodIssueCode.custom,
-              message: "Extra bed rate provided but extra beds not allowed for this room type.",
-              path: [`hotelDetails.roomTypes.${roomIndex}.seasonalPrices.${seasonIndex}.extraBedRate`],
-            });
-          }
-        });
       });
     }
     if (!data.unitDescription) data.unitDescription = 'per night';
-    // Clear simple pricing if hotelDetails is used
     data.price1 = undefined;
     data.price2 = undefined;
     data.subCategory = undefined;
 
   } else if (data.category === 'activity') {
     if (!data.activityPackages || data.activityPackages.length === 0) {
-       if (typeof data.price1 !== 'number') { // Fallback to simple pricing if no packages
+       if (typeof data.price1 !== 'number') { 
          ctx.addIssue({
             code: z.ZodIssueCode.custom,
             message: "Define at least one package or provide a default Adult Price.",
@@ -122,7 +112,6 @@ const servicePriceSchema = z.object({
         });
        }
     } else {
-        // Clear simple pricing if activityPackages is used
         data.price1 = undefined;
         data.price2 = undefined;
         data.subCategory = undefined;
@@ -159,91 +148,119 @@ interface ServicePriceFormProps {
   onCancel: () => void;
 }
 
-export function ServicePriceForm({ initialData, onSubmit, onCancel }: ServicePriceFormProps) {
-  const { provinces, isLoading: isLoadingProvinces } = useProvinces();
+const transformInitialDataToFormValues = (data?: Partial<ServicePriceItem>): Partial<ServicePriceFormValues> => {
+  const defaultCurrency: CurrencyCode = "THB";
+  const defaultCategory: ItineraryItemType = "activity";
 
-  const transformInitialDataToFormValues = (data?: Partial<ServicePriceItem>): Partial<ServicePriceFormValues> => {
-    if (!data) return { category: "activity", currency: "THB", unitDescription: "per person", activityPackages: [] };
-
-    const baseTransformed: Partial<ServicePriceFormValues> = {
-      name: data.name || "",
-      province: data.province || undefined,
-      category: data.category || "activity",
-      currency: data.currency || "THB",
-      unitDescription: data.unitDescription || "",
-      notes: data.notes || "", 
+  if (!data) {
+    return { 
+      category: defaultCategory, 
+      currency: defaultCurrency, 
+      unitDescription: "per person",
+      name: "",
+      activityPackages: [{ id: generateGUID(), name: 'Standard Package', price1: 0, price2: undefined, notes: '' }] 
     };
+  }
 
-    if (data.category === 'hotel') {
-      const hotelDetails = data.hotelDetails || {
-        id: data.id || generateGUID(),
-        name: data.name || "New Hotel",
-        province: data.province || "",
-        roomTypes: []
-      };
-      
-      if ((!hotelDetails.roomTypes || hotelDetails.roomTypes.length === 0) && (data.price1 !== undefined || data.seasonalRates?.length)) {
-        // Attempt to convert from old simple hotel structure
-        hotelDetails.roomTypes.push({
-            id: generateGUID(),
-            name: data.subCategory || 'Standard Room',
-            extraBedAllowed: typeof data.price2 === 'number',
-            notes: data.notes || "",
-            characteristics: [],
-            seasonalPrices: data.seasonalRates && data.seasonalRates.length > 0 ?
-                data.seasonalRates.map(sr => ({
-                    id: sr.id || generateGUID(),
-                    startDate: sr.startDate ? new Date(sr.startDate) : new Date(),
-                    endDate: sr.endDate ? new Date(sr.endDate) : new Date(),
-                    rate: sr.roomRate,
-                    extraBedRate: sr.extraBedRate
-                }))
-                : [{ 
-                    id: generateGUID(), startDate: new Date(), endDate: new Date(),
-                    rate: data.price1 || 0,
-                    extraBedRate: data.price2
-                  }]
-        });
-      } else {
-         hotelDetails.roomTypes = hotelDetails.roomTypes.map(rt => ({
-            ...rt,
-            seasonalPrices: rt.seasonalPrices.map(sp => ({
-                ...sp,
-                startDate: sp.startDate ? new Date(sp.startDate as unknown as string) : new Date(), // Ensure string date is converted
-                endDate: sp.endDate ? new Date(sp.endDate as unknown as string) : new Date(),       // Ensure string date is converted
-            })),
-         }));
-      }
-      baseTransformed.hotelDetails = hotelDetails;
-      baseTransformed.price1 = undefined;
-      baseTransformed.price2 = undefined;
-      baseTransformed.subCategory = undefined;
-      baseTransformed.unitDescription = data.unitDescription || 'per night';
-    } else if (data.category === 'activity') {
-      baseTransformed.activityPackages = data.activityPackages && data.activityPackages.length > 0 
-        ? data.activityPackages 
-        : (data.price1 !== undefined ? [{ id: generateGUID(), name: data.subCategory || 'Standard Package', price1: data.price1, price2: data.price2, notes: data.notes }] : []);
-      baseTransformed.price1 = undefined;
-      baseTransformed.price2 = undefined;
-      baseTransformed.subCategory = undefined;
-      baseTransformed.unitDescription = data.unitDescription || 'per person';
-    } else { 
-      baseTransformed.subCategory = data.subCategory || "";
-      baseTransformed.price1 = data.price1 ?? 0; 
-      baseTransformed.price2 = data.price2;
-      baseTransformed.hotelDetails = undefined;
-      baseTransformed.activityPackages = undefined;
-      if (data.category === 'transfer') {
-        baseTransformed.transferMode = data.subCategory === 'ticket' ? 'ticket' : 'vehicle';
-        baseTransformed.maxPassengers = data.maxPassengers || undefined;
-        baseTransformed.unitDescription = data.unitDescription || (baseTransformed.transferMode === 'vehicle' ? 'per vehicle' : 'per person');
-      } else {
-        baseTransformed.unitDescription = data.unitDescription || 'per person';
-      }
-    }
-    return baseTransformed;
+  const baseTransformed: Partial<ServicePriceFormValues> = {
+    name: data.name || "",
+    province: data.province || undefined,
+    category: data.category || defaultCategory,
+    currency: data.currency || defaultCurrency,
+    unitDescription: data.unitDescription || "",
+    notes: data.notes || "", 
   };
 
+  if (baseTransformed.category === 'hotel') {
+    let roomTypes: HotelRoomTypeDefinition[] = [];
+    if (data.hotelDetails?.roomTypes && data.hotelDetails.roomTypes.length > 0) {
+      roomTypes = data.hotelDetails.roomTypes.map(rt => ({
+        ...rt,
+        seasonalPrices: rt.seasonalPrices.map(sp => ({
+          ...sp,
+          startDate: sp.startDate ? new Date(sp.startDate as unknown as string) : new Date(),
+          endDate: sp.endDate ? new Date(sp.endDate as unknown as string) : new Date(),
+        })),
+      }));
+    } else if (data.price1 !== undefined || (data.seasonalRates && data.seasonalRates.length > 0)) { // Convert from old simple hotel structure
+      const defaultSeasonalPrices = data.seasonalRates && data.seasonalRates.length > 0
+        ? data.seasonalRates.map(sr => ({
+            id: sr.id || generateGUID(),
+            startDate: sr.startDate ? new Date(sr.startDate) : new Date(),
+            endDate: sr.endDate ? new Date(sr.endDate) : new Date(),
+            rate: sr.roomRate, // Assuming old 'roomRate' maps to 'rate'
+            extraBedRate: sr.extraBedRate
+          }))
+        : [{ 
+            id: generateGUID(), startDate: new Date(), endDate: new Date(),
+            rate: data.price1 || 0,
+            extraBedRate: data.price2
+          }];
+      
+      roomTypes.push({
+        id: generateGUID(),
+        name: data.subCategory || 'Standard Room',
+        extraBedAllowed: defaultSeasonalPrices.some(sp => typeof sp.extraBedRate === 'number' && sp.extraBedRate > 0) || (typeof data.price2 === 'number' && data.price2 > 0),
+        notes: data.notes || "", // General notes might go to the first room type's details
+        seasonalPrices: defaultSeasonalPrices.map(sp => ({...sp, startDate: new Date(sp.startDate), endDate: new Date(sp.endDate)})),
+      });
+    }
+    
+    if (roomTypes.length === 0) { // Ensure at least one room type if still empty
+      roomTypes.push({
+        id: generateGUID(), name: 'Standard Room', extraBedAllowed: false, notes: '', 
+        seasonalPrices: [{ id: generateGUID(), startDate: new Date(), endDate: new Date(), rate: 0, extraBedRate: undefined }]
+      });
+    }
+
+    baseTransformed.hotelDetails = {
+      id: data.hotelDetails?.id || data.id || generateGUID(), // Use existing ID if available
+      name: baseTransformed.name || data.hotelDetails?.name || 'New Hotel',
+      province: baseTransformed.province || data.hotelDetails?.province || '',
+      roomTypes,
+    };
+    baseTransformed.price1 = undefined;
+    baseTransformed.price2 = undefined;
+    baseTransformed.subCategory = undefined;
+    baseTransformed.unitDescription = data.unitDescription || 'per night';
+
+  } else if (baseTransformed.category === 'activity') {
+    let packages: ActivityPackageDefinition[] = [];
+    if (data.activityPackages && data.activityPackages.length > 0) {
+      packages = data.activityPackages;
+    } else if (data.price1 !== undefined) { // Convert from old simple activity structure
+      packages = [{ id: generateGUID(), name: data.subCategory || 'Standard Package', price1: data.price1, price2: data.price2, notes: data.notes || '' }];
+    }
+    
+    if (packages.length === 0) { // Ensure at least one package if still empty
+        packages = [{ id: generateGUID(), name: 'Standard Package', price1: 0, price2: undefined, notes: '' }];
+    }
+    baseTransformed.activityPackages = packages;
+    baseTransformed.price1 = undefined;
+    baseTransformed.price2 = undefined;
+    baseTransformed.subCategory = undefined;
+    baseTransformed.unitDescription = data.unitDescription || 'per person';
+
+  } else { // Other categories like transfer, meal, misc
+    baseTransformed.subCategory = data.subCategory || "";
+    baseTransformed.price1 = data.price1 ?? 0; 
+    baseTransformed.price2 = data.price2;
+    baseTransformed.hotelDetails = undefined;
+    baseTransformed.activityPackages = undefined;
+    if (data.category === 'transfer') {
+      baseTransformed.transferMode = data.subCategory === 'ticket' ? 'ticket' : 'vehicle';
+      baseTransformed.maxPassengers = data.maxPassengers || undefined;
+      baseTransformed.unitDescription = data.unitDescription || (baseTransformed.transferMode === 'vehicle' ? 'per vehicle' : 'per person');
+    } else {
+      baseTransformed.unitDescription = data.unitDescription || 'per person';
+    }
+  }
+  return baseTransformed;
+};
+
+
+export function ServicePriceForm({ initialData, onSubmit, onCancel }: ServicePriceFormProps) {
+  const { provinces, isLoading: isLoadingProvinces } = useProvinces();
 
   const form = useForm<ServicePriceFormValues>({
     resolver: zodResolver(servicePriceSchema),
@@ -271,47 +288,30 @@ export function ServicePriceForm({ initialData, onSubmit, onCancel }: ServicePri
 
 
   React.useEffect(() => {
-    if (selectedCategory === 'hotel') {
-      if (!form.getValues('hotelDetails')) { 
-        form.setValue('hotelDetails', {
-          id: initialData?.id || generateGUID(),
-          name: form.getValues('name') || initialData?.name || 'New Hotel',
-          province: form.getValues('province') || initialData?.province || '',
-          roomTypes: [],
-        });
-      }
-      if (form.getValues('hotelDetails.roomTypes')?.length === 0) {
-          setTimeout(() => appendRoomType({
-            id: generateGUID(), name: 'Standard Room', extraBedAllowed: false, notes: '', 
-            seasonalPrices: [{ id: generateGUID(), startDate: new Date(), endDate: new Date(), rate: 0, extraBedRate: undefined }]
-        }), 0);
-      }
-      form.setValue('price1', undefined);
-      form.setValue('price2', undefined);
-      form.setValue('subCategory', undefined);
-      form.setValue('activityPackages', undefined);
-      form.setValue('unitDescription', form.getValues('unitDescription') || 'per night');
-    } else if (selectedCategory === 'activity') {
-      if (!form.getValues('activityPackages') || form.getValues('activityPackages')?.length === 0) {
-        setTimeout(() => appendActivityPackage({
-          id: generateGUID(), name: 'Standard Package', price1: 0, price2: undefined, notes: ''
-        }), 0);
-      }
+    // This effect now primarily handles clearing/setting fields based on category,
+    // not appending default items, as that's done by transformInitialDataToFormValues.
+    if (selectedCategory === 'activity') {
       form.setValue('price1', undefined);
       form.setValue('price2', undefined);
       form.setValue('subCategory', undefined);
       form.setValue('hotelDetails', undefined);
       form.setValue('unitDescription', form.getValues('unitDescription') || 'per person');
-    } else { // Other categories like transfer, meal, misc
+    } else if (selectedCategory === 'hotel') {
+      form.setValue('price1', undefined);
+      form.setValue('price2', undefined);
+      form.setValue('subCategory', undefined);
+      form.setValue('activityPackages', undefined);
+      form.setValue('unitDescription', form.getValues('unitDescription') || 'per night');
+    } else { 
       form.setValue('hotelDetails', undefined);
       form.setValue('activityPackages', undefined);
-      if (!form.getValues('unitDescription') || ['per night', 'per person'].includes(form.getValues('unitDescription')!) ) {
+      if (!form.getValues('unitDescription') || ['per night'].includes(form.getValues('unitDescription')!) ) {
          const defaultUnitDesc = selectedCategory === 'transfer' && form.getValues('transferMode') === 'vehicle' ? 'per vehicle' : 'per person';
         form.setValue('unitDescription', defaultUnitDesc);
       }
-       if (form.getValues('price1') === undefined) form.setValue('price1', 0); // Ensure price1 has a value for non-hotel/activity
+       if (form.getValues('price1') === undefined) form.setValue('price1', 0);
     }
-  }, [selectedCategory, form, initialData, appendRoomType, appendActivityPackage]);
+  }, [selectedCategory, form.setValue, form.getValues]);
 
 
   React.useEffect(() => {
@@ -338,7 +338,7 @@ export function ServicePriceForm({ initialData, onSubmit, onCancel }: ServicePri
            form.setValue('subCategory', '');
        }
     }
-  }, [selectedCategory, form, initialData?.category, initialData?.subCategory]);
+  }, [selectedCategory, form.setValue, form.getValues, initialData?.category, initialData?.subCategory]);
 
     React.useEffect(() => {
         if (selectedCategory === 'transfer' && transferMode === 'vehicle') {
@@ -347,7 +347,7 @@ export function ServicePriceForm({ initialData, onSubmit, onCancel }: ServicePri
                form.setValue('subCategory', initialData?.category === 'transfer' && initialData?.subCategory && VEHICLE_TYPES.includes(initialData.subCategory as VehicleType) ? initialData.subCategory : VEHICLE_TYPES[0]);
             }
         }
-    }, [transferMode, selectedCategory, form, initialData?.subCategory, initialData?.category]);
+    }, [transferMode, selectedCategory, form.setValue, form.getValues, initialData?.subCategory, initialData?.category]);
 
 
   const getPrice1Label = (): string => {
@@ -355,8 +355,6 @@ export function ServicePriceForm({ initialData, onSubmit, onCancel }: ServicePri
       case 'meal': return "Adult Meal Price";
       case 'transfer': return transferMode === 'ticket' ? "Adult Ticket Price" : "Cost Per Vehicle";
       case 'misc': return "Unit Cost";
-      // For 'activity', price1 is part of packages or the simple fallback
-      // For 'hotel', price1 is not used at top level
       default: return "Default Adult Price / Main Rate";
     }
   };
@@ -374,7 +372,7 @@ export function ServicePriceForm({ initialData, onSubmit, onCancel }: ServicePri
         case 'meal': return "Meal Type (e.g., Set Menu, Buffet)";
         case 'transfer': return transferMode === 'vehicle' ? "Vehicle Type" : null;
         case 'misc': return "Item Sub-Type (e.g., Visa Fee, Souvenir)";
-        default: return "Sub-category (Optional)"; // Not shown for hotel/activity if using detailed structure
+        default: return "Sub-category (Optional)"; 
     }
   };
 
@@ -444,6 +442,7 @@ export function ServicePriceForm({ initialData, onSubmit, onCancel }: ServicePri
       <form onSubmit={form.handleSubmit(handleActualSubmit)} className="space-y-6">
         <ScrollArea className="h-[60vh] md:h-[70vh] pr-3">
             <div className="space-y-6 p-1">
+                {/* Basic Service Details Fieldset */}
                 <div className="border border-border rounded-md p-4 relative">
                     <p className="text-sm font-semibold -mt-6 ml-2 px-1 bg-background inline-block absolute left-2 top-[-0.7rem] mb-4">Basic Service Details</p>
                     <div className="space-y-4 pt-2">
@@ -647,6 +646,7 @@ export function ServicePriceForm({ initialData, onSubmit, onCancel }: ServicePri
                     </div>
                 )}
 
+                {/* HOTEL PRICING SECTION */}
                 {selectedCategory === 'hotel' && (
                     <div className="border border-border rounded-md p-4 mt-6 relative">
                          <p className="text-sm font-semibold -mt-6 ml-2 px-1 bg-background inline-block absolute left-2 top-[-0.7rem] mb-4">
@@ -696,7 +696,7 @@ export function ServicePriceForm({ initialData, onSubmit, onCancel }: ServicePri
                                             checked={field.value}
                                             onCheckedChange={(checked) => {
                                               field.onChange(checked);
-                                              if (!checked) {
+                                              if (!checked) { // If extra bed not allowed, clear all extra bed rates for this room type's seasons
                                                 const seasons = form.getValues(`hotelDetails.roomTypes.${roomIndex}.seasonalPrices`);
                                                 seasons.forEach((_, seasonIdx) => {
                                                   form.setValue(`hotelDetails.roomTypes.${roomIndex}.seasonalPrices.${seasonIdx}.extraBedRate`, undefined);
@@ -904,7 +904,7 @@ function SeasonalRatesTable({ roomIndex, form, currency }: SeasonalRatesTablePro
     control: form.control,
     name: `hotelDetails.roomTypes.${roomIndex}.extraBedAllowed`,
   });
-
+  
   React.useEffect(() => {
     if (fields.length === 0) { 
       append({ id: generateGUID(), startDate: new Date(), endDate: new Date(), rate: 0, extraBedRate: undefined });
@@ -935,7 +935,7 @@ function SeasonalRatesTable({ roomIndex, form, currency }: SeasonalRatesTablePro
                   render={({ field, fieldState: { error } }) => (
                     <FormItem>
                       <FormControl>
-                        <DatePicker date={field.value} onDateChange={field.onChange} placeholder="dd-mm-yy" />
+                        <DatePicker date={field.value} onDateChange={field.onChange} placeholder="dd-MM-yy" />
                       </FormControl>
                       {error && <FormMessage className="text-xs">{error.message}</FormMessage>}
                     </FormItem>
@@ -953,7 +953,7 @@ function SeasonalRatesTable({ roomIndex, form, currency }: SeasonalRatesTablePro
                             date={field.value}
                             onDateChange={field.onChange}
                             minDate={form.getValues(`hotelDetails.roomTypes.${roomIndex}.seasonalPrices.${seasonIndex}.startDate`)}
-                            placeholder="dd-mm-yy"
+                            placeholder="dd-MM-yy"
                         />
                       </FormControl>
                        {error && <FormMessage className="text-xs">{error.message}</FormMessage>}
