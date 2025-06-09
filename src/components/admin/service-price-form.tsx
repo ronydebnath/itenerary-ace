@@ -19,9 +19,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Label } from "@/components/ui/label";
-import type { ServicePriceItem, CurrencyCode, ItineraryItemType, VehicleType, HotelDefinition, HotelRoomTypeDefinition, RoomTypeSeasonalPrice, ActivityPackageDefinition, SchedulingData } from '@/types/itinerary';
+import type { ServicePriceItem, CurrencyCode, ItineraryItemType, VehicleType, HotelDefinition, HotelRoomTypeDefinition, RoomTypeSeasonalPrice, ActivityPackageDefinition, SchedulingData, SurchargePeriod } from '@/types/itinerary';
 import { CURRENCIES, SERVICE_CATEGORIES, VEHICLE_TYPES } from '@/types/itinerary';
-import { PlusCircle, Trash2, XIcon } from 'lucide-react';
+import { PlusCircle, Trash2, XIcon, AlertTriangle } from 'lucide-react';
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { generateGUID } from '@/lib/utils';
 import { useProvinces } from '@/hooks/useProvinces';
@@ -80,6 +80,17 @@ const activityPackageSchema = z.object({
     path: ["validityEndDate"],
 });
 
+const surchargePeriodSchema = z.object({
+  id: z.string(),
+  name: z.string().min(1, "Surcharge name is required"),
+  startDate: z.date({ required_error: "Start date is required." }),
+  endDate: z.date({ required_error: "End date is required." }),
+  surchargeAmount: z.coerce.number().min(0, "Surcharge amount must be non-negative"),
+}).refine(data => data.endDate >= data.startDate, {
+  message: "End date cannot be before start date",
+  path: ["endDate"],
+});
+
 const servicePriceSchema = z.object({
   name: z.string().min(1, "Service name is required"),
   province: z.string().optional(),
@@ -94,6 +105,7 @@ const servicePriceSchema = z.object({
   maxPassengers: z.coerce.number().min(1, "Max passengers must be at least 1").optional(),
   hotelDetails: hotelDetailsSchema.optional(),
   activityPackages: z.array(activityPackageSchema).optional(),
+  surchargePeriods: z.array(surchargePeriodSchema).optional(),
 }).superRefine((data, ctx) => {
   if (data.category === 'hotel') {
     if (!data.hotelDetails || !data.hotelDetails.roomTypes || data.hotelDetails.roomTypes.length === 0) {
@@ -117,6 +129,7 @@ const servicePriceSchema = z.object({
     data.price1 = undefined;
     data.price2 = undefined;
     data.subCategory = undefined;
+    data.surchargePeriods = undefined; // Surcharges not for hotels
 
   } else if (data.category === 'activity') {
     if (!data.activityPackages || data.activityPackages.length === 0) {
@@ -132,6 +145,7 @@ const servicePriceSchema = z.object({
      data.price1 = undefined; 
      data.price2 = undefined;
      data.subCategory = undefined;
+     data.surchargePeriods = undefined; // Surcharges not for activities
 
   } else { 
     if (data.category === 'transfer' && data.transferMode === 'vehicle') {
@@ -152,6 +166,7 @@ const servicePriceSchema = z.object({
             });
         }
         if (!data.unitDescription) data.unitDescription = 'per person';
+        data.surchargePeriods = undefined; // Surcharges only for vehicle transfers
     }
   }
 });
@@ -195,6 +210,11 @@ const transformInitialDataToFormValues = (data?: Partial<ServicePriceItem>): Par
     currency: data.currency || defaultCurrency,
     unitDescription: data.unitDescription || "",
     notes: data.notes || "",
+    surchargePeriods: data.surchargePeriods?.map(sp => ({
+      ...sp,
+      startDate: sp.startDate ? new Date(sp.startDate) : new Date(),
+      endDate: sp.endDate ? new Date(sp.endDate) : new Date(),
+    })) || [],
   };
 
   if (baseTransformed.category === 'hotel') {
@@ -243,6 +263,7 @@ const transformInitialDataToFormValues = (data?: Partial<ServicePriceItem>): Par
     baseTransformed.price2 = undefined;
     baseTransformed.subCategory = undefined;
     baseTransformed.unitDescription = data.unitDescription || 'per night';
+    baseTransformed.surchargePeriods = undefined;
 
   } else if (baseTransformed.category === 'activity') {
     let packages: ActivityPackageDefinition[] = [];
@@ -286,6 +307,7 @@ const transformInitialDataToFormValues = (data?: Partial<ServicePriceItem>): Par
     baseTransformed.price2 = undefined;
     baseTransformed.subCategory = undefined;
     baseTransformed.unitDescription = data.unitDescription || 'per person';
+    baseTransformed.surchargePeriods = undefined;
 
   } else { 
     baseTransformed.subCategory = data.subCategory || "";
@@ -301,13 +323,16 @@ const transformInitialDataToFormValues = (data?: Partial<ServicePriceItem>): Par
         } else {
           baseTransformed.subCategory = VEHICLE_TYPES[0]; 
         }
-      } else {
+        // Surcharge periods only for vehicle transfers
+      } else { // ticket mode
          baseTransformed.subCategory = 'ticket';
+         baseTransformed.surchargePeriods = undefined;
       }
       baseTransformed.maxPassengers = data.maxPassengers || undefined;
       baseTransformed.unitDescription = data.unitDescription || (baseTransformed.transferMode === 'vehicle' ? 'per vehicle' : 'per person');
-    } else {
+    } else { // misc, meal
       baseTransformed.unitDescription = data.unitDescription || 'per person';
+      baseTransformed.surchargePeriods = undefined;
     }
   }
   return baseTransformed;
@@ -342,6 +367,12 @@ export function ServicePriceForm({ initialData, onSubmit, onCancel }: ServicePri
     keyName: "packageFieldId" 
   });
 
+  const { fields: surchargePeriodFields, append: appendSurchargePeriod, remove: removeSurchargePeriod } = useFieldArray({
+    control: form.control,
+    name: "surchargePeriods",
+    keyName: "surchargeFieldId"
+  });
+
 
  React.useEffect(() => {
     const currentCategoryValue = form.getValues('category');
@@ -359,12 +390,14 @@ export function ServicePriceForm({ initialData, onSubmit, onCancel }: ServicePri
         setFormValueIfChanged('subCategory', undefined, { shouldValidate: true });
         setFormValueIfChanged('hotelDetails', undefined, { shouldValidate: true });
         setFormValueIfChanged('unitDescription', currentUnitDesc || 'per person', { shouldValidate: true });
+        setFormValueIfChanged('surchargePeriods', undefined, { shouldValidate: true });
     } else if (currentCategoryValue === 'hotel') {
         setFormValueIfChanged('price1', undefined, { shouldValidate: true });
         setFormValueIfChanged('price2', undefined, { shouldValidate: true });
         setFormValueIfChanged('subCategory', undefined, { shouldValidate: true });
         setFormValueIfChanged('activityPackages', undefined, { shouldValidate: true });
         setFormValueIfChanged('unitDescription', currentUnitDesc || 'per night', { shouldValidate: true });
+        setFormValueIfChanged('surchargePeriods', undefined, { shouldValidate: true });
     } else { 
         setFormValueIfChanged('hotelDetails', undefined, { shouldValidate: true });
         setFormValueIfChanged('activityPackages', undefined, { shouldValidate: true });
@@ -375,8 +408,13 @@ export function ServicePriceForm({ initialData, onSubmit, onCancel }: ServicePri
         if (form.getValues('price1') === undefined) {
             setFormValueIfChanged('price1', 0, { shouldValidate: true });
         }
+        if (currentCategoryValue === 'transfer' && form.getValues('transferMode') === 'ticket') {
+           setFormValueIfChanged('surchargePeriods', undefined, { shouldValidate: true });
+        } else if (currentCategoryValue !== 'transfer') {
+           setFormValueIfChanged('surchargePeriods', undefined, { shouldValidate: true });
+        }
     }
-  }, [selectedCategory, form.setValue]); 
+  }, [selectedCategory, form]); 
 
 
  React.useEffect(() => {
@@ -396,6 +434,7 @@ export function ServicePriceForm({ initialData, onSubmit, onCancel }: ServicePri
         setFormValueIfChanged('transferMode', 'ticket', { shouldValidate: true });
         setFormValueIfChanged('subCategory', 'ticket', { shouldValidate: true });
         setFormValueIfChanged('unitDescription', 'per person', { shouldValidate: true });
+        setFormValueIfChanged('surchargePeriods', undefined, { shouldValidate: true });
       } else if (currentTransferModeValue === 'ticket') {
         if (currentSubCategoryValue !== 'ticket') {
           setFormValueIfChanged('subCategory', 'ticket', { shouldValidate: true });
@@ -404,6 +443,7 @@ export function ServicePriceForm({ initialData, onSubmit, onCancel }: ServicePri
         if (currentUnitDesc !== 'per person') {
           setFormValueIfChanged('unitDescription', 'per person', { shouldValidate: true });
         }
+        setFormValueIfChanged('surchargePeriods', undefined, { shouldValidate: true });
       } else if (currentTransferModeValue === 'vehicle'){ 
         if (currentSubCategoryValue === 'ticket' || !currentSubCategoryValue || !VEHICLE_TYPES.includes(currentSubCategoryValue as VehicleType)) {
             setFormValueIfChanged('subCategory', VEHICLE_TYPES[0], { shouldValidate: true });
@@ -415,11 +455,12 @@ export function ServicePriceForm({ initialData, onSubmit, onCancel }: ServicePri
     } else { 
        setFormValueIfChanged('transferMode', undefined, { shouldValidate: true });
        setFormValueIfChanged('maxPassengers', undefined, { shouldValidate: true });
+       setFormValueIfChanged('surchargePeriods', undefined, { shouldValidate: true });
        if (form.getValues('subCategory') === 'ticket') { 
            setFormValueIfChanged('subCategory', '', { shouldValidate: true });
        }
     }
-  }, [selectedCategory, transferMode, form.setValue]);
+  }, [selectedCategory, transferMode, form]);
 
 
   const getPrice1Label = (): string => {
@@ -457,6 +498,7 @@ export function ServicePriceForm({ initialData, onSubmit, onCancel }: ServicePri
     return getSubCategoryLabel() !== null;
   };
   const showMaxPassengers = (): boolean => selectedCategory === 'transfer' && transferMode === 'vehicle';
+  const showSurchargeSection = (): boolean => selectedCategory === 'transfer' && transferMode === 'vehicle';
 
   const handleActualSubmit = (values: ServicePriceFormValues) => {
     const { transferMode: _formTransferMode, ...dataToSubmit } = values;
@@ -477,18 +519,29 @@ export function ServicePriceForm({ initialData, onSubmit, onCancel }: ServicePri
       dataToSubmit.price2 = undefined;
       dataToSubmit.subCategory = undefined;
       dataToSubmit.activityPackages = undefined;
+      dataToSubmit.surchargePeriods = undefined;
       dataToSubmit.unitDescription = dataToSubmit.unitDescription || "per night";
     } else if (dataToSubmit.category === 'activity' && dataToSubmit.activityPackages) {
       dataToSubmit.price1 = undefined;
       dataToSubmit.price2 = undefined;
       dataToSubmit.subCategory = undefined;
       dataToSubmit.hotelDetails = undefined;
+      dataToSubmit.surchargePeriods = undefined;
       dataToSubmit.unitDescription = dataToSubmit.unitDescription || "per person";
     } else if (dataToSubmit.category !== 'hotel' && dataToSubmit.category !== 'activity') {
       dataToSubmit.hotelDetails = undefined;
       dataToSubmit.activityPackages = undefined;
        const defaultUnitDesc = dataToSubmit.category === 'transfer' && values.transferMode === 'vehicle' ? 'per vehicle' : 'per person';
       dataToSubmit.unitDescription = dataToSubmit.unitDescription || defaultUnitDesc;
+      if (dataToSubmit.category === 'transfer' && values.transferMode === 'vehicle' && dataToSubmit.surchargePeriods) {
+        dataToSubmit.surchargePeriods = dataToSubmit.surchargePeriods.map(sp => ({
+          ...sp,
+          startDate: (sp.startDate as Date).toISOString().split('T')[0],
+          endDate: (sp.endDate as Date).toISOString().split('T')[0],
+        }));
+      } else {
+        dataToSubmit.surchargePeriods = undefined;
+      }
     }
 
     if (dataToSubmit.category === 'transfer') {
@@ -718,6 +771,98 @@ export function ServicePriceForm({ initialData, onSubmit, onCancel }: ServicePri
                     </div>
                 )}
 
+                {showSurchargeSection() && (
+                    <div className="border border-border rounded-md p-4 mt-6 relative">
+                        <p className="text-sm font-semibold -mt-6 ml-2 px-1 bg-background inline-block absolute left-2 top-[-0.7rem] mb-4 flex items-center">
+                            <AlertTriangle className="h-4 w-4 mr-1 text-orange-500" /> Vehicle Surcharges ({form.getValues('name')})
+                        </p>
+                        <div id="surchargePeriodsContainer" className="space-y-4 pt-2">
+                            {surchargePeriodFields.map((surchargeField, surchargeIndex) => (
+                                <div key={surchargeField.surchargeFieldId} className="border border-muted rounded-md p-3 bg-card shadow-sm">
+                                    <div className="flex justify-between items-center mb-2">
+                                        <Label className="text-sm font-medium">Surcharge Period {surchargeIndex + 1}</Label>
+                                        <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="icon"
+                                            onClick={() => removeSurchargePeriod(surchargeIndex)}
+                                            className="h-6 w-6 text-destructive hover:bg-destructive/10"
+                                        >
+                                            <XIcon size={16} />
+                                        </Button>
+                                    </div>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+                                        <FormField
+                                            control={form.control}
+                                            name={`surchargePeriods.${surchargeIndex}.name`}
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel className="text-xs">Name</FormLabel>
+                                                    <FormControl><Input placeholder="e.g., New Year Peak" {...field} className="h-9 text-sm" /></FormControl>
+                                                    <FormMessage className="text-xs" />
+                                                </FormItem>
+                                            )}
+                                        />
+                                        <Controller
+                                            control={form.control}
+                                            name={`surchargePeriods.${surchargeIndex}.startDate`}
+                                            render={({ field, fieldState: { error } }) => (
+                                                <FormItem>
+                                                    <FormLabel className="text-xs">Start Date</FormLabel>
+                                                    <FormControl>
+                                                        <DatePicker date={field.value} onDateChange={field.onChange} placeholder="dd-MM-yy" />
+                                                    </FormControl>
+                                                    {error && <FormMessage className="text-xs">{error.message}</FormMessage>}
+                                                </FormItem>
+                                            )}
+                                        />
+                                        <Controller
+                                            control={form.control}
+                                            name={`surchargePeriods.${surchargeIndex}.endDate`}
+                                            render={({ field, fieldState: { error } }) => (
+                                                <FormItem>
+                                                    <FormLabel className="text-xs">End Date</FormLabel>
+                                                    <FormControl>
+                                                        <DatePicker 
+                                                            date={field.value} 
+                                                            onDateChange={field.onChange} 
+                                                            minDate={form.getValues(`surchargePeriods.${surchargeIndex}.startDate`)}
+                                                            placeholder="dd-MM-yy"
+                                                        />
+                                                    </FormControl>
+                                                    {error && <FormMessage className="text-xs">{error.message}</FormMessage>}
+                                                </FormItem>
+                                            )}
+                                        />
+                                        <FormField
+                                            control={form.control}
+                                            name={`surchargePeriods.${surchargeIndex}.surchargeAmount`}
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel className="text-xs">Amount ({form.getValues('currency')})</FormLabel>
+                                                    <FormControl><Input type="number" placeholder="0.00" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || 0)} className="h-9 text-sm" /></FormControl>
+                                                    <FormMessage className="text-xs" />
+                                                </FormItem>
+                                            )}
+                                        />
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                        <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => appendSurchargePeriod({ id: generateGUID(), name: '', startDate: new Date(), endDate: new Date(), surchargeAmount: 0 }, { shouldFocus: false })}
+                            className="mt-4 border-orange-500 text-orange-600 hover:bg-orange-500/10 add-btn"
+                        >
+                            <PlusCircle className="mr-2 h-4 w-4" /> Add Surcharge Period
+                        </Button>
+                        {(form.formState.errors.surchargePeriods as any)?.message && (
+                            <FormMessage className="mt-2 text-sm text-destructive">{(form.formState.errors.surchargePeriods as any).message}</FormMessage>
+                        )}
+                    </div>
+                )}
                 
                 {selectedCategory === 'hotel' && (
                     <div className="border border-border rounded-md p-4 mt-6 relative">

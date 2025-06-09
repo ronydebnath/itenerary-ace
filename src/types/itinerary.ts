@@ -185,6 +185,14 @@ export type AISuggestion = {
 
 export const SERVICE_CATEGORIES: ItineraryItemType[] = ['transfer', 'activity', 'hotel', 'meal', 'misc'];
 
+export interface SurchargePeriod {
+  id: string;
+  name: string;
+  startDate: string; // YYYY-MM-DD
+  endDate: string;   // YYYY-MM-DD
+  surchargeAmount: number; // Fixed amount to add per vehicle for transfers
+}
+
 export interface ServicePriceItem {
   id: string;
   name: string;
@@ -199,9 +207,13 @@ export interface ServicePriceItem {
   maxPassengers?: number;
   hotelDetails?: HotelDefinition;
   activityPackages?: ActivityPackageDefinition[]; // New field for activities
+  surchargePeriods?: SurchargePeriod[]; // For vehicle-based transfer surcharges
 }
 
 export interface ProvinceItem {
   id: string;
   name: string;
 }
+
+export type SchedulingData = Pick<ActivityPackageDefinition, 'validityStartDate' | 'validityEndDate' | 'closedWeekdays' | 'specificClosedDates'>;
+

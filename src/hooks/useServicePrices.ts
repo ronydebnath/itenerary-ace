@@ -1,6 +1,6 @@
 
 import * as React from 'react';
-import type { ServicePriceItem, ItineraryItemType, CurrencyCode, HotelDefinition, ActivityPackageDefinition } from '@/types/itinerary';
+import type { ServicePriceItem, ItineraryItemType, CurrencyCode, HotelDefinition, ActivityPackageDefinition, SurchargePeriod } from '@/types/itinerary';
 import { generateGUID } from '@/lib/utils';
 
 const SERVICE_PRICES_STORAGE_KEY = 'itineraryAceServicePrices';
@@ -9,11 +9,18 @@ const DEFAULT_DEMO_SERVICE_PRICES: ServicePriceItem[] = [
   // == Bangkok - Transfers ==
   {
     id: generateGUID(), name: 'Suvarnabhumi Airport (BKK) to Bangkok City Hotel (Sedan)', province: 'Bangkok', category: 'transfer', subCategory: 'Sedan',
-    price1: 1000, currency: 'THB', unitDescription: 'per vehicle', notes: 'Max 3 pax, 2 luggage', maxPassengers: 3
+    price1: 1000, currency: 'THB', unitDescription: 'per vehicle', notes: 'Max 3 pax, 2 luggage', maxPassengers: 3,
+    surchargePeriods: [
+        {id: generateGUID(), name: 'New Year Peak', startDate: '2024-12-28', endDate: '2025-01-03', surchargeAmount: 300},
+        {id: generateGUID(), name: 'Songkran Festival', startDate: '2025-04-12', endDate: '2025-04-16', surchargeAmount: 200},
+    ]
   },
   {
     id: generateGUID(), name: 'Suvarnabhumi Airport (BKK) to Bangkok City Hotel (Van)', province: 'Bangkok', category: 'transfer', subCategory: 'Van',
-    price1: 1500, currency: 'THB', unitDescription: 'per vehicle', notes: 'Max 8 pax, 5 luggage', maxPassengers: 8
+    price1: 1500, currency: 'THB', unitDescription: 'per vehicle', notes: 'Max 8 pax, 5 luggage', maxPassengers: 8,
+    surchargePeriods: [
+        {id: generateGUID(), name: 'New Year Peak', startDate: '2024-12-28', endDate: '2025-01-03', surchargeAmount: 500},
+    ]
   },
   {
     id: generateGUID(), name: 'Don Mueang Airport (DMK) to Bangkok City Hotel (Van)', province: 'Bangkok', category: 'transfer', subCategory: 'Van',
@@ -283,13 +290,16 @@ export function useServicePrices() {
                      hd.roomTypes.every((rt: any) => rt.id && rt.name && Array.isArray(rt.seasonalPrices));
             }
             if (p.category === 'activity') {
-              // If activityPackages exists, it must be valid. Otherwise, price1 must exist.
               if (p.activityPackages) {
                 return Array.isArray(p.activityPackages) && p.activityPackages.every((ap: any) => ap.id && ap.name && typeof ap.price1 === 'number');
               }
-              return typeof p.price1 === 'number'; // For simple activities
+              return typeof p.price1 === 'number'; 
             }
-            return typeof p.price1 === 'number'; // For other categories
+            // For transfers, ensure price1 is number. SurchargePeriods will be validated by Zod at form level.
+            if (p.category === 'transfer') {
+                return typeof p.price1 === 'number';
+            }
+            return typeof p.price1 === 'number'; 
           });
 
           if (validatedPrices.length > 0) {
@@ -348,3 +358,4 @@ export function useServicePrices() {
 
   return { isLoading, allServicePrices, getServicePrices, getServicePriceById };
 }
+
