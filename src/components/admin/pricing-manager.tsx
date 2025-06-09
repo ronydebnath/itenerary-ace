@@ -5,24 +5,21 @@ import * as React from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Button } from "@/components/ui/button";
-import { PlusCircle, Edit, Trash2, Home, MapPinned, Loader2, LayoutDashboard, ListPlus, FileText, Sparkles, Image as ImageIcon, ClipboardPaste } from 'lucide-react';
-import type { ServicePriceItem, SeasonalRate, ItineraryItemType } from '@/types/itinerary';
+import { PlusCircle, Edit, Trash2, Home, MapPinned, Loader2, LayoutDashboard, ListPlus, FileText, Sparkles } from 'lucide-react';
+import type { ServicePriceItem, ItineraryItemType } from '@/types/itinerary';
 import { VEHICLE_TYPES } from '@/types/itinerary';
 import { ServicePriceTable } from './service-price-table';
 import { generateGUID } from '@/lib/utils';
 import { useToast } from "@/hooks/use-toast";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useServicePrices } from '@/hooks/useServicePrices';
-import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { extractContractData } from '@/ai/flows/extract-contract-data-flow';
-import { describeImage } from '@/ai/flows/describe-image-flow';
 import type { AIContractDataOutput } from '@/types/ai-contract-schemas';
 import { ExtractContractDataInputSchema } from '@/types/ai-contract-schemas';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import type { ZodError } from 'zod';
-import NextImage from 'next/image';
 import { Dialog, DialogClose, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
@@ -45,17 +42,12 @@ export function PricingManager() {
 
   const [isContractImportOpen, setIsContractImportOpen] = React.useState(false);
   const [contractText, setContractText] = React.useState("");
-  const [uploadedFile, setUploadedFile] = React.useState<File | null>(null);
-  const [uploadedFilePreviewUrl, setUploadedFilePreviewUrl] = React.useState<string | null>(null);
-  const [pastedImagePreviewUrl, setPastedImagePreviewUrl] = React.useState<string | null>(null);
-  const [isImageSource, setIsImageSource] = React.useState(false);
 
   const [isParsingContract, setIsParsingContract] = React.useState(false);
   const [contractParseError, setContractParseError] = React.useState<string | null>(null);
   const [parsingStatusMessage, setParsingStatusMessage] = React.useState<string>("");
 
   const { toast } = useToast();
-  const pasteAreaRef = React.useRef<HTMLDivElement>(null);
 
   React.useEffect(() => {
     if (!isLoadingServices) {
@@ -86,126 +78,27 @@ export function PricingManager() {
 
   const resetImportDialogState = () => {
     setContractText("");
-    setUploadedFile(null);
-    setUploadedFilePreviewUrl(null);
-    setPastedImagePreviewUrl(null);
-    setIsImageSource(false);
     setContractParseError(null);
     setParsingStatusMessage("");
-  };
-
-  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    resetImportDialogState();
-    if (file) {
-      if (file.size > 4 * 1024 * 1024) {
-        setContractParseError("File size exceeds 4MB. Please choose a smaller file.");
-        return;
-      }
-      setUploadedFile(file);
-      setIsImageSource(file.type.startsWith('image/'));
-      if (file.type.startsWith('image/')) {
-        const reader = new FileReader();
-        reader.onloadend = () => setUploadedFilePreviewUrl(reader.result as string);
-        reader.readAsDataURL(file);
-      } else if (file.type === "text/plain" || file.type === "text/markdown" || file.type === "text/html" || file.type === "application/xml" || file.type === "text/xml") {
-        const text = await file.text();
-        setContractText(text);
-      } else {
-        setContractParseError("Unsupported file type. Please upload a text file (.txt, .md, .html, .xml) or an image file (.png, .jpg, .webp).");
-        setUploadedFile(null);
-      }
-    }
   };
 
   const handleTextareaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setContractText(e.target.value);
     setContractParseError(null);
-    if (uploadedFile) setUploadedFile(null);
-    if (uploadedFilePreviewUrl) setUploadedFilePreviewUrl(null);
-    if (pastedImagePreviewUrl) setPastedImagePreviewUrl(null);
-    setIsImageSource(false);
   };
-
-  const handleImagePaste = async (event: ClipboardEvent) => {
-    const items = event.clipboardData?.items;
-    if (!items) return;
-
-    let imageFile: File | null = null;
-    for (let i = 0; i < items.length; i++) {
-      if (items[i].type.indexOf('image') !== -1) {
-        imageFile = items[i].getAsFile();
-        break;
-      }
-    }
-
-    if (imageFile) {
-      event.preventDefault();
-      resetImportDialogState();
-
-      if (imageFile.size > 4 * 1024 * 1024) {
-        setContractParseError("Pasted image size exceeds 4MB. Please use a smaller image.");
-        toast({ title: "Image Too Large", description: "Pasted image exceeds 4MB limit.", variant: "destructive" });
-        return;
-      }
-
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setPastedImagePreviewUrl(reader.result as string);
-        setIsImageSource(true);
-         toast({ title: "Image Pasted", description: "Image ready for parsing."});
-      };
-      reader.readAsDataURL(imageFile);
-    }
-  };
-
-  React.useEffect(() => {
-    const area = pasteAreaRef.current;
-    if (area && isContractImportOpen) {
-      area.addEventListener('paste', handleImagePaste);
-      return () => {
-        area.removeEventListener('paste', handleImagePaste);
-      };
-    }
-  }, [isContractImportOpen, pasteAreaRef]);
-
 
   const handleParseContract = async () => {
     setContractParseError(null);
     setIsParsingContract(true);
     let textToParse = contractText;
-    let finalDataUriForParsing: string | null = null;
 
-    if (pastedImagePreviewUrl) {
-        finalDataUriForParsing = pastedImagePreviewUrl;
-    } else if (uploadedFile && isImageSource && uploadedFilePreviewUrl) {
-        finalDataUriForParsing = uploadedFilePreviewUrl;
-    }
-
-    if (finalDataUriForParsing) {
-      setParsingStatusMessage("Extracting text from image...");
-      try {
-        const ocrResult = await describeImage({ imageDataUri: finalDataUriForParsing });
-        textToParse = ocrResult.description;
-        if (!textToParse || textToParse.trim().length < 10) {
-          setContractParseError("AI could not extract sufficient text from the image. Please try a clearer image or paste text directly.");
-          setIsParsingContract(false);
-          return;
-        }
-        setParsingStatusMessage("Text extracted. Now parsing contract data...");
-      } catch (ocrError: any) {
-        console.error("OCR Error:", ocrError);
-        setContractParseError(`AI OCR Error: ${ocrError.message}`);
-        setIsParsingContract(false);
-        return;
-      }
-    } else if (!textToParse.trim()) {
-      setContractParseError("Please paste contract text or upload a text/image file.");
+    if (!textToParse.trim()) {
+      setContractParseError("Please paste contract text.");
       setIsParsingContract(false);
       return;
     }
 
-    setParsingStatusMessage("Parsing contract data...");
+    setParsingStatusMessage("Validating input...");
     try {
       ExtractContractDataInputSchema.parse({ contractText: textToParse });
     } catch (e) {
@@ -215,6 +108,7 @@ export function PricingManager() {
       return;
     }
 
+    setParsingStatusMessage("Parsing contract data with AI...");
     try {
       const extractedData: AIContractDataOutput = await extractContractData({ contractText: textToParse });
 
@@ -327,56 +221,11 @@ export function PricingManager() {
                 <FileText className="mr-2 h-5 w-5" /> Import from Contract (AI)
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-2xl">
+            <DialogContent className="sm:max-w-lg">
               <DialogHeader>
                 <DialogTitle className="flex items-center"><Sparkles className="mr-2 h-5 w-5 text-accent"/> Parse Contract with AI</DialogTitle>
               </DialogHeader>
               <div className="space-y-4 py-4">
-                <div>
-                  <Label htmlFor="contract-file-upload">Upload Contract File (Text or Image)</Label>
-                  <Input
-                    id="contract-file-upload"
-                    type="file"
-                    accept=".txt,.md,.html,.xml,text/plain,text/markdown,text/html,application/xml,text/xml,image/png,image/jpeg,image/webp"
-                    onChange={handleFileChange}
-                    className="mt-1"
-                  />
-                </div>
-
-                <div
-                  ref={pasteAreaRef}
-                  tabIndex={0}
-                  className="mt-2 p-4 border-2 border-dashed border-muted-foreground/30 rounded-md text-center cursor-pointer hover:border-primary"
-                  title="Click or focus and then paste an image (Ctrl+V or Cmd+V)"
-                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') pasteAreaRef.current?.focus(); }}
-                >
-                  <ClipboardPaste className="mx-auto h-8 w-8 text-muted-foreground mb-2" />
-                  <p className="text-sm text-muted-foreground">Or click here &amp; paste contract image (Ctrl+V / Cmd+V)</p>
-                </div>
-
-                {(uploadedFilePreviewUrl || pastedImagePreviewUrl) && (
-                  <div className="mt-4 border border-muted-foreground/50 p-2 rounded-md">
-                    <NextImage
-                      src={uploadedFilePreviewUrl || pastedImagePreviewUrl || ""}
-                      alt="Contract preview"
-                      width={500}
-                      height={300}
-                      className="rounded-md object-contain max-h-[200px] w-full"
-                    />
-                  </div>
-                )}
-
-                <div className="relative">
-                   <div className="absolute inset-0 flex items-center">
-                     <span className="w-full border-t" />
-                   </div>
-                   <div className="relative flex justify-center text-xs uppercase">
-                     <span className="bg-background px-2 text-muted-foreground">
-                       Or
-                     </span>
-                   </div>
-                </div>
-
                 <div>
                   <Label htmlFor="contract-text-input">Paste Contract Text</Label>
                   <Textarea
@@ -384,7 +233,7 @@ export function PricingManager() {
                     value={contractText}
                     onChange={handleTextareaChange}
                     placeholder="Paste the full text of the service contract here..."
-                    rows={8}
+                    rows={10}
                     className="mt-1"
                   />
                 </div>
@@ -406,7 +255,7 @@ export function PricingManager() {
                 <DialogClose asChild><Button variant="outline">Cancel</Button></DialogClose>
                 <Button
                     onClick={handleParseContract}
-                    disabled={isParsingContract || (!contractText.trim() && !uploadedFile && !pastedImagePreviewUrl)}
+                    disabled={isParsingContract || !contractText.trim()}
                     className="bg-accent hover:bg-accent/90 text-accent-foreground"
                 >
                   {isParsingContract ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
@@ -488,11 +337,10 @@ export function PricingManager() {
       {currentServicePrices.length === 0 && !isLoadingServices && (
          <div className="text-center py-10 border-2 border-dashed border-muted-foreground/30 rounded-lg mt-6">
           <p className="text-muted-foreground text-lg">No service prices defined yet.</p>
-          <p className="text-sm text-muted-foreground mt-2">Demo data should load automatically. If not, please refresh, use "Import from Contract", or click "Add New Service Price".</p>
+          <p className="text-sm text-muted-foreground mt-2">You can use "Import from Contract" or "Add New Service Price" to add new services.</p>
         </div>
       )}
 
     </div>
   );
 }
-
