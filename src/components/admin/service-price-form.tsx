@@ -19,7 +19,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Label } from "@/components/ui/label";
-import type { ServicePriceItem, CurrencyCode, ItineraryItemType, VehicleType, HotelDefinition, HotelRoomTypeDefinition, RoomTypeSeasonalPrice, ActivityPackageDefinition } from '@/types/itinerary';
+import type { ServicePriceItem, CurrencyCode, ItineraryItemType, VehicleType, HotelDefinition, HotelRoomTypeDefinition, RoomTypeSeasonalPrice, ActivityPackageDefinition, SchedulingData } from '@/types/itinerary';
 import { CURRENCIES, SERVICE_CATEGORIES, VEHICLE_TYPES } from '@/types/itinerary';
 import { PlusCircle, Trash2, XIcon } from 'lucide-react';
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -46,9 +46,9 @@ const hotelRoomTypeSchema = z.object({
   id: z.string(),
   name: z.string().min(1, "Room type name is required"),
   extraBedAllowed: z.boolean().optional().default(false),
-  notes: z.string().optional().describe("Room Details: Size, Amenities, Bed Type, View etc."), // For Room Details
+  notes: z.string().optional().describe("Room Details: Size, Amenities, Bed Type, View etc."),
   seasonalPrices: z.array(hotelRoomSeasonalPriceSchema).min(1, "At least one seasonal price is required."),
-  characteristics: z.array(z.object({ id: z.string(), key: z.string(), value: z.string() })).optional(), // Kept for data model consistency, not primary UI input
+  characteristics: z.array(z.object({ id: z.string(), key: z.string(), value: z.string() })).optional(),
 });
 
 const hotelDetailsSchema = z.object({
@@ -72,7 +72,7 @@ const activityPackageSchema = z.object({
     if (data.validityStartDate && data.validityEndDate) {
         try {
             return new Date(data.validityEndDate) >= new Date(data.validityStartDate);
-        } catch (e) { return true; /* Let Zod date validation handle format errors */ }
+        } catch (e) { return true; }
     }
     return true;
 }, {
@@ -120,20 +120,20 @@ const servicePriceSchema = z.object({
 
   } else if (data.category === 'activity') {
     if (!data.activityPackages || data.activityPackages.length === 0) {
-       if (typeof data.price1 !== 'number') { // This fallback is only if NO packages are defined.
+       if (typeof data.price1 !== 'number') { 
          ctx.addIssue({
             code: z.ZodIssueCode.custom,
             message: "Define at least one package or provide a default Adult Price (if no packages).",
-            path: ["activityPackages"], // Point to packages as the primary way
+            path: ["activityPackages"], 
         });
        }
     }
      if (!data.unitDescription) data.unitDescription = 'per person';
-     data.price1 = undefined; // Simple prices should be cleared if packages are used
+     data.price1 = undefined; 
      data.price2 = undefined;
      data.subCategory = undefined;
 
-  } else { // For transfer, meal, misc
+  } else { 
     if (data.category === 'transfer' && data.transferMode === 'vehicle') {
       if (typeof data.price1 !== 'number') {
         ctx.addIssue({
@@ -169,7 +169,6 @@ const transformInitialDataToFormValues = (data?: Partial<ServicePriceItem>): Par
   const defaultCategory: ItineraryItemType = "activity";
 
   if (!data || Object.keys(data).length === 0) {
-    // Truly new item, default to 'activity' with one package
     return {
       category: defaultCategory,
       currency: defaultCurrency,
@@ -212,7 +211,7 @@ const transformInitialDataToFormValues = (data?: Partial<ServicePriceItem>): Par
           extraBedRate: rt.extraBedAllowed ? (sp.extraBedRate ?? undefined) : undefined,
         })),
       }));
-    } else if (data.price1 !== undefined) { // Convert from old simple hotel structure if hotelDetails are missing
+    } else if (data.price1 !== undefined) { 
       roomTypes.push({
         id: generateGUID(),
         name: data.subCategory || 'Standard Room',
@@ -227,7 +226,7 @@ const transformInitialDataToFormValues = (data?: Partial<ServicePriceItem>): Par
       });
     }
 
-    if (roomTypes.length === 0) { // Ensure at least one room type if still empty
+    if (roomTypes.length === 0) { 
       roomTypes.push({
         id: generateGUID(), name: 'Standard Room', extraBedAllowed: false, notes: '', characteristics: [],
         seasonalPrices: [{ id: generateGUID(), startDate: new Date(), endDate: new Date(), rate: 0, extraBedRate: undefined }]
@@ -255,7 +254,7 @@ const transformInitialDataToFormValues = (data?: Partial<ServicePriceItem>): Par
         closedWeekdays: pkg.closedWeekdays || [],
         specificClosedDates: pkg.specificClosedDates || []
       }));
-    } else if (data.price1 !== undefined) { // Convert from old simple activity structure
+    } else if (data.price1 !== undefined) { 
       packages = [{
         id: generateGUID(),
         name: data.subCategory || 'Standard Package',
@@ -269,7 +268,7 @@ const transformInitialDataToFormValues = (data?: Partial<ServicePriceItem>): Par
       }];
     }
 
-    if (packages.length === 0) { // Ensure at least one package if still empty for an activity category
+    if (packages.length === 0) { 
         packages = [{
           id: generateGUID(),
           name: 'Standard Package',
@@ -288,7 +287,7 @@ const transformInitialDataToFormValues = (data?: Partial<ServicePriceItem>): Par
     baseTransformed.subCategory = undefined;
     baseTransformed.unitDescription = data.unitDescription || 'per person';
 
-  } else { // Other categories like transfer, meal, misc
+  } else { 
     baseTransformed.subCategory = data.subCategory || "";
     baseTransformed.price1 = data.price1 ?? 0;
     baseTransformed.price2 = data.price2;
@@ -296,6 +295,15 @@ const transformInitialDataToFormValues = (data?: Partial<ServicePriceItem>): Par
     baseTransformed.activityPackages = undefined;
     if (data.category === 'transfer') {
       baseTransformed.transferMode = data.subCategory === 'ticket' ? 'ticket' : 'vehicle';
+      if (baseTransformed.transferMode === 'vehicle') {
+        if (data.subCategory && VEHICLE_TYPES.includes(data.subCategory as VehicleType)) {
+          baseTransformed.subCategory = data.subCategory as VehicleType;
+        } else {
+          baseTransformed.subCategory = VEHICLE_TYPES[0]; 
+        }
+      } else {
+         baseTransformed.subCategory = 'ticket';
+      }
       baseTransformed.maxPassengers = data.maxPassengers || undefined;
       baseTransformed.unitDescription = data.unitDescription || (baseTransformed.transferMode === 'vehicle' ? 'per vehicle' : 'per person');
     } else {
@@ -312,7 +320,7 @@ export function ServicePriceForm({ initialData, onSubmit, onCancel }: ServicePri
   const form = useForm<ServicePriceFormValues>({
     resolver: zodResolver(servicePriceSchema),
     defaultValues: transformInitialDataToFormValues(initialData),
-    mode: "onChange", // Enable re-validation on change for better UX with superRefine
+    mode: "onChange", 
   });
 
   const selectedCategory = form.watch("category");
@@ -325,82 +333,93 @@ export function ServicePriceForm({ initialData, onSubmit, onCancel }: ServicePri
   const { fields: roomTypeFields, append: appendRoomType, remove: removeRoomType } = useFieldArray({
     control: form.control,
     name: "hotelDetails.roomTypes",
-    keyName: "fieldId" // Keep ShadCN's default, it should be fine
+    keyName: "fieldId" 
   });
 
   const { fields: activityPackageFields, append: appendActivityPackage, remove: removeActivityPackage } = useFieldArray({
     control: form.control,
     name: "activityPackages",
-    keyName: "packageFieldId" // Keep ShadCN's default
+    keyName: "packageFieldId" 
   });
 
 
  React.useEffect(() => {
-    const currentCategory = form.getValues('category'); // Get current category directly
-    const unitDesc = form.getValues('unitDescription');
+    const currentCategoryValue = form.getValues('category');
+    const currentUnitDesc = form.getValues('unitDescription');
 
-    if (currentCategory === 'activity') {
-        form.setValue('price1', undefined, { shouldValidate: true });
-        form.setValue('price2', undefined, { shouldValidate: true });
-        form.setValue('subCategory', undefined, { shouldValidate: true });
-        form.setValue('hotelDetails', undefined, { shouldValidate: true });
-        form.setValue('unitDescription', unitDesc || 'per person', { shouldValidate: true });
-        // Ensure activityPackages are not accidentally cleared if they were pre-filled
-        if (!form.getValues('activityPackages') || form.getValues('activityPackages')?.length === 0) {
-           // This part is handled by transformInitialDataToFormValues now
+    const setFormValueIfChanged = (fieldName: keyof ServicePriceFormValues, newValue: any, options?: any) => {
+        if (form.getValues(fieldName) !== newValue) {
+            form.setValue(fieldName, newValue, options);
         }
-    } else if (currentCategory === 'hotel') {
-        form.setValue('price1', undefined, { shouldValidate: true });
-        form.setValue('price2', undefined, { shouldValidate: true });
-        form.setValue('subCategory', undefined, { shouldValidate: true });
-        form.setValue('activityPackages', undefined, { shouldValidate: true });
-        form.setValue('unitDescription', unitDesc || 'per night', { shouldValidate: true });
-         // Ensure hotelDetails.roomTypes are not accidentally cleared
-        if (!form.getValues('hotelDetails.roomTypes') || form.getValues('hotelDetails.roomTypes')?.length === 0) {
-            // This part is handled by transformInitialDataToFormValues now
+    };
+    
+    if (currentCategoryValue === 'activity') {
+        setFormValueIfChanged('price1', undefined, { shouldValidate: true });
+        setFormValueIfChanged('price2', undefined, { shouldValidate: true });
+        setFormValueIfChanged('subCategory', undefined, { shouldValidate: true });
+        setFormValueIfChanged('hotelDetails', undefined, { shouldValidate: true });
+        setFormValueIfChanged('unitDescription', currentUnitDesc || 'per person', { shouldValidate: true });
+    } else if (currentCategoryValue === 'hotel') {
+        setFormValueIfChanged('price1', undefined, { shouldValidate: true });
+        setFormValueIfChanged('price2', undefined, { shouldValidate: true });
+        setFormValueIfChanged('subCategory', undefined, { shouldValidate: true });
+        setFormValueIfChanged('activityPackages', undefined, { shouldValidate: true });
+        setFormValueIfChanged('unitDescription', currentUnitDesc || 'per night', { shouldValidate: true });
+    } else { 
+        setFormValueIfChanged('hotelDetails', undefined, { shouldValidate: true });
+        setFormValueIfChanged('activityPackages', undefined, { shouldValidate: true });
+        if (!currentUnitDesc || ['per night', 'per person activity'].includes(currentUnitDesc)) {
+            const defaultUnitDesc = currentCategoryValue === 'transfer' && form.getValues('transferMode') === 'vehicle' ? 'per vehicle' : 'per person';
+            setFormValueIfChanged('unitDescription', defaultUnitDesc, { shouldValidate: true });
         }
-    } else { // Transfer, Meal, Misc
-        form.setValue('hotelDetails', undefined, { shouldValidate: true });
-        form.setValue('activityPackages', undefined, { shouldValidate: true });
-        if (!unitDesc || ['per night', 'per person activity'].includes(unitDesc)) {
-            const defaultUnitDesc = currentCategory === 'transfer' && form.getValues('transferMode') === 'vehicle' ? 'per vehicle' : 'per person';
-            form.setValue('unitDescription', defaultUnitDesc, { shouldValidate: true });
+        if (form.getValues('price1') === undefined) {
+            setFormValueIfChanged('price1', 0, { shouldValidate: true });
         }
-        if (form.getValues('price1') === undefined) form.setValue('price1', 0, { shouldValidate: true });
     }
-  }, [selectedCategory, form.setValue, form.getValues('category'), form.getValues('unitDescription'), form.getValues('transferMode')]); // Dependencies updated
+  }, [selectedCategory, form.setValue]); 
 
 
-  React.useEffect(() => {
-    if (selectedCategory === 'transfer') {
-      const currentTransferMode = form.getValues('transferMode');
-      const currentSubCategory = form.getValues('subCategory');
-
-      if (!currentTransferMode) { // Default to ticket if not set
-        form.setValue('transferMode', 'ticket', { shouldValidate: true });
-        form.setValue('subCategory', 'ticket', { shouldValidate: true });
-        form.setValue('unitDescription', 'per person', { shouldValidate: true });
-      } else if (currentTransferMode === 'ticket') {
-        if (currentSubCategory !== 'ticket') form.setValue('subCategory', 'ticket', { shouldValidate: true });
-        form.setValue('maxPassengers', undefined, { shouldValidate: true });
-        if (form.getValues('unitDescription') !== 'per person') form.setValue('unitDescription', 'per person', { shouldValidate: true });
-      } else if (currentTransferMode === 'vehicle'){ // vehicle mode
-        if (currentSubCategory === 'ticket' || !currentSubCategory || !VEHICLE_TYPES.includes(currentSubCategory as VehicleType)) {
-            const initialVehicleType = initialData?.category === 'transfer' && initialData?.subCategory && VEHICLE_TYPES.includes(initialData.subCategory as VehicleType) 
-                                     ? initialData.subCategory 
-                                     : VEHICLE_TYPES[0];
-            form.setValue('subCategory', initialVehicleType, { shouldValidate: true });
+ React.useEffect(() => {
+    const currentCategory = form.getValues('category');
+    const setFormValueIfChanged = (fieldName: keyof ServicePriceFormValues, newValue: any, options?: any) => {
+        if (form.getValues(fieldName) !== newValue) {
+            form.setValue(fieldName, newValue, options);
         }
-        if (form.getValues('unitDescription') !== 'per vehicle') form.setValue('unitDescription', 'per vehicle', { shouldValidate: true });
+    };
+
+    if (currentCategory === 'transfer') {
+      const currentTransferModeValue = form.getValues('transferMode');
+      const currentSubCategoryValue = form.getValues('subCategory');
+      const currentUnitDesc = form.getValues('unitDescription');
+
+      if (!currentTransferModeValue) { 
+        setFormValueIfChanged('transferMode', 'ticket', { shouldValidate: true });
+        setFormValueIfChanged('subCategory', 'ticket', { shouldValidate: true });
+        setFormValueIfChanged('unitDescription', 'per person', { shouldValidate: true });
+      } else if (currentTransferModeValue === 'ticket') {
+        if (currentSubCategoryValue !== 'ticket') {
+          setFormValueIfChanged('subCategory', 'ticket', { shouldValidate: true });
+        }
+        setFormValueIfChanged('maxPassengers', undefined, { shouldValidate: true });
+        if (currentUnitDesc !== 'per person') {
+          setFormValueIfChanged('unitDescription', 'per person', { shouldValidate: true });
+        }
+      } else if (currentTransferModeValue === 'vehicle'){ 
+        if (currentSubCategoryValue === 'ticket' || !currentSubCategoryValue || !VEHICLE_TYPES.includes(currentSubCategoryValue as VehicleType)) {
+            setFormValueIfChanged('subCategory', VEHICLE_TYPES[0], { shouldValidate: true });
+        }
+        if (currentUnitDesc !== 'per vehicle') {
+          setFormValueIfChanged('unitDescription', 'per vehicle', { shouldValidate: true });
+        }
       }
-    } else { // Not transfer category
-       form.setValue('transferMode', undefined, { shouldValidate: true });
-       form.setValue('maxPassengers', undefined, { shouldValidate: true });
-       if (form.getValues('subCategory') === 'ticket') { // Clear 'ticket' subcategory if not a transfer
-           form.setValue('subCategory', '', { shouldValidate: true });
+    } else { 
+       setFormValueIfChanged('transferMode', undefined, { shouldValidate: true });
+       setFormValueIfChanged('maxPassengers', undefined, { shouldValidate: true });
+       if (form.getValues('subCategory') === 'ticket') { 
+           setFormValueIfChanged('subCategory', '', { shouldValidate: true });
        }
     }
-  }, [selectedCategory, transferMode, form.setValue, initialData?.category, initialData?.subCategory]); // form.getValues removed
+  }, [selectedCategory, transferMode, form.setValue]);
 
 
   const getPrice1Label = (): string => {
@@ -434,7 +453,7 @@ export function ServicePriceForm({ initialData, onSubmit, onCancel }: ServicePri
   const showSubCategoryInput = (): boolean => {
     if (selectedCategory === 'hotel' || selectedCategory === 'activity') return false;
     if (selectedCategory === 'transfer' && transferMode === 'ticket') return false;
-    if (selectedCategory === 'transfer' && transferMode === 'vehicle') return false; // Vehicle Type is a Select
+    if (selectedCategory === 'transfer' && transferMode === 'vehicle') return false; 
     return getSubCategoryLabel() !== null;
   };
   const showMaxPassengers = (): boolean => selectedCategory === 'transfer' && transferMode === 'vehicle';
@@ -495,7 +514,7 @@ export function ServicePriceForm({ initialData, onSubmit, onCancel }: ServicePri
       <form onSubmit={form.handleSubmit(handleActualSubmit)} className="space-y-6">
         <ScrollArea className="h-[60vh] md:h-[70vh] pr-3">
             <div className="space-y-6 p-1">
-                {/* Basic Service Details Fieldset */}
+                
                 <div className="border border-border rounded-md p-4 relative">
                     <p className="text-sm font-semibold -mt-6 ml-2 px-1 bg-background inline-block absolute left-2 top-[-0.7rem] mb-4">Basic Service Details</p>
                     <div className="space-y-4 pt-2">
@@ -699,7 +718,7 @@ export function ServicePriceForm({ initialData, onSubmit, onCancel }: ServicePri
                     </div>
                 )}
 
-                {/* HOTEL PRICING SECTION */}
+                
                 {selectedCategory === 'hotel' && (
                     <div className="border border-border rounded-md p-4 mt-6 relative">
                          <p className="text-sm font-semibold -mt-6 ml-2 px-1 bg-background inline-block absolute left-2 top-[-0.7rem] mb-4">
@@ -749,7 +768,7 @@ export function ServicePriceForm({ initialData, onSubmit, onCancel }: ServicePri
                                             checked={field.value}
                                             onCheckedChange={(checked) => {
                                               field.onChange(checked);
-                                              if (!checked) { // If extra bed is disallowed, clear all extra bed rates for this room type's seasons
+                                              if (!checked) { 
                                                 const seasons = form.getValues(`hotelDetails.roomTypes.${roomIndex}.seasonalPrices`);
                                                 seasons.forEach((_, seasonIdx) => {
                                                   form.setValue(`hotelDetails.roomTypes.${roomIndex}.seasonalPrices.${seasonIdx}.extraBedRate`, undefined, { shouldValidate: true });
@@ -835,7 +854,7 @@ export function ServicePriceForm({ initialData, onSubmit, onCancel }: ServicePri
                     </div>
                 )}
 
-                {/* ACTIVITY PRICING SECTION */}
+                
                 {selectedCategory === 'activity' && (
                   <div className="border border-border rounded-md p-4 mt-6 relative">
                     <p className="text-sm font-semibold -mt-6 ml-2 px-1 bg-background inline-block absolute left-2 top-[-0.7rem] mb-4">
@@ -856,7 +875,7 @@ export function ServicePriceForm({ initialData, onSubmit, onCancel }: ServicePri
                             variant="ghost"
                             size="icon"
                             onClick={() => activityPackageFields.length > 1 ? removeActivityPackage(packageIndex) : null}
-                            disabled={activityPackageFields.length <= 1 && activityPackageFields[0]?.name === "Standard Package" && activityPackageFields[0]?.price1 === 0} // Prevent deleting the very last default package
+                            disabled={activityPackageFields.length <= 1 && activityPackageFields[0]?.name === "Standard Package" && activityPackageFields[0]?.price1 === 0} 
                             className="absolute top-1 right-1 h-7 w-7 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center text-sm hover:bg-destructive/80 disabled:opacity-50"
                             aria-label="Remove Package"
                           >
@@ -911,19 +930,17 @@ export function ServicePriceForm({ initialData, onSubmit, onCancel }: ServicePri
                             />
                              <Controller
                                 control={form.control}
-                                name={`activityPackages.${packageIndex}`} // Control the whole package object for the scheduler
+                                name={`activityPackages.${packageIndex}`} 
                                 render={({ field: { onChange, value }}) => (
                                     <ActivityPackageScheduler
-                                        packageId={packageField.id} // Use the unique ID from useFieldArray for internal keys
-                                        initialSchedulingData={{ // Pass only the scheduling fields
+                                        packageId={packageField.id} 
+                                        initialSchedulingData={{ 
                                             validityStartDate: value.validityStartDate,
                                             validityEndDate: value.validityEndDate,
                                             closedWeekdays: value.closedWeekdays,
                                             specificClosedDates: value.specificClosedDates,
                                         }}
-                                        onSchedulingChange={(newSchedule) => {
-                                            // When scheduler changes, update the form's package object
-                                            // by spreading existing package data and new schedule data.
+                                        onSchedulingChange={(newSchedule: SchedulingData) => {
                                             onChange({ ...value, ...newSchedule });
                                         }}
                                     />
@@ -1111,5 +1128,7 @@ function SeasonalRatesTable({ roomIndex, form, currency }: SeasonalRatesTablePro
     </div>
   );
 }
+
+    
 
     
