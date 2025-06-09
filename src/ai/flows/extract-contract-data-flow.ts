@@ -20,8 +20,8 @@ export async function extractContractData(input: ExtractContractDataInput): Prom
   const httpReferer = process.env.OPENROUTER_HTTP_REFERER;
   const xTitle = process.env.OPENROUTER_X_TITLE;
 
-  if (!apiKey || apiKey === 'your_openrouter_api_key_here') {
-    const errorMsg = "OpenRouter API key is not configured. Please ensure OPENROUTER_API_KEY is set correctly in your .env file at the project root and restart your development server.";
+  if (!apiKey || apiKey.trim() === '' || apiKey === 'your_openrouter_api_key_here') {
+    const errorMsg = "OpenRouter API key is not configured. Please ensure OPENROUTER_API_KEY is set correctly in your .env file at the project root (it should not be empty, whitespace, or the placeholder value) and restart your development server.";
     console.error(errorMsg);
     throw new Error(errorMsg);
   }
