@@ -6,267 +6,7 @@ import { generateGUID } from '@/lib/utils';
 const SERVICE_PRICES_STORAGE_KEY = 'itineraryAceServicePrices';
 
 const DEFAULT_DEMO_SERVICE_PRICES: ServicePriceItem[] = [
-  // == Bangkok - Transfers ==
-  {
-    id: generateGUID(), name: 'Suvarnabhumi Airport (BKK) to Bangkok City Hotel (Sedan)', province: 'Bangkok', category: 'transfer', subCategory: 'Sedan',
-    price1: 1000, currency: 'THB', unitDescription: 'per vehicle', notes: 'Max 3 pax, 2 luggage', maxPassengers: 3,
-    surchargePeriods: [
-        {id: generateGUID(), name: 'New Year Peak', startDate: '2024-12-28', endDate: '2025-01-03', surchargeAmount: 300},
-        {id: generateGUID(), name: 'Songkran Festival', startDate: '2025-04-12', endDate: '2025-04-16', surchargeAmount: 200},
-    ]
-  },
-  {
-    id: generateGUID(), name: 'Suvarnabhumi Airport (BKK) to Bangkok City Hotel (Van)', province: 'Bangkok', category: 'transfer', subCategory: 'Van',
-    price1: 1500, currency: 'THB', unitDescription: 'per vehicle', notes: 'Max 8 pax, 5 luggage', maxPassengers: 8,
-    surchargePeriods: [
-        {id: generateGUID(), name: 'New Year Peak', startDate: '2024-12-28', endDate: '2025-01-03', surchargeAmount: 500},
-    ]
-  },
-  {
-    id: generateGUID(), name: 'Don Mueang Airport (DMK) to Bangkok City Hotel (Van)', province: 'Bangkok', category: 'transfer', subCategory: 'Van',
-    price1: 1200, currency: 'THB', unitDescription: 'per vehicle', notes: 'Max 8 pax', maxPassengers: 8
-  },
-  {
-    id: generateGUID(), name: 'BTS Skytrain Day Pass', province: 'Bangkok', category: 'transfer', subCategory: 'ticket',
-    price1: 150, currency: 'THB', unitDescription: 'per person', notes: 'Unlimited rides for 1 day'
-  },
-
-  // == Bangkok - Activities ==
-  {
-    id: generateGUID(), name: 'Grand Palace & Wat Phra Kaew Entrance', province: 'Bangkok', category: 'activity',
-    unitDescription: 'per person', currency: 'THB',
-    activityPackages: [
-      { id: generateGUID(), name: 'Standard Entrance', price1: 500, price2: 250, notes: 'Child price for under 120cm. Includes access to main temples.', validityStartDate: '2024-01-01', validityEndDate: '2024-12-31' }
-    ]
-  },
-  {
-    id: generateGUID(), name: 'Chao Phraya River Cruise', province: 'Bangkok', category: 'activity',
-    unitDescription: 'per person', currency: 'THB', notes: 'Various cruise options available on the Chao Phraya River.',
-    activityPackages: [
-      { id: generateGUID(), name: 'Sunset Cruise (No Dinner)', price1: 800, price2: 600, notes: 'Enjoy sunset views. Drinks available for purchase.', validityStartDate: '2024-01-01', validityEndDate: '2024-12-31', closedWeekdays: [1], specificClosedDates: ['2024-04-13', '2024-04-14', '2024-04-15']},
-      { id: generateGUID(), name: 'Dinner Cruise (International Buffet)', price1: 1800, price2: 1200, notes: 'Includes international buffet, live music.', validityStartDate: '2024-01-01', validityEndDate: '2024-12-31', specificClosedDates: ['2024-12-24', '2024-12-31'] },
-      { id: generateGUID(), name: 'Dinner Cruise (Indian Buffet)', price1: 1600, price2: 1100, notes: 'Specialized Indian buffet, live music.', validityStartDate: '2024-01-01', validityEndDate: '2024-12-31' }
-    ]
-  },
-  {
-    id: generateGUID(), name: 'Floating Markets Tour (Damnoen Saduak & Maeklong)', province: 'Bangkok', category: 'activity',
-    unitDescription: 'per person (Half Day)', currency: 'THB',
-    activityPackages: [
-      { id: generateGUID(), name: 'Guided Tour', price1: 1500, price2: 1000, notes: 'Includes transport, boat ride.', validityStartDate: '2024-01-01', validityEndDate: '2024-12-31', closedWeekdays: [2,4] } // Example: Closed Tue, Thu
-    ]
-  },
-   {
-    id: generateGUID(), name: 'Muay Thai Boxing Match (Rajadamnern Stadium)', province: 'Bangkok', category: 'activity',
-    unitDescription: 'per person', currency: 'THB',
-    activityPackages: [
-      { id: generateGUID(), name: 'Ringside Seat', price1: 2000, notes: 'Closest view to the action.', validityStartDate: '2024-01-01', validityEndDate: '2024-12-31' },
-      { id: generateGUID(), name: 'Standard Seat', price1: 1500, notes: 'Good view, further from the ring.', validityStartDate: '2024-01-01', validityEndDate: '2024-12-31' }
-    ]
-  },
-  {
-    id: generateGUID(), name: 'Thai Cooking Class (Half Day)', province: 'Bangkok', category: 'activity',
-    unitDescription: 'per person', currency: 'THB',
-    activityPackages: [
-       { id: generateGUID(), name: 'Standard Class', price1: 1200, notes: 'Includes market tour and 4 dishes.', validityStartDate: '2024-01-01', validityEndDate: '2024-12-31' }
-    ]
-  },
-
-
-  // == Bangkok - Hotels (using hotelDetails) ==
-  {
-    id: generateGUID(), name: 'Riverside Luxury Hotel', province: 'Bangkok', category: 'hotel', currency: 'THB', unitDescription: 'per night',
-    notes: '5-star, riverside location with excellent amenities and dining options.',
-    hotelDetails: {
-      id: generateGUID(), name: 'Riverside Luxury Hotel', province: 'Bangkok',
-      roomTypes: [
-        {
-          id: generateGUID(), name: 'Deluxe River View', extraBedAllowed: true,
-          notes: 'Spacious 40sqm room with panoramic river views, king-size bed, Nespresso machine, and luxury toiletries. Ideal for couples.',
-          characteristics: [],
-          seasonalPrices: [
-            { id: generateGUID(), startDate: '2024-11-01', endDate: '2025-02-28', rate: 6500, extraBedRate: 1200 },
-            { id: generateGUID(), startDate: '2024-05-01', endDate: '2024-09-30', rate: 4000, extraBedRate: 800 }
-          ]
-        },
-        {
-          id: generateGUID(), name: 'Standard City View', extraBedAllowed: false,
-          notes: 'Comfortable 30sqm room with city views, queen-size bed, work desk, and standard amenities. Good for business travelers.',
-          characteristics: [],
-          seasonalPrices: [
-            { id: generateGUID(), startDate: '2024-11-01', endDate: '2025-02-28', rate: 5000 },
-            { id: generateGUID(), startDate: '2024-05-01', endDate: '2024-09-30', rate: 3200 }
-          ]
-        }
-      ]
-    }
-  },
-  {
-    id: generateGUID(), name: 'Sukhumvit Boutique Hotel', province: 'Bangkok', category: 'hotel', currency: 'THB', unitDescription: 'per night',
-    notes: 'Chic 4-star hotel in the heart of Sukhumvit, steps from Asok BTS. Rooftop pool and bar.',
-    hotelDetails: {
-      id: generateGUID(), name: 'Sukhumvit Boutique Hotel', province: 'Bangkok',
-      roomTypes: [
-        {
-          id: generateGUID(), name: 'Superior Room', extraBedAllowed: true,
-          notes: 'Modern 28sqm room with choice of king or twin beds, rain shower, smart TV, and city views. Minibar included.',
-          characteristics: [],
-          seasonalPrices: [
-            { id: generateGUID(), startDate: '2024-01-01', endDate: '2024-12-31', rate: 2500, extraBedRate: 600 }
-          ]
-        }
-      ]
-    }
-  },
-
-  // == Bangkok - Meals ==
-  {
-    id: generateGUID(), name: 'Street Food Tour (Chinatown Evening)', province: 'Bangkok', category: 'meal', subCategory: 'Guided Food Tour',
-    price1: 800, price2: 500, currency: 'THB', unitDescription: 'per person'
-  },
-  {
-    id: generateGUID(), name: 'Hotel Buffet Lunch (International)', province: 'Bangkok', category: 'meal', subCategory: 'Buffet',
-    price1: 900, price2: 450, currency: 'THB', unitDescription: 'per person'
-  },
-  {
-    id: generateGUID(), name: 'Rooftop Bar Signature Cocktail', province: 'Bangkok', category: 'meal', subCategory: 'Drinks',
-    price1: 450, currency: 'THB', unitDescription: 'per drink (average)'
-  },
-  {
-    id: generateGUID(), name: 'Local Thai Restaurant Set Menu', province: 'Bangkok', category: 'meal', subCategory: 'Set Menu',
-    price1: 350, price2: 200, currency: 'THB', unitDescription: 'per person'
-  },
-
-
-  // == Bangkok - Miscellaneous ==
-  {
-    id: generateGUID(), name: 'Thai Massage (Traditional, 1 hour)', province: 'Bangkok', category: 'misc', subCategory: 'Wellness',
-    price1: 300, currency: 'THB', unitDescription: 'per person', costAssignment: 'perPerson'
-  },
-  {
-    id: generateGUID(), name: 'Souvenir T-shirt (Chatuchak Market)', province: 'Bangkok', category: 'misc', subCategory: 'Shopping',
-    price1: 250, currency: 'THB', unitDescription: 'per item', costAssignment: 'total'
-  },
-  {
-    id: generateGUID(), name: 'Tuk-tuk Ride (Short Distance)', province: 'Bangkok', category: 'misc', subCategory: 'Local Transport',
-    price1: 150, currency: 'THB', unitDescription: 'per ride (estimated)', costAssignment: 'total'
-  },
-
-
-  // == Pattaya - Transfers ==
-  {
-    id: generateGUID(), name: 'Bangkok Hotel to Pattaya Hotel (Van)', province: 'Pattaya (Chonburi)', category: 'transfer', subCategory: 'Van',
-    price1: 2500, currency: 'THB', unitDescription: 'per vehicle', notes: 'One-way private transfer', maxPassengers: 8
-  },
-   {
-    id: generateGUID(), name: 'Bangkok Hotel to Pattaya Hotel (Sedan)', province: 'Pattaya (Chonburi)', category: 'transfer', subCategory: 'Sedan',
-    price1: 1800, currency: 'THB', unitDescription: 'per vehicle', notes: 'One-way private transfer', maxPassengers: 3
-  },
-  {
-    id: generateGUID(), name: 'Pattaya Hotel to U-Tapao Airport (UTP) (Sedan)', province: 'Pattaya (Chonburi)', category: 'transfer', subCategory: 'Sedan',
-    price1: 800, currency: 'THB', unitDescription: 'per vehicle', notes: 'Max 3 pax', maxPassengers: 3
-  },
-  {
-    id: generateGUID(), name: 'Ferry to Koh Larn (Round Trip)', province: 'Pattaya (Chonburi)', category: 'transfer', subCategory: 'ticket',
-    price1: 60, currency: 'THB', unitDescription: 'per person (Standard Ferry)', notes: 'Speedboat option available at higher price'
-  },
-   {
-    id: generateGUID(), name: 'Speedboat to Koh Larn (Round Trip)', province: 'Pattaya (Chonburi)', category: 'transfer', subCategory: 'ticket',
-    price1: 300, currency: 'THB', unitDescription: 'per person (Shared Speedboat)'
-  },
-
-
-  // == Pattaya - Activities ==
-  {
-    id: generateGUID(), name: 'Sanctuary of Truth Entrance', province: 'Pattaya (Chonburi)', category: 'activity',
-    unitDescription: 'per person', currency: 'THB',
-    activityPackages: [
-      {id: generateGUID(), name: 'Standard Entry', price1: 500, price2: 250, notes: 'Access to all areas of the Sanctuary.', validityStartDate: '2024-01-01', validityEndDate: '2024-12-31' }
-    ]
-  },
-  {
-    id: generateGUID(), name: 'Tiffany\'s Cabaret Show', province: 'Pattaya (Chonburi)', category: 'activity',
-    unitDescription: 'per person', currency: 'THB', notes: 'World-famous cabaret show.',
-    activityPackages: [
-      {id: generateGUID(), name: 'VIP Seat', price1: 1200, price2: 1000, notes: 'Best view, central seating.', validityStartDate: '2024-01-01', validityEndDate: '2024-12-31' },
-      {id: generateGUID(), name: 'Standard Seat', price1: 900, price2: 700, notes: 'Good view, further back.', validityStartDate: '2024-01-01', validityEndDate: '2024-12-31' }
-    ]
-  },
-
-  // == Pattaya - Hotels (using hotelDetails) ==
-  {
-    id: generateGUID(), name: 'Pattaya Beachfront Resort', province: 'Pattaya (Chonburi)', category: 'hotel', currency: 'THB', unitDescription: 'per night',
-    notes: 'Popular 4-star resort directly on Pattaya Beach Road, offering stunning sea views and multiple pools.',
-    hotelDetails: {
-        id: generateGUID(), name: 'Pattaya Beachfront Resort', province: 'Pattaya (Chonburi)',
-        roomTypes: [
-            {
-                id: generateGUID(), name: 'Sea View Room', extraBedAllowed: true,
-                notes: '32sqm room with private balcony overlooking the ocean. King bed, bathtub, minibar, and free Wi-Fi.', characteristics: [],
-                seasonalPrices: [
-                    { id: generateGUID(), startDate: '2024-12-01', endDate: '2025-03-31', rate: 5500, extraBedRate: 1000 },
-                    { id: generateGUID(), startDate: '2024-06-01', endDate: '2024-10-31', rate: 3000, extraBedRate: 600 }
-                ]
-            },
-            {
-                id: generateGUID(), name: 'Garden View Bungalow', extraBedAllowed: false,
-                notes: 'Quiet 45sqm bungalow set in lush tropical gardens. Features a private terrace, separate living area, and king bed.', characteristics: [],
-                seasonalPrices: [
-                    { id: generateGUID(), startDate: '2024-12-01', endDate: '2025-03-31', rate: 4800 },
-                    { id: generateGUID(), startDate: '2024-06-01', endDate: '2024-10-31', rate: 2500 }
-                ]
-            }
-        ]
-    }
-  },
-
-  // == Pattaya - Meals ==
-  {
-    id: generateGUID(), name: 'Seafood Dinner at Beach Restaurant', province: 'Pattaya (Chonburi)', category: 'meal', subCategory: 'A La Carte/Set',
-    price1: 1000, price2: 600, currency: 'THB', unitDescription: 'per person (average)', notes: 'Fresh seafood selection'
-  },
-
-  // == General / Other Provinces ==
-  {
-    id: generateGUID(), name: 'Phuket Airport to Patong Beach (Minibus)', province: 'Phuket', category: 'transfer', subCategory: 'Minibus',
-    price1: 1800, currency: 'THB', unitDescription: 'per vehicle', maxPassengers: 10
-  },
-  {
-    id: generateGUID(), name: 'Chiang Mai Airport to Old City Hotel (Private Car)', province: 'Chiang Mai', category: 'transfer', subCategory: 'Sedan',
-    price1: 300, currency: 'THB', unitDescription: 'per vehicle', maxPassengers: 3
-  },
-  {
-    id: generateGUID(), name: 'Elephant Sanctuary Visit', province: 'Chiang Mai', category: 'activity',
-    unitDescription: 'per person', currency: 'THB',
-    activityPackages: [
-      {id: generateGUID(), name: 'Full Day Program', price1: 2500, price2: 1800, notes: 'Incl. lunch, feeding, bathing.', validityStartDate: '2024-01-01', validityEndDate: '2024-12-31' },
-      {id: generateGUID(), name: 'Half Day Morning Program', price1: 1700, price2: 1200, notes: 'Incl. feeding, short interaction.', validityStartDate: '2024-01-01', validityEndDate: '2024-12-31' }
-    ]
-  },
-  {
-    id: generateGUID(), name: 'Lanna Boutique Resort', province: 'Chiang Mai', category: 'hotel', currency: 'THB', unitDescription: 'per night',
-    notes: 'Charming 4-star resort in traditional Lanna style, located near Chiang Mai\'s Old City. Features a spa and cooking classes.',
-    hotelDetails: {
-      id: generateGUID(), name: 'Lanna Boutique Resort', province: 'Chiang Mai',
-      roomTypes: [
-        {
-          id: generateGUID(), name: 'Deluxe Room', extraBedAllowed: true,
-          notes: 'Spacious 38sqm room with teak wood furnishings, private balcony, king bed or twin beds, and an ensuite bathroom with a separate shower and bathtub.', characteristics: [],
-          seasonalPrices: [
-            { id: generateGUID(), startDate: '2024-11-01', endDate: '2025-02-15', rate: 3500, extraBedRate: 1000 },
-            { id: generateGUID(), startDate: '2024-05-01', endDate: '2024-09-30', rate: 2200, extraBedRate: 600 }
-          ]
-        }
-      ]
-    }
-  },
-  {
-    id: generateGUID(), name: 'Khantoke Dinner with Cultural Show', province: 'Chiang Mai', category: 'meal', subCategory: 'Buffet/Show',
-    price1: 900, price2: 600, currency: 'THB', unitDescription: 'per person'
-  },
-  {
-    id: generateGUID(), name: 'Thai SIM Card (7-day unlimited data)', category: 'misc', subCategory: 'Communication',
-    price1: 299, currency: 'THB', unitDescription: 'per SIM card', costAssignment: 'total'
-  }
+  // All demo data removed
 ];
 
 
@@ -305,24 +45,39 @@ export function useServicePrices() {
           if (validatedPrices.length > 0) {
             pricesToSet = validatedPrices;
           } else {
-            pricesToSet = DEFAULT_DEMO_SERVICE_PRICES;
-            localStorage.setItem(SERVICE_PRICES_STORAGE_KEY, JSON.stringify(DEFAULT_DEMO_SERVICE_PRICES));
+            // If stored data is invalid or empty after validation, use the (now empty) demo data
+            pricesToSet = DEFAULT_DEMO_SERVICE_PRICES; 
+            if (DEFAULT_DEMO_SERVICE_PRICES.length > 0) { // Only save if demo data was meant to be there
+                 localStorage.setItem(SERVICE_PRICES_STORAGE_KEY, JSON.stringify(DEFAULT_DEMO_SERVICE_PRICES));
+            } else {
+                 localStorage.removeItem(SERVICE_PRICES_STORAGE_KEY); // Clear if no demo data either
+            }
           }
         } else {
           pricesToSet = DEFAULT_DEMO_SERVICE_PRICES;
-          localStorage.setItem(SERVICE_PRICES_STORAGE_KEY, JSON.stringify(DEFAULT_DEMO_SERVICE_PRICES));
+          if (DEFAULT_DEMO_SERVICE_PRICES.length > 0) {
+            localStorage.setItem(SERVICE_PRICES_STORAGE_KEY, JSON.stringify(DEFAULT_DEMO_SERVICE_PRICES));
+          } else {
+            localStorage.removeItem(SERVICE_PRICES_STORAGE_KEY);
+          }
         }
       } else {
         pricesToSet = DEFAULT_DEMO_SERVICE_PRICES;
-        localStorage.setItem(SERVICE_PRICES_STORAGE_KEY, JSON.stringify(DEFAULT_DEMO_SERVICE_PRICES));
+        if (DEFAULT_DEMO_SERVICE_PRICES.length > 0) {
+          localStorage.setItem(SERVICE_PRICES_STORAGE_KEY, JSON.stringify(DEFAULT_DEMO_SERVICE_PRICES));
+        }
       }
     } catch (error) {
       console.error("Failed to load or initialize service prices from localStorage:", error);
-      pricesToSet = DEFAULT_DEMO_SERVICE_PRICES;
-      try {
-        localStorage.setItem(SERVICE_PRICES_STORAGE_KEY, JSON.stringify(DEFAULT_DEMO_SERVICE_PRICES));
-      } catch (saveError) {
-        console.error("Failed to save demo service prices to localStorage after load error:", saveError);
+      pricesToSet = DEFAULT_DEMO_SERVICE_PRICES; // Fallback to empty demo data
+      if (DEFAULT_DEMO_SERVICE_PRICES.length > 0) {
+        try {
+          localStorage.setItem(SERVICE_PRICES_STORAGE_KEY, JSON.stringify(DEFAULT_DEMO_SERVICE_PRICES));
+        } catch (saveError) {
+          console.error("Failed to save demo service prices to localStorage after load error:", saveError);
+        }
+      } else {
+         localStorage.removeItem(SERVICE_PRICES_STORAGE_KEY);
       }
     }
     setAllServicePrices(pricesToSet);
@@ -358,4 +113,3 @@ export function useServicePrices() {
 
   return { isLoading, allServicePrices, getServicePrices, getServicePriceById };
 }
-
