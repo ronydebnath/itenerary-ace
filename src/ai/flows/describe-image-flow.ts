@@ -62,7 +62,7 @@ const describeImageFlow = ai.defineFlow(
         method: "POST",
         headers: headers,
         body: JSON.stringify({
-          "model": "google/gemma-3-27b-it:free", // As specified in your example
+          "model": "google/gemma-3n-e4b-it:free",
           "messages": [
             {
               "role": "user",

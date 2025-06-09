@@ -1,3 +1,4 @@
+
 'use server';
 /**
  * @fileOverview AI-powered smart suggestions to improve itinerary costs using OpenRouter.
@@ -79,7 +80,7 @@ Ensure the JSON is well-formed.`;
       method: "POST",
       headers: headers,
       body: JSON.stringify({
-        "model": "google/gemma-3-27b-it:free", 
+        "model": "google/gemma-3n-e4b-it:free", 
         "messages": [
           {
             "role": "user",

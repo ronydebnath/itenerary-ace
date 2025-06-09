@@ -74,7 +74,7 @@ export async function extractContractData(input: ExtractContractDataInput): Prom
       method: "POST",
       headers: headers,
       body: JSON.stringify({
-        "model": "google/gemma-3-27b-it:free", 
+        "model": "google/gemma-3n-e4b-it:free", 
         "messages": [{ "role": "user", "content": promptText }],
         "response_format": { "type": "json_object" }
       })
