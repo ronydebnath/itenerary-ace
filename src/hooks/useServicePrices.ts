@@ -1,6 +1,6 @@
 
 import * as React from 'react';
-import type { ServicePriceItem, ItineraryItemType, CurrencyCode, HotelDefinition } from '@/types/itinerary';
+import type { ServicePriceItem, ItineraryItemType, CurrencyCode, HotelDefinition, ActivityPackageDefinition } from '@/types/itinerary';
 import { generateGUID } from '@/lib/utils';
 
 const SERVICE_PRICES_STORAGE_KEY = 'itineraryAceServicePrices';
@@ -26,38 +26,56 @@ const DEFAULT_DEMO_SERVICE_PRICES: ServicePriceItem[] = [
 
   // == Bangkok - Activities ==
   {
-    id: generateGUID(), name: 'Grand Palace & Wat Phra Kaew Entrance', province: 'Bangkok', category: 'activity', subCategory: 'Entrance Fee',
-    price1: 500, price2: 250, currency: 'THB', unitDescription: 'per person', notes: 'Child price for under 120cm'
+    id: generateGUID(), name: 'Grand Palace & Wat Phra Kaew Entrance', province: 'Bangkok', category: 'activity', 
+    unitDescription: 'per person', currency: 'THB',
+    activityPackages: [
+      { id: generateGUID(), name: 'Standard Entrance', price1: 500, price2: 250, notes: 'Child price for under 120cm. Includes access to main temples.'}
+    ]
   },
   {
-    id: generateGUID(), name: 'Chao Phraya River Cruise (Evening with Dinner)', province: 'Bangkok', category: 'activity', subCategory: 'Cruise & Dinner',
-    price1: 1800, price2: 1200, currency: 'THB', unitDescription: 'per person', notes: 'Includes international buffet'
+    id: generateGUID(), name: 'Chao Phraya River Cruise', province: 'Bangkok', category: 'activity', 
+    unitDescription: 'per person', currency: 'THB', notes: 'Various cruise options available on the Chao Phraya River.',
+    activityPackages: [
+      { id: generateGUID(), name: 'Sunset Cruise (No Dinner)', price1: 800, price2: 600, notes: 'Enjoy sunset views. Drinks available for purchase.'},
+      { id: generateGUID(), name: 'Dinner Cruise (International Buffet)', price1: 1800, price2: 1200, notes: 'Includes international buffet, live music.'},
+      { id: generateGUID(), name: 'Dinner Cruise (Indian Buffet)', price1: 1600, price2: 1100, notes: 'Specialized Indian buffet, live music.'}
+    ]
   },
   {
-    id: generateGUID(), name: 'Floating Markets Tour (Damnoen Saduak & Maeklong)', province: 'Bangkok', category: 'activity', subCategory: 'Guided Tour',
-    price1: 1500, price2: 1000, currency: 'THB', unitDescription: 'per person (Half Day)', notes: 'Includes transport, boat ride'
+    id: generateGUID(), name: 'Floating Markets Tour (Damnoen Saduak & Maeklong)', province: 'Bangkok', category: 'activity',
+    unitDescription: 'per person (Half Day)', currency: 'THB',
+    activityPackages: [
+      { id: generateGUID(), name: 'Guided Tour', price1: 1500, price2: 1000, notes: 'Includes transport, boat ride.'}
+    ]
   },
    {
-    id: generateGUID(), name: 'Muay Thai Boxing Match (Rajadamnern Stadium)', province: 'Bangkok', category: 'activity', subCategory: 'Sports Event',
-    price1: 2000, currency: 'THB', unitDescription: 'per person (Ringside)', notes: 'Cheaper seats available'
+    id: generateGUID(), name: 'Muay Thai Boxing Match (Rajadamnern Stadium)', province: 'Bangkok', category: 'activity',
+    unitDescription: 'per person', currency: 'THB',
+    activityPackages: [
+      { id: generateGUID(), name: 'Ringside Seat', price1: 2000, notes: 'Closest view to the action.'},
+      { id: generateGUID(), name: 'Standard Seat', price1: 1500, notes: 'Good view, further from the ring.'}
+    ]
   },
   {
-    id: generateGUID(), name: 'Thai Cooking Class (Half Day)', province: 'Bangkok', category: 'activity', subCategory: 'Workshop',
-    price1: 1200, currency: 'THB', unitDescription: 'per person', notes: 'Includes market tour'
+    id: generateGUID(), name: 'Thai Cooking Class (Half Day)', province: 'Bangkok', category: 'activity',
+    unitDescription: 'per person', currency: 'THB',
+    activityPackages: [
+       { id: generateGUID(), name: 'Standard Class', price1: 1200, notes: 'Includes market tour and 4 dishes.'}
+    ]
   },
 
 
   // == Bangkok - Hotels (using hotelDetails) ==
   {
     id: generateGUID(), name: 'Riverside Luxury Hotel', province: 'Bangkok', category: 'hotel', currency: 'THB', unitDescription: 'per night',
-    notes: '5-star, riverside location with excellent amenities and dining options.', // General hotel notes
+    notes: '5-star, riverside location with excellent amenities and dining options.', 
     hotelDetails: {
       id: generateGUID(), name: 'Riverside Luxury Hotel', province: 'Bangkok',
       roomTypes: [
         {
           id: generateGUID(), name: 'Deluxe River View', extraBedAllowed: true,
           notes: 'Spacious 40sqm room with panoramic river views, king-size bed, Nespresso machine, and luxury toiletries. Ideal for couples.',
-          characteristics: [], // Keep for future, but info now in notes
+          characteristics: [], 
           seasonalPrices: [
             { id: generateGUID(), startDate: '2024-11-01', endDate: '2025-02-28', rate: 6500, extraBedRate: 1200 },
             { id: generateGUID(), startDate: '2024-05-01', endDate: '2024-09-30', rate: 4000, extraBedRate: 800 }
@@ -152,12 +170,19 @@ const DEFAULT_DEMO_SERVICE_PRICES: ServicePriceItem[] = [
 
   // == Pattaya - Activities ==
   {
-    id: generateGUID(), name: 'Sanctuary of Truth Entrance', province: 'Pattaya (Chonburi)', category: 'activity', subCategory: 'Entrance Fee',
-    price1: 500, price2: 250, currency: 'THB', unitDescription: 'per person'
+    id: generateGUID(), name: 'Sanctuary of Truth Entrance', province: 'Pattaya (Chonburi)', category: 'activity',
+    unitDescription: 'per person', currency: 'THB',
+    activityPackages: [
+      {id: generateGUID(), name: 'Standard Entry', price1: 500, price2: 250, notes: 'Access to all areas of the Sanctuary.'}
+    ]
   },
   {
-    id: generateGUID(), name: 'Tiffany\'s Cabaret Show (VIP)', province: 'Pattaya (Chonburi)', category: 'activity', subCategory: 'Show/Entertainment',
-    price1: 1200, price2: 1000, currency: 'THB', unitDescription: 'per person (VIP Seat)', notes: 'Standard seats cheaper'
+    id: generateGUID(), name: 'Tiffany\'s Cabaret Show', province: 'Pattaya (Chonburi)', category: 'activity', 
+    unitDescription: 'per person', currency: 'THB', notes: 'World-famous cabaret show.',
+    activityPackages: [
+      {id: generateGUID(), name: 'VIP Seat', price1: 1200, price2: 1000, notes: 'Best view, central seating.'},
+      {id: generateGUID(), name: 'Standard Seat', price1: 900, price2: 700, notes: 'Good view, further back.'}
+    ]
   },
 
   // == Pattaya - Hotels (using hotelDetails) ==
@@ -203,8 +228,12 @@ const DEFAULT_DEMO_SERVICE_PRICES: ServicePriceItem[] = [
     price1: 300, currency: 'THB', unitDescription: 'per vehicle', maxPassengers: 3
   },
   {
-    id: generateGUID(), name: 'Elephant Sanctuary Visit', province: 'Chiang Mai', category: 'activity', subCategory: 'Ethical Tourism',
-    price1: 2500, price2: 1800, currency: 'THB', unitDescription: 'per person (Full Day)', notes: 'Incl. lunch, feeding, bathing'
+    id: generateGUID(), name: 'Elephant Sanctuary Visit', province: 'Chiang Mai', category: 'activity', 
+    unitDescription: 'per person', currency: 'THB',
+    activityPackages: [
+      {id: generateGUID(), name: 'Full Day Program', price1: 2500, price2: 1800, notes: 'Incl. lunch, feeding, bathing.'},
+      {id: generateGUID(), name: 'Half Day Morning Program', price1: 1700, price2: 1200, notes: 'Incl. feeding, short interaction.'}
+    ]
   },
   {
     id: generateGUID(), name: 'Lanna Boutique Resort', province: 'Chiang Mai', category: 'hotel', currency: 'THB', unitDescription: 'per night',
@@ -249,11 +278,18 @@ export function useServicePrices() {
             const basicValid = p.id && p.name && p.category && p.currency;
             if (!basicValid) return false;
             if (p.category === 'hotel') {
-              const hd = p.hotelDetails as HotelDefinition | undefined; // Cast for checking
+              const hd = p.hotelDetails as HotelDefinition | undefined; 
               return hd && hd.id && hd.name && Array.isArray(hd.roomTypes) &&
                      hd.roomTypes.every(rt => rt.id && rt.name && Array.isArray(rt.seasonalPrices));
             }
-            return typeof p.price1 === 'number';
+            if (p.category === 'activity') {
+              // If activityPackages exists, it must be valid. Otherwise, price1 must exist.
+              if (p.activityPackages) {
+                return Array.isArray(p.activityPackages) && p.activityPackages.every(ap => ap.id && ap.name && typeof ap.price1 === 'number');
+              }
+              return typeof p.price1 === 'number'; // For simple activities
+            }
+            return typeof p.price1 === 'number'; // For other categories
           });
 
           if (validatedPrices.length > 0) {
