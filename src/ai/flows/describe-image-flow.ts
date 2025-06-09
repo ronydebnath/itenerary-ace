@@ -41,8 +41,9 @@ const describeImageFlow = ai.defineFlow(
     const xTitle = process.env.OPENROUTER_X_TITLE;
 
     if (!apiKey || apiKey === 'your_openrouter_api_key_here') {
-      console.error('OpenRouter API key is missing or not configured in .env file.');
-      throw new Error('OpenRouter API key is not configured.');
+      const errorMsg = "OpenRouter API key is not configured. Please ensure OPENROUTER_API_KEY is set correctly in your .env file at the project root and restart your development server.";
+      console.error(errorMsg);
+      throw new Error(errorMsg);
     }
 
     const headers: Record<string, string> = {
@@ -99,6 +100,10 @@ const describeImageFlow = ai.defineFlow(
       }
     } catch (error: any) {
       console.error('Error calling OpenRouter API:', error);
+      // Check if the error message is the specific API key configuration error to avoid duplicating the detailed message
+      if (error.message.startsWith("OpenRouter API key is not configured")) {
+        throw error;
+      }
       throw new Error(`Failed to describe image: ${error.message}`);
     }
   }

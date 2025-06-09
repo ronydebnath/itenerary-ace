@@ -8,7 +8,7 @@
  * - SuggestItineraryRefinementsOutput - The return type for the suggestItineraryRefinements function.
  */
 
-import { z } from 'genkit'; // z is still useful for schema definition and validation
+import { z } from 'genkit'; 
 
 const SuggestItineraryRefinementsInputSchema = z.object({
   itineraryDescription: z.string().describe('A detailed description of the current travel itinerary, including destinations, activities, accommodations, and transportation.'),
@@ -34,8 +34,9 @@ export async function suggestItineraryRefinements(input: SuggestItineraryRefinem
   const xTitle = process.env.OPENROUTER_X_TITLE;
 
   if (!apiKey || apiKey === 'your_openrouter_api_key_here') {
-    console.error('OpenRouter API key is missing or not configured in .env file.');
-    throw new Error('OpenRouter API key is not configured.');
+    const errorMsg = "OpenRouter API key is not configured. Please ensure OPENROUTER_API_KEY is set correctly in your .env file at the project root and restart your development server.";
+    console.error(errorMsg);
+    throw new Error(errorMsg);
   }
 
   const headers: Record<string, string> = {
@@ -87,7 +88,7 @@ Ensure the JSON is well-formed.`;
             "content": promptText
           }
         ],
-        "response_format": { "type": "json_object" } // Request JSON output
+        "response_format": { "type": "json_object" } 
       })
     });
 
@@ -102,7 +103,6 @@ Ensure the JSON is well-formed.`;
     if (data.choices && data.choices.length > 0 && data.choices[0].message && data.choices[0].message.content) {
       let suggestionsContent = data.choices[0].message.content;
       
-      // Sometimes models wrap JSON in ```json ... ```, attempt to strip it
       if (suggestionsContent.startsWith("```json")) {
         suggestionsContent = suggestionsContent.substring(7);
         if (suggestionsContent.endsWith("```")) {
@@ -112,7 +112,6 @@ Ensure the JSON is well-formed.`;
       
       try {
         const parsedJson = JSON.parse(suggestionsContent);
-        // Validate the parsed JSON against the Zod schema
         const validationResult = SuggestItineraryRefinementsOutputSchema.safeParse(parsedJson);
         if (validationResult.success) {
           return validationResult.data;
@@ -132,6 +131,9 @@ Ensure the JSON is well-formed.`;
     }
   } catch (error: any) {
     console.error('Error calling OpenRouter API for itinerary suggestions:', error);
+    if (error.message.startsWith("OpenRouter API key is not configured")) {
+      throw error;
+    }
     throw new Error(`Failed to get itinerary suggestions: ${error.message}`);
   }
 }

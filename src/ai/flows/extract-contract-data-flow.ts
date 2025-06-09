@@ -10,7 +10,7 @@ import {
   AIContractDataOutputSchema, 
   type AIContractDataOutput,
   type ExtractContractDataInput,
-  AISeasonalRateSchema // Import if you need to reference its structure, though it's used within AIContractDataOutputSchema
+  ExtractContractDataInputSchema
 } from '@/types/ai-contract-schemas';
 import { CURRENCIES, VEHICLE_TYPES } from '@/types/itinerary';
 
@@ -21,8 +21,9 @@ export async function extractContractData(input: ExtractContractDataInput): Prom
   const xTitle = process.env.OPENROUTER_X_TITLE;
 
   if (!apiKey || apiKey === 'your_openrouter_api_key_here') {
-    console.error('OpenRouter API key is missing or not configured in .env file.');
-    throw new Error('OpenRouter API key is not configured.');
+    const errorMsg = "OpenRouter API key is not configured. Please ensure OPENROUTER_API_KEY is set correctly in your .env file at the project root and restart your development server.";
+    console.error(errorMsg);
+    throw new Error(errorMsg);
   }
 
   const headers: Record<string, string> = {
@@ -105,8 +106,7 @@ export async function extractContractData(input: ExtractContractDataInput): Prom
           console.error('OpenRouter response JSON does not match AIContractDataOutputSchema:', validationResult.error.errors);
           console.error('Received JSON string for contract parsing:', content);
           // Return the potentially partially valid data for debugging or partial prefill
-          // It's up to the calling function to handle this less-than-perfect data
-          return parsedJson as AIContractDataOutput; // Cast, but be aware it might not be fully valid
+          return parsedJson as AIContractDataOutput; 
         }
       } catch (jsonError: any) {
         console.error('Error parsing JSON from OpenRouter for contract data:', jsonError);
@@ -119,6 +119,9 @@ export async function extractContractData(input: ExtractContractDataInput): Prom
     }
   } catch (error: any) {
     console.error('Error calling OpenRouter API for contract parsing:', error);
+     if (error.message.startsWith("OpenRouter API key is not configured")) {
+        throw error;
+      }
     throw new Error(`Failed to extract contract data: ${error.message}`);
   }
 }
