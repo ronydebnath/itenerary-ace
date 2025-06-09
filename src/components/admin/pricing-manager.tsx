@@ -3,12 +3,11 @@
 
 import * as React from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation'; // Import useRouter
+import { useRouter } from 'next/navigation';
 import { Button } from "@/components/ui/button";
 import { PlusCircle, Edit, Trash2, Home, MapPinned, Loader2, LayoutDashboard, ListPlus, FileText, Sparkles, Image as ImageIcon, ClipboardPaste } from 'lucide-react';
-import type { ServicePriceItem, SeasonalRate } from '@/types/itinerary';
-import { VEHICLE_TYPES } from '@/types/itinerary'; 
-// ServicePriceForm is no longer directly used here for a dialog
+import type { ServicePriceItem, SeasonalRate, ItineraryItemType } from '@/types/itinerary';
+import { VEHICLE_TYPES } from '@/types/itinerary';
 import { ServicePriceTable } from './service-price-table';
 import { generateGUID } from '@/lib/utils';
 import { useToast } from "@/hooks/use-toast";
@@ -19,28 +18,37 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { extractContractData } from '@/ai/flows/extract-contract-data-flow';
 import { describeImage } from '@/ai/flows/describe-image-flow';
-import type { AIContractDataOutput } from '@/types/ai-contract-schemas'; 
+import type { AIContractDataOutput } from '@/types/ai-contract-schemas';
 import { ExtractContractDataInputSchema } from '@/types/ai-contract-schemas';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import type { ZodError } from 'zod';
 import NextImage from 'next/image';
 import { Dialog, DialogClose, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const SERVICE_PRICES_STORAGE_KEY = 'itineraryAceServicePrices';
-const TEMP_PREFILL_DATA_KEY = 'tempServicePricePrefillData'; // Key for temporary prefill data
+const TEMP_PREFILL_DATA_KEY = 'tempServicePricePrefillData';
+
+const TABS_CONFIG: Array<{ value: ItineraryItemType | 'all', label: string }> = [
+    { value: 'all', label: 'All Services' },
+    { value: 'hotel', label: 'Hotels' },
+    { value: 'activity', label: 'Activities' },
+    { value: 'transfer', label: 'Transfers' },
+    { value: 'meal', label: 'Meals' },
+    { value: 'misc', label: 'Miscellaneous' },
+];
 
 export function PricingManager() {
   const { allServicePrices, isLoading: isLoadingServices } = useServicePrices();
   const [currentServicePrices, setCurrentServicePrices] = React.useState<ServicePriceItem[]>([]);
-  const router = useRouter(); // Initialize useRouter
-  
+  const router = useRouter();
+
   const [isContractImportOpen, setIsContractImportOpen] = React.useState(false);
   const [contractText, setContractText] = React.useState("");
   const [uploadedFile, setUploadedFile] = React.useState<File | null>(null);
   const [uploadedFilePreviewUrl, setUploadedFilePreviewUrl] = React.useState<string | null>(null);
   const [pastedImagePreviewUrl, setPastedImagePreviewUrl] = React.useState<string | null>(null);
-  const [isImageSource, setIsImageSource] = React.useState(false); 
+  const [isImageSource, setIsImageSource] = React.useState(false);
 
   const [isParsingContract, setIsParsingContract] = React.useState(false);
   const [contractParseError, setContractParseError] = React.useState<string | null>(null);
@@ -64,8 +72,6 @@ export function PricingManager() {
     }
   };
 
-  // handleFormSubmit is removed as form is now on a separate page
-
   const handleEditNavigation = (serviceId: string) => {
     router.push(`/admin/pricing/edit/${serviceId}`);
   };
@@ -87,12 +93,12 @@ export function PricingManager() {
     setContractParseError(null);
     setParsingStatusMessage("");
   };
-  
+
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    resetImportDialogState(); 
+    resetImportDialogState();
     if (file) {
-      if (file.size > 4 * 1024 * 1024) { 
+      if (file.size > 4 * 1024 * 1024) {
         setContractParseError("File size exceeds 4MB. Please choose a smaller file.");
         return;
       }
@@ -135,14 +141,14 @@ export function PricingManager() {
 
     if (imageFile) {
       event.preventDefault();
-      resetImportDialogState(); 
+      resetImportDialogState();
 
-      if (imageFile.size > 4 * 1024 * 1024) { 
+      if (imageFile.size > 4 * 1024 * 1024) {
         setContractParseError("Pasted image size exceeds 4MB. Please use a smaller image.");
         toast({ title: "Image Too Large", description: "Pasted image exceeds 4MB limit.", variant: "destructive" });
         return;
       }
-      
+
       const reader = new FileReader();
       reader.onloadend = () => {
         setPastedImagePreviewUrl(reader.result as string);
@@ -155,7 +161,7 @@ export function PricingManager() {
 
   React.useEffect(() => {
     const area = pasteAreaRef.current;
-    if (area && isContractImportOpen) { 
+    if (area && isContractImportOpen) {
       area.addEventListener('paste', handleImagePaste);
       return () => {
         area.removeEventListener('paste', handleImagePaste);
@@ -175,13 +181,13 @@ export function PricingManager() {
     } else if (uploadedFile && isImageSource && uploadedFilePreviewUrl) {
         finalDataUriForParsing = uploadedFilePreviewUrl;
     }
-    
-    if (finalDataUriForParsing) { 
+
+    if (finalDataUriForParsing) {
       setParsingStatusMessage("Extracting text from image...");
       try {
         const ocrResult = await describeImage({ imageDataUri: finalDataUriForParsing });
         textToParse = ocrResult.description;
-        if (!textToParse || textToParse.trim().length < 10) { 
+        if (!textToParse || textToParse.trim().length < 10) {
           setContractParseError("AI could not extract sufficient text from the image. Please try a clearer image or paste text directly.");
           setIsParsingContract(false);
           return;
@@ -193,12 +199,12 @@ export function PricingManager() {
         setIsParsingContract(false);
         return;
       }
-    } else if (!textToParse.trim()) { 
+    } else if (!textToParse.trim()) {
       setContractParseError("Please paste contract text or upload a text/image file.");
       setIsParsingContract(false);
       return;
     }
-    
+
     setParsingStatusMessage("Parsing contract data...");
     try {
       ExtractContractDataInputSchema.parse({ contractText: textToParse });
@@ -211,60 +217,39 @@ export function PricingManager() {
 
     try {
       const extractedData: AIContractDataOutput = await extractContractData({ contractText: textToParse });
-      
+
       const prefillData: Partial<ServicePriceItem> = {
         name: extractedData.name || "",
-        province: extractedData.province || undefined, 
-        category: extractedData.category || "misc", 
-        subCategory: extractedData.subCategory || "", // Retain for non-hotel/activity for now
+        province: extractedData.province || undefined,
+        category: extractedData.category || "misc",
+        subCategory: extractedData.subCategory || "",
         currency: extractedData.currency || "THB",
         unitDescription: extractedData.unitDescription || "",
         notes: extractedData.notes || "",
         maxPassengers: extractedData.maxPassengers,
       };
 
-      // Handle pricing model transition: simple (price1/price2) vs detailed (hotelDetails/activityPackages)
       if (prefillData.category === 'hotel') {
         prefillData.hotelDetails = {
-          id: generateGUID(), // New ID for this hotel detail structure
+          id: generateGUID(),
           name: prefillData.name || "New Hotel",
           province: prefillData.province || "",
           roomTypes: [{
             id: generateGUID(),
-            name: extractedData.subCategory || 'Standard Room', // Use AI's subCategory as initial room type name
+            name: extractedData.subCategory || 'Standard Room',
             extraBedAllowed: typeof extractedData.price2 === 'number' && extractedData.price2 > 0,
-            notes: '', // For user to fill
+            notes: '',
             characteristics: [],
-            seasonalPrices: (extractedData.seasonalRates && extractedData.seasonalRates.length > 0)
-              ? extractedData.seasonalRates
-                  .map(aiSr => {
-                    if (typeof aiSr.rate !== 'number' || aiSr.rate <= 0 || !aiSr.startDate || !aiSr.endDate) return null;
-                    let startDate = new Date(aiSr.startDate);
-                    let endDate = new Date(aiSr.endDate);
-                    if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) return null;
-                    if (endDate < startDate) {
-                         endDate = new Date(startDate);
-                         endDate.setDate(startDate.getDate() + 30);
-                    }
-                    return {
-                      id: generateGUID(),
-                      startDate: startDate.toISOString().split('T')[0],
-                      endDate: endDate.toISOString().split('T')[0],
-                      rate: aiSr.rate,
-                      extraBedRate: undefined, // AI doesn't extract this for seasonal rates yet
-                    };
-                  })
-                  .filter(sr => sr !== null) as SeasonalRate[]
-              : (extractedData.price1 !== undefined ? [{ // Create a default season from simple price1
+            seasonalPrices: (extractedData.price1 !== undefined ? [{
                   id: generateGUID(),
                   startDate: new Date().toISOString().split('T')[0],
-                  endDate: new Date(new Date().setDate(new Date().getDate() + 30)).toISOString().split('T')[0], // Default 30 day period
+                  endDate: new Date(new Date().setDate(new Date().getDate() + 30)).toISOString().split('T')[0],
                   rate: extractedData.price1,
-                  extraBedRate: extractedData.price2, // Use simple price2 as default extra bed rate
+                  extraBedRate: extractedData.price2,
                 }] : [])
           }]
         };
-        prefillData.price1 = undefined; // Clear simple prices
+        prefillData.price1 = undefined;
         prefillData.price2 = undefined;
         prefillData.subCategory = undefined;
       } else if (prefillData.category === 'activity') {
@@ -273,35 +258,34 @@ export function PricingManager() {
           name: extractedData.subCategory || 'Standard Package',
           price1: extractedData.price1,
           price2: extractedData.price2,
-          notes: ''
+          notes: '',
+          validityStartDate: new Date().toISOString().split('T')[0],
+          validityEndDate: new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().split('T')[0],
         }] : [];
-        prefillData.price1 = undefined; // Clear simple prices
+        prefillData.price1 = undefined;
         prefillData.price2 = undefined;
         prefillData.subCategory = undefined;
       } else {
-        // For other categories, retain simple pricing
         prefillData.price1 = extractedData.price1 ?? 0;
         prefillData.price2 = extractedData.price2;
       }
-      
+
       if (prefillData.category === 'transfer') {
         if (extractedData.transferModeAttempt === 'vehicle') {
           if (extractedData.vehicleTypeAttempt) {
             prefillData.subCategory = extractedData.vehicleTypeAttempt;
-          } else if (!prefillData.subCategory || prefillData.subCategory === 'ticket') { 
-            prefillData.subCategory = VEHICLE_TYPES[0]; 
+          } else if (!prefillData.subCategory || prefillData.subCategory === 'ticket') {
+            prefillData.subCategory = VEHICLE_TYPES[0];
           }
         } else if (extractedData.transferModeAttempt === 'ticket') {
            prefillData.subCategory = 'ticket';
         }
       }
 
-
-      // Store prefillData in localStorage and navigate
       localStorage.setItem(TEMP_PREFILL_DATA_KEY, JSON.stringify(prefillData));
       setIsContractImportOpen(false);
       resetImportDialogState();
-      router.push('/admin/pricing/new'); // Navigate to the new service price page
+      router.push('/admin/pricing/new');
       toast({ title: "Contract Parsed", description: "Review and complete the service details on the new page." });
 
     } catch (error: any) {
@@ -336,7 +320,7 @@ export function PricingManager() {
         <div className="flex gap-2">
           <Dialog open={isContractImportOpen} onOpenChange={(isOpen) => {
             setIsContractImportOpen(isOpen);
-            if (!isOpen) resetImportDialogState(); 
+            if (!isOpen) resetImportDialogState();
           }}>
             <DialogTrigger asChild>
               <Button variant="outline" className="border-accent text-accent hover:bg-accent/10 hover:text-accent">
@@ -350,21 +334,21 @@ export function PricingManager() {
               <div className="space-y-4 py-4">
                 <div>
                   <Label htmlFor="contract-file-upload">Upload Contract File (Text or Image)</Label>
-                  <Input 
-                    id="contract-file-upload" 
-                    type="file" 
-                    accept=".txt,.md,.html,.xml,text/plain,text/markdown,text/html,application/xml,text/xml,image/png,image/jpeg,image/webp" 
-                    onChange={handleFileChange} 
+                  <Input
+                    id="contract-file-upload"
+                    type="file"
+                    accept=".txt,.md,.html,.xml,text/plain,text/markdown,text/html,application/xml,text/xml,image/png,image/jpeg,image/webp"
+                    onChange={handleFileChange}
                     className="mt-1"
                   />
                 </div>
 
-                <div 
+                <div
                   ref={pasteAreaRef}
-                  tabIndex={0} 
+                  tabIndex={0}
                   className="mt-2 p-4 border-2 border-dashed border-muted-foreground/30 rounded-md text-center cursor-pointer hover:border-primary"
                   title="Click or focus and then paste an image (Ctrl+V or Cmd+V)"
-                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') pasteAreaRef.current?.focus(); }} // For accessibility
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') pasteAreaRef.current?.focus(); }}
                 >
                   <ClipboardPaste className="mx-auto h-8 w-8 text-muted-foreground mb-2" />
                   <p className="text-sm text-muted-foreground">Or click here &amp; paste contract image (Ctrl+V / Cmd+V)</p>
@@ -381,7 +365,7 @@ export function PricingManager() {
                     />
                   </div>
                 )}
-                
+
                 <div className="relative">
                    <div className="absolute inset-0 flex items-center">
                      <span className="w-full border-t" />
@@ -420,9 +404,9 @@ export function PricingManager() {
               </div>
               <DialogFooter>
                 <DialogClose asChild><Button variant="outline">Cancel</Button></DialogClose>
-                <Button 
-                    onClick={handleParseContract} 
-                    disabled={isParsingContract || (!contractText.trim() && !uploadedFile && !pastedImagePreviewUrl)} 
+                <Button
+                    onClick={handleParseContract}
+                    disabled={isParsingContract || (!contractText.trim() && !uploadedFile && !pastedImagePreviewUrl)}
                     className="bg-accent hover:bg-accent/90 text-accent-foreground"
                 >
                   {isParsingContract ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
@@ -448,45 +432,67 @@ export function PricingManager() {
         </Link>
       </div>
 
-      {isLoadingServices ? (
-        <div className="text-center py-10">
-            <Loader2 className="mx-auto h-12 w-12 animate-spin text-primary" />
-            <p className="mt-4 text-muted-foreground">Loading service prices...</p>
-        </div>
-      ) : currentServicePrices.length > 0 ? (
-        <ServicePriceTable
-          servicePrices={currentServicePrices}
-          onEdit={handleEditNavigation} // Changed to navigate
-          onDeleteConfirmation={(serviceId) => ( 
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10">
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    This action cannot be undone. This will permanently delete the service price.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction onClick={() => handleDelete(serviceId)} className="bg-destructive hover:bg-destructive/90">
-                    Delete
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          )}
-        />
-      ) : (
-        <div className="text-center py-10 border-2 border-dashed border-muted-foreground/30 rounded-lg">
+      <Tabs defaultValue="all" className="w-full">
+        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 md:grid-cols-6 mb-4">
+            {TABS_CONFIG.map(tab => (
+                <TabsTrigger key={tab.value} value={tab.value}>{tab.label}</TabsTrigger>
+            ))}
+        </TabsList>
+
+        {isLoadingServices ? (
+          <div className="text-center py-10 col-span-full">
+              <Loader2 className="mx-auto h-12 w-12 animate-spin text-primary" />
+              <p className="mt-4 text-muted-foreground">Loading service prices...</p>
+          </div>
+        ) : (
+          TABS_CONFIG.map(tab => (
+            <TabsContent key={tab.value} value={tab.value}>
+              <ServicePriceTable
+                servicePrices={tab.value === 'all' ? currentServicePrices : currentServicePrices.filter(sp => sp.category === tab.value)}
+                onEdit={handleEditNavigation}
+                onDeleteConfirmation={(serviceId) => (
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10">
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          This action cannot be undone. This will permanently delete the service price.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={() => handleDelete(serviceId)} className="bg-destructive hover:bg-destructive/90">
+                          Delete
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                )}
+                displayMode={tab.value as 'all' | ItineraryItemType}
+              />
+              {(tab.value === 'all' ? currentServicePrices : currentServicePrices.filter(sp => sp.category === tab.value)).length === 0 && (
+                 <div className="text-center py-10 border-2 border-dashed border-muted-foreground/30 rounded-lg mt-4">
+                    <p className="text-muted-foreground text-lg">No services found for the "{tab.label}" category.</p>
+                </div>
+              )}
+            </TabsContent>
+          ))
+        )}
+      </Tabs>
+
+      {currentServicePrices.length === 0 && !isLoadingServices && (
+         <div className="text-center py-10 border-2 border-dashed border-muted-foreground/30 rounded-lg mt-6">
           <p className="text-muted-foreground text-lg">No service prices defined yet.</p>
           <p className="text-sm text-muted-foreground mt-2">Demo data should load automatically. If not, please refresh, use "Import from Contract", or click "Add New Service Price".</p>
         </div>
       )}
+
     </div>
   );
 }
+

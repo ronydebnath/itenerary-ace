@@ -1,6 +1,7 @@
 
 "use client";
 
+import * as React from 'react';
 import {
   Table,
   TableBody,
@@ -10,60 +11,143 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Edit, CalendarClock, Package, AlertTriangle } from 'lucide-react';
-import type { ServicePriceItem } from '@/types/itinerary';
+import { Edit, CalendarClock, Package, AlertTriangle, Info } from 'lucide-react';
+import type { ServicePriceItem, ItineraryItemType } from '@/types/itinerary';
 import { formatCurrency } from '@/lib/utils';
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { format } from 'date-fns';
 
 interface ServicePriceTableProps {
   servicePrices: ServicePriceItem[];
   onEdit: (serviceId: string) => void;
   onDeleteConfirmation: (serviceId: string) => React.ReactNode;
+  displayMode: 'all' | ItineraryItemType;
 }
 
-export function ServicePriceTable({ servicePrices, onEdit, onDeleteConfirmation }: ServicePriceTableProps) {
-  return (
-    <div className="rounded-lg border shadow-sm overflow-hidden">
-      <Table>
-        <TableHeader className="bg-muted/50">
-          <TableRow>
-            <TableHead className="w-[200px] min-w-[150px]">Name</TableHead>
-            <TableHead>Province</TableHead>
-            <TableHead>Category</TableHead>
-            <TableHead className="min-w-[150px]">Details / Packages</TableHead>
-            <TableHead className="text-right min-w-[150px]">Base Rate / Info</TableHead>
-            <TableHead>Currency</TableHead>
-            <TableHead>Unit</TableHead>
-            <TableHead className="min-w-[150px]">Notes</TableHead>
-            <TableHead className="text-center w-[120px]">Actions</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {servicePrices.map((service) => {
-            let displayDetail = service.subCategory || 'N/A';
-            let displayPriceInfo = service.price1 !== undefined ? formatCurrency(service.price1, service.currency) : 'See Details';
-            let displayUnit = service.unitDescription || 'N/A';
-            let rateTooltipContent: React.ReactNode = null;
+export function ServicePriceTable({ servicePrices, onEdit, onDeleteConfirmation, displayMode }: ServicePriceTableProps) {
 
-            if (service.category === 'hotel' && service.hotelDetails && service.hotelDetails.roomTypes.length > 0) {
-              displayDetail = `${service.hotelDetails.roomTypes.length} room type(s)`;
-              displayUnit = service.unitDescription || 'per night';
-              
-              let lowestRate: number | undefined = undefined;
-              service.hotelDetails.roomTypes.forEach(rt => {
-                rt.seasonalPrices.forEach(sp => {
-                  if (lowestRate === undefined || sp.rate < lowestRate) {
-                    lowestRate = sp.rate;
-                  }
-                });
-              });
-              if (lowestRate !== undefined) {
-                displayPriceInfo = `From ${formatCurrency(lowestRate, service.currency)}`;
-              } else {
-                displayPriceInfo = "Complex Rates";
-              }
-              rateTooltipContent = (
+  const renderAllModeRow = (service: ServicePriceItem) => {
+    let displayDetail = service.subCategory || 'N/A';
+    let displayPriceInfo = service.price1 !== undefined ? formatCurrency(service.price1, service.currency) : 'See Details';
+    let displayUnit = service.unitDescription || 'N/A';
+    let rateTooltipContent: React.ReactNode = null;
+
+    if (service.category === 'hotel' && service.hotelDetails && service.hotelDetails.roomTypes.length > 0) {
+      displayDetail = `${service.hotelDetails.roomTypes.length} room type(s)`;
+      displayUnit = service.unitDescription || 'per night';
+      let lowestRate: number | undefined = undefined;
+      service.hotelDetails.roomTypes.forEach(rt => {
+        rt.seasonalPrices.forEach(sp => {
+          if (lowestRate === undefined || sp.rate < lowestRate) lowestRate = sp.rate;
+        });
+      });
+      displayPriceInfo = lowestRate !== undefined ? `From ${formatCurrency(lowestRate, service.currency)}` : "Complex Rates";
+      rateTooltipContent = (
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Badge variant="outline" className="ml-2 cursor-default border-primary/50 text-primary">
+                <CalendarClock className="h-3 w-3 mr-1" /> Seasonal/Tiered
+              </Badge>
+            </TooltipTrigger>
+            <TooltipContent><p>This hotel has seasonal and/or multi-room type pricing.</p></TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      );
+    } else if (service.category === 'activity' && service.activityPackages && service.activityPackages.length > 0) {
+      displayDetail = `${service.activityPackages.length} package(s)`;
+      displayUnit = service.unitDescription || 'per person';
+      let lowestPackagePrice: number | undefined = undefined;
+      service.activityPackages.forEach(pkg => {
+        if (lowestPackagePrice === undefined || pkg.price1 < lowestPackagePrice) lowestPackagePrice = pkg.price1;
+      });
+      displayPriceInfo = lowestPackagePrice !== undefined ? `From ${formatCurrency(lowestPackagePrice, service.currency)}` : (service.price1 !== undefined ? formatCurrency(service.price1, service.currency) : "See Packages");
+      rateTooltipContent = (
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Badge variant="outline" className="ml-2 cursor-default border-indigo-500/50 text-indigo-600">
+                <Package className="h-3 w-3 mr-1" /> Multi-Package
+              </Badge>
+            </TooltipTrigger>
+            <TooltipContent><p>This activity has multiple packages with varying prices and schedules.</p></TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      );
+    } else if (service.category === 'transfer') {
+      if (service.subCategory !== 'ticket') { // Vehicle transfer
+        displayDetail = `${service.subCategory || 'Vehicle'} ${service.maxPassengers ? `(Max: ${service.maxPassengers})` : ''}`;
+        displayUnit = service.unitDescription || 'per vehicle';
+        if (service.surchargePeriods && service.surchargePeriods.length > 0) {
+          rateTooltipContent = (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Badge variant="outline" className="ml-2 cursor-default border-orange-500/50 text-orange-600">
+                    <AlertTriangle className="h-3 w-3 mr-1" /> Surcharges
+                  </Badge>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>This transfer has date-based surcharges.</p>
+                  <ul className="list-disc pl-4 mt-1 text-xs">
+                    {service.surchargePeriods.slice(0,3).map(sp => <li key={sp.id}>{sp.name}: +{formatCurrency(sp.surchargeAmount, service.currency)} ({format(new Date(sp.startDate), 'dd MMM')} - {format(new Date(sp.endDate), 'dd MMM')})</li>)}
+                    {service.surchargePeriods.length > 3 && <li>...and more</li>}
+                  </ul>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          );
+        }
+      } else { // Ticket transfer
+        displayDetail = "Ticket Basis";
+        displayUnit = service.unitDescription || 'per person';
+      }
+    }
+
+    return (
+      <TableRow key={service.id}>
+        <TableCell className="font-medium">{service.name}</TableCell>
+        <TableCell>{service.province || 'N/A'}</TableCell>
+        <TableCell>{service.category.charAt(0).toUpperCase() + service.category.slice(1)}</TableCell>
+        <TableCell>{displayDetail}</TableCell>
+        <TableCell className="text-right">
+          <div className="flex items-center justify-end font-code">
+            <span>{displayPriceInfo}</span>
+            {rateTooltipContent}
+          </div>
+        </TableCell>
+        <TableCell>{service.currency}</TableCell>
+        <TableCell>{displayUnit}</TableCell>
+        <TableCell className="text-xs max-w-xs truncate">{service.notes || 'N/A'}</TableCell>
+        <TableCell className="text-center">
+          <Button variant="ghost" size="icon" onClick={() => onEdit(service.id)} className="mr-2 text-primary hover:bg-primary/10">
+            <Edit className="h-4 w-4" />
+          </Button>
+          {onDeleteConfirmation(service.id)}
+        </TableCell>
+      </TableRow>
+    );
+  };
+
+  const renderHotelRow = (service: ServicePriceItem) => {
+    let lowestRate: number | undefined = undefined;
+    service.hotelDetails?.roomTypes.forEach(rt => {
+        rt.seasonalPrices.forEach(sp => {
+            if (lowestRate === undefined || sp.rate < lowestRate) lowestRate = sp.rate;
+        });
+    });
+    const displayPriceInfo = lowestRate !== undefined ? `From ${formatCurrency(lowestRate, service.currency)}` : "N/A";
+    const numRoomTypes = service.hotelDetails?.roomTypes.length || 0;
+
+    return (
+      <TableRow key={service.id}>
+        <TableCell className="font-medium">{service.name}</TableCell>
+        <TableCell>{service.province || 'N/A'}</TableCell>
+        <TableCell className="text-center">{numRoomTypes}</TableCell>
+        <TableCell className="text-right font-code">{displayPriceInfo}</TableCell>
+        <TableCell>
+            {numRoomTypes > 0 && (
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -72,99 +156,263 @@ export function ServicePriceTable({ servicePrices, onEdit, onDeleteConfirmation 
                       </Badge>
                     </TooltipTrigger>
                     <TooltipContent>
-                      <p>This hotel has seasonal and/or multi-room type pricing.</p>
+                        <p className="font-semibold mb-1">Room Types & Lowest Rates:</p>
+                        {service.hotelDetails?.roomTypes.slice(0,5).map(rt => {
+                            let minRtRate: number | undefined;
+                            rt.seasonalPrices.forEach(sp => {
+                                if (minRtRate === undefined || sp.rate < minRtRate) minRtRate = sp.rate;
+                            });
+                            return <p key={rt.id} className="text-xs">{rt.name}: From {minRtRate !== undefined ? formatCurrency(minRtRate, service.currency) : 'N/A'}</p>
+                        })}
+                        {numRoomTypes > 5 && <p className="text-xs italic">...and more room types.</p>}
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
-              );
+            )}
+        </TableCell>
+        <TableCell>{service.currency}</TableCell>
+        <TableCell>{service.unitDescription || 'per night'}</TableCell>
+        <TableCell className="text-xs max-w-xs truncate">{service.notes || 'N/A'}</TableCell>
+        <TableCell className="text-center">
+          <Button variant="ghost" size="icon" onClick={() => onEdit(service.id)} className="mr-2 text-primary hover:bg-primary/10">
+            <Edit className="h-4 w-4" />
+          </Button>
+          {onDeleteConfirmation(service.id)}
+        </TableCell>
+      </TableRow>
+    );
+  };
 
-            } else if (service.category === 'activity' && service.activityPackages && service.activityPackages.length > 0) {
-              displayDetail = `${service.activityPackages.length} package(s)`;
-              displayUnit = service.unitDescription || 'per person';
-              
-              let lowestPackagePrice: number | undefined = undefined;
-              service.activityPackages.forEach(pkg => {
-                if (lowestPackagePrice === undefined || pkg.price1 < lowestPackagePrice) {
-                  lowestPackagePrice = pkg.price1;
-                }
-              });
-               if (lowestPackagePrice !== undefined) {
-                displayPriceInfo = `From ${formatCurrency(lowestPackagePrice, service.currency)}`;
-              } else if (service.price1 !== undefined) { // Fallback to simple price if packages have no price
-                displayPriceInfo = formatCurrency(service.price1, service.currency);
-              } else {
-                displayPriceInfo = "See Packages";
-              }
-               rateTooltipContent = (
+  const renderActivityRow = (service: ServicePriceItem) => {
+    let lowestPackagePrice: number | undefined = undefined;
+    service.activityPackages?.forEach(pkg => {
+        if (lowestPackagePrice === undefined || pkg.price1 < lowestPackagePrice) lowestPackagePrice = pkg.price1;
+    });
+    const displayPriceInfo = lowestPackagePrice !== undefined ? `From ${formatCurrency(lowestPackagePrice, service.currency)}` : (service.price1 !== undefined ? formatCurrency(service.price1, service.currency) : "N/A");
+    const numPackages = service.activityPackages?.length || 0;
+
+    return (
+      <TableRow key={service.id}>
+        <TableCell className="font-medium">{service.name}</TableCell>
+        <TableCell>{service.province || 'N/A'}</TableCell>
+        <TableCell className="text-center">{numPackages}</TableCell>
+        <TableCell className="text-right font-code">{displayPriceInfo}</TableCell>
+        <TableCell>
+            {numPackages > 0 && (
+                 <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                        <Badge variant="outline" className="ml-2 cursor-default border-indigo-500/50 text-indigo-600">
+                            <Package className="h-3 w-3 mr-1" /> Multi-Package
+                        </Badge>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                        <p className="font-semibold mb-1">Packages & Base Prices:</p>
+                        {service.activityPackages?.slice(0,5).map(pkg => (
+                            <p key={pkg.id} className="text-xs">{pkg.name}: {formatCurrency(pkg.price1, service.currency)}</p>
+                        ))}
+                        {numPackages > 5 && <p className="text-xs italic">...and more packages.</p>}
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+            )}
+        </TableCell>
+        <TableCell>{service.currency}</TableCell>
+        <TableCell>{service.unitDescription || 'per person'}</TableCell>
+        <TableCell className="text-xs max-w-xs truncate">{service.notes || 'N/A'}</TableCell>
+        <TableCell className="text-center">
+          <Button variant="ghost" size="icon" onClick={() => onEdit(service.id)} className="mr-2 text-primary hover:bg-primary/10">
+            <Edit className="h-4 w-4" />
+          </Button>
+          {onDeleteConfirmation(service.id)}
+        </TableCell>
+      </TableRow>
+    );
+  };
+
+  const renderTransferRow = (service: ServicePriceItem) => {
+     const isVehicle = service.subCategory !== 'ticket';
+     const displayDetail = isVehicle ? `${service.subCategory || 'Vehicle'} ${service.maxPassengers ? `(Max: ${service.maxPassengers})` : ''}` : "Ticket Basis";
+     const baseRate = service.price1 !== undefined ? formatCurrency(service.price1, service.currency) : 'N/A';
+
+    return (
+      <TableRow key={service.id}>
+        <TableCell className="font-medium">{service.name}</TableCell>
+        <TableCell>{service.province || 'N/A'}</TableCell>
+        <TableCell>{isVehicle ? 'Vehicle' : 'Ticket'}</TableCell>
+        <TableCell>{displayDetail}</TableCell>
+        <TableCell className="text-right font-code">{baseRate}</TableCell>
+        <TableCell>
+            {isVehicle && service.surchargePeriods && service.surchargePeriods.length > 0 && (
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <Badge variant="outline" className="ml-2 cursor-default border-indigo-500/50 text-indigo-600">
-                        <Package className="h-3 w-3 mr-1" /> Multi-Package
+                      <Badge variant="outline" className="ml-2 cursor-default border-orange-500/50 text-orange-600">
+                        <AlertTriangle className="h-3 w-3 mr-1" /> Surcharges
                       </Badge>
                     </TooltipTrigger>
                     <TooltipContent>
-                      <p>This activity has multiple packages with varying prices.</p>
+                      <p className="font-semibold mb-1">Surcharges Apply:</p>
+                       <ul className="list-disc pl-4 mt-1 text-xs">
+                        {service.surchargePeriods.slice(0,3).map(sp => <li key={sp.id}>{sp.name}: +{formatCurrency(sp.surchargeAmount, service.currency)} ({format(new Date(sp.startDate), 'dd MMM')} - {format(new Date(sp.endDate), 'dd MMM')})</li>)}
+                        {service.surchargePeriods.length > 3 && <li>...and more</li>}
+                      </ul>
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
-              );
+            )}
+        </TableCell>
+        <TableCell>{service.currency}</TableCell>
+        <TableCell>{service.unitDescription || (isVehicle ? 'per vehicle' : 'per person')}</TableCell>
+        <TableCell className="text-xs max-w-xs truncate">{service.notes || 'N/A'}</TableCell>
+        <TableCell className="text-center">
+          <Button variant="ghost" size="icon" onClick={() => onEdit(service.id)} className="mr-2 text-primary hover:bg-primary/10">
+            <Edit className="h-4 w-4" />
+          </Button>
+          {onDeleteConfirmation(service.id)}
+        </TableCell>
+      </TableRow>
+    );
+  };
 
-            } else if (service.category === 'transfer') {
-              if (service.subCategory !== 'ticket') { // Vehicle transfer
-                displayDetail = `${service.subCategory || 'Vehicle'} ${service.maxPassengers ? `(Max: ${service.maxPassengers})` : ''}`;
-                displayUnit = service.unitDescription || 'per vehicle';
-                if (service.surchargePeriods && service.surchargePeriods.length > 0) {
-                  rateTooltipContent = (
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Badge variant="outline" className="ml-2 cursor-default border-orange-500/50 text-orange-600">
-                            <AlertTriangle className="h-3 w-3 mr-1" /> Surcharges
-                          </Badge>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>This transfer has date-based surcharges.</p>
-                          <ul className="list-disc pl-4 mt-1 text-xs">
-                            {service.surchargePeriods.slice(0,3).map(sp => <li key={sp.id}>{sp.name}: +{formatCurrency(sp.surchargeAmount, service.currency)}</li>)}
-                            {service.surchargePeriods.length > 3 && <li>...and more</li>}
-                          </ul>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  );
-                }
-              } else { // Ticket transfer
-                displayDetail = "Ticket Basis";
-                displayUnit = service.unitDescription || 'per person';
-              }
-            }
+  const renderSimpleRow = (service: ServicePriceItem, typeLabel: string) => (
+      <TableRow key={service.id}>
+        <TableCell className="font-medium">{service.name}</TableCell>
+        <TableCell>{service.province || 'N/A'}</TableCell>
+        <TableCell>{service.subCategory || 'N/A'}</TableCell>
+        <TableCell className="text-right font-code">{service.price1 !== undefined ? formatCurrency(service.price1, service.currency) : 'N/A'}</TableCell>
+        <TableCell className="text-right font-code">{service.price2 !== undefined ? formatCurrency(service.price2, service.currency) : 'N/A'}</TableCell>
+        <TableCell>{service.currency}</TableCell>
+        <TableCell>{service.unitDescription || 'per item'}</TableCell>
+        <TableCell className="text-xs max-w-xs truncate">{service.notes || 'N/A'}</TableCell>
+        <TableCell className="text-center">
+          <Button variant="ghost" size="icon" onClick={() => onEdit(service.id)} className="mr-2 text-primary hover:bg-primary/10">
+            <Edit className="h-4 w-4" />
+          </Button>
+          {onDeleteConfirmation(service.id)}
+        </TableCell>
+      </TableRow>
+  );
 
 
-            return (
-              <TableRow key={service.id}>
-                <TableCell className="font-medium">{service.name}</TableCell>
-                <TableCell>{service.province || 'N/A'}</TableCell>
-                <TableCell>{service.category.charAt(0).toUpperCase() + service.category.slice(1)}</TableCell>
-                <TableCell>{displayDetail}</TableCell>
-                <TableCell className="text-right font-code">
-                  <div className="flex items-center justify-end">
-                    <span>{displayPriceInfo}</span>
-                    {rateTooltipContent}
-                  </div>
+  let headers: React.ReactNode;
+  let rows: React.ReactNode;
+
+  switch (displayMode) {
+    case 'hotel':
+      headers = (
+        <TableRow>
+          <TableHead>Hotel Name</TableHead>
+          <TableHead>Province</TableHead>
+          <TableHead className="text-center">Room Types (#)</TableHead>
+          <TableHead className="text-right">Base Rate (From)</TableHead>
+          <TableHead>Pricing Model</TableHead>
+          <TableHead>Currency</TableHead>
+          <TableHead>Unit</TableHead>
+          <TableHead>Notes</TableHead>
+          <TableHead className="text-center">Actions</TableHead>
+        </TableRow>
+      );
+      rows = servicePrices.map(renderHotelRow);
+      break;
+    case 'activity':
+      headers = (
+        <TableRow>
+          <TableHead>Activity Name</TableHead>
+          <TableHead>Province</TableHead>
+          <TableHead className="text-center">Packages (#)</TableHead>
+          <TableHead className="text-right">Base Price (From)</TableHead>
+          <TableHead>Pricing Model</TableHead>
+          <TableHead>Currency</TableHead>
+          <TableHead>Unit</TableHead>
+          <TableHead>Notes</TableHead>
+          <TableHead className="text-center">Actions</TableHead>
+        </TableRow>
+      );
+      rows = servicePrices.map(renderActivityRow);
+      break;
+    case 'transfer':
+      headers = (
+        <TableRow>
+          <TableHead>Transfer Name</TableHead>
+          <TableHead>Province</TableHead>
+          <TableHead>Mode</TableHead>
+          <TableHead>Vehicle/Ticket Detail</TableHead>
+          <TableHead className="text-right">Base Rate</TableHead>
+          <TableHead>Surcharges</TableHead>
+          <TableHead>Currency</TableHead>
+          <TableHead>Unit</TableHead>
+          <TableHead>Notes</TableHead>
+          <TableHead className="text-center">Actions</TableHead>
+        </TableRow>
+      );
+      rows = servicePrices.map(renderTransferRow);
+      break;
+    case 'meal':
+      headers = (
+        <TableRow>
+          <TableHead>Meal Name</TableHead>
+          <TableHead>Province</TableHead>
+          <TableHead>Type/Sub-Category</TableHead>
+          <TableHead className="text-right">Adult Price</TableHead>
+          <TableHead className="text-right">Child Price</TableHead>
+          <TableHead>Currency</TableHead>
+          <TableHead>Unit</TableHead>
+          <TableHead>Notes</TableHead>
+          <TableHead className="text-center">Actions</TableHead>
+        </TableRow>
+      );
+      rows = servicePrices.map(service => renderSimpleRow(service, "Meal"));
+      break;
+    case 'misc':
+      headers = (
+        <TableRow>
+          <TableHead>Item Name</TableHead>
+          <TableHead>Province</TableHead>
+          <TableHead>Type/Sub-Category</TableHead>
+          <TableHead className="text-right">Unit Cost</TableHead>
+          <TableHead className="text-right">Secondary Cost</TableHead>
+          <TableHead>Currency</TableHead>
+          <TableHead>Unit</TableHead>
+          <TableHead>Notes</TableHead>
+          <TableHead className="text-center">Actions</TableHead>
+        </TableRow>
+      );
+      rows = servicePrices.map(service => renderSimpleRow(service, "Misc"));
+      break;
+    case 'all':
+    default:
+      headers = (
+        <TableRow>
+          <TableHead className="w-[200px] min-w-[150px]">Name</TableHead>
+          <TableHead>Province</TableHead>
+          <TableHead>Category</TableHead>
+          <TableHead className="min-w-[150px]">Details / Packages</TableHead>
+          <TableHead className="text-right min-w-[150px]">Base Rate / Info</TableHead>
+          <TableHead>Currency</TableHead>
+          <TableHead>Unit</TableHead>
+          <TableHead className="min-w-[150px]">Notes</TableHead>
+          <TableHead className="text-center w-[120px]">Actions</TableHead>
+        </TableRow>
+      );
+      rows = servicePrices.map(renderAllModeRow);
+      break;
+  }
+
+  return (
+    <div className="rounded-lg border shadow-sm overflow-hidden">
+      <Table>
+        <TableHeader className="bg-muted/50">
+          {headers}
+        </TableHeader>
+        <TableBody>
+          {servicePrices.length > 0 ? rows : (
+            <TableRow>
+                <TableCell colSpan={9} className="text-center h-24 text-muted-foreground">
+                    No services to display for this category.
                 </TableCell>
-                <TableCell>{service.currency}</TableCell>
-                <TableCell>{displayUnit}</TableCell>
-                <TableCell className="text-xs max-w-xs truncate">{service.notes || 'N/A'}</TableCell>
-                <TableCell className="text-center">
-                  <Button variant="ghost" size="icon" onClick={() => onEdit(service.id)} className="mr-2 text-primary hover:bg-primary/10">
-                    <Edit className="h-4 w-4" />
-                  </Button>
-                  {onDeleteConfirmation(service.id)}
-                </TableCell>
-              </TableRow>
-            );
-          })}
+            </TableRow>
+          )}
         </TableBody>
       </Table>
     </div>
