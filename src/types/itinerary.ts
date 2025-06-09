@@ -57,6 +57,10 @@ export interface ActivityPackageDefinition {
   price1: number; // Adult Price
   price2?: number; // Child Price (optional)
   notes?: string; // Package-specific details
+  validityStartDate?: string; // ISO date string, e.g., "2024-12-01"
+  validityEndDate?: string;   // ISO date string
+  closedWeekdays?: number[];  // Array of day numbers (0 for Sun, 1 for Mon, ..., 6 for Sat)
+  specificClosedDates?: string[]; // Array of ISO date strings for specific non-operational dates
 }
 
 export interface ActivityItem extends BaseItem {
@@ -69,8 +73,8 @@ export interface ActivityItem extends BaseItem {
 
 export interface HotelCharacteristic {
   id: string;
-  key: string; 
-  value: string; 
+  key: string;
+  value: string;
 }
 
 export interface RoomTypeSeasonalPrice {
@@ -79,37 +83,37 @@ export interface RoomTypeSeasonalPrice {
   startDate: string; // YYYY-MM-DD
   endDate: string;   // YYYY-MM-DD
   rate: number;      // Price per night for this room type during this season
-  extraBedRate?: number; 
+  extraBedRate?: number;
 }
 
 export interface HotelRoomTypeDefinition {
   id: string;
-  name: string; 
-  extraBedAllowed?: boolean; 
+  name: string;
+  extraBedAllowed?: boolean;
   notes?: string; // For Room Details: Size, Amenities, Bed Type, View etc.
   seasonalPrices: RoomTypeSeasonalPrice[];
-  characteristics: HotelCharacteristic[]; 
+  characteristics: HotelCharacteristic[];
 }
 
 export interface HotelDefinition {
   id: string;
-  name: string; 
+  name: string;
   province: string;
   roomTypes: HotelRoomTypeDefinition[];
 }
 
 export interface SelectedHotelRoomConfiguration {
-  id: string; 
-  roomTypeDefinitionId: string; 
-  roomTypeNameCache: string; 
+  id: string;
+  roomTypeDefinitionId: string;
+  roomTypeNameCache: string;
   numRooms: number;
   assignedTravelerIds: string[];
 }
 
 export interface HotelItem extends BaseItem {
   type: 'hotel';
-  checkoutDay: number; 
-  hotelDefinitionId: string; 
+  checkoutDay: number;
+  hotelDefinitionId: string;
   selectedRooms: SelectedHotelRoomConfiguration[];
 }
 
@@ -160,14 +164,14 @@ export interface DetailedSummaryItem {
   adultCost: number;
   childCost: number;
   totalCost: number;
-  occupancyDetails?: HotelOccupancyDetail[]; 
+  occupancyDetails?: HotelOccupancyDetail[];
 }
 
 export interface HotelOccupancyDetail {
   roomTypeName: string;
   numRooms: number;
   nights: number;
-  characteristics?: string; 
+  characteristics?: string;
   assignedTravelerLabels: string;
   totalRoomBlockCost: number;
 }
@@ -191,9 +195,9 @@ export interface ServicePriceItem {
   price2?: number; // For non-hotels, simple hotels, or default activity package
   currency: CurrencyCode;
   unitDescription: string;
-  notes?: string; 
+  notes?: string;
   maxPassengers?: number;
-  hotelDetails?: HotelDefinition; 
+  hotelDetails?: HotelDefinition;
   activityPackages?: ActivityPackageDefinition[]; // New field for activities
 }
 

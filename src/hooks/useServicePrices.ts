@@ -26,41 +26,41 @@ const DEFAULT_DEMO_SERVICE_PRICES: ServicePriceItem[] = [
 
   // == Bangkok - Activities ==
   {
-    id: generateGUID(), name: 'Grand Palace & Wat Phra Kaew Entrance', province: 'Bangkok', category: 'activity', 
+    id: generateGUID(), name: 'Grand Palace & Wat Phra Kaew Entrance', province: 'Bangkok', category: 'activity',
     unitDescription: 'per person', currency: 'THB',
     activityPackages: [
-      { id: generateGUID(), name: 'Standard Entrance', price1: 500, price2: 250, notes: 'Child price for under 120cm. Includes access to main temples.'}
+      { id: generateGUID(), name: 'Standard Entrance', price1: 500, price2: 250, notes: 'Child price for under 120cm. Includes access to main temples.', validityStartDate: '2024-01-01', validityEndDate: '2024-12-31' }
     ]
   },
   {
-    id: generateGUID(), name: 'Chao Phraya River Cruise', province: 'Bangkok', category: 'activity', 
+    id: generateGUID(), name: 'Chao Phraya River Cruise', province: 'Bangkok', category: 'activity',
     unitDescription: 'per person', currency: 'THB', notes: 'Various cruise options available on the Chao Phraya River.',
     activityPackages: [
-      { id: generateGUID(), name: 'Sunset Cruise (No Dinner)', price1: 800, price2: 600, notes: 'Enjoy sunset views. Drinks available for purchase.'},
-      { id: generateGUID(), name: 'Dinner Cruise (International Buffet)', price1: 1800, price2: 1200, notes: 'Includes international buffet, live music.'},
-      { id: generateGUID(), name: 'Dinner Cruise (Indian Buffet)', price1: 1600, price2: 1100, notes: 'Specialized Indian buffet, live music.'}
+      { id: generateGUID(), name: 'Sunset Cruise (No Dinner)', price1: 800, price2: 600, notes: 'Enjoy sunset views. Drinks available for purchase.', validityStartDate: '2024-01-01', validityEndDate: '2024-12-31', closedWeekdays: [1], specificClosedDates: ['2024-04-13', '2024-04-14', '2024-04-15']},
+      { id: generateGUID(), name: 'Dinner Cruise (International Buffet)', price1: 1800, price2: 1200, notes: 'Includes international buffet, live music.', validityStartDate: '2024-01-01', validityEndDate: '2024-12-31', specificClosedDates: ['2024-12-24', '2024-12-31'] },
+      { id: generateGUID(), name: 'Dinner Cruise (Indian Buffet)', price1: 1600, price2: 1100, notes: 'Specialized Indian buffet, live music.', validityStartDate: '2024-01-01', validityEndDate: '2024-12-31' }
     ]
   },
   {
     id: generateGUID(), name: 'Floating Markets Tour (Damnoen Saduak & Maeklong)', province: 'Bangkok', category: 'activity',
     unitDescription: 'per person (Half Day)', currency: 'THB',
     activityPackages: [
-      { id: generateGUID(), name: 'Guided Tour', price1: 1500, price2: 1000, notes: 'Includes transport, boat ride.'}
+      { id: generateGUID(), name: 'Guided Tour', price1: 1500, price2: 1000, notes: 'Includes transport, boat ride.', validityStartDate: '2024-01-01', validityEndDate: '2024-12-31', closedWeekdays: [2,4] } // Example: Closed Tue, Thu
     ]
   },
    {
     id: generateGUID(), name: 'Muay Thai Boxing Match (Rajadamnern Stadium)', province: 'Bangkok', category: 'activity',
     unitDescription: 'per person', currency: 'THB',
     activityPackages: [
-      { id: generateGUID(), name: 'Ringside Seat', price1: 2000, notes: 'Closest view to the action.'},
-      { id: generateGUID(), name: 'Standard Seat', price1: 1500, notes: 'Good view, further from the ring.'}
+      { id: generateGUID(), name: 'Ringside Seat', price1: 2000, notes: 'Closest view to the action.', validityStartDate: '2024-01-01', validityEndDate: '2024-12-31' },
+      { id: generateGUID(), name: 'Standard Seat', price1: 1500, notes: 'Good view, further from the ring.', validityStartDate: '2024-01-01', validityEndDate: '2024-12-31' }
     ]
   },
   {
     id: generateGUID(), name: 'Thai Cooking Class (Half Day)', province: 'Bangkok', category: 'activity',
     unitDescription: 'per person', currency: 'THB',
     activityPackages: [
-       { id: generateGUID(), name: 'Standard Class', price1: 1200, notes: 'Includes market tour and 4 dishes.'}
+       { id: generateGUID(), name: 'Standard Class', price1: 1200, notes: 'Includes market tour and 4 dishes.', validityStartDate: '2024-01-01', validityEndDate: '2024-12-31' }
     ]
   },
 
@@ -68,14 +68,14 @@ const DEFAULT_DEMO_SERVICE_PRICES: ServicePriceItem[] = [
   // == Bangkok - Hotels (using hotelDetails) ==
   {
     id: generateGUID(), name: 'Riverside Luxury Hotel', province: 'Bangkok', category: 'hotel', currency: 'THB', unitDescription: 'per night',
-    notes: '5-star, riverside location with excellent amenities and dining options.', 
+    notes: '5-star, riverside location with excellent amenities and dining options.',
     hotelDetails: {
       id: generateGUID(), name: 'Riverside Luxury Hotel', province: 'Bangkok',
       roomTypes: [
         {
           id: generateGUID(), name: 'Deluxe River View', extraBedAllowed: true,
           notes: 'Spacious 40sqm room with panoramic river views, king-size bed, Nespresso machine, and luxury toiletries. Ideal for couples.',
-          characteristics: [], 
+          characteristics: [],
           seasonalPrices: [
             { id: generateGUID(), startDate: '2024-11-01', endDate: '2025-02-28', rate: 6500, extraBedRate: 1200 },
             { id: generateGUID(), startDate: '2024-05-01', endDate: '2024-09-30', rate: 4000, extraBedRate: 800 }
@@ -173,15 +173,15 @@ const DEFAULT_DEMO_SERVICE_PRICES: ServicePriceItem[] = [
     id: generateGUID(), name: 'Sanctuary of Truth Entrance', province: 'Pattaya (Chonburi)', category: 'activity',
     unitDescription: 'per person', currency: 'THB',
     activityPackages: [
-      {id: generateGUID(), name: 'Standard Entry', price1: 500, price2: 250, notes: 'Access to all areas of the Sanctuary.'}
+      {id: generateGUID(), name: 'Standard Entry', price1: 500, price2: 250, notes: 'Access to all areas of the Sanctuary.', validityStartDate: '2024-01-01', validityEndDate: '2024-12-31' }
     ]
   },
   {
-    id: generateGUID(), name: 'Tiffany\'s Cabaret Show', province: 'Pattaya (Chonburi)', category: 'activity', 
+    id: generateGUID(), name: 'Tiffany\'s Cabaret Show', province: 'Pattaya (Chonburi)', category: 'activity',
     unitDescription: 'per person', currency: 'THB', notes: 'World-famous cabaret show.',
     activityPackages: [
-      {id: generateGUID(), name: 'VIP Seat', price1: 1200, price2: 1000, notes: 'Best view, central seating.'},
-      {id: generateGUID(), name: 'Standard Seat', price1: 900, price2: 700, notes: 'Good view, further back.'}
+      {id: generateGUID(), name: 'VIP Seat', price1: 1200, price2: 1000, notes: 'Best view, central seating.', validityStartDate: '2024-01-01', validityEndDate: '2024-12-31' },
+      {id: generateGUID(), name: 'Standard Seat', price1: 900, price2: 700, notes: 'Good view, further back.', validityStartDate: '2024-01-01', validityEndDate: '2024-12-31' }
     ]
   },
 
@@ -228,11 +228,11 @@ const DEFAULT_DEMO_SERVICE_PRICES: ServicePriceItem[] = [
     price1: 300, currency: 'THB', unitDescription: 'per vehicle', maxPassengers: 3
   },
   {
-    id: generateGUID(), name: 'Elephant Sanctuary Visit', province: 'Chiang Mai', category: 'activity', 
+    id: generateGUID(), name: 'Elephant Sanctuary Visit', province: 'Chiang Mai', category: 'activity',
     unitDescription: 'per person', currency: 'THB',
     activityPackages: [
-      {id: generateGUID(), name: 'Full Day Program', price1: 2500, price2: 1800, notes: 'Incl. lunch, feeding, bathing.'},
-      {id: generateGUID(), name: 'Half Day Morning Program', price1: 1700, price2: 1200, notes: 'Incl. feeding, short interaction.'}
+      {id: generateGUID(), name: 'Full Day Program', price1: 2500, price2: 1800, notes: 'Incl. lunch, feeding, bathing.', validityStartDate: '2024-01-01', validityEndDate: '2024-12-31' },
+      {id: generateGUID(), name: 'Half Day Morning Program', price1: 1700, price2: 1200, notes: 'Incl. feeding, short interaction.', validityStartDate: '2024-01-01', validityEndDate: '2024-12-31' }
     ]
   },
   {
@@ -278,14 +278,14 @@ export function useServicePrices() {
             const basicValid = p.id && p.name && p.category && p.currency;
             if (!basicValid) return false;
             if (p.category === 'hotel') {
-              const hd = p.hotelDetails as HotelDefinition | undefined; 
+              const hd = p.hotelDetails as HotelDefinition | undefined;
               return hd && hd.id && hd.name && Array.isArray(hd.roomTypes) &&
-                     hd.roomTypes.every(rt => rt.id && rt.name && Array.isArray(rt.seasonalPrices));
+                     hd.roomTypes.every((rt: any) => rt.id && rt.name && Array.isArray(rt.seasonalPrices));
             }
             if (p.category === 'activity') {
               // If activityPackages exists, it must be valid. Otherwise, price1 must exist.
               if (p.activityPackages) {
-                return Array.isArray(p.activityPackages) && p.activityPackages.every(ap => ap.id && ap.name && typeof ap.price1 === 'number');
+                return Array.isArray(p.activityPackages) && p.activityPackages.every((ap: any) => ap.id && ap.name && typeof ap.price1 === 'number');
               }
               return typeof p.price1 === 'number'; // For simple activities
             }
@@ -308,7 +308,7 @@ export function useServicePrices() {
       }
     } catch (error) {
       console.error("Failed to load or initialize service prices from localStorage:", error);
-      pricesToSet = DEFAULT_DEMO_SERVICE_PRICES; 
+      pricesToSet = DEFAULT_DEMO_SERVICE_PRICES;
       try {
         localStorage.setItem(SERVICE_PRICES_STORAGE_KEY, JSON.stringify(DEFAULT_DEMO_SERVICE_PRICES));
       } catch (saveError) {
