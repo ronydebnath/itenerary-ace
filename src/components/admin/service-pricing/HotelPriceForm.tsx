@@ -1,16 +1,15 @@
 
 "use client";
 
-import * BReact from 'react';
+import * as React from 'react';
 import { useForm, Controller, useFieldArray, useWatch } from "react-hook-form";
-import type * as z from "zod"; // Import z for type inference if needed elsewhere
 import { Button } from "@/components/ui/button";
 import {
   FormField,
   FormItem,
   FormLabel,
   FormControl,
-  FormMessage, // Import FormMessage
+  FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -21,15 +20,26 @@ import { PlusCircle, Trash2, XIcon } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Checkbox } from "@/components/ui/checkbox";
 import { generateGUID } from '@/lib/utils';
-import { addDays } from 'date-fns'; // Import addDays
+import { addDays, isValid, parseISO } from 'date-fns'; 
 
-// Assuming ServicePriceFormValues is defined in the parent ServicePriceFormRouter
 type ServicePriceFormValues = ReturnType<typeof useForm<any>>['control']['_defaultValues'];
 
 
 interface HotelPriceFormProps {
   form: ReturnType<typeof useForm<ServicePriceFormValues>>;
 }
+
+const createDefaultSeasonalPriceForForm = (): RoomTypeSeasonalPrice => {
+  const today = new Date();
+  const thirtyDaysFromToday = addDays(today, 30);
+  return {
+    id: generateGUID(),
+    startDate: today,
+    endDate: thirtyDaysFromToday,
+    rate: 0,
+    extraBedRate: undefined,
+  };
+};
 
 export function HotelPriceForm({ form }: HotelPriceFormProps) {
   const hotelNameForLegend = form.watch('name');
@@ -39,25 +49,39 @@ export function HotelPriceForm({ form }: HotelPriceFormProps) {
     control: form.control, name: "hotelDetails.roomTypes", keyName: "fieldId"
   });
 
-  // Ensure hotelDetails exists when category is hotel
   React.useEffect(() => {
-    if (form.getValues('category') === 'hotel' && !form.getValues('hotelDetails.roomTypes')) {
-        const today = new Date();
-        const thirtyDaysFromToday = addDays(today, 30);
-        form.setValue('hotelDetails.roomTypes', [{
+    const hotelDetails = form.getValues('hotelDetails');
+    if (form.getValues('category') === 'hotel') {
+      if (!hotelDetails || !Array.isArray(hotelDetails.roomTypes) || hotelDetails.roomTypes.length === 0) {
+        console.log("HotelPriceForm Effect: hotelDetails or roomTypes missing/empty, ensuring default structure.");
+        const defaultRoomType = {
             id: generateGUID(),
             name: 'Standard Room',
             extraBedAllowed: false,
             notes: '',
             characteristics: [],
-            seasonalPrices: [{
-                id: generateGUID(),
-                startDate: today, 
-                endDate: thirtyDaysFromToday,
-                rate: 0,
-                extraBedRate: undefined
-            }]
-        }], { shouldValidate: true });
+            seasonalPrices: [createDefaultSeasonalPriceForForm()]
+        };
+        // If hotelDetails itself is missing, we create the whole structure.
+        // Otherwise, we just ensure roomTypes has the default.
+        const newHotelDetails = hotelDetails 
+          ? { ...hotelDetails, roomTypes: [defaultRoomType] } 
+          : { 
+              id: generateGUID(), 
+              name: form.getValues('name') || "New Hotel", 
+              province: form.getValues('province') || "",
+              roomTypes: [defaultRoomType] 
+            };
+        form.setValue('hotelDetails.roomTypes', newHotelDetails.roomTypes, { shouldValidate: true, shouldDirty: true });
+      } else {
+        // Ensure each room type has at least one seasonal price
+        hotelDetails.roomTypes.forEach((rt: HotelRoomTypeDefinition, index: number) => {
+          if (!Array.isArray(rt.seasonalPrices) || rt.seasonalPrices.length === 0) {
+            console.log(`HotelPriceForm Effect: Room type "${rt.name}" missing seasonal prices, adding default.`);
+            form.setValue(`hotelDetails.roomTypes.${index}.seasonalPrices`, [createDefaultSeasonalPriceForForm()], { shouldValidate: true, shouldDirty: true });
+          }
+        });
+      }
     }
   }, [form.getValues('category'), form]);
 
@@ -86,34 +110,30 @@ export function HotelPriceForm({ form }: HotelPriceFormProps) {
                 className="mt-3 border-primary text-primary hover:bg-primary/10 add-btn" 
                 onClick={() => { 
                   const currentRoomSeasonalPrices = form.getValues(`hotelDetails.roomTypes.${roomIndex}.seasonalPrices`) || []; 
-                  const defaultStartDate = new Date();
-                  const defaultEndDate = addDays(defaultStartDate, 30);
                   form.setValue(`hotelDetails.roomTypes.${roomIndex}.seasonalPrices`, [
                     ...currentRoomSeasonalPrices, 
-                    { id: generateGUID(), startDate: defaultStartDate, endDate: defaultEndDate, rate: 0, extraBedRate: undefined }
+                    createDefaultSeasonalPriceForForm()
                   ], { shouldValidate: true }); 
                 }}
               > 
                 <PlusCircle className="mr-2 h-4 w-4" /> Add Season 
               </Button>
-              <FormMessage>{(form.formState.errors.hotelDetails?.roomTypes?.[roomIndex] as any)?.seasonalPrices?.message}</FormMessage>
+              <FormMessage>{(form.formState.errors.hotelDetails?.roomTypes?.[roomIndex]?.seasonalPrices as any)?.message || (form.formState.errors.hotelDetails?.roomTypes?.[roomIndex]?.seasonalPrices as any)?.root?.message}</FormMessage>
             </div>
           );
         })}
       </div>
       <Button type="button" variant="outline" onClick={() => {
-         const defaultStartDate = new Date();
-         const defaultEndDate = addDays(defaultStartDate, 30);
         appendRoomType({ 
           id: generateGUID(), 
           name: `Room Type ${roomTypeFields.length + 1}`, 
           extraBedAllowed: false, 
           notes: '', 
           characteristics: [], 
-          seasonalPrices: [{ id: generateGUID(), startDate: defaultStartDate, endDate: defaultEndDate, rate: 0, extraBedRate: undefined }] 
+          seasonalPrices: [createDefaultSeasonalPriceForForm()] 
         }, { shouldFocus: false })
       }} className="mt-4 border-accent text-accent hover:bg-accent/10 add-btn" > <PlusCircle className="mr-2 h-4 w-4" /> Add Room Type </Button>
-      <FormMessage>{(form.formState.errors.hotelDetails?.roomTypes as any)?.message}</FormMessage>
+      <FormMessage>{(form.formState.errors.hotelDetails?.roomTypes as any)?.message || (form.formState.errors.hotelDetails?.roomTypes as any)?.root?.message}</FormMessage>
       <FormMessage>{(form.formState.errors.hotelDetails as any)?.root?.message}</FormMessage>
     </div>
   );
@@ -127,7 +147,7 @@ interface SeasonalRatesTableProps {
 }
 
 function SeasonalRatesTable({ roomIndex, form, currency }: SeasonalRatesTableProps) {
-  const { fields, append, remove } = useFieldArray({ // `append` is not used here but kept for consistency
+  const { fields, append, remove } = useFieldArray({ 
     control: form.control,
     name: `hotelDetails.roomTypes.${roomIndex}.seasonalPrices`,
     keyName: "seasonFieldId"
@@ -138,21 +158,13 @@ function SeasonalRatesTable({ roomIndex, form, currency }: SeasonalRatesTablePro
     name: `hotelDetails.roomTypes.${roomIndex}.extraBedAllowed`,
   });
 
-  // Ensure at least one seasonal price exists
   React.useEffect(() => {
     if (fields.length === 0) {
-      const defaultStartDate = new Date();
-      const defaultEndDate = addDays(defaultStartDate, 30);
-      // Use `form.setValue` directly instead of `append` from useFieldArray here,
-      // as `append` might have its own default value logic that could conflict.
-      // Or ensure `append` can take full default object.
-      // For safety, direct setValue for initial setup:
-      form.setValue(`hotelDetails.roomTypes.${roomIndex}.seasonalPrices`,
-        [{ id: generateGUID(), startDate: defaultStartDate, endDate: defaultEndDate, rate: 0, extraBedRate: undefined }],
-        { shouldValidate: true }
-      );
+      console.log(`SeasonalRatesTable Effect: No seasonal prices for room ${roomIndex}, adding default.`);
+      // Correctly use append from useFieldArray to add the default structure
+      append(createDefaultSeasonalPriceForForm(), { shouldFocus: false });
     }
-  }, [fields.length, roomIndex, form]); // Removed `fields` from dependency array to avoid loop if form.setValue re-renders
+  }, [fields.length, roomIndex, append]);
 
 
   return (
@@ -192,8 +204,7 @@ function SeasonalRatesTable({ roomIndex, form, currency }: SeasonalRatesTablePro
           ))}
         </TableBody>
       </Table>
-      <FormMessage>{(form.formState.errors.hotelDetails?.roomTypes?.[roomIndex]?.seasonalPrices as any)?.message}</FormMessage>
+      <FormMessage>{(form.formState.errors.hotelDetails?.roomTypes?.[roomIndex]?.seasonalPrices as any)?.message || (form.formState.errors.hotelDetails?.roomTypes?.[roomIndex]?.seasonalPrices as any)?.root?.message}</FormMessage>
     </div>
   );
 }
-
