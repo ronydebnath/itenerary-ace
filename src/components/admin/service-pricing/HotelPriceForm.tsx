@@ -21,6 +21,7 @@ import { PlusCircle, Trash2, XIcon } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Checkbox } from "@/components/ui/checkbox";
 import { generateGUID } from '@/lib/utils';
+import { addDays } from 'date-fns'; // Import addDays
 
 // Assuming ServicePriceFormValues is defined in the parent ServicePriceFormRouter
 type ServicePriceFormValues = ReturnType<typeof useForm<any>>['control']['_defaultValues'];
@@ -42,7 +43,7 @@ export function HotelPriceForm({ form }: HotelPriceFormProps) {
   React.useEffect(() => {
     if (form.getValues('category') === 'hotel' && !form.getValues('hotelDetails.roomTypes')) {
         const today = new Date();
-        const thirtyDaysFromToday = new Date(today.setDate(today.getDate() + 30));
+        const thirtyDaysFromToday = addDays(today, 30);
         form.setValue('hotelDetails.roomTypes', [{
             id: generateGUID(),
             name: 'Standard Room',
@@ -51,8 +52,8 @@ export function HotelPriceForm({ form }: HotelPriceFormProps) {
             characteristics: [],
             seasonalPrices: [{
                 id: generateGUID(),
-                startDate: new Date(), // Initial valid start date
-                endDate: thirtyDaysFromToday, // Initial valid end date
+                startDate: today, 
+                endDate: thirtyDaysFromToday,
                 rate: 0,
                 extraBedRate: undefined
             }]
@@ -78,13 +79,40 @@ export function HotelPriceForm({ form }: HotelPriceFormProps) {
                 <FormField control={form.control} name={`hotelDetails.roomTypes.${roomIndex}.notes`} render={({ field }) => (<FormItem><FormLabel className="text-sm">Room Details (Size, Amenities, Bed Type, View, etc.)</FormLabel><FormControl><Textarea placeholder="Describe room features, size, bed configuration, view, key amenities..." {...field} value={field.value || ''} rows={3} /></FormControl><FormMessage /></FormItem>)} />
               </div>
               <SeasonalRatesTable roomIndex={roomIndex} form={form} currency={form.getValues('currency')} />
-              <Button type="button" variant="outline" size="sm" className="mt-3 border-primary text-primary hover:bg-primary/10 add-btn" onClick={() => { const currentRoomSeasonalPrices = form.getValues(`hotelDetails.roomTypes.${roomIndex}.seasonalPrices`) || []; form.setValue(`hotelDetails.roomTypes.${roomIndex}.seasonalPrices`, [...currentRoomSeasonalPrices, { id: generateGUID(), startDate: new Date(), endDate: new Date(new Date().setDate(new Date().getDate() + 30)), rate: 0, extraBedRate: undefined }], { shouldValidate: true }); }} > <PlusCircle className="mr-2 h-4 w-4" /> Add Season </Button>
+              <Button 
+                type="button" 
+                variant="outline" 
+                size="sm" 
+                className="mt-3 border-primary text-primary hover:bg-primary/10 add-btn" 
+                onClick={() => { 
+                  const currentRoomSeasonalPrices = form.getValues(`hotelDetails.roomTypes.${roomIndex}.seasonalPrices`) || []; 
+                  const defaultStartDate = new Date();
+                  const defaultEndDate = addDays(defaultStartDate, 30);
+                  form.setValue(`hotelDetails.roomTypes.${roomIndex}.seasonalPrices`, [
+                    ...currentRoomSeasonalPrices, 
+                    { id: generateGUID(), startDate: defaultStartDate, endDate: defaultEndDate, rate: 0, extraBedRate: undefined }
+                  ], { shouldValidate: true }); 
+                }}
+              > 
+                <PlusCircle className="mr-2 h-4 w-4" /> Add Season 
+              </Button>
               <FormMessage>{(form.formState.errors.hotelDetails?.roomTypes?.[roomIndex] as any)?.seasonalPrices?.message}</FormMessage>
             </div>
           );
         })}
       </div>
-      <Button type="button" variant="outline" onClick={() => appendRoomType({ id: generateGUID(), name: `Room Type ${roomTypeFields.length + 1}`, extraBedAllowed: false, notes: '', characteristics: [], seasonalPrices: [{ id: generateGUID(), startDate: new Date(), endDate: new Date(new Date().setDate(new Date().getDate() + 30)), rate: 0, extraBedRate: undefined }] }, { shouldFocus: false })} className="mt-4 border-accent text-accent hover:bg-accent/10 add-btn" > <PlusCircle className="mr-2 h-4 w-4" /> Add Room Type </Button>
+      <Button type="button" variant="outline" onClick={() => {
+         const defaultStartDate = new Date();
+         const defaultEndDate = addDays(defaultStartDate, 30);
+        appendRoomType({ 
+          id: generateGUID(), 
+          name: `Room Type ${roomTypeFields.length + 1}`, 
+          extraBedAllowed: false, 
+          notes: '', 
+          characteristics: [], 
+          seasonalPrices: [{ id: generateGUID(), startDate: defaultStartDate, endDate: defaultEndDate, rate: 0, extraBedRate: undefined }] 
+        }, { shouldFocus: false })
+      }} className="mt-4 border-accent text-accent hover:bg-accent/10 add-btn" > <PlusCircle className="mr-2 h-4 w-4" /> Add Room Type </Button>
       <FormMessage>{(form.formState.errors.hotelDetails?.roomTypes as any)?.message}</FormMessage>
       <FormMessage>{(form.formState.errors.hotelDetails as any)?.root?.message}</FormMessage>
     </div>
@@ -113,14 +141,18 @@ function SeasonalRatesTable({ roomIndex, form, currency }: SeasonalRatesTablePro
   // Ensure at least one seasonal price exists
   React.useEffect(() => {
     if (fields.length === 0) {
-      const today = new Date();
-      const thirtyDaysFromToday = new Date(today.setDate(today.getDate() + 30));
+      const defaultStartDate = new Date();
+      const defaultEndDate = addDays(defaultStartDate, 30);
+      // Use `form.setValue` directly instead of `append` from useFieldArray here,
+      // as `append` might have its own default value logic that could conflict.
+      // Or ensure `append` can take full default object.
+      // For safety, direct setValue for initial setup:
       form.setValue(`hotelDetails.roomTypes.${roomIndex}.seasonalPrices`,
-        [{ id: generateGUID(), startDate: new Date(), endDate: thirtyDaysFromToday, rate: 0, extraBedRate: undefined }],
+        [{ id: generateGUID(), startDate: defaultStartDate, endDate: defaultEndDate, rate: 0, extraBedRate: undefined }],
         { shouldValidate: true }
       );
     }
-  }, [fields, roomIndex, form]);
+  }, [fields.length, roomIndex, form]); // Removed `fields` from dependency array to avoid loop if form.setValue re-renders
 
 
   return (
