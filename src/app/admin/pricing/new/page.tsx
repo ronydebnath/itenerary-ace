@@ -30,21 +30,28 @@ export default function NewServicePricePage() {
         localStorage.removeItem(TEMP_PREFILL_DATA_KEY);
       }
     } catch (error) {
-      console.error("Error reading prefill data:", error);
+      console.error("Error reading prefill data:", error); // Log the specific error object
       toast({ title: "Error", description: "Could not load prefill data.", variant: "destructive" });
     }
+    console.log("Setting isLoading to false in useEffect");
     setIsLoading(false);
   }, [toast]);
 
   const handleFormSubmit = (data: Omit<ServicePriceItem, 'id'>) => {
+    console.log("handleFormSubmit called with data:", data);
     try {
       const storedPrices = localStorage.getItem(SERVICE_PRICES_STORAGE_KEY);
       const allPrices: ServicePriceItem[] = storedPrices ? JSON.parse(storedPrices) : [];
       
       const newServicePrice: ServicePriceItem = { ...data, id: generateGUID() };
       const updatedPrices = [...allPrices, newServicePrice];
+      console.log("Updated prices array before saving:", updatedPrices);
       
       localStorage.setItem(SERVICE_PRICES_STORAGE_KEY, JSON.stringify(updatedPrices));
+      
+      const pricesAfterSave = localStorage.getItem(SERVICE_PRICES_STORAGE_KEY);
+      console.log("Value in localStorage immediately after saving:", pricesAfterSave);
+      
       toast({ title: "Success", description: `Service price "${data.name}" added.` });
       router.push('/admin/pricing');
     } catch (error) {
@@ -52,7 +59,7 @@ export default function NewServicePricePage() {
       toast({ title: "Error", description: "Could not save new service price.", variant: "destructive" });
     }
   };
-
+  
   const handleCancel = () => {
     router.push('/admin/pricing');
   };
