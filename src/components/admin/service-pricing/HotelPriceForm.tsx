@@ -13,198 +13,112 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { DatePicker } from "@/components/ui/date-picker";
-import { Label } from "@/components/ui/label";
-import type { ServicePriceItem, CurrencyCode, HotelDefinition, HotelRoomTypeDefinition, RoomTypeSeasonalPrice } from '@/types/itinerary';
-import { PlusCircle, Trash2, XIcon } from 'lucide-react';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Checkbox } from "@/components/ui/checkbox";
-import { generateGUID } from '@/lib/utils';
-import { addDays, isValid, parseISO } from 'date-fns'; 
+import type { CurrencyCode, HotelRoomTypeDefinition, RoomTypeSeasonalPrice } from '@/types/itinerary'; // Removed ServicePriceItem, HotelDefinition
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Info } from 'lucide-react';
 
+// Re-import useForm type if needed for props, or use a more generic form type
 type ServicePriceFormValues = ReturnType<typeof useForm<any>>['control']['_defaultValues'];
-
 
 interface HotelPriceFormProps {
   form: ReturnType<typeof useForm<ServicePriceFormValues>>;
 }
 
-const createDefaultSeasonalPriceForForm = (): RoomTypeSeasonalPrice => {
-  const today = new Date();
-  const thirtyDaysFromToday = addDays(today, 30);
-  return {
-    id: generateGUID(),
-    startDate: today,
-    endDate: thirtyDaysFromToday,
-    rate: 0,
-    extraBedRate: undefined,
-  };
-};
-
 export function HotelPriceForm({ form }: HotelPriceFormProps) {
   const hotelNameForLegend = form.watch('name');
   const hotelProvinceForLegend = form.watch('province');
 
-  const { fields: roomTypeFields, append: appendRoomType, remove: removeRoomType } = useFieldArray({
-    control: form.control, name: "hotelDetails.roomTypes", keyName: "fieldId"
-  });
+  // This component will now be much simpler for the "reset"
+  // It will not manage dynamic room types or seasonal prices directly in the UI for *new* items.
+  // It will rely on the default structure created by ServicePriceFormRouter.
 
-  React.useEffect(() => {
-    const hotelDetails = form.getValues('hotelDetails');
-    if (form.getValues('category') === 'hotel') {
-      if (!hotelDetails || !Array.isArray(hotelDetails.roomTypes) || hotelDetails.roomTypes.length === 0) {
-        console.log("HotelPriceForm Effect: hotelDetails or roomTypes missing/empty, ensuring default structure.");
-        const defaultRoomType = {
-            id: generateGUID(),
-            name: 'Standard Room',
-            extraBedAllowed: false,
-            notes: '',
-            characteristics: [],
-            seasonalPrices: [createDefaultSeasonalPriceForForm()]
-        };
-        // If hotelDetails itself is missing, we create the whole structure.
-        // Otherwise, we just ensure roomTypes has the default.
-        const newHotelDetails = hotelDetails 
-          ? { ...hotelDetails, roomTypes: [defaultRoomType] } 
-          : { 
-              id: generateGUID(), 
-              name: form.getValues('name') || "New Hotel", 
-              province: form.getValues('province') || "",
-              roomTypes: [defaultRoomType] 
-            };
-        form.setValue('hotelDetails.roomTypes', newHotelDetails.roomTypes, { shouldValidate: true, shouldDirty: true });
-      } else {
-        // Ensure each room type has at least one seasonal price
-        hotelDetails.roomTypes.forEach((rt: HotelRoomTypeDefinition, index: number) => {
-          if (!Array.isArray(rt.seasonalPrices) || rt.seasonalPrices.length === 0) {
-            console.log(`HotelPriceForm Effect: Room type "${rt.name}" missing seasonal prices, adding default.`);
-            form.setValue(`hotelDetails.roomTypes.${index}.seasonalPrices`, [createDefaultSeasonalPriceForForm()], { shouldValidate: true, shouldDirty: true });
-          }
-        });
-      }
-    }
-  }, [form.getValues('category'), form]);
-
+  const hotelDetails = form.watch('hotelDetails');
+  const defaultRoomTypeName = hotelDetails?.roomTypes?.[0]?.name || "Default Room";
+  const defaultRate = hotelDetails?.roomTypes?.[0]?.seasonalPrices?.[0]?.rate;
+  const currency = form.watch('currency');
 
   return (
     <div className="border border-border rounded-md p-4 mt-6 relative">
-      <p className="text-sm font-semibold -mt-6 ml-2 px-1 bg-background inline-block absolute left-2 top-[-0.7rem] mb-4"> Room Types &amp; Nightly Rates for: {hotelNameForLegend || "Hotel"} {hotelProvinceForLegend && `(${hotelProvinceForLegend})`} </p>
-      <div id="roomTypesContainer" className="space-y-6 pt-2">
-        {roomTypeFields.map((roomField, roomIndex) => {
-          const roomTypeNameWatch = form.watch(`hotelDetails.roomTypes.${roomIndex}.name`);
-          const roomLegend = roomTypeNameWatch || `Room Type ${roomIndex + 1}`;
-          return (
-            <div key={roomField.fieldId} className="border border-border rounded-md p-4 pt-6 relative bg-card shadow-sm">
-              <p className="text-base font-medium -mt-6 ml-2 px-1 bg-card inline-block absolute left-2 top-[0.1rem] max-w-[calc(100%-3rem)] truncate"> {roomLegend} </p>
-              <Button type="button" variant="ghost" size="icon" onClick={() => roomTypeFields.length > 1 ? removeRoomType(roomIndex) : null} disabled={roomTypeFields.length <= 1} className="absolute top-1 right-1 h-7 w-7 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center text-sm hover:bg-destructive/80 disabled:opacity-50" aria-label="Remove Room Type" > <XIcon size={16} /> </Button>
-              <div className="space-y-3 pt-2">
-                <FormField control={form.control} name={`hotelDetails.roomTypes.${roomIndex}.name`} render={({ field }) => (<FormItem><FormLabel className="text-sm">Room Type Name</FormLabel><FormControl><Input placeholder="e.g., Deluxe Pool View" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                <FormField control={form.control} name={`hotelDetails.roomTypes.${roomIndex}.extraBedAllowed`} render={({ field }) => (<FormItem className="flex flex-row items-center space-x-2 space-y-0 pt-2"><FormControl><Checkbox checked={field.value} onCheckedChange={(checked) => { field.onChange(checked); if (!checked) { const seasons = form.getValues(`hotelDetails.roomTypes.${roomIndex}.seasonalPrices`); seasons.forEach((_: any, seasonIdx: number) => { form.setValue(`hotelDetails.roomTypes.${roomIndex}.seasonalPrices.${seasonIdx}.extraBedRate`, undefined, { shouldValidate: true }); }); } }} /></FormControl><FormLabel className="text-sm font-normal cursor-pointer"> Extra Bed Permitted for this Room Type? </FormLabel><FormMessage /></FormItem>)} />
-                <FormField control={form.control} name={`hotelDetails.roomTypes.${roomIndex}.notes`} render={({ field }) => (<FormItem><FormLabel className="text-sm">Room Details (Size, Amenities, Bed Type, View, etc.)</FormLabel><FormControl><Textarea placeholder="Describe room features, size, bed configuration, view, key amenities..." {...field} value={field.value || ''} rows={3} /></FormControl><FormMessage /></FormItem>)} />
-              </div>
-              <SeasonalRatesTable roomIndex={roomIndex} form={form} currency={form.getValues('currency')} />
-              <Button 
-                type="button" 
-                variant="outline" 
-                size="sm" 
-                className="mt-3 border-primary text-primary hover:bg-primary/10 add-btn" 
-                onClick={() => { 
-                  const currentRoomSeasonalPrices = form.getValues(`hotelDetails.roomTypes.${roomIndex}.seasonalPrices`) || []; 
-                  form.setValue(`hotelDetails.roomTypes.${roomIndex}.seasonalPrices`, [
-                    ...currentRoomSeasonalPrices, 
-                    createDefaultSeasonalPriceForForm()
-                  ], { shouldValidate: true }); 
-                }}
-              > 
-                <PlusCircle className="mr-2 h-4 w-4" /> Add Season 
-              </Button>
-              <FormMessage>{(form.formState.errors.hotelDetails?.roomTypes?.[roomIndex]?.seasonalPrices as any)?.message || (form.formState.errors.hotelDetails?.roomTypes?.[roomIndex]?.seasonalPrices as any)?.root?.message}</FormMessage>
-            </div>
-          );
-        })}
+      <p className="text-sm font-semibold -mt-6 ml-2 px-1 bg-background inline-block absolute left-2 top-[-0.7rem] mb-4">
+        Hotel Details for: {hotelNameForLegend || "Hotel"} {hotelProvinceForLegend && `(${hotelProvinceForLegend})`}
+      </p>
+      <div className="pt-2 space-y-3">
+        <Alert variant="default" className="bg-blue-50 border-blue-200">
+          <Info className="h-5 w-5 text-blue-600" />
+          <AlertTitle className="text-blue-700">Simplified Hotel Setup</AlertTitle>
+          <AlertDescription className="text-blue-600 text-xs">
+            For new hotel services, a single default room type ('{defaultRoomTypeName}') with a default seasonal rate
+            (approx. {currency} {defaultRate !== undefined ? defaultRate.toFixed(2) : '0.00'}) will be created.
+            <br />
+            You can add more room types and detailed seasonal pricing after saving by editing this service.
+          </AlertDescription>
+        </Alert>
+
+        {/* Display basic info from the default structure if needed, but no editing UI here */}
+        <FormField
+            control={form.control}
+            name="hotelDetails.name"
+            render={({ field }) => (
+                <FormItem className="hidden"> {/* Hidden, managed by top-level form name */}
+                <FormLabel>Internal Hotel Name</FormLabel>
+                <FormControl><Input {...field} readOnly /></FormControl>
+                <FormMessage />
+                </FormItem>
+            )}
+        />
+        <FormField
+            control={form.control}
+            name="hotelDetails.province"
+            render={({ field }) => (
+                <FormItem className="hidden"> {/* Hidden, managed by top-level form province */}
+                <FormLabel>Internal Hotel Province</FormLabel>
+                <FormControl><Input {...field} readOnly /></FormControl>
+                <FormMessage />
+                </FormItem>
+            )}
+        />
+         <FormField
+            control={form.control}
+            name="hotelDetails.roomTypes.0.name"
+            render={({ field }) => (
+                <FormItem className="hidden">
+                <FormLabel>Default Room Type Name (Auto)</FormLabel>
+                <FormControl><Input {...field} readOnly /></FormControl>
+                <FormMessage />
+                </FormItem>
+            )}
+        />
+         <FormField
+            control={form.control}
+            name="hotelDetails.roomTypes.0.seasonalPrices.0.rate"
+            render={({ field }) => (
+                <FormItem className="hidden">
+                <FormLabel>Default Room Rate (Auto)</FormLabel>
+                <FormControl><Input type="number" {...field} readOnly /></FormControl>
+                <FormMessage />
+                </FormItem>
+            )}
+        />
+
+
+        {/* Error display for the hotelDetails object itself, if Zod has issues with it */}
+        {(form.formState.errors.hotelDetails as any)?.message && (
+          <FormMessage className="mt-2 text-sm text-destructive">
+            Hotel Details Error: {(form.formState.errors.hotelDetails as any).message}
+          </FormMessage>
+        )}
+        {(form.formState.errors.hotelDetails?.root as any)?.message && (
+          <FormMessage className="mt-2 text-sm text-destructive">
+            Hotel Details Root Error: {(form.formState.errors.hotelDetails?.root as any).message}
+          </FormMessage>
+        )}
+         {(form.formState.errors.hotelDetails?.province as any)?.message && (
+          <FormMessage className="mt-2 text-sm text-destructive">
+            Hotel Province (within details) Error: {(form.formState.errors.hotelDetails?.province as any).message}
+          </FormMessage>
+        )}
+
       </div>
-      <Button type="button" variant="outline" onClick={() => {
-        appendRoomType({ 
-          id: generateGUID(), 
-          name: `Room Type ${roomTypeFields.length + 1}`, 
-          extraBedAllowed: false, 
-          notes: '', 
-          characteristics: [], 
-          seasonalPrices: [createDefaultSeasonalPriceForForm()] 
-        }, { shouldFocus: false })
-      }} className="mt-4 border-accent text-accent hover:bg-accent/10 add-btn" > <PlusCircle className="mr-2 h-4 w-4" /> Add Room Type </Button>
-      <FormMessage>{(form.formState.errors.hotelDetails?.roomTypes as any)?.message || (form.formState.errors.hotelDetails?.roomTypes as any)?.root?.message}</FormMessage>
-      <FormMessage>{(form.formState.errors.hotelDetails as any)?.root?.message}</FormMessage>
-    </div>
-  );
-}
-
-
-interface SeasonalRatesTableProps {
-  roomIndex: number;
-  form: ReturnType<typeof useForm<ServicePriceFormValues>>;
-  currency: CurrencyCode;
-}
-
-function SeasonalRatesTable({ roomIndex, form, currency }: SeasonalRatesTableProps) {
-  const { fields, append, remove } = useFieldArray({ 
-    control: form.control,
-    name: `hotelDetails.roomTypes.${roomIndex}.seasonalPrices`,
-    keyName: "seasonFieldId"
-  });
-
-  const roomExtraBedAllowed = useWatch({
-    control: form.control,
-    name: `hotelDetails.roomTypes.${roomIndex}.extraBedAllowed`,
-  });
-
-  React.useEffect(() => {
-    if (fields.length === 0) {
-      console.log(`SeasonalRatesTable Effect: No seasonal prices for room ${roomIndex}, adding default.`);
-      // Correctly use append from useFieldArray to add the default structure
-      append(createDefaultSeasonalPriceForForm(), { shouldFocus: false });
-    }
-  }, [fields.length, roomIndex, append]);
-
-
-  return (
-    <div className="space-y-1 mt-4">
-      <Label className="text-sm font-medium text-muted-foreground mb-1 block">Seasonal Pricing Periods</Label>
-      <Table className="mb-1 border">
-        <TableHeader className="bg-muted/30">
-          <TableRow>
-            <TableHead className="w-[140px] px-2 py-1 text-xs">Start Date</TableHead>
-            <TableHead className="w-[140px] px-2 py-1 text-xs">End Date</TableHead>
-            <TableHead className="w-[120px] px-2 py-1 text-xs">Rate ({currency})</TableHead>
-            {roomExtraBedAllowed && <TableHead className="w-[120px] px-2 py-1 text-xs">Extra Bed Rate</TableHead>}
-            <TableHead className="w-[40px] px-1 py-1 text-center text-xs">Del</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {fields.map((seasonField, seasonIndex) => (
-            <TableRow key={seasonField.seasonFieldId}>
-              <TableCell className="px-2 py-1">
-                <Controller control={form.control} name={`hotelDetails.roomTypes.${roomIndex}.seasonalPrices.${seasonIndex}.startDate`} render={({ field, fieldState: { error } }) => (<FormItem><FormControl><DatePicker date={field.value} onDateChange={field.onChange} placeholder="dd-MM-yy" /></FormControl><FormMessage className="text-xs">{error?.message}</FormMessage></FormItem>)} />
-              </TableCell>
-              <TableCell className="px-2 py-1">
-                <Controller control={form.control} name={`hotelDetails.roomTypes.${roomIndex}.seasonalPrices.${seasonIndex}.endDate`} render={({ field, fieldState: { error } }) => (<FormItem><FormControl><DatePicker date={field.value} onDateChange={field.onChange} minDate={form.getValues(`hotelDetails.roomTypes.${roomIndex}.seasonalPrices.${seasonIndex}.startDate`)} placeholder="dd-MM-yy" /></FormControl><FormMessage className="text-xs">{error?.message || (form.formState.errors.hotelDetails?.roomTypes?.[roomIndex]?.seasonalPrices?.[seasonIndex] as any)?.endDate?.message}</FormMessage></FormItem>)} />
-              </TableCell>
-              <TableCell className="px-2 py-1">
-                <FormField control={form.control} name={`hotelDetails.roomTypes.${roomIndex}.seasonalPrices.${seasonIndex}.rate`} render={({ field }) => (<FormItem><FormControl><Input type="number" placeholder="0.00" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || 0)} className="h-9 text-sm" /></FormControl><FormMessage className="text-xs" /></FormItem>)} />
-              </TableCell>
-              {roomExtraBedAllowed && (
-                <TableCell className="px-2 py-1">
-                  <FormField control={form.control} name={`hotelDetails.roomTypes.${roomIndex}.seasonalPrices.${seasonIndex}.extraBedRate`} render={({ field }) => (<FormItem><FormControl><Input type="number" placeholder="0.00" {...field} value={field.value ?? ''} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)} className="h-9 text-sm" /></FormControl><FormMessage className="text-xs" /></FormItem>)} />
-                </TableCell>
-              )}
-              <TableCell className="text-center px-1 py-1 align-middle">
-                <Button type="button" variant="ghost" size="icon" onClick={() => fields.length > 1 ? remove(seasonIndex) : null} disabled={fields.length <= 1} className="h-7 w-7 text-destructive hover:text-destructive/80 disabled:opacity-50 remove-season flex items-center justify-center" aria-label="Remove Season" > <XIcon size={18} /> </Button>
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-      <FormMessage>{(form.formState.errors.hotelDetails?.roomTypes?.[roomIndex]?.seasonalPrices as any)?.message || (form.formState.errors.hotelDetails?.roomTypes?.[roomIndex]?.seasonalPrices as any)?.root?.message}</FormMessage>
     </div>
   );
 }
