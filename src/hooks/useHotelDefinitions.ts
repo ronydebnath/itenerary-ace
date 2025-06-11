@@ -61,6 +61,41 @@ const DEFAULT_DEMO_HOTEL_DEFINITIONS: HotelDefinition[] = [
           { id: generateGUID(), key: "Size", value: "25 sqm" },
           { id: generateGUID(), key: "Bed", value: "Queen" }
         ]
+      },
+      {
+        id: "rt_bkk_uo_deluxe_balcony",
+        name: "Deluxe Balcony Room",
+        extraBedAllowed: true,
+        notes: "Room with private balcony, 30 sqm.",
+        seasonalPrices: [
+          { id: generateGUID(), seasonName: "Standard Rate", startDate: `${currentYear}-01-01`, endDate: `${currentYear}-12-31`, rate: 2200, extraBedRate: 700 }
+        ],
+        characteristics: [
+          { id: generateGUID(), key: "Size", value: "30 sqm" },
+          { id: generateGUID(), key: "Bed", value: "King" },
+          { id: generateGUID(), key: "Feature", value: "Private Balcony" }
+        ]
+      }
+    ]
+  },
+  {
+    id: "hd_bkk_sukhumvit_modern",
+    name: "Sukhumvit Modern Living",
+    province: "Bangkok",
+    roomTypes: [
+      {
+        id: "rt_bkk_sm_studio",
+        name: "Executive Studio",
+        extraBedAllowed: false,
+        notes: "Stylish studio with kitchenette, 40 sqm. Near BTS.",
+        seasonalPrices: [
+          { id: generateGUID(), seasonName: "All Year", startDate: `${currentYear}-01-01`, endDate: `${currentYear}-12-31`, rate: 2800 }
+        ],
+        characteristics: [
+          { id: generateGUID(), key: "Size", value: "40 sqm" },
+          { id: generateGUID(), key: "Bed", value: "King" },
+          { id: generateGUID(), key: "Feature", value: "Kitchenette, BTS Access" }
+        ]
       }
     ]
   },
@@ -117,6 +152,43 @@ const DEFAULT_DEMO_HOTEL_DEFINITIONS: HotelDefinition[] = [
           { id: generateGUID(), key: "Size", value: "22 sqm" },
           { id: generateGUID(), key: "Bed", value: "Double" },
           { id: generateGUID(), key: "View", value: "Partial Sea View" }
+        ]
+      },
+      {
+        id: "rt_pty_si_family",
+        name: "Family Room Garden Access",
+        extraBedAllowed: true,
+        notes: "Spacious room for families, direct garden access, 40 sqm.",
+        seasonalPrices: [
+          { id: generateGUID(), seasonName: "All Year", startDate: `${currentYear}-01-01`, endDate: `${currentYear}-12-31`, rate: 2800, extraBedRate: 500 }
+        ],
+        characteristics: [
+          { id: generateGUID(), key: "Size", value: "40 sqm" },
+          { id: generateGUID(), key: "Bed", value: "King + Bunk Bed" },
+          { id: generateGUID(), key: "Feature", value: "Direct Garden Access" }
+        ]
+      }
+    ]
+  },
+  {
+    id: "hd_pty_jpmtien_luxury",
+    name: "Jomtien Luxury Condotel",
+    province: "Pattaya",
+    roomTypes: [
+      {
+        id: "rt_pty_jl_one_bedroom",
+        name: "One Bedroom Seaview Condo",
+        extraBedAllowed: false,
+        notes: "Apartment-style with kitchen, living area, balcony, 55sqm.",
+        seasonalPrices: [
+          { id: generateGUID(), seasonName: "Monthly Rate (Low)", startDate: `${currentYear}-05-01`, endDate: `${currentYear}-10-31`, rate: 25000/30 }, // Example of deriving daily from monthly
+          { id: generateGUID(), seasonName: "Daily Rate (High)", startDate: `${currentYear}-11-01`, endDate: `${currentYear + 1}-04-30`, rate: 1800 }
+        ],
+        characteristics: [
+          { id: generateGUID(), key: "Size", value: "55 sqm" },
+          { id: generateGUID(), key: "Bed", value: "King" },
+          { id: generateGUID(), key: "View", value: "Seaview" },
+          { id: generateGUID(), key: "Features", value: "Kitchen, Living Area, Balcony, Pool Access" }
         ]
       }
     ]

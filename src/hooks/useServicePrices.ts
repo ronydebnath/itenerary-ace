@@ -30,6 +30,19 @@ const DEFAULT_DEMO_SERVICE_PRICES: ServicePriceItem[] = [
   },
   {
     id: generateGUID(),
+    name: "Bangkok Full Day Private Van with Driver (8 hours)",
+    province: "Bangkok",
+    category: "transfer",
+    transferMode: "vehicle",
+    vehicleOptions: [
+      { id: generateGUID(), vehicleType: "Van", price: 3500, maxPassengers: 8, notes: "Includes driver, fuel for city limits. Excludes tolls, entrance fees." }
+    ],
+    currency: "THB",
+    unitDescription: "per service (8 hours)",
+    notes: "Ideal for custom city tours or shopping trips."
+  },
+  {
+    id: generateGUID(),
     name: "Grand Palace & Temples Tour",
     province: "Bangkok",
     category: "activity",
