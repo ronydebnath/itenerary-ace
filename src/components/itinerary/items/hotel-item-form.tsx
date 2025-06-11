@@ -89,18 +89,21 @@ export function HotelItemForm({ item, travelers, currency, dayNumber, tripSettin
       numRooms: 1,
       assignedTravelerIds: [],
     };
-    onUpdate({ ...item, selectedRooms: [...item.selectedRooms, newRoomBooking] });
+    const currentSelectedRooms = item.selectedRooms || [];
+    onUpdate({ ...item, selectedRooms: [...currentSelectedRooms, newRoomBooking] });
   };
 
   const handleUpdateRoomBooking = (updatedBooking: SelectedHotelRoomConfiguration) => {
-    const newSelectedRooms = item.selectedRooms.map(rb => rb.id === updatedBooking.id ? updatedBooking : rb);
+    const currentSelectedRooms = item.selectedRooms || [];
+    const newSelectedRooms = currentSelectedRooms.map(rb => rb.id === updatedBooking.id ? updatedBooking : rb);
     onUpdate({ ...item, selectedRooms: newSelectedRooms });
   };
   
   const handleRoomTypeChangeForBooking = (bookingId: string, roomTypeDefinitionId: string) => {
     const roomTypeDef = selectedHotelDef?.roomTypes.find(rt => rt.id === roomTypeDefinitionId);
     if (roomTypeDef) {
-        const updatedBooking = item.selectedRooms.find(rb => rb.id === bookingId);
+        const currentSelectedRooms = item.selectedRooms || [];
+        const updatedBooking = currentSelectedRooms.find(rb => rb.id === bookingId);
         if (updatedBooking) {
             handleUpdateRoomBooking({ ...updatedBooking, roomTypeDefinitionId, roomTypeNameCache: roomTypeDef.name });
         }
@@ -109,14 +112,16 @@ export function HotelItemForm({ item, travelers, currency, dayNumber, tripSettin
 
   const handleNumRoomsChangeForBooking = (bookingId: string, numRoomsStr: string) => {
       const numRooms = parseInt(numRoomsStr, 10) || 1;
-      const updatedBooking = item.selectedRooms.find(rb => rb.id === bookingId);
+      const currentSelectedRooms = item.selectedRooms || [];
+      const updatedBooking = currentSelectedRooms.find(rb => rb.id === bookingId);
       if (updatedBooking) {
           handleUpdateRoomBooking({ ...updatedBooking, numRooms: Math.max(1, numRooms) });
       }
   };
 
   const handleDeleteRoomBooking = (bookingId: string) => {
-    const newSelectedRooms = item.selectedRooms.filter(rb => rb.id !== bookingId);
+    const currentSelectedRooms = item.selectedRooms || [];
+    const newSelectedRooms = currentSelectedRooms.filter(rb => rb.id !== bookingId);
     onUpdate({ ...item, selectedRooms: newSelectedRooms });
   };
   
@@ -125,7 +130,8 @@ export function HotelItemForm({ item, travelers, currency, dayNumber, tripSettin
   };
 
   const handleTravelerAssignmentChange = (bookingId: string, travelerId: string, checked: boolean) => {
-    const roomBooking = item.selectedRooms.find(rb => rb.id === bookingId);
+    const currentSelectedRooms = item.selectedRooms || [];
+    const roomBooking = currentSelectedRooms.find(rb => rb.id === bookingId);
     if (!roomBooking) return;
 
     let newAssignedTravelerIds;
@@ -138,6 +144,8 @@ export function HotelItemForm({ item, travelers, currency, dayNumber, tripSettin
   };
 
   const calculatedNights = Math.max(0, (item.checkoutDay || (dayNumber + 1)) - dayNumber);
+  const currentSelectedRoomsForRender = item.selectedRooms || [];
+
 
   return (
     <BaseItemForm item={item} travelers={travelers} currency={currency} onUpdate={onUpdate} onDelete={onDelete} itemTypeLabel="Hotel Stay">
@@ -199,11 +207,11 @@ export function HotelItemForm({ item, travelers, currency, dayNumber, tripSettin
             </Button>
           </div>
           
-          {item.selectedRooms.length === 0 && (
+          {currentSelectedRoomsForRender.length === 0 && (
               <p className="text-sm text-muted-foreground text-center py-4">No room types booked for this hotel yet. Click "Add Room Booking".</p>
           )}
 
-          {item.selectedRooms.map((roomBooking, index) => {
+          {currentSelectedRoomsForRender.map((roomBooking, index) => {
             const currentRoomTypeDef = selectedHotelDef.roomTypes.find(rt => rt.id === roomBooking.roomTypeDefinitionId);
             return (
             <Card key={roomBooking.id} className="bg-background/70 border border-primary/20 shadow-inner">
@@ -285,7 +293,7 @@ export function HotelItemForm({ item, travelers, currency, dayNumber, tripSettin
             </Card>
             );
           })}
-           {item.selectedRooms.length > 0 && (
+           {currentSelectedRoomsForRender.length > 0 && (
                 <p className="text-xs text-muted-foreground text-center pt-2">
                     Hotel costs are calculated night-by-night based on selected room types and seasonal rates defined in the hotel's master data.
                 </p>
@@ -303,3 +311,5 @@ export function HotelItemForm({ item, travelers, currency, dayNumber, tripSettin
     </BaseItemForm>
   );
 }
+
+    
