@@ -1,6 +1,6 @@
 
 import * as React from 'react';
-import type { ServicePriceItem, ItineraryItemType, CurrencyCode, HotelDefinition, ActivityPackageDefinition, SurchargePeriod, VehicleOption } from '@/types/itinerary';
+import type { ServicePriceItem, ItineraryItemType, CurrencyCode, HotelDefinition, ActivityPackageDefinition, SurchargePeriod, VehicleOption, RoomTypeSeasonalPrice, HotelRoomTypeDefinition } from '@/types/itinerary';
 import { generateGUID } from '@/lib/utils';
 
 const SERVICE_PRICES_STORAGE_KEY = 'itineraryAceServicePrices';
@@ -173,7 +173,7 @@ const demoHotelDefinitions: HotelDefinition[] = [
     ]
   },
   {
-    id: "hd_pty_jomtien_luxury", // Corrected ID from original file
+    id: "hd_pty_jomtien_luxury", 
     name: "Jomtien Luxury Condotel",
     province: "Pattaya",
     roomTypes: [
@@ -200,14 +200,22 @@ const demoHotelDefinitions: HotelDefinition[] = [
 const DEFAULT_DEMO_SERVICE_PRICES: ServicePriceItem[] = [
   // --- Hotel Services (Transformed from HotelDefinition) ---
   ...demoHotelDefinitions.map((hd): ServicePriceItem => ({
-    id: generateGUID(), // Unique ID for the ServicePriceItem
+    id: generateGUID(), 
     name: hd.name,
     province: hd.province,
     category: "hotel",
-    currency: "THB", // Assuming THB for demo hotels
+    currency: "THB", 
     unitDescription: "per night (dynamic rates)",
     notes: `This hotel, ${hd.name}, offers various room types with seasonal pricing.`,
-    hotelDetails: hd, // Embed the full HotelDefinition here
+    hotelDetails: hd, 
+    price1: undefined,
+    price2: undefined,
+    subCategory: undefined,
+    transferMode: undefined,
+    vehicleOptions: undefined,
+    maxPassengers: undefined,
+    activityPackages: undefined,
+    surchargePeriods: undefined,
   })),
 
   // --- Bangkok Services ---
@@ -405,36 +413,43 @@ export function useServicePrices() {
         const parsedPrices = JSON.parse(storedPricesString);
         if (Array.isArray(parsedPrices) && parsedPrices.length > 0) {
           const validatedPrices = parsedPrices.filter(p => {
-            const basicValid = p.id && p.name && p.category && p.currency;
+            const basicValid = p.id && p.name && p.category && p.currency && p.unitDescription;
             if (!basicValid) return false;
             
             if (p.category === 'hotel') {
               const hd = p.hotelDetails as HotelDefinition | undefined;
-              return hd && hd.id && hd.name && Array.isArray(hd.roomTypes) &&
-                     hd.roomTypes.every((rt: any) => rt.id && rt.name && Array.isArray(rt.seasonalPrices));
+              return hd && hd.id && hd.name && Array.isArray(hd.roomTypes) && hd.roomTypes.length > 0 &&
+                     hd.roomTypes.every((rt: HotelRoomTypeDefinition) => 
+                       rt.id && rt.name && 
+                       Array.isArray(rt.seasonalPrices) && rt.seasonalPrices.length > 0 &&
+                       rt.seasonalPrices.every((sp: RoomTypeSeasonalPrice) => 
+                         sp.id && 
+                         typeof sp.startDate === 'string' && 
+                         typeof sp.endDate === 'string' && 
+                         typeof sp.rate === 'number'
+                       )
+                     );
             }
             if (p.category === 'activity') {
-              if (p.activityPackages && p.activityPackages.length > 0) {
-                return Array.isArray(p.activityPackages) && p.activityPackages.every((ap: any) => ap.id && ap.name && typeof ap.price1 === 'number');
+              if (p.activityPackages && Array.isArray(p.activityPackages) && p.activityPackages.length > 0) {
+                return p.activityPackages.every((ap: ActivityPackageDefinition) => ap.id && ap.name && typeof ap.price1 === 'number');
               }
-              // Allow activities with just price1 if no packages
               return typeof p.price1 === 'number'; 
             }
             if (p.category === 'transfer') {
                 if (p.transferMode === 'vehicle') {
                     return Array.isArray(p.vehicleOptions) && p.vehicleOptions.length > 0 &&
-                           p.vehicleOptions.every((vo: any) => vo.id && vo.vehicleType && typeof vo.price === 'number' && typeof vo.maxPassengers === 'number');
+                           p.vehicleOptions.every((vo: VehicleOption) => vo.id && vo.vehicleType && typeof vo.price === 'number' && typeof vo.maxPassengers === 'number');
                 }
-                // For ticket transfers, price1 must exist
                 return typeof p.price1 === 'number'; 
             }
-            // For meal and misc, price1 must exist
             return typeof p.price1 === 'number'; 
           });
 
           if (validatedPrices.length > 0) {
             pricesToSet = validatedPrices;
           } else {
+            console.log("localStorage data invalid or empty after validation, re-seeding with demo data.");
             pricesToSet = DEFAULT_DEMO_SERVICE_PRICES; 
             if (DEFAULT_DEMO_SERVICE_PRICES.length > 0) {
                  localStorage.setItem(SERVICE_PRICES_STORAGE_KEY, JSON.stringify(DEFAULT_DEMO_SERVICE_PRICES));
@@ -443,6 +458,7 @@ export function useServicePrices() {
             }
           }
         } else {
+          console.log("localStorage data empty or not an array, re-seeding with demo data.");
           pricesToSet = DEFAULT_DEMO_SERVICE_PRICES;
           if (DEFAULT_DEMO_SERVICE_PRICES.length > 0) {
             localStorage.setItem(SERVICE_PRICES_STORAGE_KEY, JSON.stringify(DEFAULT_DEMO_SERVICE_PRICES));
@@ -451,6 +467,7 @@ export function useServicePrices() {
           }
         }
       } else {
+        console.log("No data in localStorage, seeding with demo data.");
         pricesToSet = DEFAULT_DEMO_SERVICE_PRICES;
         if (DEFAULT_DEMO_SERVICE_PRICES.length > 0) {
           localStorage.setItem(SERVICE_PRICES_STORAGE_KEY, JSON.stringify(DEFAULT_DEMO_SERVICE_PRICES));
@@ -498,5 +515,4 @@ export function useServicePrices() {
 
   return { isLoading, allServicePrices, getServicePrices, getServicePriceById };
 }
-
     
