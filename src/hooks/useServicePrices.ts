@@ -7,7 +7,209 @@ const SERVICE_PRICES_STORAGE_KEY = 'itineraryAceServicePrices';
 
 const currentYear = new Date().getFullYear();
 
+// Hotel definitions (copied from useHotelDefinitions.ts for embedding)
+const demoHotelDefinitions: HotelDefinition[] = [
+  {
+    id: "hd_bkk_grand_riverside",
+    name: "Grand Bangkok Riverside Hotel",
+    province: "Bangkok",
+    roomTypes: [
+      {
+        id: "rt_bkk_gr_deluxe_city",
+        name: "Deluxe City View",
+        extraBedAllowed: true,
+        notes: "Modern room with city views, 32 sqm.",
+        seasonalPrices: [
+          { id: generateGUID(), seasonName: "Low Season", startDate: `${currentYear}-05-01`, endDate: `${currentYear}-10-31`, rate: 2500, extraBedRate: 800 },
+          { id: generateGUID(), seasonName: "High Season", startDate: `${currentYear}-11-01`, endDate: `${currentYear + 1}-04-30`, rate: 3500, extraBedRate: 1000 }
+        ],
+        characteristics: [
+          { id: generateGUID(), key: "Size", value: "32 sqm" },
+          { id: generateGUID(), key: "Bed", value: "King or Twin" },
+          { id: generateGUID(), key: "View", value: "City" }
+        ]
+      },
+      {
+        id: "rt_bkk_gr_suite_river",
+        name: "River View Suite",
+        extraBedAllowed: false,
+        notes: "Spacious suite with panoramic river views, separate living area, 60 sqm.",
+        seasonalPrices: [
+          { id: generateGUID(), seasonName: "All Year", startDate: `${currentYear}-01-01`, endDate: `${currentYear}-12-31`, rate: 6000 }
+        ],
+        characteristics: [
+          { id: generateGUID(), key: "Size", value: "60 sqm" },
+          { id: generateGUID(), key: "Bed", value: "King" },
+          { id: generateGUID(), key: "View", value: "River (Panoramic)" },
+          { id: generateGUID(), key: "Features", value: "Separate Living Room, Bathtub" }
+        ]
+      }
+    ]
+  },
+  {
+    id: "hd_bkk_urban_oasis",
+    name: "Urban Oasis Boutique Hotel",
+    province: "Bangkok",
+    roomTypes: [
+      {
+        id: "rt_bkk_uo_superior",
+        name: "Superior Room",
+        extraBedAllowed: false,
+        notes: "Cozy room with essential amenities, 25 sqm.",
+        seasonalPrices: [
+          { id: generateGUID(), seasonName: "Standard Rate", startDate: `${currentYear}-01-01`, endDate: `${currentYear}-12-31`, rate: 1800 }
+        ],
+        characteristics: [
+          { id: generateGUID(), key: "Size", value: "25 sqm" },
+          { id: generateGUID(), key: "Bed", value: "Queen" }
+        ]
+      },
+      {
+        id: "rt_bkk_uo_deluxe_balcony",
+        name: "Deluxe Balcony Room",
+        extraBedAllowed: true,
+        notes: "Room with private balcony, 30 sqm.",
+        seasonalPrices: [
+          { id: generateGUID(), seasonName: "Standard Rate", startDate: `${currentYear}-01-01`, endDate: `${currentYear}-12-31`, rate: 2200, extraBedRate: 700 }
+        ],
+        characteristics: [
+          { id: generateGUID(), key: "Size", value: "30 sqm" },
+          { id: generateGUID(), key: "Bed", value: "King" },
+          { id: generateGUID(), key: "Feature", value: "Private Balcony" }
+        ]
+      }
+    ]
+  },
+  {
+    id: "hd_bkk_sukhumvit_modern",
+    name: "Sukhumvit Modern Living",
+    province: "Bangkok",
+    roomTypes: [
+      {
+        id: "rt_bkk_sm_studio",
+        name: "Executive Studio",
+        extraBedAllowed: false,
+        notes: "Stylish studio with kitchenette, 40 sqm. Near BTS.",
+        seasonalPrices: [
+          { id: generateGUID(), seasonName: "All Year", startDate: `${currentYear}-01-01`, endDate: `${currentYear}-12-31`, rate: 2800 }
+        ],
+        characteristics: [
+          { id: generateGUID(), key: "Size", value: "40 sqm" },
+          { id: generateGUID(), key: "Bed", value: "King" },
+          { id: generateGUID(), key: "Feature", value: "Kitchenette, BTS Access" }
+        ]
+      }
+    ]
+  },
+  {
+    id: "hd_pty_beach_resort",
+    name: "Pattaya Beach Resort & Spa",
+    province: "Pattaya",
+    roomTypes: [
+      {
+        id: "rt_pty_br_garden_view",
+        name: "Superior Garden View",
+        extraBedAllowed: true,
+        notes: "Comfortable room overlooking lush gardens, 28 sqm.",
+        seasonalPrices: [
+          { id: generateGUID(), seasonName: "Standard Rate", startDate: `${currentYear}-01-01`, endDate: `${currentYear}-12-31`, rate: 2000, extraBedRate: 600 }
+        ],
+        characteristics: [
+          { id: generateGUID(), key: "Size", value: "28 sqm" },
+          { id: generateGUID(), key: "Bed", value: "King or Twin" },
+          { id: generateGUID(), key: "View", value: "Garden" }
+        ]
+      },
+      {
+        id: "rt_pty_br_oceanfront_dlx",
+        name: "Oceanfront Deluxe",
+        extraBedAllowed: false,
+        notes: "Stunning ocean views from private balcony, 35 sqm.",
+        seasonalPrices: [
+          { id: generateGUID(), seasonName: "Peak Season", startDate: `${currentYear}-11-01`, endDate: `${currentYear + 1}-03-31`, rate: 4000 },
+          { id: generateGUID(), seasonName: "Regular Season", startDate: `${currentYear}-04-01`, endDate: `${currentYear}-10-31`, rate: 3200 }
+        ],
+        characteristics: [
+          { id: generateGUID(), key: "Size", value: "35 sqm" },
+          { id: generateGUID(), key: "Bed", value: "King" },
+          { id: generateGUID(), key: "View", value: "Oceanfront with Balcony" }
+        ]
+      }
+    ]
+  },
+  {
+    id: "hd_pty_seaview_inn",
+    name: "Seaview Inn Pattaya",
+    province: "Pattaya",
+    roomTypes: [
+      {
+        id: "rt_pty_si_standard",
+        name: "Standard Seaview",
+        extraBedAllowed: false,
+        notes: "Budget-friendly room with partial sea view, 22 sqm.",
+        seasonalPrices: [
+          { id: generateGUID(), seasonName: "All Year", startDate: `${currentYear}-01-01`, endDate: `${currentYear}-12-31`, rate: 1500 }
+        ],
+        characteristics: [
+          { id: generateGUID(), key: "Size", value: "22 sqm" },
+          { id: generateGUID(), key: "Bed", value: "Double" },
+          { id: generateGUID(), key: "View", value: "Partial Sea View" }
+        ]
+      },
+      {
+        id: "rt_pty_si_family",
+        name: "Family Room Garden Access",
+        extraBedAllowed: true,
+        notes: "Spacious room for families, direct garden access, 40 sqm.",
+        seasonalPrices: [
+          { id: generateGUID(), seasonName: "All Year", startDate: `${currentYear}-01-01`, endDate: `${currentYear}-12-31`, rate: 2800, extraBedRate: 500 }
+        ],
+        characteristics: [
+          { id: generateGUID(), key: "Size", value: "40 sqm" },
+          { id: generateGUID(), key: "Bed", value: "King + Bunk Bed" },
+          { id: generateGUID(), key: "Feature", value: "Direct Garden Access" }
+        ]
+      }
+    ]
+  },
+  {
+    id: "hd_pty_jomtien_luxury", // Corrected ID from original file
+    name: "Jomtien Luxury Condotel",
+    province: "Pattaya",
+    roomTypes: [
+      {
+        id: "rt_pty_jl_one_bedroom",
+        name: "One Bedroom Seaview Condo",
+        extraBedAllowed: false,
+        notes: "Apartment-style with kitchen, living area, balcony, 55sqm.",
+        seasonalPrices: [
+          { id: generateGUID(), seasonName: "Monthly Rate (Low)", startDate: `${currentYear}-05-01`, endDate: `${currentYear}-10-31`, rate: Math.round(25000/30) },
+          { id: generateGUID(), seasonName: "Daily Rate (High)", startDate: `${currentYear}-11-01`, endDate: `${currentYear + 1}-04-30`, rate: 1800 }
+        ],
+        characteristics: [
+          { id: generateGUID(), key: "Size", value: "55 sqm" },
+          { id: generateGUID(), key: "Bed", value: "King" },
+          { id: generateGUID(), key: "View", value: "Seaview" },
+          { id: generateGUID(), key: "Features", value: "Kitchen, Living Area, Balcony, Pool Access" }
+        ]
+      }
+    ]
+  }
+];
+
 const DEFAULT_DEMO_SERVICE_PRICES: ServicePriceItem[] = [
+  // --- Hotel Services (Transformed from HotelDefinition) ---
+  ...demoHotelDefinitions.map((hd): ServicePriceItem => ({
+    id: generateGUID(), // Unique ID for the ServicePriceItem
+    name: hd.name,
+    province: hd.province,
+    category: "hotel",
+    currency: "THB", // Assuming THB for demo hotels
+    unitDescription: "per night (dynamic rates)",
+    notes: `This hotel, ${hd.name}, offers various room types with seasonal pricing.`,
+    hotelDetails: hd, // Embed the full HotelDefinition here
+  })),
+
   // --- Bangkok Services ---
   {
     id: generateGUID(),
@@ -59,7 +261,7 @@ const DEFAULT_DEMO_SERVICE_PRICES: ServicePriceItem[] = [
     name: "Chao Phraya River Dinner Cruise",
     province: "Bangkok",
     category: "activity",
-    price1: 1800, // Simple pricing if no packages
+    price1: 1800, 
     price2: 1200,
     currency: "THB",
     unitDescription: "per person",
@@ -94,7 +296,7 @@ const DEFAULT_DEMO_SERVICE_PRICES: ServicePriceItem[] = [
   {
     id: generateGUID(),
     name: "Bangkok Hotel to Pattaya Hotel",
-    province: "Bangkok", // Route starts in BKK, destination is PTY
+    province: "Bangkok", 
     category: "transfer",
     transferMode: "vehicle",
     vehicleOptions: [
@@ -108,7 +310,7 @@ const DEFAULT_DEMO_SERVICE_PRICES: ServicePriceItem[] = [
   {
     id: generateGUID(),
     name: "Pattaya Hotel to BKK Airport",
-    province: "Pattaya", // Route starts in PTY
+    province: "Pattaya", 
     category: "transfer",
     transferMode: "vehicle",
     vehicleOptions: [
@@ -171,7 +373,7 @@ const DEFAULT_DEMO_SERVICE_PRICES: ServicePriceItem[] = [
   {
     id: generateGUID(),
     name: "Basic Travel Insurance",
-    category: "misc", // No province needed, applies generally
+    category: "misc", 
     price1: 500,
     subCategory: "Insurance Fee",
     currency: "THB",
@@ -215,6 +417,7 @@ export function useServicePrices() {
               if (p.activityPackages && p.activityPackages.length > 0) {
                 return Array.isArray(p.activityPackages) && p.activityPackages.every((ap: any) => ap.id && ap.name && typeof ap.price1 === 'number');
               }
+              // Allow activities with just price1 if no packages
               return typeof p.price1 === 'number'; 
             }
             if (p.category === 'transfer') {
@@ -222,8 +425,10 @@ export function useServicePrices() {
                     return Array.isArray(p.vehicleOptions) && p.vehicleOptions.length > 0 &&
                            p.vehicleOptions.every((vo: any) => vo.id && vo.vehicleType && typeof vo.price === 'number' && typeof vo.maxPassengers === 'number');
                 }
+                // For ticket transfers, price1 must exist
                 return typeof p.price1 === 'number'; 
             }
+            // For meal and misc, price1 must exist
             return typeof p.price1 === 'number'; 
           });
 
@@ -275,7 +480,7 @@ export function useServicePrices() {
       if (category) {
         filtered = filtered.filter(service => service.category === category);
       }
-      if (subCategory && category !== 'transfer') { 
+      if (subCategory && category !== 'transfer' && category !== 'hotel' && category !== 'activity') { 
           filtered = filtered.filter(service => service.subCategory === subCategory);
       }
       return filtered;
@@ -294,3 +499,4 @@ export function useServicePrices() {
   return { isLoading, allServicePrices, getServicePrices, getServicePriceById };
 }
 
+    
