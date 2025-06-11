@@ -27,7 +27,6 @@ export const VEHICLE_TYPES = [
 ] as const;
 export type VehicleType = typeof VEHICLE_TYPES[number];
 
-
 export interface BaseItem {
   id: string;
   day: number;
@@ -40,14 +39,25 @@ export interface BaseItem {
   province?: string;
 }
 
+export interface VehicleOption {
+  id: string;
+  vehicleType: VehicleType;
+  price: number;
+  maxPassengers: number;
+  notes?: string;
+}
+
 export interface TransferItem extends BaseItem {
   type: 'transfer';
   mode: 'ticket' | 'vehicle';
+  // Fields for ticket mode
   adultTicketPrice?: number;
   childTicketPrice?: number;
-  vehicleType?: VehicleType;
-  costPerVehicle?: number;
-  vehicles?: number;
+  // Fields for vehicle mode (populated from selectedVehicleOptionId)
+  vehicleType?: VehicleType; // Derived from selected VehicleOption
+  costPerVehicle?: number; // Derived from selected VehicleOption price
+  vehicles?: number; // Number of this specific vehicle booked
+  selectedVehicleOptionId?: string; // ID of the chosen VehicleOption from ServicePriceItem
 }
 
 // New Activity Package Definition
@@ -195,19 +205,27 @@ export interface SurchargePeriod {
 
 export interface ServicePriceItem {
   id: string;
-  name: string;
+  name: string; // For transfers, this is the Route Name (e.g., "Airport to City Hotel")
   province?: string;
   category: ItineraryItemType;
-  subCategory?: string; // For non-hotels or simple hotel representation
-  price1?: number; // For non-hotels, simple hotels, or default activity package
-  price2?: number; // For non-hotels, simple hotels, or default activity package
+  
+  // Fields for 'ticket' transfers OR non-transfer services
+  price1?: number; 
+  price2?: number; 
+  subCategory?: string; // For meal type, misc sub-type, or 'ticket' for ticket transfers
+  
+  // Fields for 'vehicle' transfers
+  transferMode?: 'ticket' | 'vehicle'; // Specific to transfer category
+  vehicleOptions?: VehicleOption[];   // Specific to vehicle transfers
+  maxPassengers?: number; // Top-level maxPassengers, less relevant if vehicleOptions exist
+
   currency: CurrencyCode;
   unitDescription: string;
   notes?: string;
-  maxPassengers?: number;
+  
   hotelDetails?: HotelDefinition;
-  activityPackages?: ActivityPackageDefinition[]; // New field for activities
-  surchargePeriods?: SurchargePeriod[]; // For vehicle-based transfer surcharges
+  activityPackages?: ActivityPackageDefinition[]; 
+  surchargePeriods?: SurchargePeriod[]; 
 }
 
 export interface ProvinceItem {
@@ -216,4 +234,3 @@ export interface ProvinceItem {
 }
 
 export type SchedulingData = Pick<ActivityPackageDefinition, 'validityStartDate' | 'validityEndDate' | 'closedWeekdays' | 'specificClosedDates'>;
-

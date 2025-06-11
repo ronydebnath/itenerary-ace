@@ -1,6 +1,6 @@
 
 import * as React from 'react';
-import type { ServicePriceItem, ItineraryItemType, CurrencyCode, HotelDefinition, ActivityPackageDefinition, SurchargePeriod } from '@/types/itinerary';
+import type { ServicePriceItem, ItineraryItemType, CurrencyCode, HotelDefinition, ActivityPackageDefinition, SurchargePeriod, VehicleOption } from '@/types/itinerary';
 import { generateGUID } from '@/lib/utils';
 
 const SERVICE_PRICES_STORAGE_KEY = 'itineraryAceServicePrices';
@@ -24,33 +24,38 @@ export function useServicePrices() {
           const validatedPrices = parsedPrices.filter(p => {
             const basicValid = p.id && p.name && p.category && p.currency;
             if (!basicValid) return false;
+            
             if (p.category === 'hotel') {
               const hd = p.hotelDetails as HotelDefinition | undefined;
               return hd && hd.id && hd.name && Array.isArray(hd.roomTypes) &&
                      hd.roomTypes.every((rt: any) => rt.id && rt.name && Array.isArray(rt.seasonalPrices));
             }
             if (p.category === 'activity') {
-              if (p.activityPackages) {
+              if (p.activityPackages && p.activityPackages.length > 0) {
                 return Array.isArray(p.activityPackages) && p.activityPackages.every((ap: any) => ap.id && ap.name && typeof ap.price1 === 'number');
               }
-              return typeof p.price1 === 'number'; 
+              return typeof p.price1 === 'number'; // For simple activities without packages
             }
-            // For transfers, ensure price1 is number. SurchargePeriods will be validated by Zod at form level.
             if (p.category === 'transfer') {
-                return typeof p.price1 === 'number';
+                if (p.transferMode === 'vehicle') {
+                    return Array.isArray(p.vehicleOptions) && p.vehicleOptions.length > 0 &&
+                           p.vehicleOptions.every((vo: any) => vo.id && vo.vehicleType && typeof vo.price === 'number' && typeof vo.maxPassengers === 'number');
+                }
+                // For ticket mode or if transferMode is somehow undefined (should default to ticket)
+                return typeof p.price1 === 'number'; 
             }
+            // For Meal, Misc
             return typeof p.price1 === 'number'; 
           });
 
           if (validatedPrices.length > 0) {
             pricesToSet = validatedPrices;
           } else {
-            // If stored data is invalid or empty after validation, use the (now empty) demo data
             pricesToSet = DEFAULT_DEMO_SERVICE_PRICES; 
-            if (DEFAULT_DEMO_SERVICE_PRICES.length > 0) { // Only save if demo data was meant to be there
+            if (DEFAULT_DEMO_SERVICE_PRICES.length > 0) {
                  localStorage.setItem(SERVICE_PRICES_STORAGE_KEY, JSON.stringify(DEFAULT_DEMO_SERVICE_PRICES));
             } else {
-                 localStorage.removeItem(SERVICE_PRICES_STORAGE_KEY); // Clear if no demo data either
+                 localStorage.removeItem(SERVICE_PRICES_STORAGE_KEY); 
             }
           }
         } else {
@@ -69,7 +74,7 @@ export function useServicePrices() {
       }
     } catch (error) {
       console.error("Failed to load or initialize service prices from localStorage:", error);
-      pricesToSet = DEFAULT_DEMO_SERVICE_PRICES; // Fallback to empty demo data
+      pricesToSet = DEFAULT_DEMO_SERVICE_PRICES; 
       if (DEFAULT_DEMO_SERVICE_PRICES.length > 0) {
         try {
           localStorage.setItem(SERVICE_PRICES_STORAGE_KEY, JSON.stringify(DEFAULT_DEMO_SERVICE_PRICES));
@@ -91,12 +96,8 @@ export function useServicePrices() {
       if (category) {
         filtered = filtered.filter(service => service.category === category);
       }
-      if (subCategory) {
-        if (category === 'transfer' && subCategory === 'vehicle') {
-          filtered = filtered.filter(service => service.subCategory !== 'ticket');
-        } else {
+      if (subCategory && category !== 'transfer') { // subCategory not generally used for filtering transfers with vehicleOptions
           filtered = filtered.filter(service => service.subCategory === subCategory);
-        }
       }
       return filtered;
     },

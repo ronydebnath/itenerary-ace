@@ -11,8 +11,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Edit, CalendarClock, Package, AlertTriangle, Info } from 'lucide-react';
-import type { ServicePriceItem, ItineraryItemType } from '@/types/itinerary';
+import { Edit, CalendarClock, Package, AlertTriangle, Info, Car } from 'lucide-react';
+import type { ServicePriceItem, ItineraryItemType, VehicleOption } from '@/types/itinerary';
 import { formatCurrency } from '@/lib/utils';
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -76,11 +76,32 @@ export function ServicePriceTable({ servicePrices, onEdit, onDeleteConfirmation,
         </TooltipProvider>
       );
     } else if (service.category === 'transfer') {
-      if (service.subCategory !== 'ticket') { // Vehicle transfer
-        displayDetail = `${service.subCategory || 'Vehicle'} ${service.maxPassengers ? `(Max: ${service.maxPassengers})` : ''}`;
-        displayUnit = service.unitDescription || 'per vehicle';
+      if (service.transferMode === 'vehicle' && service.vehicleOptions && service.vehicleOptions.length > 0) {
+        displayDetail = `${service.vehicleOptions.length} vehicle option(s)`;
+        displayUnit = service.unitDescription || 'per service';
+        let lowestVehiclePrice: number | undefined = undefined;
+        service.vehicleOptions.forEach(vo => {
+            if (lowestVehiclePrice === undefined || vo.price < lowestVehiclePrice) lowestVehiclePrice = vo.price;
+        });
+        displayPriceInfo = lowestVehiclePrice !== undefined ? `From ${formatCurrency(lowestVehiclePrice, service.currency)}` : 'See Options';
+         rateTooltipContent = (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Badge variant="outline" className="ml-2 cursor-default border-blue-500/50 text-blue-600">
+                    <Car className="h-3 w-3 mr-1" /> Multiple Vehicles
+                  </Badge>
+                </TooltipTrigger>
+                <TooltipContent>
+                    <p className="font-semibold mb-1">Vehicle Options:</p>
+                    {service.vehicleOptions.slice(0,3).map(vo => <li key={vo.id} className="text-xs">{vo.vehicleType}: {formatCurrency(vo.price, service.currency)} (Max: {vo.maxPassengers})</li>)}
+                    {service.vehicleOptions.length > 3 && <li className="text-xs italic">...and more options.</li>}
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          );
         if (service.surchargePeriods && service.surchargePeriods.length > 0) {
-          rateTooltipContent = (
+           const surchargeBadge = (
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -89,19 +110,17 @@ export function ServicePriceTable({ servicePrices, onEdit, onDeleteConfirmation,
                   </Badge>
                 </TooltipTrigger>
                 <TooltipContent>
-                  <p>This transfer has date-based surcharges.</p>
-                  <ul className="list-disc pl-4 mt-1 text-xs">
-                    {service.surchargePeriods.slice(0,3).map(sp => <li key={sp.id}>{sp.name}: +{formatCurrency(sp.surchargeAmount, service.currency)} ({format(new Date(sp.startDate), 'dd MMM')} - {format(new Date(sp.endDate), 'dd MMM')})</li>)}
-                    {service.surchargePeriods.length > 3 && <li>...and more</li>}
-                  </ul>
+                  <p>This transfer route has date-based surcharges.</p>
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
           );
+          rateTooltipContent = <>{rateTooltipContent}{surchargeBadge}</>;
         }
       } else { // Ticket transfer
         displayDetail = "Ticket Basis";
         displayUnit = service.unitDescription || 'per person';
+        displayPriceInfo = service.price1 !== undefined ? formatCurrency(service.price1, service.currency) : "N/A";
       }
     }
 
@@ -231,18 +250,51 @@ export function ServicePriceTable({ servicePrices, onEdit, onDeleteConfirmation,
   };
 
   const renderTransferRow = (service: ServicePriceItem) => {
-     const isVehicle = service.subCategory !== 'ticket';
-     const displayDetail = isVehicle ? `${service.subCategory || 'Vehicle'} ${service.maxPassengers ? `(Max: ${service.maxPassengers})` : ''}` : "Ticket Basis";
-     const baseRate = service.price1 !== undefined ? formatCurrency(service.price1, service.currency) : 'N/A';
+     const isVehicle = service.transferMode === 'vehicle';
+     let displayDetail = "Ticket Basis";
+     let baseRate = service.price1 !== undefined ? formatCurrency(service.price1, service.currency) : 'N/A';
+     let optionsIndicator: React.ReactNode = null;
+
+     if (isVehicle && service.vehicleOptions && service.vehicleOptions.length > 0) {
+        displayDetail = `${service.vehicleOptions.length} vehicle option(s)`;
+        let lowestPrice: number | undefined;
+        service.vehicleOptions.forEach(vo => {
+            if (lowestPrice === undefined || vo.price < lowestPrice) lowestPrice = vo.price;
+        });
+        baseRate = lowestPrice !== undefined ? `From ${formatCurrency(lowestPrice, service.currency)}` : "See Options";
+        optionsIndicator = (
+            <TooltipProvider>
+                <Tooltip>
+                <TooltipTrigger asChild>
+                    <Badge variant="outline" className="ml-2 cursor-default border-blue-500/50 text-blue-600">
+                        <Car className="h-3 w-3 mr-1" /> Options
+                    </Badge>
+                </TooltipTrigger>
+                <TooltipContent>
+                    <p className="font-semibold mb-1">Vehicle Options:</p>
+                    <ul className="list-none pl-1 text-xs">
+                    {service.vehicleOptions.slice(0,5).map(vo => <li key={vo.id}>{vo.vehicleType}: {formatCurrency(vo.price, service.currency)} (Max: {vo.maxPassengers})</li>)}
+                    {service.vehicleOptions.length > 5 && <li className="italic">...and more options.</li>}
+                    </ul>
+                </TooltipContent>
+                </Tooltip>
+            </TooltipProvider>
+        );
+     } else if (isVehicle) { // Vehicle mode but no options defined (should not happen with validation)
+        displayDetail = "Vehicle (No Options)";
+        baseRate = "N/A";
+     }
+
 
     return (
       <TableRow key={service.id}>
         <TableCell className="font-medium">{service.name}</TableCell>
         <TableCell>{service.province || 'N/A'}</TableCell>
-        <TableCell>{isVehicle ? 'Vehicle' : 'Ticket'}</TableCell>
+        <TableCell>{service.transferMode === 'vehicle' ? 'Vehicle' : 'Ticket'}</TableCell>
         <TableCell>{displayDetail}</TableCell>
         <TableCell className="text-right font-code">{baseRate}</TableCell>
         <TableCell>
+            {optionsIndicator}
             {isVehicle && service.surchargePeriods && service.surchargePeriods.length > 0 && (
                 <TooltipProvider>
                   <Tooltip>
@@ -263,7 +315,7 @@ export function ServicePriceTable({ servicePrices, onEdit, onDeleteConfirmation,
             )}
         </TableCell>
         <TableCell>{service.currency}</TableCell>
-        <TableCell>{service.unitDescription || (isVehicle ? 'per vehicle' : 'per person')}</TableCell>
+        <TableCell>{service.unitDescription || (isVehicle ? 'per service' : 'per person')}</TableCell>
         <TableCell className="text-xs max-w-xs truncate">{service.notes || 'N/A'}</TableCell>
         <TableCell className="text-center">
           <Button variant="ghost" size="icon" onClick={() => onEdit(service.id)} className="mr-2 text-primary hover:bg-primary/10">
@@ -334,12 +386,12 @@ export function ServicePriceTable({ servicePrices, onEdit, onDeleteConfirmation,
     case 'transfer':
       headers = (
         <TableRow>
-          <TableHead>Transfer Name</TableHead>
+          <TableHead>Route Name</TableHead>
           <TableHead>Province</TableHead>
           <TableHead>Mode</TableHead>
-          <TableHead>Vehicle/Ticket Detail</TableHead>
-          <TableHead className="text-right">Base Rate</TableHead>
-          <TableHead>Surcharges</TableHead>
+          <TableHead>Details</TableHead>
+          <TableHead className="text-right">Base Rate (From)</TableHead>
+          <TableHead>Info / Surcharges</TableHead>
           <TableHead>Currency</TableHead>
           <TableHead>Unit</TableHead>
           <TableHead>Notes</TableHead>
@@ -408,7 +460,7 @@ export function ServicePriceTable({ servicePrices, onEdit, onDeleteConfirmation,
         <TableBody>
           {servicePrices.length > 0 ? rows : (
             <TableRow>
-                <TableCell colSpan={9} className="text-center h-24 text-muted-foreground">
+                <TableCell colSpan={10} className="text-center h-24 text-muted-foreground">
                     No services to display for this category.
                 </TableCell>
             </TableRow>
@@ -418,4 +470,3 @@ export function ServicePriceTable({ servicePrices, onEdit, onDeleteConfirmation,
     </div>
   );
 }
-
