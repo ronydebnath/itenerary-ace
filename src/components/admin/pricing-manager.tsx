@@ -118,7 +118,7 @@ export function PricingManager() {
         category: extractedData.category || "misc",
         subCategory: extractedData.subCategory || "",
         currency: extractedData.currency || "THB",
-        unitDescription: extractedData.unitDescription || "",
+        unitDescription: extractedData.unitDescription || undefined, // Unit description now optional
         notes: extractedData.notes || "",
         maxPassengers: extractedData.maxPassengers,
       };

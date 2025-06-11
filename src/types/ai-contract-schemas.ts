@@ -25,7 +25,7 @@ export const AIContractDataOutputSchema = z.object({
   price1: z.number().optional().describe('Primary price (e.g., adult price, room rate, cost per vehicle).'),
   price2: z.number().optional().describe('Secondary price (e.g., child price, extra bed rate). Only if applicable and clearly distinct.'),
   currency: z.custom<CurrencyCode>(isValidCurrencyCode, "Invalid currency").optional().describe(`The currency code. Must be one of: ${CURRENCIES.join(', ')}`),
-  unitDescription: z.string().optional().describe('Description of what the price unit refers to (e.g., "per person", "per night", "per vehicle").'),
+  unitDescription: z.string().optional().describe('Description of what the price unit refers to (e.g., "per person", "per night", "per vehicle").'), // Made optional
   notes: z.string().optional().describe('Any additional notes or important details about the service.'),
   maxPassengers: z.number().int().min(1).optional().describe('Maximum number of passengers for vehicle transfers, if specified.'),
   transferModeAttempt: z.enum(['ticket', 'vehicle']).optional().describe('If the service is a transfer, attempt to identify if it is priced per ticket or per vehicle.'),

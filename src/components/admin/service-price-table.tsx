@@ -30,12 +30,12 @@ export function ServicePriceTable({ servicePrices, onEdit, onDeleteConfirmation,
   const renderAllModeRow = (service: ServicePriceItem) => {
     let displayDetail = service.subCategory || 'N/A';
     let displayPriceInfo = service.price1 !== undefined ? formatCurrency(service.price1, service.currency) : 'See Details';
-    let displayUnit = service.unitDescription || 'N/A';
+    // let displayUnit = service.unitDescription || 'N/A'; // Removed
     let rateTooltipContent: React.ReactNode = null;
 
     if (service.category === 'hotel' && service.hotelDetails && service.hotelDetails.roomTypes.length > 0) {
       displayDetail = `${service.hotelDetails.roomTypes.length} room type(s)`;
-      displayUnit = service.unitDescription || 'per night';
+      // displayUnit = service.unitDescription || 'per night'; // Removed
       let lowestRate: number | undefined = undefined;
       service.hotelDetails.roomTypes.forEach(rt => {
         rt.seasonalPrices.forEach(sp => {
@@ -57,7 +57,7 @@ export function ServicePriceTable({ servicePrices, onEdit, onDeleteConfirmation,
       );
     } else if (service.category === 'activity' && service.activityPackages && service.activityPackages.length > 0) {
       displayDetail = `${service.activityPackages.length} package(s)`;
-      displayUnit = service.unitDescription || 'per person';
+      // displayUnit = service.unitDescription || 'per person'; // Removed
       let lowestPackagePrice: number | undefined = undefined;
       service.activityPackages.forEach(pkg => {
         if (lowestPackagePrice === undefined || pkg.price1 < lowestPackagePrice) lowestPackagePrice = pkg.price1;
@@ -78,7 +78,7 @@ export function ServicePriceTable({ servicePrices, onEdit, onDeleteConfirmation,
     } else if (service.category === 'transfer') {
       if (service.transferMode === 'vehicle' && service.vehicleOptions && service.vehicleOptions.length > 0) {
         displayDetail = `${service.vehicleOptions.length} vehicle option(s)`;
-        displayUnit = service.unitDescription || 'per service';
+        // displayUnit = service.unitDescription || 'per service'; // Removed
         let lowestVehiclePrice: number | undefined = undefined;
         service.vehicleOptions.forEach(vo => {
             if (lowestVehiclePrice === undefined || vo.price < lowestVehiclePrice) lowestVehiclePrice = vo.price;
@@ -119,7 +119,7 @@ export function ServicePriceTable({ servicePrices, onEdit, onDeleteConfirmation,
         }
       } else { // Ticket transfer
         displayDetail = "Ticket Basis";
-        displayUnit = service.unitDescription || 'per person';
+        // displayUnit = service.unitDescription || 'per person'; // Removed
         displayPriceInfo = service.price1 !== undefined ? formatCurrency(service.price1, service.currency) : "N/A";
       }
     }
@@ -137,7 +137,7 @@ export function ServicePriceTable({ servicePrices, onEdit, onDeleteConfirmation,
           </div>
         </TableCell>
         <TableCell>{service.currency}</TableCell>
-        <TableCell>{displayUnit}</TableCell>
+        {/* <TableCell>{displayUnit}</TableCell> // Removed */}
         <TableCell className="text-xs max-w-xs truncate">{service.notes || 'N/A'}</TableCell>
         <TableCell className="text-center">
           <Button variant="ghost" size="icon" onClick={() => onEdit(service.id)} className="mr-2 text-primary hover:bg-primary/10">
@@ -190,7 +190,7 @@ export function ServicePriceTable({ servicePrices, onEdit, onDeleteConfirmation,
             )}
         </TableCell>
         <TableCell>{service.currency}</TableCell>
-        <TableCell>{service.unitDescription || 'per night'}</TableCell>
+        {/* <TableCell>{service.unitDescription || 'per night'}</TableCell> // Removed */}
         <TableCell className="text-xs max-w-xs truncate">{service.notes || 'N/A'}</TableCell>
         <TableCell className="text-center">
           <Button variant="ghost" size="icon" onClick={() => onEdit(service.id)} className="mr-2 text-primary hover:bg-primary/10">
@@ -237,7 +237,7 @@ export function ServicePriceTable({ servicePrices, onEdit, onDeleteConfirmation,
             )}
         </TableCell>
         <TableCell>{service.currency}</TableCell>
-        <TableCell>{service.unitDescription || 'per person'}</TableCell>
+        {/* <TableCell>{service.unitDescription || 'per person'}</TableCell> // Removed */}
         <TableCell className="text-xs max-w-xs truncate">{service.notes || 'N/A'}</TableCell>
         <TableCell className="text-center">
           <Button variant="ghost" size="icon" onClick={() => onEdit(service.id)} className="mr-2 text-primary hover:bg-primary/10">
@@ -315,7 +315,7 @@ export function ServicePriceTable({ servicePrices, onEdit, onDeleteConfirmation,
             )}
         </TableCell>
         <TableCell>{service.currency}</TableCell>
-        <TableCell>{service.unitDescription || (isVehicle ? 'per service' : 'per person')}</TableCell>
+        {/* <TableCell>{service.unitDescription || (isVehicle ? 'per service' : 'per person')}</TableCell> // Removed */}
         <TableCell className="text-xs max-w-xs truncate">{service.notes || 'N/A'}</TableCell>
         <TableCell className="text-center">
           <Button variant="ghost" size="icon" onClick={() => onEdit(service.id)} className="mr-2 text-primary hover:bg-primary/10">
@@ -335,7 +335,7 @@ export function ServicePriceTable({ servicePrices, onEdit, onDeleteConfirmation,
         <TableCell className="text-right font-code">{service.price1 !== undefined ? formatCurrency(service.price1, service.currency) : 'N/A'}</TableCell>
         <TableCell className="text-right font-code">{service.price2 !== undefined ? formatCurrency(service.price2, service.currency) : 'N/A'}</TableCell>
         <TableCell>{service.currency}</TableCell>
-        <TableCell>{service.unitDescription || 'per item'}</TableCell>
+        {/* <TableCell>{service.unitDescription || 'per item'}</TableCell> // Removed */}
         <TableCell className="text-xs max-w-xs truncate">{service.notes || 'N/A'}</TableCell>
         <TableCell className="text-center">
           <Button variant="ghost" size="icon" onClick={() => onEdit(service.id)} className="mr-2 text-primary hover:bg-primary/10">
@@ -360,7 +360,7 @@ export function ServicePriceTable({ servicePrices, onEdit, onDeleteConfirmation,
           <TableHead className="text-right">Base Rate (From)</TableHead>
           <TableHead>Pricing Model</TableHead>
           <TableHead>Currency</TableHead>
-          <TableHead>Unit</TableHead>
+          {/* <TableHead>Unit</TableHead> // Removed */}
           <TableHead>Notes</TableHead>
           <TableHead className="text-center">Actions</TableHead>
         </TableRow>
@@ -376,7 +376,7 @@ export function ServicePriceTable({ servicePrices, onEdit, onDeleteConfirmation,
           <TableHead className="text-right">Base Price (From)</TableHead>
           <TableHead>Pricing Model</TableHead>
           <TableHead>Currency</TableHead>
-          <TableHead>Unit</TableHead>
+          {/* <TableHead>Unit</TableHead> // Removed */}
           <TableHead>Notes</TableHead>
           <TableHead className="text-center">Actions</TableHead>
         </TableRow>
@@ -393,7 +393,7 @@ export function ServicePriceTable({ servicePrices, onEdit, onDeleteConfirmation,
           <TableHead className="text-right">Base Rate (From)</TableHead>
           <TableHead>Info / Surcharges</TableHead>
           <TableHead>Currency</TableHead>
-          <TableHead>Unit</TableHead>
+          {/* <TableHead>Unit</TableHead> // Removed */}
           <TableHead>Notes</TableHead>
           <TableHead className="text-center">Actions</TableHead>
         </TableRow>
@@ -409,7 +409,7 @@ export function ServicePriceTable({ servicePrices, onEdit, onDeleteConfirmation,
           <TableHead className="text-right">Adult Price</TableHead>
           <TableHead className="text-right">Child Price</TableHead>
           <TableHead>Currency</TableHead>
-          <TableHead>Unit</TableHead>
+          {/* <TableHead>Unit</TableHead> // Removed */}
           <TableHead>Notes</TableHead>
           <TableHead className="text-center">Actions</TableHead>
         </TableRow>
@@ -425,7 +425,7 @@ export function ServicePriceTable({ servicePrices, onEdit, onDeleteConfirmation,
           <TableHead className="text-right">Unit Cost</TableHead>
           <TableHead className="text-right">Secondary Cost</TableHead>
           <TableHead>Currency</TableHead>
-          <TableHead>Unit</TableHead>
+          {/* <TableHead>Unit</TableHead> // Removed */}
           <TableHead>Notes</TableHead>
           <TableHead className="text-center">Actions</TableHead>
         </TableRow>
@@ -442,7 +442,7 @@ export function ServicePriceTable({ servicePrices, onEdit, onDeleteConfirmation,
           <TableHead className="min-w-[150px]">Details / Packages</TableHead>
           <TableHead className="text-right min-w-[150px]">Base Rate / Info</TableHead>
           <TableHead>Currency</TableHead>
-          <TableHead>Unit</TableHead>
+          {/* <TableHead>Unit</TableHead> // Removed */}
           <TableHead className="min-w-[150px]">Notes</TableHead>
           <TableHead className="text-center w-[120px]">Actions</TableHead>
         </TableRow>
@@ -450,6 +450,8 @@ export function ServicePriceTable({ servicePrices, onEdit, onDeleteConfirmation,
       rows = servicePrices.map(renderAllModeRow);
       break;
   }
+  const colSpan = displayMode === 'all' ? 9 : (displayMode === 'transfer' ? 10 : 9) -1; // Adjusted colSpan due to removed unit column
+
 
   return (
     <div className="rounded-lg border shadow-sm overflow-hidden">
@@ -460,7 +462,7 @@ export function ServicePriceTable({ servicePrices, onEdit, onDeleteConfirmation,
         <TableBody>
           {servicePrices.length > 0 ? rows : (
             <TableRow>
-                <TableCell colSpan={10} className="text-center h-24 text-muted-foreground">
+                <TableCell colSpan={colSpan} className="text-center h-24 text-muted-foreground">
                     No services to display for this category.
                 </TableCell>
             </TableRow>

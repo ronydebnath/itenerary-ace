@@ -220,7 +220,7 @@ export interface ServicePriceItem {
   maxPassengers?: number; // Top-level maxPassengers, less relevant if vehicleOptions exist
 
   currency: CurrencyCode;
-  unitDescription: string;
+  unitDescription?: string; // Made optional
   notes?: string;
   
   hotelDetails?: HotelDefinition;

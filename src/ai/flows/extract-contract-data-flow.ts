@@ -52,7 +52,7 @@ export async function extractContractData(input: ExtractContractDataInput): Prom
     - price1: The primary price. For hotels, this is the **default/standard room rate per night** if explicitly mentioned. If seasonal rates cover all periods, this default rate might be omitted by you if not separately stated. For activities/meals, adult price. For transfers on ticket basis, adult ticket price. For transfers on vehicle basis, cost per vehicle.
     - price2: A secondary price if applicable. For hotels, default extra bed rate. For activities/meals, child price. For ticket transfers, child ticket price. Omit if not applicable.
     - currency: The currency code (e.g., "THB", "USD"). Must be one of ${CURRENCIES.join(', ')}.
-    - unitDescription: What the price refers to (e.g., "per night", "per person", "per vehicle", "per ticket").
+    - unitDescription: (Optional) What the price refers to (e.g., "per night", "per person", "per vehicle", "per ticket").
     - notes: Any important notes, terms, conditions, or inclusions/exclusions.
     - maxPassengers: For 'transfer' category with 'vehicle' mode, the maximum number of passengers the vehicle can hold.
     - transferModeAttempt: If category is 'transfer', attempt to infer if it's "ticket" basis or "vehicle" basis.

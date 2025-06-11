@@ -205,7 +205,7 @@ const DEFAULT_DEMO_SERVICE_PRICES: ServicePriceItem[] = [
     province: hd.province,
     category: "hotel",
     currency: "THB", 
-    unitDescription: "per night (dynamic rates)",
+    unitDescription: "per night", // Unit description now optional
     notes: `This hotel, ${hd.name}, offers various room types with seasonal pricing.`,
     hotelDetails: hd, 
     price1: undefined,
@@ -413,7 +413,7 @@ export function useServicePrices() {
         const parsedPrices = JSON.parse(storedPricesString);
         if (Array.isArray(parsedPrices) && parsedPrices.length > 0) {
           const validatedPrices = parsedPrices.filter(p => {
-            const basicValid = p.id && p.name && p.category && p.currency && p.unitDescription;
+            const basicValid = p.id && p.name && p.category && p.currency; // unitDescription no longer required
             if (!basicValid) return false;
             
             if (p.category === 'hotel') {

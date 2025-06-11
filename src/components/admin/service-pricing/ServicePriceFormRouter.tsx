@@ -102,7 +102,7 @@ const servicePriceSchema = z.object({
   price1: z.coerce.number().min(0, "Price must be non-negative").optional(),
   price2: z.coerce.number().min(0, "Price must be non-negative").optional(),
   currency: z.custom<CurrencyCode>((val) => CURRENCIES.includes(val as CurrencyCode), "Invalid currency"),
-  unitDescription: z.string().min(1, "Unit description is required"),
+  unitDescription: z.string().optional(), // Made optional
   notes: z.string().optional(),
   transferMode: z.enum(['ticket', 'vehicle']).optional(),
   vehicleOptions: z.array(vehicleOptionSchema).optional(),
@@ -197,6 +197,7 @@ const transformInitialDataToFormValues = (data?: Partial<ServicePriceItem>): Par
     province: data?.province || undefined,
     category: data?.category || defaultCategory,
     currency: data?.currency || defaultCurrency,
+    unitDescription: data?.unitDescription || undefined, // Unit description is now optional
     notes: data?.notes || "",
   };
   
@@ -212,7 +213,7 @@ const transformInitialDataToFormValues = (data?: Partial<ServicePriceItem>): Par
 
   if (!data || Object.keys(data).length === 0) {
     baseTransformed.category = defaultCategory; 
-    baseTransformed.unitDescription = 'per person'; 
+    // baseTransformed.unitDescription = 'per person'; // No longer setting default unit description
     baseTransformed.activityPackages = [{
         id: generateGUID(), name: 'Standard Package', price1: 0, price2: undefined, notes: '',
         validityStartDate: today.toISOString().split('T')[0],
@@ -222,16 +223,16 @@ const transformInitialDataToFormValues = (data?: Partial<ServicePriceItem>): Par
     return baseTransformed;
   }
 
-  baseTransformed.unitDescription = data.unitDescription || (() => {
-    switch(baseTransformed.category) {
-        case 'hotel': return 'per night';
-        case 'activity': return 'per person';
-        case 'transfer': return data.transferMode === 'vehicle' ? 'per service' : 'per person';
-        case 'meal': return 'per person';
-        case 'misc': return 'per item';
-        default: return 'per person';
-    }
-  })();
+  // baseTransformed.unitDescription = data.unitDescription || (() => { // No longer setting default unit description
+  //   switch(baseTransformed.category) {
+  //       case 'hotel': return 'per night';
+  //       case 'activity': return 'per person';
+  //       case 'transfer': return data.transferMode === 'vehicle' ? 'per service' : 'per person';
+  //       case 'meal': return 'per person';
+  //       case 'misc': return 'per item';
+  //       default: return 'per person';
+  //   }
+  // })();
 
   if (baseTransformed.category === 'hotel') {
     let roomTypes: HotelRoomTypeDefinition[] = [];
@@ -317,12 +318,10 @@ export function ServicePriceFormRouter({ initialData, onSubmit, onCancel }: Serv
     const today = new Date();
     const thirtyDaysFromToday = addDays(today, 30);
 
-    // More direct setValue for critical defaults and validation trigger
     const setValueAndValidate = (fieldName: keyof ServicePriceFormValues, newValue: any) => {
         form.setValue(fieldName, newValue, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
     };
 
-    // Reset fields not relevant to the current category
     if (currentCategoryValue !== 'hotel') setValueAndValidate('hotelDetails', undefined);
     if (currentCategoryValue !== 'activity') setValueAndValidate('activityPackages', undefined);
     if (currentCategoryValue !== 'transfer') {
@@ -335,8 +334,8 @@ export function ServicePriceFormRouter({ initialData, onSubmit, onCancel }: Serv
     if (currentCategoryValue === 'transfer' && form.getValues('transferMode') === 'ticket') {
         setValueAndValidate('maxPassengers', undefined); 
     }
+    // No longer setting unitDescription default here
 
-    // Set category-specific defaults
     if (currentCategoryValue === 'hotel') {
         const hotelDetails = form.getValues('hotelDetails');
         if (!hotelDetails || !hotelDetails.roomTypes || hotelDetails.roomTypes.length === 0 ||
@@ -363,16 +362,14 @@ export function ServicePriceFormRouter({ initialData, onSubmit, onCancel }: Serv
             setValueAndValidate('hotelDetails', newHotelDetails);
         }
         setValueAndValidate('price1', undefined); setValueAndValidate('price2', undefined); setValueAndValidate('subCategory', undefined);
-        setValueAndValidate('unitDescription', 'per night');
-        console.log("Set unitDescription for hotel:", form.getValues('unitDescription'));
+        // console.log("Category is hotel, unitDescription:", form.getValues('unitDescription')); // No longer setting unitDescription default
 
     } else if (currentCategoryValue === 'activity') {
         if (!form.getValues('activityPackages') || form.getValues('activityPackages')?.length === 0) {
           setValueAndValidate('activityPackages', [{ id: generateGUID(), name: 'Standard Package', price1: 0, price2: undefined, notes: '', validityStartDate: today.toISOString().split('T')[0], validityEndDate: thirtyDaysFromToday.toISOString().split('T')[0], closedWeekdays: [], specificClosedDates: [] }]);
         }
         setValueAndValidate('price1', undefined); setValueAndValidate('price2', undefined); setValueAndValidate('subCategory', undefined);
-        setValueAndValidate('unitDescription', 'per person');
-        console.log("Set unitDescription for activity:", form.getValues('unitDescription'));
+        // console.log("Category is activity, unitDescription:", form.getValues('unitDescription'));
 
     } else if (currentCategoryValue === 'transfer') {
         const currentTransferModeVal = form.getValues('transferMode');
@@ -384,22 +381,18 @@ export function ServicePriceFormRouter({ initialData, onSubmit, onCancel }: Serv
              if (!form.getValues('vehicleOptions') || form.getValues('vehicleOptions')?.length === 0) {
                 setValueAndValidate('vehicleOptions', [{ id: generateGUID(), vehicleType: VEHICLE_TYPES[0], price: 0, maxPassengers: 1, notes: ''}]);
              }
-             setValueAndValidate('unitDescription', 'per service');
         } else { 
              setValueAndValidate('vehicleOptions', undefined);
              setValueAndValidate('subCategory', 'ticket');
              if (form.getValues('price1') === undefined) setValueAndValidate('price1', 0);
-             setValueAndValidate('unitDescription', 'per person');
         }
-        console.log("Set unitDescription for transfer:", form.getValues('unitDescription'));
+        // console.log("Category is transfer, unitDescription:", form.getValues('unitDescription'));
     } else if (currentCategoryValue === 'meal'){
         if (form.getValues('price1') === undefined) setValueAndValidate('price1', 0);
-        setValueAndValidate('unitDescription', 'per person');
-        console.log("Set unitDescription for meal:", form.getValues('unitDescription'));
+        // console.log("Category is meal, unitDescription:", form.getValues('unitDescription'));
     } else if (currentCategoryValue === 'misc') {
         if (form.getValues('price1') === undefined) setValueAndValidate('price1', 0);
-        setValueAndValidate('unitDescription', 'per item');
-        console.log("Set unitDescription for misc:", form.getValues('unitDescription'));
+        // console.log("Category is misc, unitDescription:", form.getValues('unitDescription'));
     }
 
   }, [selectedCategory, watchedTransferMode, form, initialData?.hotelDetails?.id]);
