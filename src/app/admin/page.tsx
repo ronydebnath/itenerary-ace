@@ -1,10 +1,11 @@
+
 "use client";
 
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Cog, MapPinned, ListPlus, LayoutDashboard, ListOrdered, DollarSign, Users, BarChart3, Wand2, Route } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/utils'; // <<< Added this import
 
 interface DashboardCardProps {
   title: string;
@@ -57,7 +58,7 @@ export default function AdminDashboardPage() {
             title="Itinerary Creation Suite"
             description="Craft new itineraries, plan day-by-day activities, and calculate costs with our powerful planner."
             href="/planner"
-            icon={Route} 
+            icon={Route}
             buttonText="Launch Planner"
             className="lg:col-span-1 bg-accent/5 border-accent/30"
           />
@@ -93,7 +94,7 @@ export default function AdminDashboardPage() {
             buttonText="Describe Image"
             className="lg:col-span-1"
           />
-          
+
           {/* Example of a potential future card - you can uncomment and implement */}
           {/*
           <DashboardCard
