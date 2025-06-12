@@ -132,7 +132,7 @@ export function ItineraryPlanner({ tripData, onReset, onUpdateTripData }: Itiner
   const isLoadingAnything = isLoadingServices || isLoadingHotelDefinitions;
 
   return (
-    <div className="container mx-auto p-4 md:p-6 lg:p-8">
+    <div className="w-full max-w-[1600px] mx-auto p-4 md:p-6 lg:p-8">
       <Card className="mb-6 shadow-lg">
         <CardHeader className="bg-primary/10">
           <div className="flex justify-between items-center">
@@ -188,15 +188,15 @@ export function ItineraryPlanner({ tripData, onReset, onUpdateTripData }: Itiner
         </Button>
       </div>
       
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        <div className="lg:col-span-8">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 min-h-[60vh]">
+        <div className="lg:col-span-8 flex flex-col"> {/* Removed h-full */}
           {isLoadingAnything ? (
-            <div className="flex flex-col items-center justify-center p-10 min-h-[300px] bg-card rounded-lg shadow-sm border">
+            <div className="flex flex-col items-center justify-center p-10 min-h-[300px] bg-card rounded-lg shadow-sm border flex-grow">
                 <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
                 <p className="text-muted-foreground">Loading itinerary data and service definitions...</p>
             </div>
           ) : (
-            <ScrollArea className="h-auto lg:h-[calc(100vh-280px)] pr-2">
+            <ScrollArea className="flex-1 pr-2"> {/* Changed from h-full */}
               {Array.from({ length: tripData.settings.numDays }, (_, i) => i + 1).map(dayNum => (
                 <div key={dayNum} style={{ display: dayNum === currentDayView ? 'block' : 'none' }}>
                   <DayView
@@ -217,17 +217,17 @@ export function ItineraryPlanner({ tripData, onReset, onUpdateTripData }: Itiner
           )}
         </div>
 
-        <div className="lg:col-span-4 space-y-6">
+        <div className="lg:col-span-4 flex flex-col space-y-6"> {/* Ensure this column can also define its height naturally or fill if needed */}
           <AISuggestions 
             tripData={tripData} 
             onApplySuggestion={(modifiedTripData) => onUpdateTripData(modifiedTripData)} 
             showCosts={showCosts}
           />
-          <Card className="shadow-lg">
+          <Card className="shadow-lg flex-grow flex flex-col"> {/* Allow card to grow */}
             <CardHeader>
               <CardTitle className="text-xl text-primary">Cost Summary</CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="flex-grow"> {/* Allow content to grow */}
               {isLoadingAnything ? (
                  <div className="flex items-center justify-center py-6">
                     <Loader2 className="h-6 w-6 animate-spin text-primary mr-2" /> 
@@ -290,6 +290,4 @@ export function ItineraryPlanner({ tripData, onReset, onUpdateTripData }: Itiner
     </div>
   );
 }
-    
 
-    
