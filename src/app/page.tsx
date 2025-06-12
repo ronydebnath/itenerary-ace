@@ -2,54 +2,104 @@
 "use client";
 
 import React from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { SetupForm } from '@/components/itinerary/setup-form';
 import { ItineraryPlanner } from '@/components/itinerary/itinerary-planner';
-import type { TripSettings, PaxDetails, TripData } from '@/types/itinerary';
+import type { TripSettings, PaxDetails, TripData, ItineraryMetadata } from '@/types/itinerary';
 import { generateGUID } from '@/lib/utils';
-import { Cog, Image as ImageIconLucide, Route } from 'lucide-react'; // Added Route for consistency with planner
-import { Badge } from '@/components/ui/badge'; // Added Badge for consistency with planner
+import { Cog, Image as ImageIconLucide, ListOrdered } from 'lucide-react';
 
-const LOCAL_STORAGE_KEY = 'itineraryAceData';
+const ITINERARY_INDEX_KEY = 'itineraryAce_index';
+const ITINERARY_DATA_PREFIX = 'itineraryAce_data_';
+
+const generateItineraryId = (): string => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  // Make suffix more unique and shorter
+  const randomSuffix = String(Date.now()).slice(-5) + String(Math.floor(Math.random() * 100)).padStart(2, '0');
+  return `ITN-${year}${month}${day}-${randomSuffix}`;
+};
 
 export default function HomePage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [tripData, setTripData] = React.useState<TripData | null>(null);
+  const [currentItineraryId, setCurrentItineraryId] = React.useState<string | null>(null);
   const [isInitialized, setIsInitialized] = React.useState(false);
+  const debouncedSaveTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
 
   React.useEffect(() => {
-    try {
-      const savedData = localStorage.getItem(LOCAL_STORAGE_KEY);
-      if (savedData) {
-        const parsedData = JSON.parse(savedData) as TripData;
-        // Ensure selectedProvinces is an array, even if loading old data
-        if (parsedData && parsedData.settings) {
-            parsedData.settings.selectedProvinces = parsedData.settings.selectedProvinces || [];
-        }
+    const itineraryIdFromUrl = searchParams.get('itineraryId');
+    let idToLoad = itineraryIdFromUrl;
 
-        if (parsedData && parsedData.settings && parsedData.pax && parsedData.days) {
-           if (parsedData.settings.startDate && typeof parsedData.settings.startDate === 'string' && parsedData.settings.startDate.trim() !== '') {
-             setTripData(parsedData);
-           } else {
-             console.warn("Loaded trip data has invalid or missing startDate. Clearing data to re-initialize.");
-             localStorage.removeItem(LOCAL_STORAGE_KEY);
-             setTripData(null);
-           }
-        } else {
-          console.warn("Loaded trip data is structurally invalid. Clearing data.");
-          localStorage.removeItem(LOCAL_STORAGE_KEY);
-          setTripData(null);
+    if (!idToLoad) {
+      try {
+        const lastActiveId = localStorage.getItem('lastActiveItineraryId');
+        if (lastActiveId) {
+          idToLoad = lastActiveId;
         }
+      } catch (e) { console.error("Error reading lastActiveItineraryId:", e); }
+    }
+
+    if (idToLoad) {
+      try {
+        const savedData = localStorage.getItem(`${ITINERARY_DATA_PREFIX}${idToLoad}`);
+        if (savedData) {
+          const parsedData = JSON.parse(savedData) as Partial<TripData>; // Load as partial initially for migration
+
+          // Ensure core fields and ID are present, migrate if necessary
+          const dataToSet: TripData = {
+            id: parsedData.id || idToLoad, // Crucial: Assign ID if missing
+            itineraryName: parsedData.itineraryName || `Itinerary ${idToLoad.slice(-6)}`,
+            clientName: parsedData.clientName || undefined,
+            createdAt: parsedData.createdAt || new Date().toISOString(),
+            updatedAt: parsedData.updatedAt || new Date().toISOString(),
+            settings: parsedData.settings || { numDays: 1, startDate: new Date().toISOString().split('T')[0], selectedProvinces: [] },
+            pax: parsedData.pax || { adults: 1, children: 0, currency: 'USD' },
+            travelers: parsedData.travelers && parsedData.travelers.length > 0 ? parsedData.travelers : [{ id: generateGUID(), label: 'Adult 1', type: 'adult' }],
+            days: parsedData.days || { 1: { items: [] } },
+          };
+          
+          // Further ensure selectedProvinces is an array within settings
+          dataToSet.settings.selectedProvinces = dataToSet.settings.selectedProvinces || [];
+
+
+          setTripData(dataToSet);
+          setCurrentItineraryId(dataToSet.id);
+          if (!itineraryIdFromUrl && dataToSet.id) {
+            router.replace(`/?itineraryId=${dataToSet.id}`, { shallow: true });
+          }
+        } else {
+          console.warn(`No data found for itineraryId: ${idToLoad}. Clearing lastActive if it matches.`);
+          if (localStorage.getItem('lastActiveItineraryId') === idToLoad) {
+            localStorage.removeItem('lastActiveItineraryId');
+          }
+          setCurrentItineraryId(null);
+          setTripData(null);
+          if (itineraryIdFromUrl) router.replace('/', { shallow: true });
+        }
+      } catch (error) {
+        console.error("Failed to load data from localStorage:", error);
+        setCurrentItineraryId(null);
+        setTripData(null);
+        if (itineraryIdFromUrl) router.replace('/', { shallow: true });
       }
-    } catch (error) {
-      console.error("Failed to load data from localStorage:", error);
-      localStorage.removeItem(LOCAL_STORAGE_KEY);
+    } else {
       setTripData(null);
+      setCurrentItineraryId(null);
     }
     setIsInitialized(true);
-  }, []);
+  }, [searchParams, router]);
 
-  const handleStartPlanning = React.useCallback((settings: TripSettings, pax: PaxDetails) => {
+
+  const handleStartPlanning = React.useCallback((settings: TripSettings, pax: PaxDetails, itineraryNameInput?: string, clientNameInput?: string) => {
+    const newId = generateItineraryId();
+    const now = new Date().toISOString();
+
     const newTravelers = [];
     for (let i = 1; i <= pax.adults; i++) {
       newTravelers.push({ id: `A${generateGUID()}`, label: `Adult ${i}`, type: 'adult' as const });
@@ -64,58 +114,106 @@ export default function HomePage() {
     }
 
     const newTripData: TripData = {
+      id: newId,
+      itineraryName: itineraryNameInput || `Itinerary ${newId.split('-').pop()}`,
+      clientName: clientNameInput || undefined,
       settings: {
         ...settings,
-        selectedProvinces: settings.selectedProvinces || [], // Ensure it's an array
+        selectedProvinces: settings.selectedProvinces || [],
       },
       pax,
       travelers: newTravelers,
       days: initialDaysData,
+      createdAt: now,
+      updatedAt: now,
     };
+    setCurrentItineraryId(newId); // Set currentItineraryId first or together
     setTripData(newTripData);
-    try {
-      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(newTripData));
-    } catch (error) {
-      console.error("Failed to save data to localStorage:", error);
-    }
-  }, []);
+    router.replace(`/?itineraryId=${newId}`, { shallow: true });
+  }, [router]);
 
-  const handleReset = React.useCallback(() => {
-    setTripData(null);
-    try {
-      localStorage.removeItem(LOCAL_STORAGE_KEY);
-    } catch (error) {
-      console.error("Failed to remove data from localStorage:", error);
-    }
-  }, []);
-
-  const handleUpdateTripData = React.useCallback((newDataFromPlanner: TripData) => {
+  const handleUpdateTripData = React.useCallback((updatedTripDataFromPlanner: Partial<TripData>) => {
     setTripData(prevTripData => {
-      // Ensure new references for days and settings objects for robust update detection
-      const newDays = { ...(prevTripData?.days || {}), ...newDataFromPlanner.days };
-      const newSettingsFromPlanner = newDataFromPlanner.settings || {};
-      const prevSettings = prevTripData?.settings || { numDays: 0, startDate: '', selectedProvinces: []};
+      if (!prevTripData && !currentItineraryId) { // Should not happen if planner is visible
+          console.error("Attempted to update trip data without a current itinerary.");
+          return null;
+      }
+      // Ensure the ID from currentItineraryId is preserved if not in updatedTripDataFromPlanner
+      // And ensure other core fields from prevTripData are preserved if not in updatedTripDataFromPlanner
+      const baseData = prevTripData || { id: currentItineraryId! } as TripData;
 
+      const newDays = { ...(baseData.days || {}), ...(updatedTripDataFromPlanner.days || {}) };
+      const newSettings = { ...(baseData.settings || {}), ...(updatedTripDataFromPlanner.settings || {}) };
+      
+      newSettings.selectedProvinces = updatedTripDataFromPlanner.settings?.selectedProvinces || baseData.settings?.selectedProvinces || [];
 
       const dataToSave: TripData = {
-        ...(prevTripData || {} as TripData), // Base default on prev or empty
-        ...newDataFromPlanner,        // Spread all incoming data
-        days: newDays,                // Explicitly set newly constructed days
-        settings: {                   // Explicitly set newly constructed settings
-          ...prevSettings,
-          ...newSettingsFromPlanner,
-          selectedProvinces: newSettingsFromPlanner.selectedProvinces || prevSettings.selectedProvinces || [],
-        },
+        ...baseData,
+        ...updatedTripDataFromPlanner,
+        id: baseData.id || currentItineraryId!, // Prioritize existing ID
+        days: newDays,
+        settings: newSettings,
+        updatedAt: new Date().toISOString(), // Always update timestamp
       };
-
-      try {
-        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(dataToSave));
-      } catch (error) {
-        console.error("Failed to save data to localStorage:", error);
-      }
       return dataToSave;
     });
-  }, []);
+  }, [currentItineraryId]);
+
+
+  React.useEffect(() => {
+    if (debouncedSaveTimeoutRef.current) {
+      clearTimeout(debouncedSaveTimeoutRef.current);
+    }
+
+    if (tripData && currentItineraryId && isInitialized && tripData.id === currentItineraryId) {
+      debouncedSaveTimeoutRef.current = setTimeout(() => {
+        try {
+          const dataToSave: TripData = {
+            ...tripData,
+            updatedAt: new Date().toISOString(), // Ensure updatedAt is fresh
+          };
+
+          localStorage.setItem(`${ITINERARY_DATA_PREFIX}${currentItineraryId}`, JSON.stringify(dataToSave));
+
+          const indexString = localStorage.getItem(ITINERARY_INDEX_KEY);
+          let index: ItineraryMetadata[] = indexString ? JSON.parse(indexString) : [];
+          
+          const existingEntryIndex = index.findIndex(entry => entry.id === currentItineraryId);
+          const newEntry: ItineraryMetadata = {
+            id: currentItineraryId,
+            itineraryName: dataToSave.itineraryName,
+            clientName: dataToSave.clientName,
+            createdAt: dataToSave.createdAt,
+            updatedAt: dataToSave.updatedAt,
+          };
+
+          if (existingEntryIndex > -1) {
+            index[existingEntryIndex] = newEntry;
+          } else {
+            index.push(newEntry);
+          }
+          localStorage.setItem(ITINERARY_INDEX_KEY, JSON.stringify(index));
+          localStorage.setItem('lastActiveItineraryId', currentItineraryId);
+
+        } catch (e) {
+          console.error("Error during debounced save:", e);
+        }
+      }, 1000); // 1-second debounce
+    }
+    return () => {
+      if (debouncedSaveTimeoutRef.current) {
+        clearTimeout(debouncedSaveTimeoutRef.current);
+      }
+    };
+  }, [tripData, currentItineraryId, isInitialized]);
+
+  const handleStartNewItinerary = React.useCallback(() => {
+    // Current itinerary is auto-saved. Just clear state for new setup.
+    setCurrentItineraryId(null);
+    setTripData(null);
+    localStorage.removeItem('lastActiveItineraryId');
+    router.replace('/', { shallow: true });
+  }, [router]);
 
   if (!isInitialized) {
     return <div className="flex justify-center items-center min-h-screen bg-background"><p>Loading Itinerary Ace...</p></div>;
@@ -133,13 +231,17 @@ export default function HomePage() {
         <Link href="/admin">
           <Button variant="outline" size="sm" className="bg-card hover:bg-muted shadow-md">
             <Cog className="mr-2 h-4 w-4" />
-            Admin Settings
+            Admin
           </Button>
         </Link>
       </div>
 
-      {tripData ? (
-        <ItineraryPlanner tripData={tripData} onReset={handleReset} onUpdateTripData={handleUpdateTripData} />
+      {tripData && currentItineraryId && tripData.id === currentItineraryId ? (
+        <ItineraryPlanner 
+          tripData={tripData} 
+          onReset={handleStartNewItinerary} 
+          onUpdateTripData={handleUpdateTripData} 
+        />
       ) : (
         <SetupForm onStartPlanning={handleStartPlanning} />
       )}
