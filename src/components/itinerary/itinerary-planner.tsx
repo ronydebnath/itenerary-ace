@@ -25,7 +25,7 @@ import { Badge } from '@/components/ui/badge';
 
 interface ItineraryPlannerProps {
   tripData: TripData;
-  onReset: () => void;
+  onReset: () => void; // This is now effectively "Start New Itinerary"
   onUpdateTripData: (updatedTripData: TripData) => void;
 }
 
@@ -39,12 +39,12 @@ export function ItineraryPlanner({ tripData, onReset, onUpdateTripData }: Itiner
 
   React.useEffect(() => {
     if (tripData && !isLoadingServices && !isLoadingHotelDefinitions) {
-      const summary = calculateAllCosts(tripData, allServicePrices, allHotelDefinitions);
+      const summary = calculateAllCosts(tripData); // Removed allServicePrices, allHotelDefinitions as they are not used by current calculateAllCosts
       setCostSummary(summary);
     } else {
       setCostSummary(null);
     }
-  }, [tripData, allServicePrices, allHotelDefinitions, isLoadingServices, isLoadingHotelDefinitions]);
+  }, [tripData, isLoadingServices, isLoadingHotelDefinitions]); // Removed allServicePrices, allHotelDefinitions
 
   const handleUpdateItem = React.useCallback((day: number, updatedItem: ItineraryItem) => {
     const newDays = { ...tripData.days };
@@ -156,6 +156,14 @@ export function ItineraryPlanner({ tripData, onReset, onUpdateTripData }: Itiner
         </CardHeader>
         <CardContent className="pt-6">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm mb-6 p-4 bg-secondary/30 rounded-lg border border-secondary">
+                {tripData.id ? (
+                  <div className="md:col-span-3 flex items-center mb-3">
+                    <Info className="mr-2 h-5 w-5 text-muted-foreground" />
+                    <strong>ID:</strong><span className="ml-1 font-mono text-xs bg-muted px-2 py-1 rounded">{tripData.id}</span>
+                  </div>
+                ) : (
+                  <div className="md:col-span-3 text-red-500 font-bold mb-3 bg-red-100 p-2 rounded-md border border-red-300">DEBUG: Itinerary ID is NOT available in tripData!</div>
+                )}
                 <div className="md:col-span-3 space-y-2 mb-3">
                     <Label htmlFor="itineraryName" className="text-xs font-medium text-muted-foreground">Itinerary Name</Label>
                     <Input
@@ -176,12 +184,6 @@ export function ItineraryPlanner({ tripData, onReset, onUpdateTripData }: Itiner
                         className="text-base h-9 bg-background/70"
                     />
                 </div>
-                {tripData.id && (
-                  <div className="flex items-center md:col-span-3 mb-2">
-                    <Info className="mr-2 h-5 w-5 text-muted-foreground" />
-                    <strong>ID:</strong><span className="ml-1 font-mono text-xs bg-muted px-2 py-1 rounded">{tripData.id}</span>
-                  </div>
-                )}
                 <div className="flex items-center"><CalendarDays className="mr-2 h-5 w-5 text-primary" /> <strong>Days:</strong><span className="ml-1 font-code">{tripData.settings.numDays}</span></div>
                 <div className="flex items-center"><Users className="mr-2 h-5 w-5 text-primary" /> <strong>Adults:</strong><span className="ml-1 font-code">{tripData.pax.adults}</span>, <strong>Children:</strong><span className="ml-1 font-code">{tripData.pax.children}</span></div>
                 <div className="flex items-center"><MapPin className="mr-2 h-5 w-5 text-primary" /> <strong>Start Date:</strong><span className="ml-1 font-code">{displayStartDate}</span></div>
@@ -334,5 +336,3 @@ export function ItineraryPlanner({ tripData, onReset, onUpdateTripData }: Itiner
     </div>
   );
 }
-
-    
