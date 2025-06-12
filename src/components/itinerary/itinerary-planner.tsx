@@ -10,7 +10,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ChevronLeft, ChevronRight, Printer, RotateCcw, MapPin, CalendarDays, Users, Eye, EyeOff, Hotel, Loader2, Route, Info, Edit3 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Printer, RotateCcw, MapPin, CalendarDays, Users, Eye, EyeOff, Hotel, Loader2, Route, Info, Edit3, Save } from 'lucide-react'; // Added Save icon
 import { formatCurrency, generateGUID } from '@/lib/utils';
 import { AISuggestions } from '../itinerary/ai-suggestions';
 import { PrintLayout } from '../itinerary/print-layout';
@@ -25,11 +25,12 @@ import { Badge } from '@/components/ui/badge';
 
 interface ItineraryPlannerProps {
   tripData: TripData;
-  onReset: () => void; // This is now effectively "Start New Itinerary"
-  onUpdateTripData: (updatedTripData: TripData) => void;
+  onReset: () => void; 
+  onUpdateTripData: (updatedTripData: Partial<TripData>) => void; // Changed to Partial for more flexibility
+  onManualSave: () => void; // New prop for manual save
 }
 
-export function ItineraryPlanner({ tripData, onReset, onUpdateTripData }: ItineraryPlannerProps) {
+export function ItineraryPlanner({ tripData, onReset, onUpdateTripData, onManualSave }: ItineraryPlannerProps) {
   const [currentDayView, setCurrentDayView] = React.useState<number>(1);
   const [costSummary, setCostSummary] = React.useState<CostSummary | null>(null);
   const [isPrinting, setIsPrinting] = React.useState(false);
@@ -39,12 +40,12 @@ export function ItineraryPlanner({ tripData, onReset, onUpdateTripData }: Itiner
 
   React.useEffect(() => {
     if (tripData && !isLoadingServices && !isLoadingHotelDefinitions) {
-      const summary = calculateAllCosts(tripData); // Removed allServicePrices, allHotelDefinitions as they are not used by current calculateAllCosts
+      const summary = calculateAllCosts(tripData); 
       setCostSummary(summary);
     } else {
       setCostSummary(null);
     }
-  }, [tripData, isLoadingServices, isLoadingHotelDefinitions]); // Removed allServicePrices, allHotelDefinitions
+  }, [tripData, isLoadingServices, isLoadingHotelDefinitions]);
 
   const handleUpdateItem = React.useCallback((day: number, updatedItem: ItineraryItem) => {
     const newDays = { ...tripData.days };
@@ -54,8 +55,8 @@ export function ItineraryPlanner({ tripData, onReset, onUpdateTripData }: Itiner
       dayItems[itemIndex] = updatedItem;
     }
     newDays[day] = { items: dayItems };
-    onUpdateTripData({ ...tripData, days: newDays, updatedAt: new Date().toISOString() });
-  }, [tripData, onUpdateTripData]);
+    onUpdateTripData({ days: newDays }); // Only pass partial update for days
+  }, [tripData.days, onUpdateTripData]);
 
   const handleAddItem = React.useCallback((day: number, itemType: ItineraryItem['type']) => {
     let newItem: ItineraryItem;
@@ -96,15 +97,15 @@ export function ItineraryPlanner({ tripData, onReset, onUpdateTripData }: Itiner
     const newDays = { ...tripData.days };
     const dayItems = [...(newDays[day]?.items || []), newItem];
     newDays[day] = { items: dayItems };
-    onUpdateTripData({ ...tripData, days: newDays, updatedAt: new Date().toISOString() });
-  }, [tripData, onUpdateTripData]);
+    onUpdateTripData({ days: newDays });
+  }, [tripData.days, tripData.settings.selectedProvinces, onUpdateTripData]);
 
   const handleDeleteItem = React.useCallback((day: number, itemId: string) => {
     const newDays = { ...tripData.days };
     const dayItems = (newDays[day]?.items || []).filter(item => item.id !== itemId);
     newDays[day] = { items: dayItems };
-    onUpdateTripData({ ...tripData, days: newDays, updatedAt: new Date().toISOString() });
-  }, [tripData, onUpdateTripData]);
+    onUpdateTripData({ days: newDays });
+  }, [tripData.days, onUpdateTripData]);
 
   const handlePrint = React.useCallback(() => {
     setIsPrinting(true);
@@ -146,9 +147,14 @@ export function ItineraryPlanner({ tripData, onReset, onUpdateTripData }: Itiner
             <div>
               <CardTitle className="text-3xl font-headline text-primary">Itinerary Ace Planner</CardTitle>
             </div>
-            <Button variant="outline" onClick={onReset} size="sm" className="border-accent text-accent hover:bg-accent/10">
-              <Edit3 className="mr-2 h-4 w-4" /> Start New Itinerary
-            </Button>
+            <div className="flex gap-2">
+                <Button onClick={onManualSave} size="sm" className="bg-accent hover:bg-accent/90 text-accent-foreground">
+                    <Save className="mr-2 h-4 w-4" /> Save Itinerary
+                </Button>
+                <Button variant="outline" onClick={onReset} size="sm" className="border-accent text-accent hover:bg-accent/10">
+                <Edit3 className="mr-2 h-4 w-4" /> Start New Itinerary
+                </Button>
+            </div>
           </div>
           <CardDescription className="text-foreground/70 pt-2">
             Plan and calculate costs for your upcoming trip. Use the fields below to name your itinerary and assign a client.
@@ -169,7 +175,7 @@ export function ItineraryPlanner({ tripData, onReset, onUpdateTripData }: Itiner
                     <Input
                         id="itineraryName"
                         value={tripData.itineraryName || ''}
-                        onChange={(e) => onUpdateTripData({ ...tripData, itineraryName: e.target.value, updatedAt: new Date().toISOString() })}
+                        onChange={(e) => onUpdateTripData({ itineraryName: e.target.value })}
                         placeholder="Enter itinerary name"
                         className="text-base font-semibold h-9 bg-background/70"
                     />
@@ -179,7 +185,7 @@ export function ItineraryPlanner({ tripData, onReset, onUpdateTripData }: Itiner
                     <Input
                         id="clientName"
                         value={tripData.clientName || ''}
-                        onChange={(e) => onUpdateTripData({ ...tripData, clientName: e.target.value, updatedAt: new Date().toISOString() })}
+                        onChange={(e) => onUpdateTripData({ clientName: e.target.value })}
                         placeholder="Enter client name"
                         className="text-base h-9 bg-background/70"
                     />
@@ -326,8 +332,8 @@ export function ItineraryPlanner({ tripData, onReset, onUpdateTripData }: Itiner
       </Card>
 
       <div className="mt-8 py-6 border-t border-border flex flex-col sm:flex-row justify-center items-center gap-4 no-print">
-        <Button onClick={onReset} variant="destructive" className="w-full sm:w-auto">
-          <RotateCcw className="mr-2 h-4 w-4" /> Reset Current Itinerary
+        <Button onClick={onManualSave} className="w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white">
+            <Save className="mr-2 h-4 w-4" /> Save Current Itinerary
         </Button>
         <Button onClick={handlePrint} className="w-full sm:w-auto bg-accent hover:bg-accent/90 text-accent-foreground">
           <Printer className="mr-2 h-4 w-4" /> Print Itinerary

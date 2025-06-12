@@ -10,6 +10,7 @@ import { ItineraryPlanner } from '@/components/itinerary/itinerary-planner';
 import type { TripSettings, PaxDetails, TripData, ItineraryMetadata } from '@/types/itinerary';
 import { generateGUID } from '@/lib/utils';
 import { Cog, Image as ImageIconLucide, ListOrdered } from 'lucide-react';
+import { useToast } from "@/hooks/use-toast"; // For manual save toast
 
 const ITINERARY_INDEX_KEY = 'itineraryAce_index';
 const ITINERARY_DATA_PREFIX = 'itineraryAce_data_';
@@ -28,32 +29,49 @@ type PageStatus = 'loading' | 'setup' | 'planner';
 export default function HomePage() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { toast } = useToast(); // For manual save
+
   const [tripData, setTripData] = React.useState<TripData | null>(null);
   const [currentItineraryId, setCurrentItineraryId] = React.useState<string | null>(null);
   const [pageStatus, setPageStatus] = React.useState<PageStatus>('loading');
-  const debouncedSaveTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
 
+  // Effect for loading itinerary based on URL or last active
   React.useEffect(() => {
-    setPageStatus('loading'); 
-
     const itineraryIdFromUrl = searchParams.get('itineraryId');
     let idToLoad = itineraryIdFromUrl;
 
     if (!idToLoad) {
       try {
-        const lastActiveId = localStorage.getItem('lastActiveItineraryId');
-        if (lastActiveId) {
-          idToLoad = lastActiveId;
+        const lastActiveIdFromStorage = localStorage.getItem('lastActiveItineraryId');
+        if (lastActiveIdFromStorage) {
+          idToLoad = lastActiveIdFromStorage;
         }
       } catch (e) { console.error("Error reading lastActiveItineraryId:", e); }
     }
+
+    // If we're already on the correct itinerary and planner is shown, do nothing further
+    if (idToLoad && currentItineraryId === idToLoad && pageStatus === 'planner' && tripData) {
+      // Ensure URL is in sync if it was loaded from lastActive
+      if (itineraryIdFromUrl !== currentItineraryId) {
+        router.replace(`/?itineraryId=${currentItineraryId}`, { shallow: true });
+      }
+      return;
+    }
+    
+    // If the target ID changes or we are initializing, set to loading
+    if (idToLoad !== currentItineraryId || (idToLoad && !currentItineraryId) || (!idToLoad && pageStatus !== 'setup')) {
+        setPageStatus('loading');
+        if (idToLoad !== currentItineraryId) { // Clear data only if ID truly changes or was null
+             setTripData(null);
+        }
+    }
+
 
     if (idToLoad) {
       try {
         const savedData = localStorage.getItem(`${ITINERARY_DATA_PREFIX}${idToLoad}`);
         if (savedData) {
           const parsedData = JSON.parse(savedData) as Partial<TripData>;
-
           const dataToSet: TripData = {
             id: parsedData.id || idToLoad,
             itineraryName: parsedData.itineraryName || `Itinerary ${idToLoad.slice(-6)}`,
@@ -67,12 +85,12 @@ export default function HomePage() {
           };
           dataToSet.settings.selectedProvinces = dataToSet.settings.selectedProvinces || [];
 
-
           setTripData(dataToSet);
           setCurrentItineraryId(dataToSet.id);
           setPageStatus('planner');
+          localStorage.setItem('lastActiveItineraryId', dataToSet.id);
 
-          if (!itineraryIdFromUrl && dataToSet.id) {
+          if (itineraryIdFromUrl !== dataToSet.id) {
             router.replace(`/?itineraryId=${dataToSet.id}`, { shallow: true });
           }
         } else {
@@ -93,11 +111,17 @@ export default function HomePage() {
         if (itineraryIdFromUrl) router.replace('/', { shallow: true });
       }
     } else {
-      setTripData(null);
-      setCurrentItineraryId(null);
-      setPageStatus('setup');
+      if (pageStatus !== 'setup') { // Avoid redundant state update if already setup
+        setCurrentItineraryId(null);
+        setTripData(null);
+        setPageStatus('setup');
+      }
     }
-  }, [searchParams, router]);
+  // Using searchParams directly from useSearchParams is stable.
+  // router object can change reference, be cautious.
+  // currentItineraryId helps in deciding if a reload is for a *new* ID.
+  // pageStatus helps to avoid unnecessary loading flicker if already in 'setup' and no ID.
+  }, [searchParams, router, currentItineraryId, pageStatus]);
 
 
   const handleStartPlanning = React.useCallback((settings: TripSettings, pax: PaxDetails, itineraryNameInput?: string, clientNameInput?: string) => {
@@ -131,10 +155,13 @@ export default function HomePage() {
       createdAt: now,
       updatedAt: now,
     };
-    setCurrentItineraryId(newId);
+    // No immediate save here, user must click save button in planner
     setTripData(newTripData);
-    setPageStatus('planner'); 
+    setCurrentItineraryId(newId);
+    setPageStatus('planner'); // This will trigger re-render and planner will appear
     router.replace(`/?itineraryId=${newId}`, { shallow: true });
+    localStorage.setItem('lastActiveItineraryId', newId); // Set as active
+
   }, [router]);
 
   const handleUpdateTripData = React.useCallback((updatedTripDataFromPlanner: Partial<TripData>) => {
@@ -150,70 +177,67 @@ export default function HomePage() {
       
       newSettings.selectedProvinces = updatedTripDataFromPlanner.settings?.selectedProvinces || baseData.settings?.selectedProvinces || [];
 
-      const dataToSave: TripData = {
+      // For manual save, we don't update 'updatedAt' here. It's done in handleManualSave.
+      const dataToSet: TripData = {
         ...baseData,
         ...updatedTripDataFromPlanner,
         id: baseData.id || currentItineraryId!,
         days: newDays,
         settings: newSettings,
-        updatedAt: new Date().toISOString(),
+        // updatedAt will be set on manual save
+        updatedAt: baseData.updatedAt || new Date().toISOString(), // Keep existing or set new if base was minimal
       };
-      return dataToSave;
+      return dataToSet;
     });
   }, [currentItineraryId]);
 
 
-  React.useEffect(() => {
-    if (debouncedSaveTimeoutRef.current) {
-      clearTimeout(debouncedSaveTimeoutRef.current);
+  const handleManualSave = React.useCallback(() => {
+    if (!tripData || !currentItineraryId) {
+      toast({ title: "Error", description: "No itinerary data to save.", variant: "destructive" });
+      return;
     }
+    try {
+      const dataToSave: TripData = {
+        ...tripData,
+        updatedAt: new Date().toISOString(), // Update timestamp on save
+      };
+      setTripData(dataToSave); // Update state with the new timestamp
 
-    if (pageStatus === 'planner' && tripData && currentItineraryId && tripData.id === currentItineraryId) {
-      debouncedSaveTimeoutRef.current = setTimeout(() => {
-        try {
-          const dataToSave: TripData = {
-            ...tripData,
-            updatedAt: new Date().toISOString(),
-          };
+      localStorage.setItem(`${ITINERARY_DATA_PREFIX}${currentItineraryId}`, JSON.stringify(dataToSave));
 
-          localStorage.setItem(`${ITINERARY_DATA_PREFIX}${currentItineraryId}`, JSON.stringify(dataToSave));
+      const indexString = localStorage.getItem(ITINERARY_INDEX_KEY);
+      let index: ItineraryMetadata[] = indexString ? JSON.parse(indexString) : [];
+      
+      const existingEntryIndex = index.findIndex(entry => entry.id === currentItineraryId);
+      const newEntry: ItineraryMetadata = {
+        id: currentItineraryId,
+        itineraryName: dataToSave.itineraryName,
+        clientName: dataToSave.clientName,
+        createdAt: dataToSave.createdAt,
+        updatedAt: dataToSave.updatedAt,
+      };
 
-          const indexString = localStorage.getItem(ITINERARY_INDEX_KEY);
-          let index: ItineraryMetadata[] = indexString ? JSON.parse(indexString) : [];
-          
-          const existingEntryIndex = index.findIndex(entry => entry.id === currentItineraryId);
-          const newEntry: ItineraryMetadata = {
-            id: currentItineraryId,
-            itineraryName: dataToSave.itineraryName,
-            clientName: dataToSave.clientName,
-            createdAt: dataToSave.createdAt,
-            updatedAt: dataToSave.updatedAt,
-          };
-
-          if (existingEntryIndex > -1) {
-            index[existingEntryIndex] = newEntry;
-          } else {
-            index.push(newEntry);
-          }
-          localStorage.setItem(ITINERARY_INDEX_KEY, JSON.stringify(index));
-          localStorage.setItem('lastActiveItineraryId', currentItineraryId);
-
-        } catch (e) {
-          console.error("Error during debounced save:", e);
-        }
-      }, 1000);
-    }
-    return () => {
-      if (debouncedSaveTimeoutRef.current) {
-        clearTimeout(debouncedSaveTimeoutRef.current);
+      if (existingEntryIndex > -1) {
+        index[existingEntryIndex] = newEntry;
+      } else {
+        index.push(newEntry);
       }
-    };
-  }, [tripData, currentItineraryId, pageStatus]);
+      localStorage.setItem(ITINERARY_INDEX_KEY, JSON.stringify(index));
+      localStorage.setItem('lastActiveItineraryId', currentItineraryId);
+
+      toast({ title: "Success", description: `Itinerary "${dataToSave.itineraryName}" saved.` });
+    } catch (e) {
+      console.error("Error during manual save:", e);
+      toast({ title: "Error", description: "Could not save itinerary.", variant: "destructive" });
+    }
+  }, [tripData, currentItineraryId, toast]);
 
   const handleStartNewItinerary = React.useCallback(() => {
     setCurrentItineraryId(null); 
     setTripData(null);
     localStorage.removeItem('lastActiveItineraryId');
+    // The main useEffect will pick up that there's no ID and transition to 'setup'
     router.replace('/', { shallow: true }); 
   }, [router]);
 
@@ -238,12 +262,12 @@ export default function HomePage() {
         </Link>
       </div>
 
-      {/* Conditional rendering based on pageStatus */}
       {pageStatus === 'planner' && tripData && currentItineraryId ? (
         <ItineraryPlanner
           tripData={tripData}
           onReset={handleStartNewItinerary}
           onUpdateTripData={handleUpdateTripData}
+          onManualSave={handleManualSave} // Pass the new save handler
         />
       ) : (
         <SetupForm onStartPlanning={handleStartPlanning} />
