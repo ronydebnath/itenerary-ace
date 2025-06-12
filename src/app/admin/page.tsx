@@ -3,8 +3,9 @@
 
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card'; // Added CardFooter
 import { Cog, MapPinned, ListPlus, Home, LayoutDashboard, ListOrdered, DollarSign, Users, BarChart3 } from 'lucide-react';
+import { cn } from '@/lib/utils'; // Ensure this import is present
 
 interface DashboardCardProps {
   title: string;
@@ -73,7 +74,7 @@ export default function AdminDashboardPage() {
             title="Manage Service Prices"
             description="Set and adjust pricing for all services: hotels, activities, transfers, meals, and miscellaneous items."
             href="/admin/pricing"
-            icon={DollarSign} // Changed from ListPlus for better semantic meaning
+            icon={DollarSign}
             buttonText="Update Prices"
             className="lg:col-span-1"
           />
@@ -109,5 +110,3 @@ export default function AdminDashboardPage() {
     </main>
   );
 }
-
-    
