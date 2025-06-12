@@ -19,13 +19,14 @@ jest.mock('@/hooks/use-toast', () => ({
 
 // Mocking the generateGUID utility
 jest.mock('@/lib/utils', () => ({
-  generateGUID: jest.fn(),
+ generateGUID: jest.fn(),
+ cn: (className: string) => className, // Mock cn to return the input className
 }));
 
 // Mocking localStorage
 const localStorageMock = (() => {
   let store: { [key: string]: string } = {};
-  return {
+ return {
     getItem: (key: string) => store[key] || null,
     setItem: (key: string, value: string) => {
       store[key] = value.toString();
