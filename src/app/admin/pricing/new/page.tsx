@@ -2,10 +2,11 @@
 "use client";
 
 import * as React from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation'; // Added useSearchParams
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { ServicePriceForm } from '@/components/admin/service-price-form';
+// import { ServicePriceForm } from '@/components/admin/service-price-form'; // Old form component
+import { ServicePriceFormRouter } from '@/components/admin/service-pricing/ServicePriceFormRouter'; // New form router
 import type { ServicePriceItem } from '@/types/itinerary';
 import { generateGUID } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
@@ -13,7 +14,7 @@ import { Home, ListPlus, ArrowLeft } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 const SERVICE_PRICES_STORAGE_KEY = 'itineraryAceServicePrices';
-const TEMP_PREFILL_DATA_KEY = 'tempServicePricePrefillData';
+const TEMP_PREFILL_DATA_KEY = 'tempServicePricePrefillData'; // For AI prefill
 
 export default function NewServicePricePage() {
   const router = useRouter();
@@ -27,36 +28,31 @@ export default function NewServicePricePage() {
       if (prefillDataString) {
         const parsedData = JSON.parse(prefillDataString);
         setInitialData(parsedData);
-        localStorage.removeItem(TEMP_PREFILL_DATA_KEY);
+        localStorage.removeItem(TEMP_PREFILL_DATA_KEY); // Clean up after use
       }
-    } catch (error) {
-      console.error("Error reading prefill data:", error); // Log the specific error object
-      toast({ title: "Error", description: "Could not load prefill data.", variant: "destructive" });
+    } catch (error: any) {
+      console.error("Error reading prefill data from localStorage:", error);
+      toast({ title: "Error", description: `Could not load prefill data: ${error.message}`, variant: "destructive" });
     }
-    console.log("Setting isLoading to false in useEffect");
     setIsLoading(false);
   }, [toast]);
 
   const handleFormSubmit = (data: Omit<ServicePriceItem, 'id'>) => {
-    console.log("handleFormSubmit called with data:", data);
+    console.log("NewServicePricePage: handleFormSubmit called with data:", data);
     try {
       const storedPrices = localStorage.getItem(SERVICE_PRICES_STORAGE_KEY);
       const allPrices: ServicePriceItem[] = storedPrices ? JSON.parse(storedPrices) : [];
       
       const newServicePrice: ServicePriceItem = { ...data, id: generateGUID() };
       const updatedPrices = [...allPrices, newServicePrice];
-      console.log("Updated prices array before saving:", updatedPrices);
       
       localStorage.setItem(SERVICE_PRICES_STORAGE_KEY, JSON.stringify(updatedPrices));
       
-      const pricesAfterSave = localStorage.getItem(SERVICE_PRICES_STORAGE_KEY);
-      console.log("Value in localStorage immediately after saving:", pricesAfterSave);
-      
       toast({ title: "Success", description: `Service price "${data.name}" added.` });
       router.push('/admin/pricing');
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error saving new service price:", error);
-      toast({ title: "Error", description: "Could not save new service price.", variant: "destructive" });
+      toast({ title: "Error", description: `Could not save new service price: ${error.message}`, variant: "destructive" });
     }
   };
   
@@ -70,7 +66,7 @@ export default function NewServicePricePage() {
 
   return (
     <main className="min-h-screen bg-background p-4 md:p-8">
-      <Card className="w-full max-w-6xl mx-auto shadow-xl">
+      <Card className="w-full max-w-4xl mx-auto shadow-xl">
         <CardHeader>
           <div className="flex justify-between items-center">
             <CardTitle className="text-2xl font-bold text-primary flex items-center">
@@ -84,7 +80,7 @@ export default function NewServicePricePage() {
           </div>
         </CardHeader>
         <CardContent>
-          <ServicePriceForm
+          <ServicePriceFormRouter
             key={JSON.stringify(initialData) || 'new-service'} // Re-mount if initialData changes
             initialData={initialData}
             onSubmit={handleFormSubmit}

@@ -357,14 +357,10 @@ export function ServicePriceFormRouter({ initialData, onSubmit, onCancel }: Serv
     if (currentCategoryValue === 'hotel') {
       console.log("DEBUG Router: Hotel category selected.");
       let hotelDetailsCurrent = form.getValues('hotelDetails');
-      let needsFullReset = !hotelDetailsCurrent || 
-                           !Array.isArray(hotelDetailsCurrent.roomTypes) || hotelDetailsCurrent.roomTypes.length === 0 || 
-                           !hotelDetailsCurrent.roomTypes[0] || 
-                           !Array.isArray(hotelDetailsCurrent.roomTypes[0].seasonalPrices) || hotelDetailsCurrent.roomTypes[0].seasonalPrices.length === 0;
 
-      if (!initialData?.id && needsFullReset) {
+      if (!initialData?.id) { // It's a NEW service, always ensure default hotel details structure is set
         console.log("DEBUG Router: NEW hotel - Forcing simplified default structure.");
-        const newValidHotelDetails = createDefaultSimplifiedHotelDetails(currentName, currentProvince);
+        const newValidHotelDetails = createDefaultSimplifiedHotelDetails(currentName, currentProvince, hotelDetailsCurrent?.id); // Preserve existing ID if present
         form.setValue('hotelDetails', newValidHotelDetails, { shouldValidate: true, shouldDirty: true });
         console.log("DEBUG Router: Default hotelDetails set for new item:", JSON.stringify(newValidHotelDetails));
       } else if (hotelDetailsCurrent) { // Existing hotel or already initialized new one, sync name/province
@@ -404,8 +400,6 @@ export function ServicePriceFormRouter({ initialData, onSubmit, onCancel }: Serv
     const dataToSubmit: any = JSON.parse(JSON.stringify(values)); // Deep clone
 
     if (dataToSubmit.category === 'hotel' && dataToSubmit.hotelDetails?.roomTypes) {
-      dataToSubmit.hotelDetails.name = dataToSubmit.name;
-      dataToSubmit.hotelDetails.province = dataToSubmit.province || "";
       dataToSubmit.hotelDetails.roomTypes = dataToSubmit.hotelDetails.roomTypes.map((rt: any) => ({
         ...rt,
         seasonalPrices: rt.seasonalPrices.map((sp: any) => ({
