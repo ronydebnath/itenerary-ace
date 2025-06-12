@@ -33,8 +33,8 @@ const createDefaultTravelers = (adults: number, children: number): Traveler[] =>
 const createDefaultTripData = (): TripData => {
   const newId = generateItineraryId();
   const now = new Date().toISOString();
-  const startDate = new Date(); // Today
-  startDate.setHours(0, 0, 0, 0); // Normalize to start of day
+  const startDate = new Date(); 
+  startDate.setHours(0, 0, 0, 0); 
 
   const settings: TripSettings = {
     numDays: 1,
@@ -42,7 +42,7 @@ const createDefaultTripData = (): TripData => {
     selectedProvinces: [],
     budget: undefined,
   };
-  const pax: PaxDetails = { adults: 2, children: 0, currency: 'USD' };
+  const pax: PaxDetails = { adults: 2, children: 0, currency: 'THB' }; // Default currency changed to THB
   const travelers = createDefaultTravelers(pax.adults, pax.children);
   const days: { [dayNumber: number]: { items: [] } } = { 1: { items: [] } };
 
@@ -60,7 +60,7 @@ const createDefaultTripData = (): TripData => {
 };
 
 
-export type PageStatus = 'loading' | 'planner'; // Removed 'setup'
+export type PageStatus = 'loading' | 'planner';
 
 export function useItineraryManager() {
   const router = useRouter();
@@ -105,7 +105,7 @@ export function useItineraryManager() {
             createdAt: parsedData.createdAt || new Date().toISOString(),
             updatedAt: parsedData.updatedAt || new Date().toISOString(),
             settings: parsedData.settings || { numDays: 1, startDate: new Date().toISOString().split('T')[0], selectedProvinces: [] },
-            pax: parsedData.pax || { adults: 1, children: 0, currency: 'USD' },
+            pax: parsedData.pax || { adults: 1, children: 0, currency: 'THB' }, // Default to THB if missing
             travelers: parsedData.travelers && parsedData.travelers.length > 0 ? parsedData.travelers : createDefaultTravelers(parsedData.pax?.adults || 1, parsedData.pax?.children || 0),
             days: parsedData.days || { 1: { items: [] } },
           };
@@ -157,9 +157,8 @@ export function useItineraryManager() {
     setCurrentItineraryId(newDefaultTripData.id);
     localStorage.setItem('lastActiveItineraryId', newDefaultTripData.id);
     router.replace(`/planner?itineraryId=${newDefaultTripData.id}`, { shallow: true });
-    // The main useEffect will handle setting pageStatus to 'planner' after router updates
     toast({ title: "New Itinerary Started", description: "A fresh itinerary has been created with default settings." });
-  }, [router, toast]);
+  }, [router, toast, setPageStatus, setCurrentItineraryId, setTripData]);
 
   const handleUpdateTripData = React.useCallback((updatedTripDataFromPlanner: Partial<TripData>) => {
     setTripData(prevTripData => {
@@ -168,11 +167,11 @@ export function useItineraryManager() {
           toast({ title: "Error", description: "No active itinerary to update.", variant: "destructive" });
           return null;
       }
-      const baseData = prevTripData || createDefaultTripData(); // Should not happen if logic is correct
+      const baseData = prevTripData || createDefaultTripData(); 
       const dataToSet: TripData = {
         ...baseData,
         ...updatedTripDataFromPlanner,
-        id: baseData.id || currentItineraryId!, // Ensure ID is always set
+        id: baseData.id || currentItineraryId!, 
       };
       return dataToSet;
     });
@@ -212,8 +211,6 @@ export function useItineraryManager() {
 
       if (newPaxPartial.adults !== undefined || newPaxPartial.children !== undefined) {
         updatedTravelers = createDefaultTravelers(updatedPax.adults, updatedPax.children);
-        // Note: This resets traveler IDs, so item exclusions specific to old IDs will be lost.
-        // A more complex mapping would be needed to preserve them.
       }
       return { ...prevTripData, pax: updatedPax, travelers: updatedTravelers };
     });
@@ -230,7 +227,7 @@ export function useItineraryManager() {
         ...tripData,
         updatedAt: new Date().toISOString(),
       };
-      setTripData(dataToSave); // Ensure local state has the latest updatedAt
+      setTripData(dataToSave); 
 
       localStorage.setItem(`${ITINERARY_DATA_PREFIX}${currentItineraryId}`, JSON.stringify(dataToSave));
 
@@ -264,7 +261,7 @@ export function useItineraryManager() {
     tripData,
     currentItineraryId,
     pageStatus,
-    handleStartNewItinerary, // Renamed from handleStartPlanning for clarity
+    handleStartNewItinerary, 
     handleUpdateTripData,
     handleUpdateSettings,
     handleUpdatePax,
