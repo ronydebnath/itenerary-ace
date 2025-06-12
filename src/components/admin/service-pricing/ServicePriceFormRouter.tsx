@@ -45,10 +45,10 @@ const simplifiedHotelRoomTypeSchema = z.object({
 const hotelDetailsSchema = z.object({
   id: z.string(),
   name: z.string().min(1, "Hotel name (within details) is required."),
-  province: z.string().min(1, "Hotel province within details is required if hotel details are provided. Please select a Province at the top of the form."),
+  province: z.string().min(1, "Hotel province is required. Please select a Province at the top of the form."),
   roomTypes: z.array(simplifiedHotelRoomTypeSchema)
     .min(1, "Hotel must have at least one room type defined by default.")
-    .max(1, "For new services, only one default room type is initially created."),
+    .max(1, "For new services, only one default room type is initially created."), // Enforce for new hotel items
 });
 
 const activityPackageSchema = z.object({
@@ -155,7 +155,7 @@ interface ServicePriceFormRouterProps {
 }
 
 // --- Default Data Creation Helpers ---
-const createDefaultSeasonalPriceForForm = (rate: number = 0): RoomTypeSeasonalPrice => {
+const createDefaultSeasonalPrice = (rate: number = 0): RoomTypeSeasonalPrice => {
   const today = new Date();
   return {
     id: generateGUID(),
@@ -167,12 +167,12 @@ const createDefaultSeasonalPriceForForm = (rate: number = 0): RoomTypeSeasonalPr
   };
 };
 
-const createDefaultRoomTypeForForm = (): HotelRoomTypeDefinition => ({
+const createDefaultRoomType = (name?: string): HotelRoomTypeDefinition => ({
   id: generateGUID(),
-  name: 'Standard Room (Default)',
+  name: name || 'Standard Room (Default)',
   extraBedAllowed: false,
   notes: 'Default room type. Add more details in Edit mode.',
-  seasonalPrices: [createDefaultSeasonalPriceForForm(0)],
+  seasonalPrices: [createDefaultSeasonalPrice(0)],
   characteristics: [],
 });
 
@@ -180,7 +180,7 @@ const createDefaultSimplifiedHotelDetails = (name?: string, province?: string, e
   id: existingId || generateGUID(),
   name: name || "New Hotel (Default Name)",
   province: province || "", 
-  roomTypes: [createDefaultRoomTypeForForm()],
+  roomTypes: [createDefaultRoomType()],
 });
 
 
@@ -219,6 +219,7 @@ const transformInitialDataToFormValues = (data?: Partial<ServicePriceItem>): Par
     return baseTransformed;
   }
 
+  // Logic for existing data or prefill
   if (baseTransformed.category === 'hotel') {
     let hotelDetailsToSet: HotelDefinition;
     if (data.hotelDetails && Array.isArray(data.hotelDetails.roomTypes) && data.hotelDetails.roomTypes.length > 0 &&
@@ -246,7 +247,6 @@ const transformInitialDataToFormValues = (data?: Partial<ServicePriceItem>): Par
             province: data.province || data.hotelDetails.province || "",
             roomTypes: transformedRoomTypes
         };
-
     } else { 
         hotelDetailsToSet = createDefaultSimplifiedHotelDetails(
             data.name || baseTransformed.name,
@@ -257,18 +257,18 @@ const transformInitialDataToFormValues = (data?: Partial<ServicePriceItem>): Par
     baseTransformed.hotelDetails = hotelDetailsToSet;
     baseTransformed.price1 = undefined; baseTransformed.price2 = undefined; baseTransformed.subCategory = undefined;
     baseTransformed.vehicleOptions = undefined; baseTransformed.transferMode = undefined; baseTransformed.maxPassengers = undefined;
-
   } else if (baseTransformed.category === 'activity') {
     let packages: ActivityPackageDefinition[] = [];
     if (data.activityPackages && data.activityPackages.length > 0) {
       packages = data.activityPackages.map(pkg => ({ ...pkg, id: pkg.id || generateGUID(), validityStartDate: pkg.validityStartDate || today.toISOString().split('T')[0], validityEndDate: pkg.validityEndDate || addDays(today, 30).toISOString().split('T')[0], closedWeekdays: pkg.closedWeekdays || [], specificClosedDates: pkg.specificClosedDates || [] }));
-    } else if (data.price1 !== undefined) {
+    } else if (data.price1 !== undefined) { // If no packages but price1 exists, create a default package from it
       packages = [{ id: generateGUID(), name: data.subCategory || 'Standard Package', price1: data.price1, price2: data.price2, notes: data.notes || '', validityStartDate: today.toISOString().split('T')[0], validityEndDate: addDays(today, 30).toISOString().split('T')[0], closedWeekdays: [], specificClosedDates: [] }];
     }
+    // If still no packages (e.g., new item being prefilled with category 'activity' but no prices), add a default empty one
     if (packages.length === 0) { packages = [{ id: generateGUID(), name: 'Standard Package', price1: 0, validityStartDate: today.toISOString().split('T')[0], validityEndDate: addDays(today, 30).toISOString().split('T')[0], closedWeekdays: [], specificClosedDates: [] }]; }
     baseTransformed.activityPackages = packages;
-    baseTransformed.price1 = (packages.length > 0) ? undefined : (data.price1 ?? 0);
-    baseTransformed.price2 = (packages.length > 0) ? undefined : data.price2;
+    baseTransformed.price1 = (packages.length > 0) ? undefined : (data.price1 ?? 0); // Clear price1 if packages exist
+    baseTransformed.price2 = (packages.length > 0) ? undefined : data.price2; // Clear price2 if packages exist
     baseTransformed.subCategory = undefined;
     baseTransformed.vehicleOptions = undefined; baseTransformed.transferMode = undefined; baseTransformed.maxPassengers = undefined;
   } else if (baseTransformed.category === 'transfer') {
@@ -322,7 +322,7 @@ export function ServicePriceFormRouter({ initialData, onSubmit, onCancel }: Serv
   const selectedCategory = form.watch("category");
   const watchedName = form.watch('name');
   const watchedProvince = form.watch('province');
-  const isNewService = !initialData?.id;
+  const isNewService = !initialData?.id && !initialData?.name; // More robust check for "new"
 
   React.useEffect(() => {
     const currentCategoryValue = selectedCategory;
@@ -332,10 +332,8 @@ export function ServicePriceFormRouter({ initialData, onSubmit, onCancel }: Serv
 
     // Clear fields not relevant to the current category
     if (currentCategoryValue !== 'hotel') form.setValue('hotelDetails', undefined, { shouldValidate: false });
-    if (currentCategoryValue !== 'activity') {
-       form.setValue('activityPackages', undefined, { shouldValidate: false });
-    }
-     if (currentCategoryValue !== 'transfer') {
+    if (currentCategoryValue !== 'activity') form.setValue('activityPackages', undefined, { shouldValidate: false });
+    if (currentCategoryValue !== 'transfer') {
       form.setValue('transferMode', undefined, { shouldValidate: false });
       form.setValue('vehicleOptions', undefined, { shouldValidate: false });
       form.setValue('surchargePeriods', undefined, { shouldValidate: false });
@@ -349,43 +347,35 @@ export function ServicePriceFormRouter({ initialData, onSubmit, onCancel }: Serv
         form.setValue('subCategory', undefined, { shouldValidate: false });
     }
 
-
     // Category-specific initialization and syncing
-    if (currentCategoryValue === 'hotel' && isNewService) {
+    if (currentCategoryValue === 'hotel') {
         const hotelDetailsCurrent = form.getValues('hotelDetails');
         const needsReinitialization = !hotelDetailsCurrent ||
                                    !Array.isArray(hotelDetailsCurrent.roomTypes) ||
                                    hotelDetailsCurrent.roomTypes.length === 0 ||
-                                   !hotelDetailsCurrent.roomTypes[0] ||
+                                   !hotelDetailsCurrent.roomTypes[0] || // Ensure first room type object exists
                                    !Array.isArray(hotelDetailsCurrent.roomTypes[0].seasonalPrices) ||
                                    hotelDetailsCurrent.roomTypes[0].seasonalPrices.length === 0;
 
-        if (needsReinitialization) {
-            console.log("DEBUG Router: Re-initializing hotelDetails structure for new hotel.");
+        if (needsReinitialization && isNewService) {
+            console.log("DEBUG Router: Re-initializing hotelDetails structure for new hotel due to missing/incomplete critical nested arrays.");
             const newValidHotelDetails = createDefaultSimplifiedHotelDetails(currentName, currentProvince, form.getValues('hotelDetails.id'));
             form.setValue('hotelDetails', newValidHotelDetails, { shouldValidate: true, shouldDirty: true });
-        } else if (hotelDetailsCurrent.name !== (currentName || "New Hotel (Default Name)") || hotelDetailsCurrent.province !== (currentProvince || "")) {
-            console.log("DEBUG Router: Syncing hotelDetails name/province for new hotel from top-level.");
-            form.setValue('hotelDetails.name', currentName || "New Hotel (Default Name)", { shouldValidate: true, shouldDirty: true });
-            form.setValue('hotelDetails.province', currentProvince || "", { shouldValidate: true, shouldDirty: true });
-        }
-    } else if (currentCategoryValue === 'hotel' && !isNewService) { // Editing existing hotel
-        const hotelDetailsCurrent = form.getValues('hotelDetails');
-        if (hotelDetailsCurrent) {
-            if (hotelDetailsCurrent.name !== (currentName || "Hotel Name") || hotelDetailsCurrent.province !== (currentProvince || "")) {
-               form.setValue('hotelDetails.name', currentName || "Hotel Name", {shouldValidate: true, shouldDirty: true });
+        } else if (hotelDetailsCurrent) { // Only sync if hotelDetailsCurrent exists
+            if (hotelDetailsCurrent.name !== (currentName || "New Hotel (Default Name)") || hotelDetailsCurrent.province !== (currentProvince || "")) {
+               console.log("DEBUG Router: Syncing hotelDetails name/province from top-level.");
+               form.setValue('hotelDetails.name', currentName || "New Hotel (Default Name)", {shouldValidate: true, shouldDirty: true });
                form.setValue('hotelDetails.province', currentProvince || "", { shouldValidate: true, shouldDirty: true });
             }
-        } else { 
-            console.warn("DEBUG Router: HotelDetails missing for existing hotel being edited. Re-initializing.");
-            const defaultDetails = createDefaultSimplifiedHotelDetails(currentName, currentProvince);
-            form.setValue('hotelDetails', defaultDetails, { shouldValidate: true, shouldDirty: true });
+        } else if (isNewService) { // If new and hotelDetailsCurrent is still undefined after first pass
+            console.log("DEBUG Router: hotelDetails still undefined for new hotel, forcing initialization.");
+            const newValidHotelDetails = createDefaultSimplifiedHotelDetails(currentName, currentProvince);
+            form.setValue('hotelDetails', newValidHotelDetails, { shouldValidate: true, shouldDirty: true });
         }
+
     } else if (currentCategoryValue === 'activity') {
-      if (!form.getValues('activityPackages') || form.getValues('activityPackages')?.length === 0) {
-        if (isNewService || !initialData?.activityPackages?.length) { 
-          form.setValue('activityPackages', [{ id: generateGUID(), name: 'Standard Package', price1: 0, validityStartDate: today.toISOString().split('T')[0], validityEndDate: addDays(today, 30).toISOString().split('T')[0], closedWeekdays: [], specificClosedDates: [] }], { shouldValidate: true, shouldDirty: true });
-        }
+      if ((!form.getValues('activityPackages') || form.getValues('activityPackages')?.length === 0) && isNewService) {
+        form.setValue('activityPackages', [{ id: generateGUID(), name: 'Standard Package', price1: 0, validityStartDate: today.toISOString().split('T')[0], validityEndDate: addDays(today, 30).toISOString().split('T')[0], closedWeekdays: [], specificClosedDates: [] }], { shouldValidate: true, shouldDirty: true });
       }
     } else if (currentCategoryValue === 'transfer') {
       const effectiveTransferMode = form.getValues('transferMode') || 'ticket';
@@ -393,7 +383,7 @@ export function ServicePriceFormRouter({ initialData, onSubmit, onCancel }: Serv
         form.setValue('transferMode', effectiveTransferMode, { shouldValidate: true, shouldDirty: true });
       }
       if (effectiveTransferMode === 'vehicle') {
-         if (!form.getValues('vehicleOptions') || form.getValues('vehicleOptions')?.length === 0) {
+         if ((!form.getValues('vehicleOptions') || form.getValues('vehicleOptions')?.length === 0) && isNewService) {
             form.setValue('vehicleOptions', [{ id: generateGUID(), vehicleType: VEHICLE_TYPES[0], price: 0, maxPassengers: 1, notes: ''}], { shouldValidate: true, shouldDirty: true });
          }
       } else { // ticket mode
