@@ -5,10 +5,10 @@ import * as React from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { ServicePriceFormRouter } from '@/components/admin/service-pricing/ServicePriceFormRouter'; // Updated import
+import { ServicePriceFormRouter } from '@/components/admin/service-pricing/ServicePriceFormRouter';
 import type { ServicePriceItem } from '@/types/itinerary';
 import { useToast } from '@/hooks/use-toast';
-import { Home, ListPlus, Edit, ArrowLeft } from 'lucide-react';
+import { LayoutDashboard, Edit, ArrowLeft } from 'lucide-react'; // Changed Home to LayoutDashboard
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 const SERVICE_PRICES_STORAGE_KEY = 'itineraryAceServicePrices';
@@ -50,7 +50,7 @@ export default function EditServicePricePage() {
   }, [id, toast]);
 
   const handleFormSubmit = (data: Omit<ServicePriceItem, 'id'>) => {
-    if (!initialData?.id) { // Ensure initialData and its id exist
+    if (!initialData?.id) { 
       toast({ title: "Error", description: "Cannot update service: ID missing.", variant: "destructive" });
       return;
     }
@@ -59,7 +59,7 @@ export default function EditServicePricePage() {
       const allPrices: ServicePriceItem[] = storedPrices ? JSON.parse(storedPrices) : [];
       
       const updatedPrices = allPrices.map(sp => 
-        sp.id === initialData.id ? { ...initialData, ...data, id: initialData.id } : sp // Preserve ID and spread new data
+        sp.id === initialData.id ? { ...initialData, ...data, id: initialData.id } : sp 
       );
       
       localStorage.setItem(SERVICE_PRICES_STORAGE_KEY, JSON.stringify(updatedPrices));
@@ -105,9 +105,14 @@ export default function EditServicePricePage() {
 
   return (
     <main className="min-h-screen bg-background p-4 md:p-8">
-      <Card className="w-full max-w-4xl mx-auto shadow-xl"> {/* Changed max-w-6xl to max-w-4xl for consistency */}
+      <Card className="w-full max-w-4xl mx-auto shadow-xl">
         <CardHeader>
-          <div className="flex justify-between items-center">
+          <div className="flex justify-between items-center mb-4">
+             <Link href="/" passHref>
+                <Button variant="outline" size="icon" className="h-10 w-10">
+                  <LayoutDashboard className="h-5 w-5" />
+                </Button>
+              </Link>
             <CardTitle className="text-2xl font-bold text-primary flex items-center">
               <Edit className="mr-3 h-7 w-7" /> Edit Service Price
             </CardTitle>
@@ -119,8 +124,8 @@ export default function EditServicePricePage() {
           </div>
         </CardHeader>
         <CardContent>
-          <ServicePriceFormRouter // Using the new router form
-            key={initialData.id || 'edit-service'} // Ensure key is stable or changes appropriately
+          <ServicePriceFormRouter
+            key={initialData.id || 'edit-service'} 
             initialData={initialData}
             onSubmit={handleFormSubmit}
             onCancel={handleCancel}

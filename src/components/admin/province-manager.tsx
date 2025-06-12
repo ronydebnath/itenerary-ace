@@ -5,7 +5,7 @@ import * as React from 'react';
 import Link from 'next/link';
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { PlusCircle, Home, MapPinned, Trash2, LayoutDashboard, ListPlus } from 'lucide-react';
+import { PlusCircle, MapPinned, Trash2, LayoutDashboard, ListPlus } from 'lucide-react'; // Removed Home
 import type { ProvinceItem } from '@/types/itinerary';
 import { ProvinceForm } from './province-form';
 import { ProvinceTable } from './province-table';
@@ -86,12 +86,6 @@ export function ProvinceManager() {
       <div className="flex justify-between items-center mb-6">
         <div className="flex items-center gap-2">
           <Link href="/">
-            <Button variant="outline" size="icon" className="h-10 w-10">
-              <Home className="h-5 w-5" />
-              <span className="sr-only">Go to Home</span>
-            </Button>
-          </Link>
-          <Link href="/admin">
             <Button variant="outline" size="icon" className="h-10 w-10">
               <LayoutDashboard className="h-5 w-5" />
               <span className="sr-only">Go to Admin Dashboard</span>

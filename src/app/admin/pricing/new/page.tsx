@@ -2,19 +2,18 @@
 "use client";
 
 import * as React from 'react';
-import { useRouter, useSearchParams } from 'next/navigation'; // Added useSearchParams
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-// import { ServicePriceForm } from '@/components/admin/service-price-form'; // Old form component
-import { ServicePriceFormRouter } from '@/components/admin/service-pricing/ServicePriceFormRouter'; // New form router
+import { ServicePriceFormRouter } from '@/components/admin/service-pricing/ServicePriceFormRouter';
 import type { ServicePriceItem } from '@/types/itinerary';
 import { generateGUID } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
-import { Home, ListPlus, ArrowLeft } from 'lucide-react';
+import { LayoutDashboard, ListPlus, ArrowLeft } from 'lucide-react'; // Changed Home to LayoutDashboard
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 const SERVICE_PRICES_STORAGE_KEY = 'itineraryAceServicePrices';
-const TEMP_PREFILL_DATA_KEY = 'tempServicePricePrefillData'; // For AI prefill
+const TEMP_PREFILL_DATA_KEY = 'tempServicePricePrefillData';
 
 export default function NewServicePricePage() {
   const router = useRouter();
@@ -28,7 +27,7 @@ export default function NewServicePricePage() {
       if (prefillDataString) {
         const parsedData = JSON.parse(prefillDataString);
         setInitialData(parsedData);
-        localStorage.removeItem(TEMP_PREFILL_DATA_KEY); // Clean up after use
+        localStorage.removeItem(TEMP_PREFILL_DATA_KEY); 
       }
     } catch (error: any) {
       console.error("Error reading prefill data from localStorage:", error);
@@ -68,7 +67,12 @@ export default function NewServicePricePage() {
     <main className="min-h-screen bg-background p-4 md:p-8">
       <Card className="w-full max-w-4xl mx-auto shadow-xl">
         <CardHeader>
-          <div className="flex justify-between items-center">
+          <div className="flex justify-between items-center mb-4">
+             <Link href="/" passHref>
+                <Button variant="outline" size="icon" className="h-10 w-10">
+                  <LayoutDashboard className="h-5 w-5" />
+                </Button>
+              </Link>
             <CardTitle className="text-2xl font-bold text-primary flex items-center">
               <ListPlus className="mr-3 h-7 w-7" /> Add New Service Price
             </CardTitle>
@@ -81,7 +85,7 @@ export default function NewServicePricePage() {
         </CardHeader>
         <CardContent>
           <ServicePriceFormRouter
-            key={JSON.stringify(initialData) || 'new-service'} // Re-mount if initialData changes
+            key={JSON.stringify(initialData) || 'new-service'} 
             initialData={initialData}
             onSubmit={handleFormSubmit}
             onCancel={handleCancel}

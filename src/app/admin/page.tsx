@@ -1,11 +1,10 @@
-
 "use client";
 
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card'; // Added CardFooter
-import { Cog, MapPinned, ListPlus, Home, LayoutDashboard, ListOrdered, DollarSign, Users, BarChart3 } from 'lucide-react';
-import { cn } from '@/lib/utils'; // Ensure this import is present
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
+import { Cog, MapPinned, ListPlus, LayoutDashboard, ListOrdered, DollarSign, Users, BarChart3, Wand2, Route } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface DashboardCardProps {
   title: string;
@@ -54,20 +53,20 @@ export default function AdminDashboardPage() {
         </header>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+           <DashboardCard
+            title="Itinerary Creation Suite"
+            description="Craft new itineraries, plan day-by-day activities, and calculate costs with our powerful planner."
+            href="/planner"
+            icon={Route} 
+            buttonText="Launch Planner"
+            className="lg:col-span-1 bg-accent/5 border-accent/30"
+          />
           <DashboardCard
-            title="Manage Itineraries"
-            description="View, edit, and organize all saved client itineraries. Track progress and manage details."
+            title="Manage Saved Itineraries"
+            description="View, edit, and organize all client itineraries. Track progress and manage details."
             href="/admin/itineraries"
             icon={ListOrdered}
             buttonText="View Itineraries"
-            className="lg:col-span-1"
-          />
-          <DashboardCard
-            title="Manage Provinces"
-            description="Define and update geographical locations (provinces or cities) used for pricing and filtering."
-            href="/admin/provinces"
-            icon={MapPinned}
-            buttonText="Edit Provinces"
             className="lg:col-span-1"
           />
           <DashboardCard
@@ -78,6 +77,23 @@ export default function AdminDashboardPage() {
             buttonText="Update Prices"
             className="lg:col-span-1"
           />
+           <DashboardCard
+            title="Manage Provinces"
+            description="Define and update geographical locations (provinces or cities) used for pricing and filtering."
+            href="/admin/provinces"
+            icon={MapPinned}
+            buttonText="Edit Provinces"
+            className="lg:col-span-1"
+          />
+          <DashboardCard
+            title="AI Image Describer"
+            description="Upload an image and let AI provide a detailed description. Useful for content creation."
+            href="/image-describer"
+            icon={Wand2}
+            buttonText="Describe Image"
+            className="lg:col-span-1"
+          />
+          
           {/* Example of a potential future card - you can uncomment and implement */}
           {/*
           <DashboardCard
@@ -97,14 +113,6 @@ export default function AdminDashboardPage() {
             className="border-dashed border-muted-foreground/50"
           />
           */}
-        </div>
-
-        <div className="text-center mt-12">
-          <Link href="/" passHref>
-            <Button variant="outline" size="lg" className="text-lg py-7 px-8 border-primary text-primary hover:bg-primary/5">
-              <Home className="mr-3 h-5 w-5" /> Go to Homepage
-            </Button>
-          </Link>
         </div>
       </div>
     </main>

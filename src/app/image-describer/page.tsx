@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Loader2, ImageIcon, AlertCircle, Sparkles, Home } from 'lucide-react';
+import { Loader2, ImageIcon, AlertCircle, Sparkles, LayoutDashboard } from 'lucide-react'; // Changed Home to LayoutDashboard
 import { describeImage } from '@/ai/flows/describe-image-flow';
 import { useToast } from "@/hooks/use-toast";
 import Image from 'next/image';
@@ -26,7 +26,7 @@ export default function ImageDescriberPage() {
     setDescription(null);
     const file = event.target.files?.[0];
     if (file) {
-      if (file.size > 4 * 1024 * 1024) { // Limit file size to 4MB for OpenRouter
+      if (file.size > 4 * 1024 * 1024) { 
         setError("File size exceeds 4MB limit. Please choose a smaller image.");
         setSelectedFile(null);
         setPreviewUrl(null);
@@ -60,7 +60,6 @@ export default function ImageDescriberPage() {
     setDescription(null);
 
     try {
-      // The previewUrl is already a data URI
       const result = await describeImage({ imageDataUri: previewUrl });
       setDescription(result.description);
       toast({
@@ -87,7 +86,7 @@ export default function ImageDescriberPage() {
         <CardHeader className="text-center">
           <Link href="/" className="absolute top-4 left-4">
             <Button variant="outline" size="icon">
-              <Home className="h-4 w-4" />
+              <LayoutDashboard className="h-4 w-4" />
             </Button>
           </Link>
           <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-primary mb-4">

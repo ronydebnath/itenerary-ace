@@ -5,7 +5,7 @@ import * as React from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Button } from "@/components/ui/button";
-import { PlusCircle, Edit, Trash2, Home, MapPinned, Loader2, LayoutDashboard, ListPlus, FileText, Sparkles } from 'lucide-react';
+import { PlusCircle, Edit, Trash2, LayoutDashboard, MapPinned, Loader2, ListPlus, FileText, Sparkles } from 'lucide-react'; // Changed Home to LayoutDashboard
 import type { ServicePriceItem, ItineraryItemType } from '@/types/itinerary';
 import { VEHICLE_TYPES } from '@/types/itinerary';
 import { ServicePriceTable } from './service-price-table';
@@ -199,11 +199,6 @@ export function PricingManager() {
       <div className="flex justify-between items-center mb-6">
         <div className="flex items-center gap-2">
           <Link href="/">
-            <Button variant="outline" size="icon" className="h-10 w-10">
-              <Home className="h-5 w-5" />
-            </Button>
-          </Link>
-           <Link href="/admin">
             <Button variant="outline" size="icon" className="h-10 w-10">
               <LayoutDashboard className="h-5 w-5" />
             </Button>

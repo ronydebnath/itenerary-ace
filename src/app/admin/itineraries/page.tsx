@@ -9,8 +9,8 @@ import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import type { ItineraryMetadata } from '@/types/itinerary'; // Assuming ItineraryMetadata is defined
-import { Home, ListOrdered, Edit, Trash2, Search, LayoutDashboard, FileText } from 'lucide-react';
+import type { ItineraryMetadata } from '@/types/itinerary'; 
+import { LayoutDashboard, ListOrdered, Edit, Trash2, Search, FileText } from 'lucide-react'; // Removed Home
 import { format } from 'date-fns';
 
 const ITINERARY_INDEX_KEY = 'itineraryAce_index';
@@ -28,7 +28,6 @@ export default function ManageItinerariesPage() {
       const storedIndex = localStorage.getItem(ITINERARY_INDEX_KEY);
       if (storedIndex) {
         const parsedIndex: ItineraryMetadata[] = JSON.parse(storedIndex);
-        // Sort by updatedAt descending
         parsedIndex.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
         setItineraries(parsedIndex);
       }
@@ -41,20 +40,14 @@ export default function ManageItinerariesPage() {
 
   const handleDeleteItinerary = (itineraryId: string) => {
     try {
-      // Remove from index
       const updatedIndex = itineraries.filter(it => it.id !== itineraryId);
       localStorage.setItem(ITINERARY_INDEX_KEY, JSON.stringify(updatedIndex));
       setItineraries(updatedIndex);
-
-      // Remove itinerary data
       localStorage.removeItem(`${ITINERARY_DATA_PREFIX}${itineraryId}`);
-
-      // Remove from last active if it was the last active
       const lastActiveId = localStorage.getItem('lastActiveItineraryId');
       if (lastActiveId === itineraryId) {
         localStorage.removeItem('lastActiveItineraryId');
       }
-
       toast({ title: "Success", description: `Itinerary ${itineraryId} deleted.` });
     } catch (error) {
       console.error("Error deleting itinerary:", error);
@@ -81,11 +74,6 @@ export default function ManageItinerariesPage() {
         <div className="flex justify-between items-center mb-6">
           <div className="flex items-center gap-2">
              <Link href="/">
-                <Button variant="outline" size="icon" className="h-10 w-10">
-                  <Home className="h-5 w-5" />
-                </Button>
-              </Link>
-             <Link href="/admin">
                 <Button variant="outline" size="icon" className="h-10 w-10">
                   <LayoutDashboard className="h-5 w-5" />
                 </Button>
@@ -115,7 +103,7 @@ export default function ManageItinerariesPage() {
             <p className="mt-4 text-muted-foreground text-lg">
               {searchTerm ? "No itineraries match your search." : "No itineraries saved yet."}
             </p>
-            {!searchTerm && <p className="text-sm text-muted-foreground mt-1">Create a new itinerary from the main page.</p>}
+            {!searchTerm && <p className="text-sm text-muted-foreground mt-1">Create a new itinerary from the Admin Dashboard.</p>}
           </div>
         ) : (
           <div className="rounded-lg border shadow-sm overflow-hidden">
@@ -140,7 +128,7 @@ export default function ManageItinerariesPage() {
                       <Button
                         variant="ghost"
                         size="icon"
-                        onClick={() => router.push(`/?itineraryId=${it.id}`)}
+                        onClick={() => router.push(`/planner?itineraryId=${it.id}`)}
                         className="mr-2 text-primary hover:bg-primary/10"
                         title="Edit Itinerary"
                       >
