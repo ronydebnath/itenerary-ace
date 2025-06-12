@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { PlusCircle, Hotel, Utensils, Car, Ticket, ShoppingBag, AlertTriangle } from 'lucide-react';
 import { TransferItemForm } from './items/transfer-item-form';
 import { ActivityItemForm } from './items/activity-item-form';
-import { HotelItemForm } from './items/hotel-item-form'; 
+import { HotelItemForm } from './items/hotel-item-form';
 import { MealItemForm } from './items/meal-item-form';
 import { MiscItemForm } from './items/misc-item-form';
 import {
@@ -28,32 +28,33 @@ interface DayViewProps {
   onAddItem: (day: number, itemType: ItineraryItem['type']) => void;
   onUpdateItem: (day: number, updatedItem: ItineraryItem) => void;
   onDeleteItem: (day: number, itemId: string) => void;
-  allHotelDefinitions: HotelDefinition[]; 
-  allServicePrices: ServicePriceItem[]; 
+  allHotelDefinitions: HotelDefinition[];
+  allServicePrices: ServicePriceItem[];
 }
 
 const ITEM_CONFIG = {
   transfer: { label: "Transfers", icon: Car, component: TransferItemForm },
   activity: { label: "Activities", icon: Ticket, component: ActivityItemForm },
-  hotel: { label: "Hotels", icon: Hotel, component: HotelItemForm }, 
+  hotel: { label: "Hotels", icon: Hotel, component: HotelItemForm },
   meal: { label: "Meals", icon: Utensils, component: MealItemForm },
   misc: { label: "Miscellaneous", icon: ShoppingBag, component: MiscItemForm },
 };
 
 
-export function DayView({ 
-  dayNumber, items, travelers, currency, tripSettings, 
+export function DayView({
+  dayNumber, items, travelers, currency, tripSettings,
   onAddItem, onUpdateItem, onDeleteItem, allHotelDefinitions, allServicePrices
 }: DayViewProps) {
-  
+
   const renderItemForm = (item: ItineraryItem) => {
     const ConfigComponent = ITEM_CONFIG[item.type as keyof typeof ITEM_CONFIG]?.component;
     if (!ConfigComponent) return null;
-    
-    const specificItem = item as any; 
 
-    const commonProps = {
-      key: item.id,
+    const itemKey = item.id; // Store key separately
+    const specificItem = item as any;
+
+    // Props to be spread, *without* the key
+    const propsToSpread = {
       item: specificItem,
       travelers: travelers,
       currency: currency,
@@ -61,19 +62,20 @@ export function DayView({
       tripSettings: tripSettings,
       onUpdate: (updatedItem: ItineraryItem) => onUpdateItem(dayNumber, updatedItem),
       onDelete: () => onDeleteItem(dayNumber, item.id),
-      allServicePrices: allServicePrices, // Pass allServicePrices to all forms
+      allServicePrices: allServicePrices,
     };
 
     if (item.type === 'hotel') {
       return (
         <HotelItemForm
-          {...commonProps}
-          allHotelDefinitions={allHotelDefinitions} 
+          key={itemKey} // Pass key directly
+          {...propsToSpread} // Spread other props
+          allHotelDefinitions={allHotelDefinitions}
         />
       );
     }
-    
-    return <ConfigComponent {...commonProps} />;
+
+    return <ConfigComponent key={itemKey} {...propsToSpread} />; // Pass key directly, spread other props
   };
 
   return (
@@ -97,9 +99,9 @@ export function DayView({
                   <div className="space-y-4">
                     {categoryItems.map(item => renderItemForm(item))}
                   </div>
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
+                  <Button
+                    variant="outline"
+                    size="sm"
                     className="mt-4 border-primary text-primary hover:bg-primary/10"
                     onClick={() => onAddItem(dayNumber, type as ItineraryItem['type'])}
                   >
@@ -114,5 +116,3 @@ export function DayView({
     </Card>
   );
 }
-
-    
