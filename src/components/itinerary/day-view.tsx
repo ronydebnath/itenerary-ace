@@ -2,7 +2,7 @@
 "use client";
 
 import * as React from 'react';
-import type { ItineraryItem, Traveler, CurrencyCode, TripSettings, HotelDefinition, ServicePriceItem } from '@/types/itinerary'; // Added HotelDefinition, ServicePriceItem
+import type { ItineraryItem, Traveler, CurrencyCode, TripSettings, HotelDefinition, ServicePriceItem } from '@/types/itinerary';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { PlusCircle, Hotel, Utensils, Car, Ticket, ShoppingBag, AlertTriangle } from 'lucide-react';
@@ -24,7 +24,7 @@ interface DayViewProps {
   items: ItineraryItem[];
   travelers: Traveler[];
   currency: CurrencyCode;
-  tripSettings: TripSettings;
+  tripSettings: TripSettings; // Now includes selectedProvinces
   onAddItem: (day: number, itemType: ItineraryItem['type']) => void;
   onUpdateItem: (day: number, updatedItem: ItineraryItem) => void;
   onDeleteItem: (day: number, itemId: string) => void;
@@ -50,16 +50,15 @@ export function DayView({
     const ConfigComponent = ITEM_CONFIG[item.type as keyof typeof ITEM_CONFIG]?.component;
     if (!ConfigComponent) return null;
 
-    const itemKey = item.id; // Store key separately
+    const itemKey = item.id; 
     const specificItem = item as any;
 
-    // Props to be spread, *without* the key
     const propsToSpread = {
       item: specificItem,
       travelers: travelers,
       currency: currency,
       dayNumber: dayNumber,
-      tripSettings: tripSettings,
+      tripSettings: tripSettings, // Pass full tripSettings which includes selectedProvinces
       onUpdate: (updatedItem: ItineraryItem) => onUpdateItem(dayNumber, updatedItem),
       onDelete: () => onDeleteItem(dayNumber, item.id),
       allServicePrices: allServicePrices,
@@ -68,14 +67,14 @@ export function DayView({
     if (item.type === 'hotel') {
       return (
         <HotelItemForm
-          key={itemKey} // Pass key directly
-          {...propsToSpread} // Spread other props
+          key={itemKey} 
+          {...propsToSpread} 
           allHotelDefinitions={allHotelDefinitions}
         />
       );
     }
 
-    return <ConfigComponent key={itemKey} {...propsToSpread} />; // Pass key directly, spread other props
+    return <ConfigComponent key={itemKey} {...propsToSpread} />; 
   };
 
   return (

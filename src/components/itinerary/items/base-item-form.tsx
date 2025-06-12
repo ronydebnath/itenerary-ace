@@ -2,24 +2,25 @@
 "use client";
 
 import * as React from 'react';
-import type { ItineraryItem, Traveler, CurrencyCode } from '@/types/itinerary';
+import type { ItineraryItem, Traveler, CurrencyCode, TripSettings } from '@/types/itinerary'; // Added TripSettings
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Trash2, ChevronDown, ChevronUp } from 'lucide-react';
+import { Trash2, ChevronDown, ChevronUp, Loader2 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useProvinces } from '@/hooks/useProvinces'; // Import useProvinces
+import { useProvinces } from '@/hooks/useProvinces';
 import { cn } from '@/lib/utils';
 
 export interface BaseItemFormProps<T extends ItineraryItem> {
   item: T;
   travelers: Traveler[];
-  currency: CurrencyCode; // Though not directly used in Base, specific forms might
+  currency: CurrencyCode;
+  tripSettings: TripSettings; // Added to access selectedProvinces
   onUpdate: (item: T) => void;
   onDelete: () => void;
-  children: React.ReactNode; // For specific fields of the item type
+  children: React.ReactNode;
   itemTypeLabel: string;
 }
 
@@ -35,13 +36,23 @@ export function FormField({label, id, children, className}: {label: string, id: 
 export function BaseItemForm<T extends ItineraryItem>({
   item,
   travelers,
+  tripSettings, // Destructure tripSettings
   onUpdate,
   onDelete,
   children,
   itemTypeLabel,
 }: BaseItemFormProps<T>) {
   const [isOptOutOpen, setIsOptOutOpen] = React.useState(item.excludedTravelerIds.length > 0);
-  const { provinces, isLoading: isLoadingProvinces } = useProvinces();
+  const { provinces: allAvailableProvinces, isLoading: isLoadingProvinces } = useProvinces();
+
+  const globallySelectedProvinces = tripSettings.selectedProvinces || [];
+
+  const displayProvinces = React.useMemo(() => {
+    if (globallySelectedProvinces.length > 0) {
+      return allAvailableProvinces.filter(p => globallySelectedProvinces.includes(p.name));
+    }
+    return allAvailableProvinces;
+  }, [allAvailableProvinces, globallySelectedProvinces]);
 
   const handleInputChange = (field: keyof T, value: any) => {
     onUpdate({ ...item, [field]: value });
@@ -59,13 +70,10 @@ export function BaseItemForm<T extends ItineraryItem>({
   
   const handleProvinceChange = (value: string) => {
     const provinceValue = value === "none" ? undefined : value;
-    // Reset selectedServicePriceId and dependent fields when province changes
-    // This forces re-selection of service if a province-specific one is desired
-    // And also clears any dependent fields in item forms that rely on selectedServicePriceId
     const updatedItem: Partial<ItineraryItem> = {
         province: provinceValue,
         selectedServicePriceId: undefined,
-        // @ts-ignore - these fields may or may not exist on T, but clearing them is safe
+        // @ts-ignore 
         selectedPackageId: undefined, 
         // @ts-ignore
         selectedVehicleOptionId: undefined,
@@ -89,16 +97,30 @@ export function BaseItemForm<T extends ItineraryItem>({
             <Select
               value={item.province || "none"}
               onValueChange={handleProvinceChange}
-              disabled={isLoadingProvinces}
+              disabled={isLoadingProvinces || (globallySelectedProvinces.length > 0 && displayProvinces.length === 0 && !item.province)}
             >
               <SelectTrigger>
-                <SelectValue placeholder="Select province..." />
+                <SelectValue placeholder={isLoadingProvinces ? "Loading..." : "Select province..."} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="none">None / Generic</SelectItem>
-                {provinces.map(p => (
-                  <SelectItem key={p.id} value={p.name}>{p.name}</SelectItem>
-                ))}
+                {isLoadingProvinces ? (
+                  <div className="flex items-center justify-center p-2">
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" /> Loading...
+                  </div>
+                ) : (
+                  <>
+                    <SelectItem value="none">None / Generic</SelectItem>
+                    {displayProvinces.map(p => (
+                      <SelectItem key={p.id} value={p.name}>{p.name}</SelectItem>
+                    ))}
+                    {globallySelectedProvinces.length > 0 && displayProvinces.length === 0 && !item.province && (
+                       <div className="p-2 text-xs text-muted-foreground text-center">No matching provinces from global selection.</div>
+                    )}
+                    {globallySelectedProvinces.length > 0 && item.province && !displayProvinces.find(p => p.name === item.province) && (
+                        <SelectItem value={item.province} disabled>{item.province} (Not in global selection)</SelectItem>
+                    )}
+                  </>
+                )}
               </SelectContent>
             </Select>
           </FormField>

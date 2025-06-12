@@ -9,9 +9,10 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from '@/components/ui/badge';
 import { format, parseISO, isValid } from 'date-fns';
-import { CalendarDays, Info, Tag, AlertCircle } from 'lucide-react';
+import { CalendarDays, Info, Tag, AlertCircle, Loader2 } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Separator } from '@/components/ui/separator'; // Added Separator
+import { Separator } from '@/components/ui/separator'; 
+import { useServicePrices } from '@/hooks/useServicePrices';
 
 interface ActivityItemFormProps {
   item: ActivityItemType;
@@ -21,14 +22,17 @@ interface ActivityItemFormProps {
   tripSettings: TripSettings;
   onUpdate: (item: ActivityItemType) => void;
   onDelete: () => void;
-  allServicePrices: ServicePriceItem[];
+  allServicePrices: ServicePriceItem[]; // Keep this for direct access if needed, but primarily use hook
 }
 
 const WEEKDAYS_MAP = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-export function ActivityItemForm({ item, travelers, currency, dayNumber, tripSettings, onUpdate, onDelete, allServicePrices }: ActivityItemFormProps) {
+export function ActivityItemForm({ item, travelers, currency, dayNumber, tripSettings, onUpdate, onDelete }: ActivityItemFormProps) {
+  const { allServicePrices, isLoading: isLoadingServices } = useServicePrices();
   const [activityServices, setActivityServices] = React.useState<ServicePriceItem[]>([]);
   
+  const globallySelectedProvinces = tripSettings.selectedProvinces || [];
+
   const getServicePriceById = React.useCallback((id: string) => {
     return allServicePrices.find(sp => sp.id === id);
   }, [allServicePrices]);
@@ -48,13 +52,25 @@ export function ActivityItemForm({ item, travelers, currency, dayNumber, tripSet
   }, [selectedActivityService, item.selectedPackageId]);
   
   React.useEffect(() => {
+    if (isLoadingServices) {
+      setActivityServices([]);
+      return;
+    }
     const allCategoryServices = allServicePrices.filter(s => s.category === 'activity' && s.currency === currency);
     let filteredServices = allCategoryServices;
-    if (item.province) {
-      filteredServices = allCategoryServices.filter(s => s.province === item.province || !s.province);
+
+    if (globallySelectedProvinces.length > 0) {
+      filteredServices = filteredServices.filter(s => !s.province || globallySelectedProvinces.includes(s.province));
     }
+    
+    if (item.province && globallySelectedProvinces.length === 0) { // Only filter by item.province if no global selection
+        filteredServices = filteredServices.filter(s => s.province === item.province || !s.province);
+    } else if (item.province && globallySelectedProvinces.includes(item.province)) { // If global selection exists and item.province is part of it
+        filteredServices = filteredServices.filter(s => s.province === item.province || !s.province);
+    }
+
     setActivityServices(filteredServices);
-  }, [allServicePrices, currency, item.province]);
+  }, [allServicePrices, currency, item.province, isLoadingServices, globallySelectedProvinces]);
 
   const handleNumericInputChange = (field: keyof ActivityItemType, value: string) => {
     const numValue = value === '' ? undefined : parseFloat(value);
@@ -95,7 +111,8 @@ export function ActivityItemForm({ item, travelers, currency, dayNumber, tripSet
           selectedPackageId: defaultPackage?.id,
           adultPrice: defaultPackage?.price1 ?? service.price1 ?? 0,
           childPrice: defaultPackage?.price2 ?? service.price2 ?? undefined,
-          note: service.notes || undefined,
+          note: defaultPackage?.notes || service.notes || undefined, // Prioritize package notes
+          province: service.province || item.province, // Keep item's province if service is generic
         });
       } else {
         onUpdate({
@@ -141,32 +158,40 @@ export function ActivityItemForm({ item, travelers, currency, dayNumber, tripSet
   const isPriceReadOnly = !!(item.selectedPackageId && selectedActivityService?.activityPackages?.length && selectedPackage) || 
                          !!(item.selectedServicePriceId && selectedActivityService && (!selectedActivityService.activityPackages || selectedActivityService.activityPackages.length === 0));
 
-  const serviceDefinitionNotFound = item.selectedServicePriceId && !selectedActivityService;
+  const serviceDefinitionNotFound = item.selectedServicePriceId && !selectedActivityService && !isLoadingServices;
 
   return (
-    <BaseItemForm item={item} travelers={travelers} currency={currency} onUpdate={onUpdate} onDelete={onDelete} itemTypeLabel="Activity">
-      {(activityServices.length > 0 || item.selectedServicePriceId) && (
+    <BaseItemForm item={item} travelers={travelers} currency={currency} tripSettings={tripSettings} onUpdate={onUpdate} onDelete={onDelete} itemTypeLabel="Activity">
+      {(activityServices.length > 0 || item.selectedServicePriceId || isLoadingServices) && (
         <div className="mt-4 pt-4 border-t">
-          <FormField label={`Select Predefined Activity (${item.province || 'Any Province'})`} id={`predefined-activity-${item.id}`}>
-            <Select
-              value={item.selectedServicePriceId || "none"}
-              onValueChange={handlePredefinedServiceSelect}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Choose an activity or set custom price..." />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">None (Custom Price)</SelectItem>
-                {activityServices.map(service => (
-                  <SelectItem key={service.id} value={service.id}>
-                    {service.name} ({service.province || 'Generic'})
-                    {service.activityPackages && service.activityPackages.length > 0 
-                      ? ` - ${service.activityPackages.length} pkg(s)` 
-                      : service.price1 !== undefined ? ` - ${currency} ${service.price1}` : ''}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <FormField label={`Select Predefined Activity ${item.province ? `(${item.province})` : globallySelectedProvinces.length > 0 ? `(${globallySelectedProvinces.join('/')})` : '(Any Province)'}`} id={`predefined-activity-${item.id}`}>
+            {isLoadingServices ? (
+                 <div className="flex items-center h-10 border rounded-md px-3 bg-muted/50">
+                    <Loader2 className="h-4 w-4 animate-spin mr-2 text-muted-foreground" /> 
+                    <span className="text-sm text-muted-foreground">Loading activities...</span>
+                </div>
+            ) : (
+                <Select
+                value={item.selectedServicePriceId || "none"}
+                onValueChange={handlePredefinedServiceSelect}
+                disabled={activityServices.length === 0 && !item.selectedServicePriceId}
+                >
+                <SelectTrigger>
+                    <SelectValue placeholder={activityServices.length === 0 && !item.selectedServicePriceId ? "No activities match criteria" : "Choose an activity or set custom price..."} />
+                </SelectTrigger>
+                <SelectContent>
+                    <SelectItem value="none">None (Custom Price)</SelectItem>
+                    {activityServices.map(service => (
+                    <SelectItem key={service.id} value={service.id}>
+                        {service.name} ({service.province || 'Generic'})
+                        {service.activityPackages && service.activityPackages.length > 0 
+                        ? ` - ${service.activityPackages.length} pkg(s)` 
+                        : service.price1 !== undefined ? ` - ${currency} ${service.price1}` : ''}
+                    </SelectItem>
+                    ))}
+                </SelectContent>
+                </Select>
+            )}
           </FormField>
           {selectedActivityService && <p className="text-xs text-muted-foreground pt-1">Using: {selectedActivityService.name}</p>}
 

@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
-import { ChevronLeft, ChevronRight, Printer, RotateCcw, MapPin, CalendarDays, Users, Eye, EyeOff, Hotel, Loader2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Printer, RotateCcw, MapPin, CalendarDays, Users, Eye, EyeOff, Hotel, Loader2, Route } from 'lucide-react';
 import { formatCurrency, generateGUID } from '@/lib/utils';
 import { AISuggestions } from './ai-suggestions'; 
 import { PrintLayout } from './print-layout'; 
@@ -19,6 +19,7 @@ import { calculateAllCosts } from '@/lib/calculation-utils';
 import { useServicePrices } from '@/hooks/useServicePrices';
 import { useHotelDefinitions } from '@/hooks/useHotelDefinitions'; 
 import { addDays, format, parseISO } from 'date-fns';
+import { Badge } from '@/components/ui/badge';
 
 interface ItineraryPlannerProps {
   tripData: TripData;
@@ -61,7 +62,7 @@ export function ItineraryPlanner({ tripData, onReset, onUpdateTripData }: Itiner
       day, 
       name: `New ${itemType}`, 
       excludedTravelerIds: [],
-      province: undefined, 
+      province: tripData.settings.selectedProvinces.length === 1 ? tripData.settings.selectedProvinces[0] : undefined, 
     };
 
     switch (itemType) {
@@ -132,6 +133,8 @@ export function ItineraryPlanner({ tripData, onReset, onUpdateTripData }: Itiner
   }
   
   const isLoadingAnything = isLoadingServices || isLoadingHotelDefinitions;
+  const { selectedProvinces = [] } = tripData.settings;
+
 
   return (
     <div className="w-full max-w-[1600px] mx-auto p-4 md:p-6 lg:p-8">
@@ -152,6 +155,15 @@ export function ItineraryPlanner({ tripData, onReset, onUpdateTripData }: Itiner
                 <div className="flex items-center"><CalendarDays className="mr-2 h-5 w-5 text-primary" /> <strong>Days:</strong><span className="ml-1 font-code">{tripData.settings.numDays}</span></div>
                 <div className="flex items-center"><Users className="mr-2 h-5 w-5 text-primary" /> <strong>Adults:</strong><span className="ml-1 font-code">{tripData.pax.adults}</span>, <strong>Children:</strong><span className="ml-1 font-code">{tripData.pax.children}</span></div>
                 <div className="flex items-center"><MapPin className="mr-2 h-5 w-5 text-primary" /> <strong>Start Date:</strong><span className="ml-1 font-code">{displayStartDate}</span></div>
+                <div className="flex items-center col-span-1 md:col-span-3"><Route className="mr-2 h-5 w-5 text-primary" /> <strong>Selected Provinces:</strong>
+                  {selectedProvinces.length > 0 ? (
+                    <span className="ml-1 flex flex-wrap gap-1">
+                      {selectedProvinces.map(p => <Badge key={p} variant="outline" className="bg-background">{p}</Badge>)}
+                    </span>
+                  ) : (
+                    <span className="ml-1 font-code text-muted-foreground italic">All provinces</span>
+                  )}
+                </div>
                 <div className="flex items-center col-span-1 md:col-span-3"><Users className="mr-2 h-5 w-5 text-primary" /> <strong>Currency:</strong><span className="ml-1 font-code">{tripData.pax.currency}</span>
                   {showCosts && tripData.settings.budget && (<span className="ml-4"><strong>Budget:</strong> <span className="ml-1 font-code">{formatCurrency(tripData.settings.budget, tripData.pax.currency)}</span></span>)}
                 </div>
@@ -209,7 +221,7 @@ export function ItineraryPlanner({ tripData, onReset, onUpdateTripData }: Itiner
                     onAddItem={handleAddItem}
                     onUpdateItem={handleUpdateItem}
                     onDeleteItem={handleDeleteItem}
-                    tripSettings={tripData.settings}
+                    tripSettings={tripData.settings} // Pass full tripSettings
                     allHotelDefinitions={allHotelDefinitions} 
                     allServicePrices={allServicePrices}
                   />

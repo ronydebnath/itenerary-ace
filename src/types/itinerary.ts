@@ -18,6 +18,7 @@ export interface TripSettings {
   numDays: number;
   startDate: string; // ISO date string, now mandatory
   budget?: number;
+  selectedProvinces: string[]; // Added: List of selected province names
 }
 
 export const VEHICLE_TYPES = [
@@ -226,6 +227,7 @@ export interface ServicePriceItem {
   hotelDetails?: HotelDefinition;
   activityPackages?: ActivityPackageDefinition[]; 
   surchargePeriods?: SurchargePeriod[]; 
+  selectedServicePriceId?: string; // Added to represent selection from a master list
 }
 
 export interface ProvinceItem {

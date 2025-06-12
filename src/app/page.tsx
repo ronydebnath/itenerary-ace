@@ -21,6 +21,11 @@ export default function HomePage() {
       const savedData = localStorage.getItem(LOCAL_STORAGE_KEY);
       if (savedData) {
         const parsedData = JSON.parse(savedData) as TripData;
+        // Ensure selectedProvinces is an array, even if loading old data
+        if (parsedData && parsedData.settings) {
+            parsedData.settings.selectedProvinces = parsedData.settings.selectedProvinces || [];
+        }
+
         if (parsedData && parsedData.settings && parsedData.pax && parsedData.days) {
            if (parsedData.settings.startDate && typeof parsedData.settings.startDate === 'string' && parsedData.settings.startDate.trim() !== '') {
              setTripData(parsedData);
@@ -58,7 +63,10 @@ export default function HomePage() {
     }
     
     const newTripData: TripData = {
-      settings,
+      settings: { // Ensure selectedProvinces is initialized
+        ...settings,
+        selectedProvinces: settings.selectedProvinces || [],
+      },
       pax,
       travelers: newTravelers,
       days: initialDaysData,
@@ -69,7 +77,7 @@ export default function HomePage() {
     } catch (error) {
       console.error("Failed to save data to localStorage:", error);
     }
-  }, []); // setTripData is stable
+  }, []); 
 
   const handleReset = React.useCallback(() => {
     setTripData(null);
@@ -78,16 +86,24 @@ export default function HomePage() {
     } catch (error) {
       console.error("Failed to remove data from localStorage:", error);
     }
-  }, []); // setTripData is stable
+  }, []); 
 
   const handleUpdateTripData = React.useCallback((updatedTripData: TripData) => {
-    setTripData(updatedTripData);
+    // Ensure selectedProvinces is part of the settings when updating
+    const dataToSave = {
+      ...updatedTripData,
+      settings: {
+        ...updatedTripData.settings,
+        selectedProvinces: updatedTripData.settings.selectedProvinces || [],
+      },
+    };
+    setTripData(dataToSave);
      try {
-      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(updatedTripData));
+      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(dataToSave));
     } catch (error) {
       console.error("Failed to save data to localStorage:", error);
     }
-  }, []); // setTripData is stable
+  }, []); 
 
   if (!isInitialized) {
     return <div className="flex justify-center items-center min-h-screen bg-background"><p>Loading Itinerary Ace...</p></div>;
