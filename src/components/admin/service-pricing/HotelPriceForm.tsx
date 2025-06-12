@@ -18,14 +18,16 @@ import { DatePicker } from "@/components/ui/date-picker";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card } from "@/components/ui/card";
 import { PlusCircle, XIcon } from 'lucide-react';
+import { Label } from "@/components/ui/label";
 import { generateGUID } from '@/lib/utils';
-import { addDays, isValid, parseISO } from 'date-fns';
+import { addDays, isValid, parseISO, isWithinInterval, areIntervalsOverlapping } from 'date-fns';
 import type { ServicePriceFormValues } from './ServicePriceFormRouter';
-import type { CurrencyCode } from '@/types/itinerary';
-import { Label } from "@/components/ui/label"; // Ensure this import is present
+import type { CurrencyCode, RoomTypeSeasonalPrice } from '@/types/itinerary';
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+
 
 // Helper function to create default seasonal price for the form
-function createDefaultSeasonalPriceForForm() {
+function createDefaultSeasonalPriceForForm(): RoomTypeSeasonalPrice {
   const today = new Date();
   return {
     id: generateGUID(),
@@ -70,8 +72,7 @@ export function HotelPriceForm({ form }: HotelPriceFormProps) {
       const defaultRoom = createDefaultRoomTypeForForm(0);
       form.setValue('hotelDetails.roomTypes', [defaultRoom], { shouldValidate: true, shouldDirty: true });
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [form.getValues('hotelDetails')?.id]);
+  }, [form]);
 
 
   return (
@@ -80,6 +81,14 @@ export function HotelPriceForm({ form }: HotelPriceFormProps) {
         <p className="text-sm font-semibold -mt-6 ml-2 px-1 bg-background inline-block absolute left-2 top-[-0.7rem] mb-4">
           Room Types & Nightly Rates for: {hotelNameForLegend || "New Hotel"} {hotelProvinceForLegend && `(${hotelProvinceForLegend})`}
         </p>
+         {(form.formState.errors.hotelDetails?.province || (form.formState.errors.hotelDetails as any)?.root?.message) && (
+            <Alert variant="destructive" className="mb-4">
+                <AlertTitle>Hotel Province Required</AlertTitle>
+                <AlertDescription>
+                   {(form.formState.errors.hotelDetails?.province?.message as string) || ((form.formState.errors.hotelDetails as any)?.root?.message as string) || "Please ensure a province is selected at the top of the form for this hotel."}
+                </AlertDescription>
+            </Alert>
+        )}
         <div id="roomTypesContainer" className="space-y-6 pt-2">
           {roomTypeFields.map((roomField, roomIndex) => (
             <RoomTypeCard
@@ -104,11 +113,6 @@ export function HotelPriceForm({ form }: HotelPriceFormProps) {
           <FormMessage className="mt-2 text-sm text-destructive">
             {(form.formState.errors.hotelDetails?.roomTypes as any).message}
           </FormMessage>
-        )}
-        {form.formState.errors.hotelDetails?.root?.message && (
-            <FormMessage className="mt-2 text-sm text-destructive">
-                {form.formState.errors.hotelDetails.root.message}
-            </FormMessage>
         )}
       </div>
     </div>
@@ -216,8 +220,46 @@ function SeasonalRatesTableForRoomType({ form, roomIndex, currency }: SeasonalRa
     if (seasonFields.length === 0) {
       appendSeason(createDefaultSeasonalPriceForForm(), { shouldFocus: false });
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [seasonFields.length, appendSeason]);
+  
+  const getDisabledDatesForStartDatePicker = (currentSeasonIndex: number) => (dateToDisable: Date): boolean => {
+    const allSeasonsForThisRoom = form.getValues(`hotelDetails.roomTypes.${roomIndex}.seasonalPrices`);
+    return allSeasonsForThisRoom.some((otherSeason, otherSeasonIdx) => {
+      if (otherSeasonIdx === currentSeasonIndex) return false;
+      const otherStart = otherSeason.startDate;
+      const otherEnd = otherSeason.endDate;
+      if (otherStart && otherEnd && isValid(otherStart) && isValid(otherEnd)) {
+        return isWithinInterval(dateToDisable, { start: otherStart, end: otherEnd });
+      }
+      return false;
+    });
+  };
+
+  const getDisabledDatesForEndDatePicker = (currentSeasonIndex: number) => (dateToDisable: Date): boolean => {
+    const allSeasonsForThisRoom = form.getValues(`hotelDetails.roomTypes.${roomIndex}.seasonalPrices`);
+    const currentSeasonStartDate = allSeasonsForThisRoom[currentSeasonIndex]?.startDate;
+
+    if (!currentSeasonStartDate || !isValid(currentSeasonStartDate)) return true; // Disable if current start date is invalid
+
+    return allSeasonsForThisRoom.some((otherSeason, otherSeasonIdx) => {
+      if (otherSeasonIdx === currentSeasonIndex) return false;
+      const otherStart = otherSeason.startDate;
+      const otherEnd = otherSeason.endDate;
+
+      if (otherStart && otherEnd && isValid(otherStart) && isValid(otherEnd)) {
+        // Check if choosing 'dateToDisable' as the end date for the current season
+        // would make the current season [currentSeasonStartDate, dateToDisable]
+        // overlap with the 'otherSeason' [otherStart, otherEnd].
+        return areIntervalsOverlapping(
+          { start: currentSeasonStartDate, end: dateToDisable },
+          { start: otherStart, end: otherEnd },
+          { inclusive: true } // Consider edges as overlapping for UI blocking
+        );
+      }
+      return false;
+    });
+  };
+
 
   return (
     <div className="space-y-1 mt-4">
@@ -252,7 +294,7 @@ function SeasonalRatesTableForRoomType({ form, roomIndex, currency }: SeasonalRa
                     name={`hotelDetails.roomTypes.${roomIndex}.seasonalPrices.${seasonIndex}.startDate`}
                     render={({ field: { onChange, value }, fieldState: { error } }) => (
                       <FormItem>
-                        <FormControl><DatePicker date={value} onDateChange={onChange} placeholder="dd-MM-yy" /></FormControl>
+                        <FormControl><DatePicker date={value} onDateChange={onChange} placeholder="dd-MM-yy" disabled={getDisabledDatesForStartDatePicker(seasonIndex)} /></FormControl>
                         {error && <FormMessage className="text-xs">{error.message}</FormMessage>}
                       </FormItem>
                     )}
@@ -264,7 +306,7 @@ function SeasonalRatesTableForRoomType({ form, roomIndex, currency }: SeasonalRa
                     name={`hotelDetails.roomTypes.${roomIndex}.seasonalPrices.${seasonIndex}.endDate`}
                     render={({ field: { onChange, value }, fieldState: { error } }) => (
                       <FormItem>
-                        <FormControl><DatePicker date={value} onDateChange={onChange} minDate={form.getValues(`hotelDetails.roomTypes.${roomIndex}.seasonalPrices.${seasonIndex}.startDate`)} placeholder="dd-MM-yy" /></FormControl>
+                        <FormControl><DatePicker date={value} onDateChange={onChange} minDate={form.getValues(`hotelDetails.roomTypes.${roomIndex}.seasonalPrices.${seasonIndex}.startDate`)} placeholder="dd-MM-yy" disabled={getDisabledDatesForEndDatePicker(seasonIndex)} /></FormControl>
                         {error && <FormMessage className="text-xs">{error.message}</FormMessage>}
                         {(form.formState.errors.hotelDetails?.roomTypes?.[roomIndex]?.seasonalPrices?.[seasonIndex] as any)?.endDate?.message && (
                             <FormMessage className="text-xs">{(form.formState.errors.hotelDetails?.roomTypes?.[roomIndex]?.seasonalPrices?.[seasonIndex] as any).endDate.message}</FormMessage>
