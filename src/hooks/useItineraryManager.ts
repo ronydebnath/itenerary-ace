@@ -47,13 +47,13 @@ export function useItineraryManager() {
       if (itineraryIdFromUrl !== currentItineraryId) {
         router.replace(`/planner?itineraryId=${currentItineraryId}`, { shallow: true });
       }
-      return;
+      return; 
     }
-    
-    if (idToLoad !== currentItineraryId || (idToLoad && !currentItineraryId) || (!idToLoad && pageStatus !== 'setup')) {
+
+    if (idToLoad !== currentItineraryId || !tripData || (idToLoad && !currentItineraryId) || (!idToLoad && pageStatus !== 'setup') ) {
         setPageStatus('loading');
-        if (idToLoad !== currentItineraryId) {
-             setTripData(null); // Clear old data if ID is changing
+        if (idToLoad !== currentItineraryId || !idToLoad) {
+             setTripData(null);
         }
     }
 
@@ -93,7 +93,7 @@ export function useItineraryManager() {
           setCurrentItineraryId(null);
           setTripData(null);
           setPageStatus('setup');
-          if (itineraryIdFromUrl) router.replace('/planner', { shallow: true }); 
+          if (itineraryIdFromUrl) router.replace('/planner', { shallow: true });
         }
       } catch (error) {
         console.error("Failed to load data from localStorage:", error);
@@ -102,16 +102,12 @@ export function useItineraryManager() {
         setPageStatus('setup');
         if (itineraryIdFromUrl) router.replace('/planner', { shallow: true });
       }
-    } else {
-       if (pageStatus !== 'setup') { // Avoid unnecessary state updates if already in setup
+    } else { 
         setCurrentItineraryId(null);
         setTripData(null);
         setPageStatus('setup');
-      }
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams, router, currentItineraryId, pageStatus]); // Removed tripData to prevent loop with its own updates
-
+  }, [searchParams]); 
 
   const handleStartPlanning = React.useCallback((settings: TripSettings, pax: PaxDetails, itineraryNameInput?: string, clientNameInput?: string) => {
     const newId = generateItineraryId();
@@ -147,8 +143,8 @@ export function useItineraryManager() {
     setTripData(newTripData);
     setCurrentItineraryId(newId);
     setPageStatus('planner');
-    router.replace(`/planner?itineraryId=${newId}`, { shallow: true });
     localStorage.setItem('lastActiveItineraryId', newId);
+    router.replace(`/planner?itineraryId=${newId}`, { shallow: true }); 
   }, [router]);
 
   const handleUpdateTripData = React.useCallback((updatedTripDataFromPlanner: Partial<TripData>) => {
@@ -158,13 +154,11 @@ export function useItineraryManager() {
           toast({ title: "Error", description: "No active itinerary to update.", variant: "destructive" });
           return null;
       }
-      // Ensure we always have a base, especially if prevTripData is somehow null but currentItineraryId exists
       const baseData = prevTripData || { id: currentItineraryId!, itineraryName: '', settings: {numDays: 1, startDate: '', selectedProvinces:[]}, pax: {adults:1, children:0, currency:'USD'}, travelers:[], days:{}, createdAt: '', updatedAt: ''} as TripData;
-      
       const dataToSet: TripData = {
         ...baseData,
         ...updatedTripDataFromPlanner,
-        id: baseData.id || currentItineraryId!, // Prioritize existing ID
+        id: baseData.id || currentItineraryId!,
       };
       return dataToSet;
     });
@@ -180,13 +174,12 @@ export function useItineraryManager() {
         ...tripData,
         updatedAt: new Date().toISOString(),
       };
-      setTripData(dataToSave); // Update state with new updatedAt
+      setTripData(dataToSave);
 
       localStorage.setItem(`${ITINERARY_DATA_PREFIX}${currentItineraryId}`, JSON.stringify(dataToSave));
 
       const indexString = localStorage.getItem(ITINERARY_INDEX_KEY);
       let index: ItineraryMetadata[] = indexString ? JSON.parse(indexString) : [];
-      
       const existingEntryIndex = index.findIndex(entry => entry.id === currentItineraryId);
       const newEntry: ItineraryMetadata = {
         id: currentItineraryId,
@@ -202,7 +195,7 @@ export function useItineraryManager() {
         index.push(newEntry);
       }
       localStorage.setItem(ITINERARY_INDEX_KEY, JSON.stringify(index));
-      localStorage.setItem('lastActiveItineraryId', currentItineraryId); // Ensure last active is current one
+      localStorage.setItem('lastActiveItineraryId', currentItineraryId);
 
       toast({ title: "Success", description: `Itinerary "${dataToSave.itineraryName}" saved.` });
     } catch (e: any) {
@@ -212,12 +205,12 @@ export function useItineraryManager() {
   }, [tripData, currentItineraryId, toast]);
 
   const handleStartNewItinerary = React.useCallback(() => {
-    setCurrentItineraryId(null); 
+    setPageStatus('loading'); 
+    setCurrentItineraryId(null);
     setTripData(null);
     localStorage.removeItem('lastActiveItineraryId');
-    router.replace('/planner', { shallow: true }); 
-    // The main useEffect will detect no idToLoad and set pageStatus to 'setup'
-  }, [router]);
+    router.replace('/planner', { shallow: true });
+  }, [router, setPageStatus, setCurrentItineraryId, setTripData]); 
 
   return {
     tripData,
