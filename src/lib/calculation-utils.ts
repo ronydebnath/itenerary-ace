@@ -50,7 +50,7 @@ function calculateTransferCost(
   const serviceDefinition = item.selectedServicePriceId ? allServicePrices.find(sp => sp.id === item.selectedServicePriceId) : undefined;
 
   if (item.mode === 'ticket') {
-    const adultPrice = serviceDefinition?.price1 ?? item.adultTicketPrice || 0;
+    const adultPrice = (serviceDefinition?.price1 ?? item.adultTicketPrice) || 0;
     const childPrice = serviceDefinition?.price2 ?? item.childTicketPrice ?? adultPrice; 
     
     adultCost = adultCount * adultPrice;
