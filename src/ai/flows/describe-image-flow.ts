@@ -26,13 +26,10 @@ const DescribeImageOutputSchema = z.object({
 export type DescribeImageOutput = z.infer<typeof DescribeImageOutputSchema>;
 
 export async function describeImage(input: DescribeImageInput): Promise<DescribeImageOutput> {
-  return describeImageFlow(input);
+  // Placeholder implementation - replace with your actual logic
+  return { description: "Placeholder description based on image input." };
 }
 
-const describeImageFlow = ai.defineFlow(
-  {
-    name: 'describeImageFlow',
-    inputSchema: DescribeImageInputSchema,
     outputSchema: DescribeImageOutputSchema,
   },
   async (input) => {

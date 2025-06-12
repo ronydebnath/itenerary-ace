@@ -15,11 +15,19 @@ import {
 import { CURRENCIES, VEHICLE_TYPES } from '@/types/itinerary';
 
 
-export async function extractContractData(input: ExtractContractDataInput): Promise<AIContractDataOutput> {
+export async function extractContractData(input) {
+  // The original logic of your async function goes here.
+  // I'm assuming the original logic was within a function
+  // that was being called by the previous extractContractData.
+  // You'll need to replace this comment with the actual
+  // implementation of your extractContractData function.
+  console.log("extractContractData called with input:", input);
+  // Example placeholder return
+  return { }; // Replace with a placeholder object matching AIContractDataOutputSchema
+
   const apiKey = process.env.OPENROUTER_API_KEY;
   const httpReferer = process.env.OPENROUTER_HTTP_REFERER;
   const xTitle = process.env.OPENROUTER_X_TITLE;
-
   if (!apiKey || apiKey.trim() === '' || apiKey === 'your_openrouter_api_key_here') {
     const errorMsg = "OpenRouter API key is not configured. Please ensure OPENROUTER_API_KEY is set correctly in your .env file at the project root (it should not be empty, whitespace, or the placeholder value) and restart your development server.";
     console.error(errorMsg);

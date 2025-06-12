@@ -28,6 +28,12 @@ const SuggestItineraryRefinementsOutputSchema = z.object({
 });
 export type SuggestItineraryRefinementsOutput = z.infer<typeof SuggestItineraryRefinementsOutputSchema>;
 
+// export function suggestItineraryRefinements(_x) {
+//   return _suggestItineraryRefinements.apply(this, arguments);
+// }
+
+// function _suggestItineraryRefinements() {
+//   _suggestItineraryRefinements = _asyncToGenerator( /*#__PURE__*/_regeneratorRuntime.mark(function _callee(input) {
 export async function suggestItineraryRefinements(
   input: SuggestItineraryRefinementsInput
 ): Promise<SuggestItineraryRefinementsOutput> {
