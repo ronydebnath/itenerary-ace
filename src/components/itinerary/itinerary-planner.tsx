@@ -43,7 +43,7 @@ export function ItineraryPlanner({ tripData, onReset, onUpdateTripData }: Itiner
     }
   }, [tripData, allServicePrices, allHotelDefinitions, isLoadingServices, isLoadingHotelDefinitions]);
 
-  const handleUpdateItem = (day: number, updatedItem: ItineraryItem) => {
+  const handleUpdateItem = React.useCallback((day: number, updatedItem: ItineraryItem) => {
     const newDays = { ...tripData.days };
     const dayItems = [...(newDays[day]?.items || [])];
     const itemIndex = dayItems.findIndex(item => item.id === updatedItem.id);
@@ -52,9 +52,9 @@ export function ItineraryPlanner({ tripData, onReset, onUpdateTripData }: Itiner
     }
     newDays[day] = { items: dayItems };
     onUpdateTripData({ ...tripData, days: newDays });
-  };
+  }, [tripData, onUpdateTripData]);
 
-  const handleAddItem = (day: number, itemType: ItineraryItem['type']) => {
+  const handleAddItem = React.useCallback((day: number, itemType: ItineraryItem['type']) => {
     let newItem: ItineraryItem;
     const baseNewItem = { 
       id: generateGUID(), 
@@ -94,24 +94,24 @@ export function ItineraryPlanner({ tripData, onReset, onUpdateTripData }: Itiner
     const dayItems = [...(newDays[day]?.items || []), newItem];
     newDays[day] = { items: dayItems };
     onUpdateTripData({ ...tripData, days: newDays });
-  };
+  }, [tripData, onUpdateTripData]);
 
-  const handleDeleteItem = (day: number, itemId: string) => {
+  const handleDeleteItem = React.useCallback((day: number, itemId: string) => {
     const newDays = { ...tripData.days };
     const dayItems = (newDays[day]?.items || []).filter(item => item.id !== itemId);
     newDays[day] = { items: dayItems };
     onUpdateTripData({ ...tripData, days: newDays });
-  };
+  }, [tripData, onUpdateTripData]);
   
-  const handlePrint = () => {
+  const handlePrint = React.useCallback(() => {
     setIsPrinting(true);
     setTimeout(() => {
       window.print();
       setIsPrinting(false);
     }, 100); 
-  };
+  }, []);
 
-  const getFormattedDateForDay = (dayNum: number): string => {
+  const getFormattedDateForDay = React.useCallback((dayNum: number): string => {
     if (!tripData.settings.startDate) return `Day ${dayNum}`;
     try {
       const date = addDays(parseISO(tripData.settings.startDate), dayNum - 1);
@@ -120,9 +120,11 @@ export function ItineraryPlanner({ tripData, onReset, onUpdateTripData }: Itiner
       console.error("Error formatting date:", e);
       return `Day ${dayNum}`;
     }
-  };
+  }, [tripData.settings.startDate]);
   
-  const displayStartDate = tripData.settings.startDate ? format(parseISO(tripData.settings.startDate), "MMMM d, yyyy") : 'N/A';
+  const displayStartDate = React.useMemo(() => {
+    return tripData.settings.startDate ? format(parseISO(tripData.settings.startDate), "MMMM d, yyyy") : 'N/A';
+  }, [tripData.settings.startDate]);
 
 
   if (isPrinting && costSummary) {
@@ -189,14 +191,14 @@ export function ItineraryPlanner({ tripData, onReset, onUpdateTripData }: Itiner
       </div>
       
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 min-h-[60vh]">
-        <div className="lg:col-span-8 flex flex-col"> {/* Removed h-full */}
+        <div className="lg:col-span-8 flex flex-col"> 
           {isLoadingAnything ? (
             <div className="flex flex-col items-center justify-center p-10 min-h-[300px] bg-card rounded-lg shadow-sm border flex-grow">
                 <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
                 <p className="text-muted-foreground">Loading itinerary data and service definitions...</p>
             </div>
           ) : (
-            <ScrollArea className="flex-1 pr-2"> {/* Changed from h-full */}
+            <ScrollArea className="flex-1 pr-2"> 
               {Array.from({ length: tripData.settings.numDays }, (_, i) => i + 1).map(dayNum => (
                 <div key={dayNum} style={{ display: dayNum === currentDayView ? 'block' : 'none' }}>
                   <DayView
@@ -217,17 +219,17 @@ export function ItineraryPlanner({ tripData, onReset, onUpdateTripData }: Itiner
           )}
         </div>
 
-        <div className="lg:col-span-4 flex flex-col space-y-6"> {/* Ensure this column can also define its height naturally or fill if needed */}
+        <div className="lg:col-span-4 flex flex-col space-y-6"> 
           <AISuggestions 
             tripData={tripData} 
             onApplySuggestion={(modifiedTripData) => onUpdateTripData(modifiedTripData)} 
             showCosts={showCosts}
           />
-          <Card className="shadow-lg flex-grow flex flex-col"> {/* Allow card to grow */}
+          <Card className="shadow-lg flex-grow flex flex-col"> 
             <CardHeader>
               <CardTitle className="text-xl text-primary">Cost Summary</CardTitle>
             </CardHeader>
-            <CardContent className="flex-grow"> {/* Allow content to grow */}
+            <CardContent className="flex-grow"> 
               {isLoadingAnything ? (
                  <div className="flex items-center justify-center py-6">
                     <Loader2 className="h-6 w-6 animate-spin text-primary mr-2" /> 
@@ -290,4 +292,3 @@ export function ItineraryPlanner({ tripData, onReset, onUpdateTripData }: Itiner
     </div>
   );
 }
-

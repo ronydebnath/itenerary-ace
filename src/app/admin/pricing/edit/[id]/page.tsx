@@ -5,7 +5,7 @@ import * as React from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { ServicePriceForm } from '@/components/admin/service-price-form';
+import { ServicePriceFormRouter } from '@/components/admin/service-pricing/ServicePriceFormRouter'; // Updated import
 import type { ServicePriceItem } from '@/types/itinerary';
 import { useToast } from '@/hooks/use-toast';
 import { Home, ListPlus, Edit, ArrowLeft } from 'lucide-react';
@@ -19,7 +19,7 @@ export default function EditServicePricePage() {
   const { toast } = useToast();
   const { id } = params;
 
-  const [initialData, setInitialData] = React.useState<ServicePriceItem | undefined>(undefined);
+  const [initialData, setInitialData] = React.useState<Partial<ServicePriceItem> | undefined>(undefined);
   const [isLoading, setIsLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
 
@@ -50,7 +50,7 @@ export default function EditServicePricePage() {
   }, [id, toast]);
 
   const handleFormSubmit = (data: Omit<ServicePriceItem, 'id'>) => {
-    if (!initialData?.id) {
+    if (!initialData?.id) { // Ensure initialData and its id exist
       toast({ title: "Error", description: "Cannot update service: ID missing.", variant: "destructive" });
       return;
     }
@@ -59,7 +59,7 @@ export default function EditServicePricePage() {
       const allPrices: ServicePriceItem[] = storedPrices ? JSON.parse(storedPrices) : [];
       
       const updatedPrices = allPrices.map(sp => 
-        sp.id === initialData.id ? { ...initialData, ...data } : sp
+        sp.id === initialData.id ? { ...initialData, ...data, id: initialData.id } : sp // Preserve ID and spread new data
       );
       
       localStorage.setItem(SERVICE_PRICES_STORAGE_KEY, JSON.stringify(updatedPrices));
@@ -105,7 +105,7 @@ export default function EditServicePricePage() {
 
   return (
     <main className="min-h-screen bg-background p-4 md:p-8">
-      <Card className="w-full max-w-6xl mx-auto shadow-xl">
+      <Card className="w-full max-w-4xl mx-auto shadow-xl"> {/* Changed max-w-6xl to max-w-4xl for consistency */}
         <CardHeader>
           <div className="flex justify-between items-center">
             <CardTitle className="text-2xl font-bold text-primary flex items-center">
@@ -119,8 +119,8 @@ export default function EditServicePricePage() {
           </div>
         </CardHeader>
         <CardContent>
-          <ServicePriceForm
-            key={initialData.id} // Re-mount if ID changes (should not happen here)
+          <ServicePriceFormRouter // Using the new router form
+            key={initialData.id || 'edit-service'} // Ensure key is stable or changes appropriately
             initialData={initialData}
             onSubmit={handleFormSubmit}
             onCancel={handleCancel}

@@ -8,7 +8,7 @@ import { SetupForm } from '@/components/itinerary/setup-form';
 import { ItineraryPlanner } from '@/components/itinerary/itinerary-planner';
 import type { TripSettings, PaxDetails, TripData } from '@/types/itinerary';
 import { generateGUID } from '@/lib/utils';
-import { Cog, Image as ImageIconLucide } from 'lucide-react'; // Added ImageIconLucide
+import { Cog, Image as ImageIconLucide } from 'lucide-react'; 
 
 const LOCAL_STORAGE_KEY = 'itineraryAceData';
 
@@ -69,7 +69,7 @@ export default function HomePage() {
     } catch (error) {
       console.error("Failed to save data to localStorage:", error);
     }
-  }, []);
+  }, []); // setTripData is stable
 
   const handleReset = React.useCallback(() => {
     setTripData(null);
@@ -78,7 +78,7 @@ export default function HomePage() {
     } catch (error) {
       console.error("Failed to remove data from localStorage:", error);
     }
-  }, []);
+  }, []); // setTripData is stable
 
   const handleUpdateTripData = React.useCallback((updatedTripData: TripData) => {
     setTripData(updatedTripData);
@@ -87,7 +87,7 @@ export default function HomePage() {
     } catch (error) {
       console.error("Failed to save data to localStorage:", error);
     }
-  }, []);
+  }, []); // setTripData is stable
 
   if (!isInitialized) {
     return <div className="flex justify-center items-center min-h-screen bg-background"><p>Loading Itinerary Ace...</p></div>;

@@ -25,11 +25,15 @@ const DescribeImageOutputSchema = z.object({
 });
 export type DescribeImageOutput = z.infer<typeof DescribeImageOutputSchema>;
 
+// Exported function now calls the Genkit flow
 export async function describeImage(input: DescribeImageInput): Promise<DescribeImageOutput> {
-  // Placeholder implementation - replace with your actual logic
-  return { description: "Placeholder description based on image input." };
+  return describeImageGenkitFlow(input);
 }
 
+const describeImageGenkitFlow = ai.defineFlow(
+  {
+    name: 'describeImageGenkitFlow', // Changed name for clarity
+    inputSchema: DescribeImageInputSchema,
     outputSchema: DescribeImageOutputSchema,
   },
   async (input) => {

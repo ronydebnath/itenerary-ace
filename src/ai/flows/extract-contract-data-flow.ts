@@ -6,42 +6,45 @@
  * - extractContractData - A function that takes contract text and returns structured service data.
  */
 
-import { 
-  AIContractDataOutputSchema, 
+import { ai } from '@/ai/genkit';
+import {
+  AIContractDataOutputSchema,
   type AIContractDataOutput,
   type ExtractContractDataInput,
   ExtractContractDataInputSchema
 } from '@/types/ai-contract-schemas';
 import { CURRENCIES, VEHICLE_TYPES } from '@/types/itinerary';
 
+// Exported function now calls the Genkit flow
+export async function extractContractData(input: ExtractContractDataInput): Promise<AIContractDataOutput> {
+  return extractContractDataGenkitFlow(input);
+}
 
-export async function extractContractData(input) {
-  // The original logic of your async function goes here.
-  // I'm assuming the original logic was within a function
-  // that was being called by the previous extractContractData.
-  // You'll need to replace this comment with the actual
-  // implementation of your extractContractData function.
-  console.log("extractContractData called with input:", input);
-  // Example placeholder return
-  return { }; // Replace with a placeholder object matching AIContractDataOutputSchema
+const extractContractDataGenkitFlow = ai.defineFlow(
+  {
+    name: 'extractContractDataGenkitFlow',
+    inputSchema: ExtractContractDataInputSchema,
+    outputSchema: AIContractDataOutputSchema,
+  },
+  async (input) => {
+    const apiKey = process.env.OPENROUTER_API_KEY;
+    const httpReferer = process.env.OPENROUTER_HTTP_REFERER;
+    const xTitle = process.env.OPENROUTER_X_TITLE;
 
-  const apiKey = process.env.OPENROUTER_API_KEY;
-  const httpReferer = process.env.OPENROUTER_HTTP_REFERER;
-  const xTitle = process.env.OPENROUTER_X_TITLE;
-  if (!apiKey || apiKey.trim() === '' || apiKey === 'your_openrouter_api_key_here') {
-    const errorMsg = "OpenRouter API key is not configured. Please ensure OPENROUTER_API_KEY is set correctly in your .env file at the project root (it should not be empty, whitespace, or the placeholder value) and restart your development server.";
-    console.error(errorMsg);
-    throw new Error(errorMsg);
-  }
+    if (!apiKey || apiKey.trim() === '' || apiKey === 'your_openrouter_api_key_here') {
+      const errorMsg = "OpenRouter API key is not configured. Please ensure OPENROUTER_API_KEY is set correctly in your .env file at the project root (it should not be empty, whitespace, or the placeholder value) and restart your development server.";
+      console.error(errorMsg);
+      throw new Error(errorMsg);
+    }
 
-  const headers: Record<string, string> = {
-    'Authorization': `Bearer ${apiKey}`,
-    'Content-Type': 'application/json',
-  };
-  if (httpReferer) headers['HTTP-Referer'] = httpReferer;
-  if (xTitle) headers['X-Title'] = xTitle;
+    const headers: Record<string, string> = {
+      'Authorization': `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+    };
+    if (httpReferer) headers['HTTP-Referer'] = httpReferer;
+    if (xTitle) headers['X-Title'] = xTitle;
 
-  const promptText = `
+    const promptText = `
     You are an AI assistant specialized in extracting structured information from service contracts for a travel agency.
     Your task is to parse the following contract text and extract details for a single service (e.g., hotel, activity, transfer).
     Focus on the primary service being offered.
@@ -78,58 +81,59 @@ export async function extractContractData(input) {
     Return ONLY the JSON object.
   `;
 
-  try {
-    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-      method: "POST",
-      headers: headers,
-      body: JSON.stringify({
-        "model": "google/gemma-3n-e4b-it:free", 
-        "messages": [{ "role": "user", "content": promptText }],
-        "response_format": { "type": "json_object" }
-      })
-    });
+    try {
+      const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+        method: "POST",
+        headers: headers,
+        body: JSON.stringify({
+          "model": "google/gemma-3n-e4b-it:free",
+          "messages": [{ "role": "user", "content": promptText }],
+          "response_format": { "type": "json_object" }
+        })
+      });
 
-    if (!response.ok) {
-      const errorBody = await response.text();
-      console.error(`OpenRouter API Error for Contract Parsing: ${response.status} ${response.statusText}`, errorBody);
-      throw new Error(`OpenRouter API request for contract parsing failed with status ${response.status}: ${errorBody}`);
-    }
-
-    const data = await response.json();
-
-    if (data.choices && data.choices.length > 0 && data.choices[0].message && data.choices[0].message.content) {
-      let content = data.choices[0].message.content;
-      if (content.startsWith("```json")) {
-        content = content.substring(7);
-        if (content.endsWith("```")) {
-          content = content.substring(0, content.length - 3);
-        }
+      if (!response.ok) {
+        const errorBody = await response.text();
+        console.error(`OpenRouter API Error for Contract Parsing: ${response.status} ${response.statusText}`, errorBody);
+        throw new Error(`OpenRouter API request for contract parsing failed with status ${response.status}: ${errorBody}`);
       }
-      try {
-        const parsedJson = JSON.parse(content);
-        const validationResult = AIContractDataOutputSchema.safeParse(parsedJson);
-        if (validationResult.success) {
-          return validationResult.data;
-        } else {
-          console.error('OpenRouter response JSON does not match AIContractDataOutputSchema:', validationResult.error.errors);
-          console.error('Received JSON string for contract parsing:', content);
-          // Return the potentially partially valid data for debugging or partial prefill
-          return parsedJson as AIContractDataOutput; 
+
+      const data = await response.json();
+
+      if (data.choices && data.choices.length > 0 && data.choices[0].message && data.choices[0].message.content) {
+        let content = data.choices[0].message.content;
+        if (content.startsWith("```json")) {
+          content = content.substring(7);
+          if (content.endsWith("```")) {
+            content = content.substring(0, content.length - 3);
+          }
         }
-      } catch (jsonError: any) {
-        console.error('Error parsing JSON from OpenRouter for contract data:', jsonError);
-        console.error('Received content string before parsing:', content);
-        throw new Error(`Failed to parse JSON response for contract data: ${jsonError.message}`);
+        try {
+          const parsedJson = JSON.parse(content);
+          const validationResult = AIContractDataOutputSchema.safeParse(parsedJson);
+          if (validationResult.success) {
+            return validationResult.data;
+          } else {
+            console.error('OpenRouter response JSON does not match AIContractDataOutputSchema:', validationResult.error.errors);
+            console.error('Received JSON string for contract parsing:', content);
+            // Return the potentially partially valid data for debugging or partial prefill
+            return parsedJson as AIContractDataOutput;
+          }
+        } catch (jsonError: any) {
+          console.error('Error parsing JSON from OpenRouter for contract data:', jsonError);
+          console.error('Received content string before parsing:', content);
+          throw new Error(`Failed to parse JSON response for contract data: ${jsonError.message}`);
+        }
+      } else {
+        console.error('Unexpected response structure from OpenRouter API for contract parsing:', data);
+        throw new Error('Failed to extract contract data from OpenRouter API response.');
       }
-    } else {
-      console.error('Unexpected response structure from OpenRouter API for contract parsing:', data);
-      throw new Error('Failed to extract contract data from OpenRouter API response.');
-    }
-  } catch (error: any) {
-    console.error('Error calling OpenRouter API for contract parsing:', error);
-     if (error.message.startsWith("OpenRouter API key is not configured")) {
+    } catch (error: any) {
+      console.error('Error calling OpenRouter API for contract parsing:', error);
+      if (error.message.startsWith("OpenRouter API key is not configured")) {
         throw error;
       }
-    throw new Error(`Failed to extract contract data: ${error.message}`);
+      throw new Error(`Failed to extract contract data: ${error.message}`);
+    }
   }
-}
+);
