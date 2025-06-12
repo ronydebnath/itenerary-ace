@@ -118,8 +118,7 @@ export function PlannerHeader({
             />
           </div>
         </div>
-
-        {/* Template Settings Section */}
+        
         <div className="border-t pt-4 mt-4">
             <div className="flex items-center space-x-2">
                 <Checkbox
@@ -129,7 +128,6 @@ export function PlannerHeader({
                     const isNowTemplate = !!checked;
                     onUpdateSettings({ 
                         isTemplate: isNowTemplate,
-                        // If unchecking, also clear category. If checking, category might already be set or can be set.
                         templateCategory: isNowTemplate ? tripData.settings.templateCategory : undefined 
                     });
                 }}
@@ -140,7 +138,7 @@ export function PlannerHeader({
             </div>
 
             {tripData.settings.isTemplate && (
-            <div className="mt-3 ml-6"> {/* Indent category input */}
+            <div className="mt-3 ml-6">
                 <Label htmlFor="templateCategory" className="text-xs font-medium text-muted-foreground">Template Category (Optional)</Label>
                 <Input
                 id="templateCategory"
@@ -235,11 +233,12 @@ export function PlannerHeader({
         </div>
         
         <div className="mt-4 p-3 bg-secondary/20 rounded-lg border border-secondary/30 text-xs text-muted-foreground">
-            <p><strong className="text-foreground">Current Config:</strong> {tripData.settings.numDays} Days starting {displayStartDate}. For {tripData.pax.adults} Adult(s), {tripData.pax.children} Child(ren). Currency: {tripData.pax.currency}.
-            {tripData.settings.isTemplate ? <Badge variant="outline" className="ml-1 border-accent text-accent">TEMPLATE{tripData.settings.templateCategory ? `: ${tripData.settings.templateCategory}` : ''}</Badge> : ""}
-            {tripData.settings.selectedProvinces.length > 0 ? ` Provinces: ${tripData.settings.selectedProvinces.join(', ')}.` : " All provinces."}
-            {showCosts && tripData.settings.budget ? ` Budget: ${formatCurrency(tripData.settings.budget, tripData.pax.currency)}.` : ""}
-            </p>
+            <div> {/* Changed from <p> to <div> */}
+              <strong className="text-foreground">Current Config:</strong> {tripData.settings.numDays} Days starting {displayStartDate}. For {tripData.pax.adults} Adult(s), {tripData.pax.children} Child(ren). Currency: {tripData.pax.currency}.
+              {tripData.settings.isTemplate ? <Badge variant="outline" className="ml-1 border-accent text-accent">TEMPLATE{tripData.settings.templateCategory ? `: ${tripData.settings.templateCategory}` : ''}</Badge> : ""}
+              {tripData.settings.selectedProvinces.length > 0 ? ` Provinces: ${tripData.settings.selectedProvinces.join(', ')}.` : " All provinces."}
+              {showCosts && tripData.settings.budget ? ` Budget: ${formatCurrency(tripData.settings.budget, tripData.pax.currency)}.` : ""}
+            </div>
         </div>
 
       </CardContent>
@@ -247,4 +246,3 @@ export function PlannerHeader({
   );
 }
 
-    
