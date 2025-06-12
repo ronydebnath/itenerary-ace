@@ -61,6 +61,7 @@ export function DayView({
       tripSettings: tripSettings,
       onUpdate: (updatedItem: ItineraryItem) => onUpdateItem(dayNumber, updatedItem),
       onDelete: () => onDeleteItem(dayNumber, item.id),
+      allServicePrices: allServicePrices, // Pass allServicePrices to all forms
     };
 
     if (item.type === 'hotel') {
@@ -72,11 +73,11 @@ export function DayView({
       );
     }
     
-    return <ConfigComponent {...commonProps} allServicePrices={allServicePrices} />;
+    return <ConfigComponent {...commonProps} />;
   };
 
   return (
-    <Card className="mb-6 shadow-md border-primary/20">
+    <Card className="mb-6 shadow-md border-primary/20 w-full">
       <CardHeader className="pb-2 pt-4 px-4 md:px-6">
       </CardHeader>
       <CardContent className="px-2 py-2 md:px-4 md:py-4">
