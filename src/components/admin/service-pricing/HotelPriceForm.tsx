@@ -2,29 +2,29 @@
 "use client";
 
 import * as React from 'react';
-import { useForm, useFormContext } from "react-hook-form"; // useFormContext for potential access
+import { useForm, useFormContext } from "react-hook-form";
 import { FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Info } from 'lucide-react';
-import type { ServicePriceFormValues } from './ServicePriceFormRouter'; // Assuming this type is exported
+import type { ServicePriceFormValues } from './ServicePriceFormRouter';
 
 interface HotelPriceFormProps {
-  form: ReturnType<typeof useForm<ServicePriceFormValues>>; // Use the specific form type
+  form: ReturnType<typeof useForm<ServicePriceFormValues>>;
   isNewService: boolean;
 }
 
 export function HotelPriceForm({ form, isNewService }: HotelPriceFormProps) {
-  const hotelNameForLegend = form.watch('name'); // Watch top-level name
-  const hotelProvinceForLegend = form.watch('province'); // Watch top-level province
-
-  // Access nested values carefully, as they might not exist if form state is not fully initialized
-  const hotelDetailsId = form.watch('hotelDetails.id');
-  const defaultRoomTypeName = form.watch('hotelDetails.roomTypes.0.name');
-  const defaultRate = form.watch('hotelDetails.roomTypes.0.seasonalPrices.0.rate');
+  const hotelNameForLegend = form.watch('name'); 
+  const hotelProvinceForLegend = form.watch('province');
   const currency = form.watch('currency');
 
   if (isNewService) {
+    // For new services, we display an informational message.
+    // The actual default data structure (including IDs, default room type, default seasonal price with dates)
+    // is programmatically created and set in ServicePriceFormRouter.tsx using form.setValue('hotelDetails', ...).
+    // We don't need hidden inputs here as form.setValue directly manipulates react-hook-form's state
+    // which Zod will then validate against.
     return (
       <div className="border border-border rounded-md p-4 mt-6 relative">
         <p className="text-sm font-semibold -mt-6 ml-2 px-1 bg-background inline-block absolute left-2 top-[-0.7rem] mb-4">
@@ -35,64 +35,15 @@ export function HotelPriceForm({ form, isNewService }: HotelPriceFormProps) {
             <Info className="h-5 w-5 text-blue-600" />
             <AlertTitle className="text-blue-700">Simplified Hotel Setup (New Service)</AlertTitle>
             <AlertDescription className="text-blue-600 text-xs">
-              A basic hotel structure with one default room type ('{defaultRoomTypeName || "Standard Room"}')
-              and a default seasonal rate (approx. {currency} {defaultRate !== undefined ? defaultRate.toFixed(2) : '0.00'})
-              will be automatically created.
+              A basic hotel structure with one default room type ("Standard Room (Default)")
+              and a default seasonal rate (initially {currency} 0.00 for a standard period)
+              will be automatically prepared.
               <br />
               You can add more room types and detailed seasonal pricing after saving by <strong>editing</strong> this service.
               <br />
-              <strong>Ensure you have selected a "Province" at the top of the form.</strong>
+              <strong>Ensure you have selected a "Province" at the top of the form, as this is required for hotel services.</strong>
             </AlertDescription>
           </Alert>
-
-          {/* Hidden fields to ensure default structure is part of the form for Zod validation */}
-          {/* These are managed by ServicePriceFormRouter's useEffect for new items */}
-          <FormField
-            control={form.control}
-            name="hotelDetails.id"
-            render={({ field }) => <FormItem className="hidden"><FormControl><Input {...field} type="hidden" /></FormControl></FormItem>}
-          />
-          <FormField
-            control={form.control}
-            name="hotelDetails.name"
-            render={({ field }) => <FormItem className="hidden"><FormControl><Input {...field} type="hidden" /></FormControl></FormItem>}
-          />
-          <FormField
-            control={form.control}
-            name="hotelDetails.province"
-            render={({ field }) => <FormItem className="hidden"><FormControl><Input {...field} type="hidden" /></FormControl><FormMessage /></FormItem>}
-          />
-          <FormField
-            control={form.control}
-            name="hotelDetails.roomTypes.0.id"
-            render={({ field }) => <FormItem className="hidden"><FormControl><Input {...field} type="hidden" /></FormControl></FormItem>}
-          />
-          <FormField
-            control={form.control}
-            name="hotelDetails.roomTypes.0.name"
-            render={({ field }) => <FormItem className="hidden"><FormControl><Input {...field} type="hidden" /></FormControl></FormItem>}
-          />
-          <FormField
-            control={form.control}
-            name="hotelDetails.roomTypes.0.seasonalPrices.0.id"
-            render={({ field }) => <FormItem className="hidden"><FormControl><Input {...field} type="hidden" /></FormControl></FormItem>}
-          />
-           <FormField
-            control={form.control}
-            name="hotelDetails.roomTypes.0.seasonalPrices.0.rate"
-            render={({ field }) => <FormItem className="hidden"><FormControl><Input type="number" {...field} /></FormControl></FormItem>}
-          />
-          <FormField
-            control={form.control}
-            name="hotelDetails.roomTypes.0.seasonalPrices.0.startDate"
-            render={({ field }) => <FormItem className="hidden"><FormControl><Input type="date" value={field.value instanceof Date ? field.value.toISOString().split('T')[0] : field.value || ''} onChange={field.onChange} /></FormControl></FormItem>}
-          />
-           <FormField
-            control={form.control}
-            name="hotelDetails.roomTypes.0.seasonalPrices.0.endDate"
-            render={({ field }) => <FormItem className="hidden"><FormControl><Input type="date" value={field.value instanceof Date ? field.value.toISOString().split('T')[0] : field.value || ''} onChange={field.onChange} /></FormControl></FormItem>}
-          />
-
 
           {/* Display top-level errors for hotelDetails if any */}
           {(form.formState.errors.hotelDetails?.root as any)?.message && (
@@ -102,16 +53,27 @@ export function HotelPriceForm({ form, isNewService }: HotelPriceFormProps) {
           )}
            {(form.formState.errors.hotelDetails?.province as any)?.message && (
              <FormMessage className="mt-2 text-sm text-destructive">
-                {(form.formState.errors.hotelDetails?.province as any).message} (Check top-level "Province" field)
+                Error with hotel province: {(form.formState.errors.hotelDetails?.province as any).message} (Please ensure the main "Province" field above is selected).
              </FormMessage>
            )}
+            {/* Display other potential errors for hotelDetails if they occur */}
+            {Object.keys(form.formState.errors.hotelDetails || {}).filter(key => key !== 'root' && key !== 'province').length > 0 && (
+                <div className="mt-2 text-sm text-destructive">
+                    <p>Other hotel detail errors:</p>
+                    <pre className="text-xs">{JSON.stringify(
+                        Object.fromEntries(Object.entries(form.formState.errors.hotelDetails || {}).filter(([key]) => key !== 'root' && key !== 'province')),
+                         null, 2
+                    )}</pre>
+                </div>
+            )}
         </div>
       </div>
     );
   }
 
-  // Placeholder for the full edit UI (which would be built out for existing items)
-  // For now, to ensure the NEW flow is the focus.
+  // UI for EDITING an existing hotel service would go here.
+  // This part is more complex and would involve useFieldArray for roomTypes and seasonalPrices.
+  // For now, keeping it minimal as the primary issue is with NEW hotel creation.
   return (
     <div className="border border-border rounded-md p-4 mt-6 relative">
       <p className="text-sm font-semibold -mt-6 ml-2 px-1 bg-background inline-block absolute left-2 top-[-0.7rem] mb-4">
@@ -121,13 +83,17 @@ export function HotelPriceForm({ form, isNewService }: HotelPriceFormProps) {
           <Info className="h-5 w-5 text-yellow-700" />
           <AlertTitle className="text-yellow-800">Hotel Edit Mode</AlertTitle>
           <AlertDescription className="text-yellow-700 text-xs">
-            You are editing an existing hotel. Full UI for managing multiple room types and seasonal prices would be available here.
-            (This detailed edit UI is not part of the current simplified 'Add New' hotel flow focus).
+            You are editing an existing hotel. The full UI for managing multiple room types and detailed seasonal prices would be implemented here.
+            (This detailed edit UI is not part of the current focus, which is fixing the 'Add New' hotel flow).
           </AlertDescription>
       </Alert>
-      {/* Full UI for managing room types, seasonal prices, etc., would go here when isNewService is false.
-          This would typically involve using useFieldArray for roomTypes and nested useFieldArray for seasonalPrices.
-          For this "reset" of the *new* hotel flow, we are keeping this part minimal.
+      {/* 
+        Placeholder for full edit UI:
+        - Iterate over form.getValues('hotelDetails.roomTypes') using useFieldArray.
+        - For each room type, allow editing its name, extraBedAllowed, notes, characteristics.
+        - Nested useFieldArray for seasonalPrices within each room type.
+        - DatePickers for seasonal start/end dates, inputs for rates.
+        - Buttons to add/remove room types and seasonal prices.
       */}
     </div>
   );
