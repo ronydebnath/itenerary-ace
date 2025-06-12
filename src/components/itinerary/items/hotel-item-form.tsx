@@ -10,9 +10,9 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
-import { PlusCircle, Trash2, ChevronDown, ChevronUp, Users, BedDouble, Info } from 'lucide-react';
-// Removed: import { useHotelDefinitions } from '@/hooks/useHotelDefinitions'; // No longer using internal hook call
+import { PlusCircle, Trash2, ChevronDown, ChevronUp, Users, BedDouble, Info, AlertCircle } from 'lucide-react';
 import { generateGUID } from '@/lib/utils';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 interface HotelItemFormProps {
   item: HotelItemType;
@@ -22,7 +22,7 @@ interface HotelItemFormProps {
   tripSettings: TripSettings;
   onUpdate: (item: HotelItemType) => void;
   onDelete: () => void;
-  allHotelDefinitions: HotelDefinition[]; // Passed from DayView
+  allHotelDefinitions: HotelDefinition[];
 }
 
 export function HotelItemForm({ item, travelers, currency, dayNumber, tripSettings, onUpdate, onDelete, allHotelDefinitions }: HotelItemFormProps) {
@@ -32,11 +32,15 @@ export function HotelItemForm({ item, travelers, currency, dayNumber, tripSettin
   const [openTravelerAssignments, setOpenTravelerAssignments] = React.useState<{[key: string]: boolean}>({});
 
   React.useEffect(() => {
+    let filteredHotels: HotelDefinition[];
     if (item.province) {
-      setAvailableHotels(allHotelDefinitions.filter(hd => hd.province === item.province || !hd.province));
+      // Show hotels matching the province OR generic hotels (no province set on the definition)
+      filteredHotels = allHotelDefinitions.filter(hd => hd.province === item.province || !hd.province);
     } else {
-      setAvailableHotels(allHotelDefinitions); 
+      // If item has no province, show all hotels (including those with specific provinces and generic ones)
+      filteredHotels = allHotelDefinitions;
     }
+    setAvailableHotels(filteredHotels);
   }, [item.province, allHotelDefinitions]);
 
   React.useEffect(() => {
@@ -49,18 +53,19 @@ export function HotelItemForm({ item, travelers, currency, dayNumber, tripSettin
 
 
   const handleHotelDefinitionChange = (hotelDefId: string) => {
-    const newHotelDef = allHotelDefinitions.find(hd => hd.id === hotelDefId); // Use prop
+    const newHotelDef = allHotelDefinitions.find(hd => hd.id === hotelDefId);
     if (newHotelDef) {
       onUpdate({ 
         ...item, 
         hotelDefinitionId: hotelDefId, 
         name: item.name === 'New hotel' || !item.name || !item.hotelDefinitionId ? newHotelDef.name : item.name,
-        selectedRooms: [] 
+        selectedRooms: [] // Reset rooms when hotel changes
       });
     } else { 
        onUpdate({ 
         ...item, 
         hotelDefinitionId: '', 
+        name: 'New hotel', // Reset name if no hotel is selected
         selectedRooms: [] 
       });
     }
@@ -69,7 +74,7 @@ export function HotelItemForm({ item, travelers, currency, dayNumber, tripSettin
   const handleCheckoutDayChange = (value: string) => {
     const numValue = value === '' ? undefined : parseInt(value, 10);
     if (numValue !== undefined && (numValue <= dayNumber || numValue > tripSettings.numDays + 1)) {
-      // Invalid input
+      // Invalid input, maybe show a toast or message, or clamp
     }
     onUpdate({ ...item, checkoutDay: numValue || (dayNumber + 1) });
   };
@@ -81,7 +86,7 @@ export function HotelItemForm({ item, travelers, currency, dayNumber, tripSettin
     const newRoomBooking: SelectedHotelRoomConfiguration = {
       id: generateGUID(),
       roomTypeDefinitionId: defaultRoomType.id,
-      roomTypeNameCache: defaultRoomType.name,
+      roomTypeNameCache: defaultRoomType.name, // Cache name
       numRooms: 1,
       assignedTravelerIds: [],
     };
@@ -101,7 +106,11 @@ export function HotelItemForm({ item, travelers, currency, dayNumber, tripSettin
         const currentSelectedRooms = item.selectedRooms || [];
         const updatedBooking = currentSelectedRooms.find(rb => rb.id === bookingId);
         if (updatedBooking) {
-            handleUpdateRoomBooking({ ...updatedBooking, roomTypeDefinitionId, roomTypeNameCache: roomTypeDef.name });
+            handleUpdateRoomBooking({ 
+                ...updatedBooking, 
+                roomTypeDefinitionId, 
+                roomTypeNameCache: roomTypeDef.name // Update cached name
+            });
         }
     }
   };
@@ -150,13 +159,17 @@ export function HotelItemForm({ item, travelers, currency, dayNumber, tripSettin
           <Select
             value={item.hotelDefinitionId || "none"}
             onValueChange={handleHotelDefinitionChange}
-            disabled={!item.province && availableHotels.length === 0}
+            disabled={availableHotels.length === 0 && !item.province} // Disable if no province selected and no generic hotels
           >
             <SelectTrigger>
-              <SelectValue placeholder={item.province ? "Choose a hotel..." : (availableHotels.length > 0 ? "Choose a hotel (generic)..." : "Select province first...")} />
+              <SelectValue placeholder={
+                item.province 
+                  ? (availableHotels.length > 0 ? "Choose a hotel..." : "No hotels for this province")
+                  : (allHotelDefinitions.length > 0 ? "Choose a hotel or select province..." : "No hotels defined")
+              } />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="none">None</SelectItem>
+              <SelectItem value="none">None (Clear Selection)</SelectItem>
               {availableHotels.map(hotelDef => (
                 <SelectItem key={hotelDef.id} value={hotelDef.id}>
                   {hotelDef.name} ({hotelDef.province || 'Generic'})
@@ -165,11 +178,14 @@ export function HotelItemForm({ item, travelers, currency, dayNumber, tripSettin
             </SelectContent>
           </Select>
         </FormField>
-        {selectedHotelDef && (
-          <div className="md:col-span-1">
-             {/* Placeholder for future hotel details if needed */}
-          </div>
-        )}
+         <div className="md:col-span-1"> {/* Placeholder for potential hotel details if selectedHotelDef */}
+           {selectedHotelDef && (
+             <Card className="text-xs bg-muted/30 p-2 border-dashed">
+               <p><strong>Selected:</strong> {selectedHotelDef.name}</p>
+               <p><strong>Province:</strong> {selectedHotelDef.province || "N/A"}</p>
+             </Card>
+           )}
+        </div>
       </div>
       
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
@@ -194,6 +210,27 @@ export function HotelItemForm({ item, travelers, currency, dayNumber, tripSettin
         </FormField>
       </div>
 
+      {!item.hotelDefinitionId && (
+          <Alert variant="default" className="mt-4 bg-blue-50 border-blue-200">
+             <Info className="h-4 w-4 text-blue-600" />
+             <AlertTitle className="text-blue-700">Configure Hotel</AlertTitle>
+             <AlertDescription className="text-blue-600">
+               Please select a hotel from the dropdown above to configure room bookings. 
+               If no hotels appear, ensure the correct province is selected for this item, or check Admin settings.
+             </AlertDescription>
+           </Alert>
+      )}
+
+      {item.hotelDefinitionId && !selectedHotelDef && (
+        <Alert variant="destructive" className="mt-4">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Error</AlertTitle>
+          <AlertDescription>
+            The selected hotel definition (ID: {item.hotelDefinitionId}) could not be found. It might have been deleted or there's an issue with the hotel data. Please re-select a hotel.
+          </AlertDescription>
+        </Alert>
+      )}
+
       {item.hotelDefinitionId && selectedHotelDef && (
         <div className="pt-4 space-y-4">
           <div className="flex justify-between items-center">
@@ -209,6 +246,20 @@ export function HotelItemForm({ item, travelers, currency, dayNumber, tripSettin
 
           {currentSelectedRoomsForRender.map((roomBooking, index) => {
             const currentRoomTypeDef = selectedHotelDef.roomTypes.find(rt => rt.id === roomBooking.roomTypeDefinitionId);
+            if (!currentRoomTypeDef) {
+                 return (
+                    <Alert key={roomBooking.id} variant="destructive" className="my-2">
+                        <AlertCircle className="h-4 w-4" />
+                        <AlertTitle>Room Type Error</AlertTitle>
+                        <AlertDescription>
+                        Room type definition for booking {index + 1} (ID: {roomBooking.roomTypeDefinitionId}) is missing. Please re-select or delete this booking.
+                        </AlertDescription>
+                         <Button variant="ghost" size="sm" onClick={() => handleDeleteRoomBooking(roomBooking.id)} className="mt-2 text-destructive hover:bg-destructive/10">
+                            <Trash2 className="mr-1 h-3 w-3" /> Delete This Booking
+                        </Button>
+                    </Alert>
+                 );
+            }
             return (
             <Card key={roomBooking.id} className="bg-background/70 border border-primary/20 shadow-inner">
               <CardHeader className="py-3 px-4 bg-muted/40 rounded-t-md flex flex-row justify-between items-center">
@@ -247,12 +298,14 @@ export function HotelItemForm({ item, travelers, currency, dayNumber, tripSettin
                 {currentRoomTypeDef && (
                   <div className="mt-2 p-2 border rounded-md bg-muted/20 text-xs">
                     <p className="font-medium mb-1">About {currentRoomTypeDef.name}:</p>
-                    <ul className="list-disc list-inside pl-2 space-y-0.5">
+                     {currentRoomTypeDef.notes && <p className="italic">"{currentRoomTypeDef.notes}"</p>}
+                    <ul className="list-disc list-inside pl-2 space-y-0.5 mt-1">
                       {currentRoomTypeDef.characteristics.map(char => (
                         <li key={char.id}><strong>{char.key}:</strong> {char.value}</li>
                       ))}
+                       <li><strong>Extra Bed:</strong> {currentRoomTypeDef.extraBedAllowed ? 'Allowed' : 'Not Allowed'}</li>
                     </ul>
-                    {currentRoomTypeDef.notes && <p className="mt-1 italic"><strong>Note:</strong> {currentRoomTypeDef.notes}</p>}
+                   
                   </div>
                 )}
                 
@@ -261,7 +314,7 @@ export function HotelItemForm({ item, travelers, currency, dayNumber, tripSettin
                     onClick={() => handleToggleTravelerAssignment(roomBooking.id)}
                     className="flex items-center justify-between w-full text-sm font-medium text-left text-foreground/80 hover:text-primary py-2 px-3 rounded-md hover:bg-muted/50 transition-colors mt-2 border-t pt-3"
                   >
-                    <span className="flex items-center"><Users className="mr-2 h-4 w-4"/> Assign Travelers to this Booking</span>
+                    <span className="flex items-center"><Users className="mr-2 h-4 w-4"/> Assign Travelers to this Booking ({roomBooking.assignedTravelerIds.length} assigned)</span>
                     {openTravelerAssignments[roomBooking.id] ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                   </button>
                   {openTravelerAssignments[roomBooking.id] && (
@@ -291,21 +344,11 @@ export function HotelItemForm({ item, travelers, currency, dayNumber, tripSettin
           })}
            {currentSelectedRoomsForRender.length > 0 && (
                 <p className="text-xs text-muted-foreground text-center pt-2">
-                    Hotel costs are calculated night-by-night based on selected room types and seasonal rates defined in the hotel's master data.
+                    Hotel costs are calculated night-by-night based on selected room types and seasonal rates from the hotel's master data.
                 </p>
            )}
         </div>
       )}
-      {!item.hotelDefinitionId && item.province && (
-          <p className="text-sm text-muted-foreground text-center pt-4">Please select a hotel to configure room bookings.</p>
-      )}
-       {!item.province && availableHotels.length === 0 && (
-          <p className="text-sm text-muted-foreground text-center pt-4">Please select a province first to see available hotels.</p>
-      )}
-      {!item.province && availableHotels.length > 0 && (
-          <p className="text-sm text-muted-foreground text-center pt-4">Please select a province or choose from generic hotels to configure room bookings.</p>
-      )}
-
     </BaseItemForm>
   );
 }
