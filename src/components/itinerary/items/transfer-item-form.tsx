@@ -11,6 +11,7 @@ import { AlertCircle } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { format, parseISO } from 'date-fns';
 import { formatCurrency } from '@/lib/utils';
+import { Separator } from '@/components/ui/separator'; // Added Separator
 
 interface TransferItemFormProps {
   item: TransferItemType;
@@ -63,6 +64,7 @@ export function TransferItemForm({ item, travelers, currency, onUpdate, onDelete
             vehicles: value === 'vehicle' ? (item.vehicles || 1) : undefined, 
             vehicleType: value === 'vehicle' ? (item.vehicleType || VEHICLE_TYPES[0]) : undefined,
             selectedVehicleOptionId: undefined, 
+            note: undefined, 
         });
     } else {
         onUpdate({ 
@@ -95,7 +97,7 @@ export function TransferItemForm({ item, travelers, currency, onUpdate, onDelete
         costPerVehicle: item.mode === 'vehicle' ? 0 : undefined,
         vehicleType: item.mode === 'vehicle' ? (item.vehicleType || VEHICLE_TYPES[0]) : undefined,
         vehicles: item.mode === 'vehicle' ? (item.vehicles || 1) : undefined,
-        // Note: item.note is intentionally not cleared here
+        note: undefined, 
       });
     } else {
       const service = getServicePriceById(selectedValue);
@@ -137,7 +139,7 @@ export function TransferItemForm({ item, travelers, currency, onUpdate, onDelete
           costPerVehicle: item.mode === 'vehicle' ? 0 : undefined,
           vehicleType: item.mode === 'vehicle' ? (item.vehicleType || VEHICLE_TYPES[0]) : undefined,
           vehicles: item.mode === 'vehicle' ? (item.vehicles || 1) : undefined,
-          // Note: item.note is not changed if service not found
+          note: undefined, 
         });
       }
     }
@@ -152,7 +154,7 @@ export function TransferItemForm({ item, travelers, currency, onUpdate, onDelete
         selectedVehicleOptionId: option.id,
         costPerVehicle: option.price, 
         vehicleType: option.vehicleType,   
-        // Note: item.note is not changed here, could inherit option.notes if desired
+        note: option.notes || selectedService.notes || undefined, 
       });
     } else { 
       const baseCost = (selectedService.vehicleOptions && selectedService.vehicleOptions.length > 0) 
@@ -168,6 +170,7 @@ export function TransferItemForm({ item, travelers, currency, onUpdate, onDelete
         selectedVehicleOptionId: undefined,
         costPerVehicle: baseCost,
         vehicleType: baseType,
+        note: selectedService.notes || undefined,
       });
     }
   };
@@ -185,7 +188,7 @@ export function TransferItemForm({ item, travelers, currency, onUpdate, onDelete
 
   const displayedVehicleType = item.mode === 'vehicle' 
     ? (item.selectedVehicleOptionId && selectedService?.vehicleOptions?.find(vo => vo.id === item.selectedVehicleOptionId)?.vehicleType) || 
-      (!item.selectedVehicleOptionId && selectedService && (!selectedService.vehicleOptions || selectedService.vehicleOptions.length === 0) && (VEHICLE_TYPES.includes(selectedService.subCategory as VehicleType) ? selectedService.subCategory as VehicleType : selectedService.vehicleType || item.vehicleType)) ||
+      (!item.selectedVehicleOptionId && selectedService && (!selectedService.vehicleOptions || selectedService.vehicleOptions.length === 0) && (VEHICLE_TYPES.includes(selectedService.subCategory as VehicleType) ? selectedService.subCategory as VehicleType : (selectedService as any).vehicleType || item.vehicleType)) || // Added (selectedService as any).vehicleType
       item.vehicleType || VEHICLE_TYPES[0]
     : undefined;
 
@@ -197,11 +200,10 @@ export function TransferItemForm({ item, travelers, currency, onUpdate, onDelete
 
   return (
     <BaseItemForm item={item} travelers={travelers} currency={currency} onUpdate={onUpdate} onDelete={onDelete} itemTypeLabel="Transfer">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+      <div className="pt-2">
         <FormField 
           label="Mode" 
           id={`transferMode-${item.id}`}
-          className={(transferServices.length === 0 && (!selectedService || !selectedService.vehicleOptions || selectedService.vehicleOptions.length === 0)) ? "md:col-span-2" : ""}
         >
           <Select
             value={item.mode}
@@ -214,43 +216,75 @@ export function TransferItemForm({ item, travelers, currency, onUpdate, onDelete
             </SelectContent>
           </Select>
         </FormField>
-        
-        {transferServices.length > 0 && (
-            <FormField label={`Select Predefined Service (${item.province || 'Any Province'})`} id={`predefined-transfer-${item.id}`}>
-                <Select
-                value={item.selectedServicePriceId || "none"}
-                onValueChange={handlePredefinedServiceSelect}
-                >
-                <SelectTrigger>
-                    <SelectValue placeholder={`Choose ${item.mode} service...`} />
-                </SelectTrigger>
-                <SelectContent>
-                    <SelectItem value="none">None (Custom Price/Options)</SelectItem>
-                    {transferServices.map(service => (
-                    <SelectItem key={service.id} value={service.id}>
-                        {service.name} ({service.province || 'Generic'})
-                        {service.vehicleOptions && service.vehicleOptions.length > 0 ? ` - ${service.vehicleOptions.length} options` : (service.price1 !== undefined ? ` - ${currency} ${service.price1}`: '')}
-                    </SelectItem>
-                    ))}
-                </SelectContent>
-                </Select>
-            </FormField>
-        )}
       </div>
-      {selectedService && <p className="text-xs text-muted-foreground pt-1 text-center md:text-left">Using: {selectedService.name}</p>}
+
+      {(transferServices.length > 0 || item.selectedServicePriceId) && (
+        <div className="mt-4 pt-4 border-t">
+          <FormField label={`Select Predefined Service (${item.province || 'Any Province'})`} id={`predefined-transfer-${item.id}`}>
+              <Select
+              value={item.selectedServicePriceId || "none"}
+              onValueChange={handlePredefinedServiceSelect}
+              >
+              <SelectTrigger>
+                  <SelectValue placeholder={`Choose ${item.mode} service...`} />
+              </SelectTrigger>
+              <SelectContent>
+                  <SelectItem value="none">None (Custom Price/Options)</SelectItem>
+                  {transferServices.map(service => (
+                  <SelectItem key={service.id} value={service.id}>
+                      {service.name} ({service.province || 'Generic'})
+                      {service.vehicleOptions && service.vehicleOptions.length > 0 ? ` - ${service.vehicleOptions.length} options` : (service.price1 !== undefined ? ` - ${currency} ${service.price1}`: '')}
+                  </SelectItem>
+                  ))}
+              </SelectContent>
+              </Select>
+          </FormField>
+          {selectedService && <p className="text-xs text-muted-foreground pt-1">Using: {selectedService.name}</p>}
+
+          {item.mode === 'vehicle' && selectedService && selectedService.vehicleOptions && selectedService.vehicleOptions.length > 0 && (
+            <div className="mt-3">
+              <FormField label="Select Vehicle Option" id={`vehicle-option-${item.id}`}>
+                <Select
+                  value={item.selectedVehicleOptionId || "none"}
+                  onValueChange={handleVehicleOptionSelect}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Choose vehicle option..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">None (Use Custom or Service Base Price)</SelectItem>
+                    {selectedService.vehicleOptions.map(opt => (
+                      <SelectItem key={opt.id} value={opt.id}>
+                        {opt.vehicleType} - {currency} {opt.price} (Max: {opt.maxPassengers} Pax)
+                        {opt.notes ? ` - ${opt.notes}` : ''}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </FormField>
+            </div>
+          )}
+        </div>
+      )}
 
       {serviceDefinitionNotFound && (
         <Alert variant="destructive" className="mt-4">
           <AlertCircle className="h-4 w-4" />
           <AlertTitle>Service Not Found</AlertTitle>
           <AlertDescription>
-            The selected transfer service (ID: {item.selectedServicePriceId}) could not be found. It might have been deleted. Please choose another or set a custom price.
+            The selected transfer service (ID: {item.selectedServicePriceId}) could not be found. Please choose another or set a custom price.
           </AlertDescription>
         </Alert>
       )}
 
+      <Separator className="my-4" />
+      
+      <div className="space-y-1 mb-2">
+          <p className="text-sm font-medium text-muted-foreground">Configuration Details</p>
+      </div>
+
       {item.mode === 'ticket' && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <FormField label={`Adult Ticket Price (${currency})`} id={`adultTicketPrice-${item.id}`}>
             <Input
               type="number"
@@ -280,31 +314,7 @@ export function TransferItemForm({ item, travelers, currency, onUpdate, onDelete
 
       {item.mode === 'vehicle' && (
         <>
-          {selectedService && selectedService.vehicleOptions && selectedService.vehicleOptions.length > 0 && (
-            <div className="pt-2">
-              <FormField label="Select Vehicle Option" id={`vehicle-option-${item.id}`}>
-                <Select
-                  value={item.selectedVehicleOptionId || "none"}
-                  onValueChange={handleVehicleOptionSelect}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Choose vehicle option..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">None (Use Custom or Service Base Price)</SelectItem>
-                    {selectedService.vehicleOptions.map(opt => (
-                      <SelectItem key={opt.id} value={opt.id}>
-                        {opt.vehicleType} - {currency} {opt.price} (Max: {opt.maxPassengers} Pax)
-                        {opt.notes ? ` - ${opt.notes}` : ''}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </FormField>
-            </div>
-          )}
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <FormField label="Vehicle Type" id={`vehicleType-${item.id}`}>
               <Select
                 value={displayedVehicleType} 
@@ -345,7 +355,7 @@ export function TransferItemForm({ item, travelers, currency, onUpdate, onDelete
             </FormField>
           </div>
           {selectedService && selectedService.surchargePeriods && selectedService.surchargePeriods.length > 0 && (
-            <div className="mt-2 p-2 border rounded-md bg-muted/30 text-xs">
+            <div className="mt-3 p-2 border rounded-md bg-muted/30 text-xs">
               <p className="font-medium">Note: This route has potential surcharges that will be applied automatically based on date:</p>
               <ul className="list-disc list-inside pl-2">
                 {selectedService.surchargePeriods.map(sp => (
@@ -360,4 +370,3 @@ export function TransferItemForm({ item, travelers, currency, onUpdate, onDelete
   );
 }
     
-

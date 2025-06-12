@@ -11,6 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { format, parseISO, isValid } from 'date-fns';
 import { CalendarDays, Info, Tag, AlertCircle } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Separator } from '@/components/ui/separator'; // Added Separator
 
 interface ActivityItemFormProps {
   item: ActivityItemType;
@@ -81,7 +82,7 @@ export function ActivityItemForm({ item, travelers, currency, dayNumber, tripSet
         selectedPackageId: undefined,
         adultPrice: 0, 
         childPrice: undefined,
-        // Note: item.note is intentionally not cleared here
+        note: undefined,
       });
     } else {
       const service = getServicePriceById(selectedValue);
@@ -103,7 +104,7 @@ export function ActivityItemForm({ item, travelers, currency, dayNumber, tripSet
           selectedPackageId: undefined,
           adultPrice: 0,
           childPrice: undefined,
-          // Note: item.note is not changed if service not found
+          note: undefined,
         });
       }
     }
@@ -118,7 +119,7 @@ export function ActivityItemForm({ item, travelers, currency, dayNumber, tripSet
         selectedPackageId: undefined,
         adultPrice: selectedActivityService.price1 ?? 0,
         childPrice: selectedActivityService.price2 ?? undefined,
-        // Note: item.note not changed (could be service.notes or custom)
+        note: selectedActivityService.notes || undefined,
       });
     } else {
       const pkg = selectedActivityService.activityPackages.find(p => p.id === packageId);
@@ -128,8 +129,7 @@ export function ActivityItemForm({ item, travelers, currency, dayNumber, tripSet
           selectedPackageId: pkg.id,
           adultPrice: pkg.price1,
           childPrice: pkg.price2,
-          // Note: item.note not changed (could be service.notes, pkg.notes or custom)
-          // If we want pkg.notes to take precedence: note: pkg.notes || selectedActivityService.notes || undefined
+          note: pkg.notes || selectedActivityService.notes || undefined,
         });
       }
     }
@@ -145,58 +145,63 @@ export function ActivityItemForm({ item, travelers, currency, dayNumber, tripSet
 
   return (
     <BaseItemForm item={item} travelers={travelers} currency={currency} onUpdate={onUpdate} onDelete={onDelete} itemTypeLabel="Activity">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
-        <FormField label={`Select Predefined Activity (${item.province || 'Any Province'})`} id={`predefined-activity-${item.id}`}>
-          <Select
-            value={item.selectedServicePriceId || "none"}
-            onValueChange={handlePredefinedServiceSelect}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Choose an activity or set custom price..." />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="none">None (Custom Price)</SelectItem>
-              {activityServices.map(service => (
-                <SelectItem key={service.id} value={service.id}>
-                  {service.name} ({service.province || 'Generic'})
-                  {service.activityPackages && service.activityPackages.length > 0 
-                    ? ` - ${service.activityPackages.length} pkg(s)` 
-                    : service.price1 !== undefined ? ` - ${currency} ${service.price1}` : ''}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </FormField>
-
-        {selectedActivityService && selectedActivityService.activityPackages && selectedActivityService.activityPackages.length > 0 && (
-          <FormField label="Select Package" id={`activity-package-${item.id}`}>
+      {(activityServices.length > 0 || item.selectedServicePriceId) && (
+        <div className="mt-4 pt-4 border-t">
+          <FormField label={`Select Predefined Activity (${item.province || 'Any Province'})`} id={`predefined-activity-${item.id}`}>
             <Select
-              value={item.selectedPackageId || "none"}
-              onValueChange={handlePackageSelect}
+              value={item.selectedServicePriceId || "none"}
+              onValueChange={handlePredefinedServiceSelect}
             >
               <SelectTrigger>
-                <SelectValue placeholder="Choose a package..." />
+                <SelectValue placeholder="Choose an activity or set custom price..." />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="none">None (Use Activity Base Price or Custom)</SelectItem>
-                {selectedActivityService.activityPackages.map(pkg => (
-                  <SelectItem key={pkg.id} value={pkg.id}>
-                    {pkg.name} - {currency} {pkg.price1}
-                    {pkg.price2 !== undefined ? ` / Ch: ${pkg.price2}` : ''}
+                <SelectItem value="none">None (Custom Price)</SelectItem>
+                {activityServices.map(service => (
+                  <SelectItem key={service.id} value={service.id}>
+                    {service.name} ({service.province || 'Generic'})
+                    {service.activityPackages && service.activityPackages.length > 0 
+                      ? ` - ${service.activityPackages.length} pkg(s)` 
+                      : service.price1 !== undefined ? ` - ${currency} ${service.price1}` : ''}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </FormField>
-        )}
-      </div>
+          {selectedActivityService && <p className="text-xs text-muted-foreground pt-1">Using: {selectedActivityService.name}</p>}
+
+          {selectedActivityService && selectedActivityService.activityPackages && selectedActivityService.activityPackages.length > 0 && (
+            <div className="mt-3">
+              <FormField label="Select Package" id={`activity-package-${item.id}`}>
+                <Select
+                  value={item.selectedPackageId || "none"}
+                  onValueChange={handlePackageSelect}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Choose a package..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">None (Use Activity Base Price or Custom)</SelectItem>
+                    {selectedActivityService.activityPackages.map(pkg => (
+                      <SelectItem key={pkg.id} value={pkg.id}>
+                        {pkg.name} - {currency} {pkg.price1}
+                        {pkg.price2 !== undefined ? ` / Ch: ${pkg.price2}` : ''}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </FormField>
+            </div>
+          )}
+        </div>
+      )}
       
       {serviceDefinitionNotFound && (
         <Alert variant="destructive" className="mt-4">
           <AlertCircle className="h-4 w-4" />
           <AlertTitle>Service Not Found</AlertTitle>
           <AlertDescription>
-            The selected activity (ID: {item.selectedServicePriceId}) could not be found. It might have been deleted. Please choose another or set a custom price.
+            The selected activity (ID: {item.selectedServicePriceId}) could not be found. Please choose another or set a custom price.
           </AlertDescription>
         </Alert>
       )}
@@ -231,7 +236,12 @@ export function ActivityItemForm({ item, travelers, currency, dayNumber, tripSet
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4">
+      <Separator className="my-4" />
+      <div className="space-y-1 mb-2">
+          <p className="text-sm font-medium text-muted-foreground">Configuration Details</p>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <FormField label={`Adult Price (${currency})`} id={`adultPrice-${item.id}`}>
           <Input
             type="number"
@@ -268,7 +278,7 @@ export function ActivityItemForm({ item, travelers, currency, dayNumber, tripSet
           />
         </FormField>
       </div>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-3 mt-2 p-3 bg-muted/30 rounded-md border">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-3 mt-3 p-3 bg-muted/30 rounded-md border">
           <div className="space-y-1">
             <Label className="text-sm text-muted-foreground">Starts:</Label>
             <p className="font-code text-sm">Day {dayNumber}</p>
@@ -286,6 +296,4 @@ export function ActivityItemForm({ item, travelers, currency, dayNumber, tripSet
     </BaseItemForm>
   );
 }
-    
-
     

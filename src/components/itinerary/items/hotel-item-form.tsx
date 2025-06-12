@@ -13,6 +13,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { PlusCircle, Trash2, ChevronDown, ChevronUp, Users, BedDouble, Info, AlertCircle } from 'lucide-react';
 import { generateGUID } from '@/lib/utils';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Separator } from '@/components/ui/separator'; // Added Separator
 
 interface HotelItemFormProps {
   item: HotelItemType;
@@ -23,7 +24,7 @@ interface HotelItemFormProps {
   onUpdate: (item: HotelItemType) => void;
   onDelete: () => void;
   allHotelDefinitions: HotelDefinition[];
-  allServicePrices: ServicePriceItem[]; // Added to get notes from the wrapped ServicePriceItem
+  allServicePrices: ServicePriceItem[]; 
 }
 
 export function HotelItemForm({ item, travelers, currency, dayNumber, tripSettings, onUpdate, onDelete, allHotelDefinitions, allServicePrices }: HotelItemFormProps) {
@@ -48,9 +49,6 @@ export function HotelItemForm({ item, travelers, currency, dayNumber, tripSettin
     if (item.hotelDefinitionId) {
       const hotelDef = allHotelDefinitions.find(hd => hd.id === item.hotelDefinitionId);
       setSelectedHotelDef(hotelDef);
-      // Find the corresponding ServicePriceItem that wraps this HotelDefinition
-      // This assumes HotelDefinition ID might be stored in selectedServicePriceId for hotels,
-      // or we find it by matching hotelDetails.id
       const servicePrice = allServicePrices.find(sp => sp.category === 'hotel' && (sp.id === item.selectedServicePriceId || sp.hotelDetails?.id === item.hotelDefinitionId));
       setSelectedHotelServicePrice(servicePrice);
 
@@ -69,7 +67,7 @@ export function HotelItemForm({ item, travelers, currency, dayNumber, tripSettin
       onUpdate({
         ...item,
         hotelDefinitionId: hotelDefId,
-        selectedServicePriceId: newHotelServicePrice?.id, // Store the ServicePriceItem id
+        selectedServicePriceId: newHotelServicePrice?.id, 
         name: item.name === 'New hotel' || !item.name || !item.hotelDefinitionId ? newHotelDef.name : item.name,
         selectedRooms: [],
         note: newHotelServicePrice?.notes || undefined,
@@ -81,7 +79,7 @@ export function HotelItemForm({ item, travelers, currency, dayNumber, tripSettin
         selectedServicePriceId: undefined,
         name: 'New hotel', 
         selectedRooms: [],
-        // Note: item.note is intentionally not cleared here
+        note: undefined,
       });
     }
   };
@@ -168,7 +166,7 @@ export function HotelItemForm({ item, travelers, currency, dayNumber, tripSettin
 
   return (
     <BaseItemForm item={item} travelers={travelers} currency={currency} onUpdate={onUpdate} onDelete={onDelete} itemTypeLabel="Hotel Stay">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+      <div className="pt-2">
         <FormField label="Select Hotel" id={`hotel-def-${item.id}`}>
           <Select
             value={item.hotelDefinitionId || "none"}
@@ -192,18 +190,21 @@ export function HotelItemForm({ item, travelers, currency, dayNumber, tripSettin
             </SelectContent>
           </Select>
         </FormField>
-         <div className="md:col-span-1"> 
-           {selectedHotelDef && (
-             <Card className="text-xs bg-muted/30 p-2 border-dashed">
-               <p><strong>Selected:</strong> {selectedHotelDef.name}</p>
+         {selectedHotelDef && (
+             <Card className="text-xs bg-muted/30 p-2 mt-2 border-dashed">
+               <p><strong>Selected Hotel:</strong> {selectedHotelDef.name}</p>
                <p><strong>Province:</strong> {selectedHotelDef.province || "N/A"}</p>
                {selectedHotelServicePrice?.notes && <p className="mt-1 italic"><strong>Notes:</strong> {selectedHotelServicePrice.notes}</p>}
              </Card>
-           )}
-        </div>
+         )}
+      </div>
+      
+      <Separator className="my-4" />
+      <div className="space-y-1 mb-2">
+          <p className="text-sm font-medium text-muted-foreground">Stay Details</p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <FormField label="Check-in Day" id={`checkinDay-${item.id}`}>
           <p className="font-code text-sm p-2.5 bg-muted rounded-md h-10 flex items-center">Day {dayNumber}</p>
         </FormField>
@@ -231,7 +232,6 @@ export function HotelItemForm({ item, travelers, currency, dayNumber, tripSettin
              <AlertTitle className="text-blue-700">Configure Hotel</AlertTitle>
              <AlertDescription className="text-blue-600">
                Please select a hotel from the dropdown above to configure room bookings.
-               If no hotels appear, ensure the correct province is selected for this item, or check Admin settings.
              </AlertDescription>
            </Alert>
       )}
@@ -241,15 +241,17 @@ export function HotelItemForm({ item, travelers, currency, dayNumber, tripSettin
           <AlertCircle className="h-4 w-4" />
           <AlertTitle>Error</AlertTitle>
           <AlertDescription>
-            The selected hotel definition (ID: {item.hotelDefinitionId}) could not be found. It might have been deleted or there's an issue with the hotel data. Please re-select a hotel.
+            The selected hotel definition (ID: {item.hotelDefinitionId}) could not be found. Please re-select a hotel.
           </AlertDescription>
         </Alert>
       )}
 
       {item.hotelDefinitionId && selectedHotelDef && (
-        <div className="pt-4 space-y-4">
+        <>
+        <Separator className="my-4" />
+        <div className="space-y-4">
           <div className="flex justify-between items-center">
-            <Label className="text-md font-semibold">Selected Room Bookings for {selectedHotelDef.name}</Label>
+            <Label className="text-md font-semibold">Room Bookings for {selectedHotelDef.name}</Label>
             <Button variant="outline" size="sm" onClick={handleAddRoomBooking} className="border-primary text-primary hover:bg-primary/10">
               <PlusCircle className="mr-2 h-4 w-4" /> Add Room Booking
             </Button>
@@ -267,7 +269,7 @@ export function HotelItemForm({ item, travelers, currency, dayNumber, tripSettin
                         <AlertCircle className="h-4 w-4" />
                         <AlertTitle>Room Type Error</AlertTitle>
                         <AlertDescription>
-                        Room type definition for booking {index + 1} (ID: {roomBooking.roomTypeDefinitionId}) is missing. Please re-select or delete this booking.
+                        Room type definition for booking {index + 1} (ID: {roomBooking.roomTypeDefinitionId}) is missing. Delete this booking and re-add.
                         </AlertDescription>
                          <Button variant="ghost" size="sm" onClick={() => handleDeleteRoomBooking(roomBooking.id)} className="mt-2 text-destructive hover:bg-destructive/10">
                             <Trash2 className="mr-1 h-3 w-3" /> Delete This Booking
@@ -320,7 +322,6 @@ export function HotelItemForm({ item, travelers, currency, dayNumber, tripSettin
                       ))}
                        <li><strong>Extra Bed:</strong> {currentRoomTypeDef.extraBedAllowed ? 'Allowed' : 'Not Allowed'}</li>
                     </ul>
-
                   </div>
                 )}
 
@@ -329,7 +330,7 @@ export function HotelItemForm({ item, travelers, currency, dayNumber, tripSettin
                     onClick={() => handleToggleTravelerAssignment(roomBooking.id)}
                     className="flex items-center justify-between w-full text-sm font-medium text-left text-foreground/80 hover:text-primary py-2 px-3 rounded-md hover:bg-muted/50 transition-colors mt-2 border-t pt-3"
                   >
-                    <span className="flex items-center"><Users className="mr-2 h-4 w-4"/> Assign Travelers to this Booking ({roomBooking.assignedTravelerIds.length} assigned)</span>
+                    <span className="flex items-center"><Users className="mr-2 h-4 w-4"/> Assign Travelers ({roomBooking.assignedTravelerIds.length} assigned)</span>
                     {openTravelerAssignments[roomBooking.id] ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                   </button>
                   {openTravelerAssignments[roomBooking.id] && (
@@ -359,10 +360,11 @@ export function HotelItemForm({ item, travelers, currency, dayNumber, tripSettin
           })}
            {currentSelectedRoomsForRender.length > 0 && (
                 <p className="text-xs text-muted-foreground text-center pt-2">
-                    Hotel costs are calculated night-by-night based on selected room types and seasonal rates from the hotel's master data.
+                    Hotel costs are calculated night-by-night based on room types and seasonal rates from the hotel's master data.
                 </p>
            )}
         </div>
+        </>
       )}
     </BaseItemForm>
   );

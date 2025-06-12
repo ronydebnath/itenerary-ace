@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AlertCircle } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Separator } from '@/components/ui/separator'; // Added Separator
 
 interface MiscItemFormProps {
   item: MiscItemType;
@@ -63,7 +64,8 @@ export function MiscItemForm({ item, travelers, currency, onUpdate, onDelete, al
       onUpdate({
         ...item,
         selectedServicePriceId: undefined,
-        // Note: item.note and unitCost are not cleared here
+        unitCost: 0,
+        note: undefined,
       });
     } else {
       const service = getServicePriceById(selectedValue);
@@ -80,7 +82,7 @@ export function MiscItemForm({ item, travelers, currency, onUpdate, onDelete, al
           ...item,
           selectedServicePriceId: selectedValue, 
           unitCost: 0,
-          // Note: item.note is not changed if service not found
+          note: undefined,
         });
       }
     }
@@ -91,8 +93,8 @@ export function MiscItemForm({ item, travelers, currency, onUpdate, onDelete, al
 
   return (
     <BaseItemForm item={item} travelers={travelers} currency={currency} onUpdate={onUpdate} onDelete={onDelete} itemTypeLabel="Miscellaneous Item">
-       {miscServices.length > 0 && (
-        <div className="pt-2">
+       {(miscServices.length > 0 || item.selectedServicePriceId) && (
+        <div className="mt-4 pt-4 border-t">
           <FormField label={`Select Predefined Item (${item.province || 'Any Province'})`} id={`predefined-misc-${item.id}`}>
             <Select
               value={item.selectedServicePriceId || "none"}
@@ -121,12 +123,17 @@ export function MiscItemForm({ item, travelers, currency, onUpdate, onDelete, al
           <AlertCircle className="h-4 w-4" />
           <AlertTitle>Service Not Found</AlertTitle>
           <AlertDescription>
-            The selected miscellaneous item (ID: {item.selectedServicePriceId}) could not be found. It might have been deleted. Please choose another or set a custom price.
+            The selected miscellaneous item (ID: {item.selectedServicePriceId}) could not be found. Please choose another or set a custom price.
           </AlertDescription>
         </Alert>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
+      <Separator className="my-4" />
+      <div className="space-y-1 mb-2">
+          <p className="text-sm font-medium text-muted-foreground">Configuration Details</p>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <FormField label={`Unit Cost (${currency})`} id={`unitCost-${item.id}`}>
           <Input
             type="number"
@@ -165,4 +172,3 @@ export function MiscItemForm({ item, travelers, currency, onUpdate, onDelete, al
     </BaseItemForm>
   );
 }
-
