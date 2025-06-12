@@ -2,26 +2,31 @@
 "use client";
 
 import React from 'react';
-import { SetupForm } from '@/components/itinerary/setup-form';
 import { ItineraryPlanner } from '@/components/itinerary/itinerary-planner';
 import { useItineraryManager, PageStatus } from '@/hooks/useItineraryManager';
-import { Cog, Image as ImageIconLucide } from 'lucide-react';
+import { Cog, Image as ImageIconLucide, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 
 export default function PlannerPage() {
   const {
     tripData,
-    currentItineraryId,
     pageStatus,
-    handleStartPlanning,
-    handleUpdateTripData,
-    handleManualSave,
     handleStartNewItinerary,
+    handleUpdateTripData,
+    handleUpdateSettings,
+    handleUpdatePax,
+    handleManualSave,
   } = useItineraryManager();
 
-  if (pageStatus === 'loading') {
-    return <div className="flex justify-center items-center min-h-screen bg-background"><p>Loading Itinerary Ace...</p></div>;
+  if (pageStatus === 'loading' || !tripData) {
+    return (
+      <div className="flex flex-col justify-center items-center min-h-screen bg-background p-4">
+        <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
+        <p className="text-lg text-muted-foreground">Loading Itinerary Ace Planner...</p>
+        <p className="text-sm text-muted-foreground mt-1">Initializing your workspace.</p>
+      </div>
+    );
   }
 
   return (
@@ -41,16 +46,18 @@ export default function PlannerPage() {
         </Link>
       </div>
 
-      {pageStatus === 'planner' && tripData && currentItineraryId ? (
+      {pageStatus === 'planner' && tripData && (
         <ItineraryPlanner
           tripData={tripData}
           onReset={handleStartNewItinerary}
           onUpdateTripData={handleUpdateTripData}
+          onUpdateSettings={handleUpdateSettings}
+          onUpdatePax={handleUpdatePax}
           onManualSave={handleManualSave}
         />
-      ) : (
-        <SetupForm onStartPlanning={handleStartPlanning} />
       )}
     </div>
   );
 }
+
+    

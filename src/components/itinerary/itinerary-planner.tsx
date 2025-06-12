@@ -2,7 +2,7 @@
 "use client";
 
 import * as React from 'react';
-import type { TripData, ItineraryItem, CostSummary } from '@/types/itinerary';
+import type { TripData, ItineraryItem, CostSummary, TripSettings, PaxDetails } from '@/types/itinerary';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -25,10 +25,19 @@ interface ItineraryPlannerProps {
   tripData: TripData;
   onReset: () => void;
   onUpdateTripData: (updatedTripData: Partial<TripData>) => void;
+  onUpdateSettings: (updatedSettings: Partial<TripSettings>) => void;
+  onUpdatePax: (updatedPax: Partial<PaxDetails>) => void;
   onManualSave: () => void;
 }
 
-export function ItineraryPlanner({ tripData, onReset, onUpdateTripData, onManualSave }: ItineraryPlannerProps) {
+export function ItineraryPlanner({ 
+  tripData, 
+  onReset, 
+  onUpdateTripData, 
+  onUpdateSettings,
+  onUpdatePax,
+  onManualSave 
+}: ItineraryPlannerProps) {
   const [currentDayView, setCurrentDayView] = React.useState<number>(1);
   const [costSummary, setCostSummary] = React.useState<CostSummary | null>(null);
   const [isPrinting, setIsPrinting] = React.useState(false);
@@ -38,12 +47,20 @@ export function ItineraryPlanner({ tripData, onReset, onUpdateTripData, onManual
 
   React.useEffect(() => {
     if (tripData && !isLoadingServices && !isLoadingHotelDefinitions) {
-      const summary = calculateAllCosts(tripData);
+      const summary = calculateAllCosts(tripData, allServicePrices, allHotelDefinitions);
       setCostSummary(summary);
     } else {
       setCostSummary(null);
     }
-  }, [tripData, isLoadingServices, isLoadingHotelDefinitions]);
+  }, [tripData, isLoadingServices, isLoadingHotelDefinitions, allServicePrices, allHotelDefinitions]);
+
+  // Adjust currentDayView if numDays changes and currentDayView is out of bounds
+  React.useEffect(() => {
+    if (tripData.settings.numDays < currentDayView) {
+      setCurrentDayView(Math.max(1, tripData.settings.numDays));
+    }
+  }, [tripData.settings.numDays, currentDayView]);
+
 
   const handleUpdateItem = React.useCallback((day: number, updatedItem: ItineraryItem) => {
     const newDays = { ...tripData.days };
@@ -135,6 +152,8 @@ export function ItineraryPlanner({ tripData, onReset, onUpdateTripData, onManual
       <PlannerHeader
         tripData={tripData}
         onUpdateTripData={onUpdateTripData}
+        onUpdateSettings={onUpdateSettings}
+        onUpdatePax={onUpdatePax}
         onManualSave={onManualSave}
         onReset={onReset}
         showCosts={showCosts}
@@ -149,7 +168,7 @@ export function ItineraryPlanner({ tripData, onReset, onUpdateTripData, onManual
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 min-h-[60vh]">
         <div className="lg:col-span-8 flex flex-col">
-          {isLoadingAnything ? (
+          {isLoadingAnything && !tripData.days[currentDayView] ? ( // More specific loading check
             <div className="flex flex-col items-center justify-center p-10 min-h-[300px] bg-card rounded-lg shadow-sm border flex-grow">
               <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
               <p className="text-muted-foreground">Loading itinerary data and service definitions...</p>
@@ -187,7 +206,7 @@ export function ItineraryPlanner({ tripData, onReset, onUpdateTripData, onManual
               <CardTitle className="text-xl text-primary">Cost Summary</CardTitle>
             </CardHeader>
             <CardContent className="flex-grow">
-              {isLoadingAnything ? (
+              {isLoadingAnything && !costSummary ? (
                 <div className="flex items-center justify-center py-6">
                   <Loader2 className="h-6 w-6 animate-spin text-primary mr-2" />
                   <p className="text-muted-foreground">Loading costs...</p>
@@ -227,7 +246,7 @@ export function ItineraryPlanner({ tripData, onReset, onUpdateTripData, onManual
           </div>
         </CardHeader>
         <CardContent>
-          {isLoadingAnything ? (
+          {isLoadingAnything && !costSummary ? (
             <div className="flex items-center justify-center py-10">
               <Loader2 className="h-8 w-8 animate-spin text-primary mr-3" />
               <p className="text-muted-foreground">Loading full details...</p>
@@ -239,7 +258,6 @@ export function ItineraryPlanner({ tripData, onReset, onUpdateTripData, onManual
       </Card>
 
       <div className="mt-8 py-6 border-t border-border flex flex-col sm:flex-row justify-center items-center gap-4 no-print">
-        {/* Removed Reset Calculator button as Start New Itinerary is in header */}
         <Button onClick={handlePrint} className="w-full sm:w-auto bg-accent hover:bg-accent/90 text-accent-foreground">
           <Printer className="mr-2 h-4 w-4" /> Print Itinerary
         </Button>
@@ -247,3 +265,5 @@ export function ItineraryPlanner({ tripData, onReset, onUpdateTripData, onManual
     </div>
   );
 }
+
+    

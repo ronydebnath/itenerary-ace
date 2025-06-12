@@ -3,7 +3,7 @@
 
 import * as React from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import type { TripData, ItineraryMetadata, TripSettings, PaxDetails } from '@/types/itinerary';
+import type { TripData, ItineraryMetadata, TripSettings, PaxDetails, Traveler } from '@/types/itinerary';
 import { generateGUID } from '@/lib/utils';
 import { useToast } from "@/hooks/use-toast";
 
@@ -19,7 +19,48 @@ const generateItineraryId = (): string => {
   return `ITN-${year}${month}${day}-${randomSuffix}`;
 };
 
-export type PageStatus = 'loading' | 'setup' | 'planner';
+const createDefaultTravelers = (adults: number, children: number): Traveler[] => {
+  const newTravelers: Traveler[] = [];
+  for (let i = 1; i <= adults; i++) {
+    newTravelers.push({ id: `A${generateGUID()}`, label: `Adult ${i}`, type: 'adult' as const });
+  }
+  for (let i = 1; i <= children; i++) {
+    newTravelers.push({ id: `C${generateGUID()}`, label: `Child ${i}`, type: 'child' as const });
+  }
+  return newTravelers;
+};
+
+const createDefaultTripData = (): TripData => {
+  const newId = generateItineraryId();
+  const now = new Date().toISOString();
+  const startDate = new Date(); // Today
+  startDate.setHours(0, 0, 0, 0); // Normalize to start of day
+
+  const settings: TripSettings = {
+    numDays: 1,
+    startDate: startDate.toISOString().split('T')[0],
+    selectedProvinces: [],
+    budget: undefined,
+  };
+  const pax: PaxDetails = { adults: 2, children: 0, currency: 'USD' };
+  const travelers = createDefaultTravelers(pax.adults, pax.children);
+  const days: { [dayNumber: number]: { items: [] } } = { 1: { items: [] } };
+
+  return {
+    id: newId,
+    itineraryName: `New Itinerary ${newId.split('-').pop()}`,
+    clientName: undefined,
+    settings,
+    pax,
+    travelers,
+    days,
+    createdAt: now,
+    updatedAt: now,
+  };
+};
+
+
+export type PageStatus = 'loading' | 'planner'; // Removed 'setup'
 
 export function useItineraryManager() {
   const router = useRouter();
@@ -42,7 +83,7 @@ export function useItineraryManager() {
         }
       } catch (e) { console.error("Error reading lastActiveItineraryId:", e); }
     }
-
+    
     if (idToLoad && currentItineraryId === idToLoad && pageStatus === 'planner' && tripData) {
       if (itineraryIdFromUrl !== currentItineraryId) {
         router.replace(`/planner?itineraryId=${currentItineraryId}`, { shallow: true });
@@ -50,13 +91,7 @@ export function useItineraryManager() {
       return; 
     }
 
-    if (idToLoad !== currentItineraryId || !tripData || (idToLoad && !currentItineraryId) || (!idToLoad && pageStatus !== 'setup') ) {
-        setPageStatus('loading');
-        if (idToLoad !== currentItineraryId || !idToLoad) {
-             setTripData(null);
-        }
-    }
-
+    setPageStatus('loading');
 
     if (idToLoad) {
       try {
@@ -71,11 +106,10 @@ export function useItineraryManager() {
             updatedAt: parsedData.updatedAt || new Date().toISOString(),
             settings: parsedData.settings || { numDays: 1, startDate: new Date().toISOString().split('T')[0], selectedProvinces: [] },
             pax: parsedData.pax || { adults: 1, children: 0, currency: 'USD' },
-            travelers: parsedData.travelers && parsedData.travelers.length > 0 ? parsedData.travelers : [{ id: generateGUID(), label: 'Adult 1', type: 'adult' as const }],
+            travelers: parsedData.travelers && parsedData.travelers.length > 0 ? parsedData.travelers : createDefaultTravelers(parsedData.pax?.adults || 1, parsedData.pax?.children || 0),
             days: parsedData.days || { 1: { items: [] } },
           };
           dataToSet.settings.selectedProvinces = dataToSet.settings.selectedProvinces || [];
-
 
           setTripData(dataToSet);
           setCurrentItineraryId(dataToSet.id);
@@ -86,66 +120,46 @@ export function useItineraryManager() {
             router.replace(`/planner?itineraryId=${dataToSet.id}`, { shallow: true });
           }
         } else {
-          console.warn(`No data found for itineraryId: ${idToLoad}. Clearing lastActive if it matches.`);
+          console.warn(`No data found for itineraryId: ${idToLoad}. Starting new one.`);
           if (localStorage.getItem('lastActiveItineraryId') === idToLoad) {
             localStorage.removeItem('lastActiveItineraryId');
           }
-          setCurrentItineraryId(null);
-          setTripData(null);
-          setPageStatus('setup');
-          if (itineraryIdFromUrl) router.replace('/planner', { shallow: true });
+          const newDefaultTripData = createDefaultTripData();
+          setTripData(newDefaultTripData);
+          setCurrentItineraryId(newDefaultTripData.id);
+          setPageStatus('planner');
+          localStorage.setItem('lastActiveItineraryId', newDefaultTripData.id);
+          router.replace(`/planner?itineraryId=${newDefaultTripData.id}`, { shallow: true });
         }
       } catch (error) {
         console.error("Failed to load data from localStorage:", error);
-        setCurrentItineraryId(null);
-        setTripData(null);
-        setPageStatus('setup');
-        if (itineraryIdFromUrl) router.replace('/planner', { shallow: true });
+        const newDefaultTripData = createDefaultTripData();
+        setTripData(newDefaultTripData);
+        setCurrentItineraryId(newDefaultTripData.id);
+        setPageStatus('planner');
+        localStorage.setItem('lastActiveItineraryId', newDefaultTripData.id);
+        router.replace(`/planner?itineraryId=${newDefaultTripData.id}`, { shallow: true });
       }
     } else { 
-        setCurrentItineraryId(null);
-        setTripData(null);
-        setPageStatus('setup');
+        const newDefaultTripData = createDefaultTripData();
+        setTripData(newDefaultTripData);
+        setCurrentItineraryId(newDefaultTripData.id);
+        setPageStatus('planner');
+        localStorage.setItem('lastActiveItineraryId', newDefaultTripData.id);
+        router.replace(`/planner?itineraryId=${newDefaultTripData.id}`, { shallow: true });
     }
   }, [searchParams]); 
 
-  const handleStartPlanning = React.useCallback((settings: TripSettings, pax: PaxDetails, itineraryNameInput?: string, clientNameInput?: string) => {
-    const newId = generateItineraryId();
-    const now = new Date().toISOString();
-
-    const newTravelers = [];
-    for (let i = 1; i <= pax.adults; i++) {
-      newTravelers.push({ id: `A${generateGUID()}`, label: `Adult ${i}`, type: 'adult' as const });
-    }
-    for (let i = 1; i <= pax.children; i++) {
-      newTravelers.push({ id: `C${generateGUID()}`, label: `Child ${i}`, type: 'child' as const });
-    }
-
-    const initialDaysData: { [dayNumber: number]: { items: [] } } = {};
-    for (let i = 1; i <= settings.numDays; i++) {
-      initialDaysData[i] = { items: [] };
-    }
-
-    const newTripData: TripData = {
-      id: newId,
-      itineraryName: itineraryNameInput || `Itinerary ${newId.split('-').pop()}`,
-      clientName: clientNameInput || undefined,
-      settings: {
-        ...settings,
-        selectedProvinces: settings.selectedProvinces || [],
-      },
-      pax,
-      travelers: newTravelers,
-      days: initialDaysData,
-      createdAt: now,
-      updatedAt: now,
-    };
-    setTripData(newTripData);
-    setCurrentItineraryId(newId);
-    setPageStatus('planner');
-    localStorage.setItem('lastActiveItineraryId', newId);
-    router.replace(`/planner?itineraryId=${newId}`, { shallow: true }); 
-  }, [router]);
+  const handleStartNewItinerary = React.useCallback(() => {
+    setPageStatus('loading');
+    const newDefaultTripData = createDefaultTripData();
+    setTripData(newDefaultTripData);
+    setCurrentItineraryId(newDefaultTripData.id);
+    localStorage.setItem('lastActiveItineraryId', newDefaultTripData.id);
+    router.replace(`/planner?itineraryId=${newDefaultTripData.id}`, { shallow: true });
+    // The main useEffect will handle setting pageStatus to 'planner' after router updates
+    toast({ title: "New Itinerary Started", description: "A fresh itinerary has been created with default settings." });
+  }, [router, toast]);
 
   const handleUpdateTripData = React.useCallback((updatedTripDataFromPlanner: Partial<TripData>) => {
     setTripData(prevTripData => {
@@ -154,15 +168,57 @@ export function useItineraryManager() {
           toast({ title: "Error", description: "No active itinerary to update.", variant: "destructive" });
           return null;
       }
-      const baseData = prevTripData || { id: currentItineraryId!, itineraryName: '', settings: {numDays: 1, startDate: '', selectedProvinces:[]}, pax: {adults:1, children:0, currency:'USD'}, travelers:[], days:{}, createdAt: '', updatedAt: ''} as TripData;
+      const baseData = prevTripData || createDefaultTripData(); // Should not happen if logic is correct
       const dataToSet: TripData = {
         ...baseData,
         ...updatedTripDataFromPlanner,
-        id: baseData.id || currentItineraryId!,
+        id: baseData.id || currentItineraryId!, // Ensure ID is always set
       };
       return dataToSet;
     });
   }, [currentItineraryId, toast]);
+
+  const handleUpdateSettings = React.useCallback((newSettingsPartial: Partial<TripSettings>) => {
+    setTripData(prevTripData => {
+      if (!prevTripData) return null;
+      const updatedSettings = { ...prevTripData.settings, ...newSettingsPartial };
+      const newDaysData = { ...prevTripData.days };
+
+      if (newSettingsPartial.numDays !== undefined && newSettingsPartial.numDays !== prevTripData.settings.numDays) {
+        const oldNumDays = prevTripData.settings.numDays;
+        const newNumDays = updatedSettings.numDays;
+
+        if (newNumDays > oldNumDays) {
+          for (let i = oldNumDays + 1; i <= newNumDays; i++) {
+            if (!newDaysData[i]) {
+              newDaysData[i] = { items: [] };
+            }
+          }
+        } else if (newNumDays < oldNumDays) {
+          for (let i = newNumDays + 1; i <= oldNumDays; i++) {
+            delete newDaysData[i];
+          }
+        }
+      }
+      return { ...prevTripData, settings: updatedSettings, days: newDaysData };
+    });
+  }, []);
+
+  const handleUpdatePax = React.useCallback((newPaxPartial: Partial<PaxDetails>) => {
+    setTripData(prevTripData => {
+      if (!prevTripData) return null;
+      const updatedPax = { ...prevTripData.pax, ...newPaxPartial };
+      let updatedTravelers = prevTripData.travelers;
+
+      if (newPaxPartial.adults !== undefined || newPaxPartial.children !== undefined) {
+        updatedTravelers = createDefaultTravelers(updatedPax.adults, updatedPax.children);
+        // Note: This resets traveler IDs, so item exclusions specific to old IDs will be lost.
+        // A more complex mapping would be needed to preserve them.
+      }
+      return { ...prevTripData, pax: updatedPax, travelers: updatedTravelers };
+    });
+  }, []);
+
 
   const handleManualSave = React.useCallback(() => {
     if (!tripData || !currentItineraryId) {
@@ -174,7 +230,7 @@ export function useItineraryManager() {
         ...tripData,
         updatedAt: new Date().toISOString(),
       };
-      setTripData(dataToSave);
+      setTripData(dataToSave); // Ensure local state has the latest updatedAt
 
       localStorage.setItem(`${ITINERARY_DATA_PREFIX}${currentItineraryId}`, JSON.stringify(dataToSave));
 
@@ -204,21 +260,16 @@ export function useItineraryManager() {
     }
   }, [tripData, currentItineraryId, toast]);
 
-  const handleStartNewItinerary = React.useCallback(() => {
-    setPageStatus('loading'); 
-    setCurrentItineraryId(null);
-    setTripData(null);
-    localStorage.removeItem('lastActiveItineraryId');
-    router.replace('/planner', { shallow: true });
-  }, [router, setPageStatus, setCurrentItineraryId, setTripData]); 
-
   return {
     tripData,
     currentItineraryId,
     pageStatus,
-    handleStartPlanning,
+    handleStartNewItinerary, // Renamed from handleStartPlanning for clarity
     handleUpdateTripData,
+    handleUpdateSettings,
+    handleUpdatePax,
     handleManualSave,
-    handleStartNewItinerary,
   };
 }
+
+    
