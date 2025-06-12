@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
-import { ChevronLeft, ChevronRight, Printer, RotateCcw, MapPin, CalendarDays, Users, Eye, EyeOff, Hotel } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Printer, RotateCcw, MapPin, CalendarDays, Users, Eye, EyeOff, Hotel, Loader2 } from 'lucide-react';
 import { formatCurrency, generateGUID } from '@/lib/utils';
 import { AISuggestions } from './ai-suggestions'; 
 import { PrintLayout } from './print-layout'; 
@@ -190,23 +190,30 @@ export function ItineraryPlanner({ tripData, onReset, onUpdateTripData }: Itiner
       
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         <div className="lg:col-span-8">
-          <ScrollArea className="h-auto lg:max-h-[calc(100vh-280px)] pr-2">
-            {Array.from({ length: tripData.settings.numDays }, (_, i) => i + 1).map(dayNum => (
-              <div key={dayNum} style={{ display: dayNum === currentDayView ? 'block' : 'none' }}>
-                <DayView
-                  dayNumber={dayNum}
-                  items={tripData.days[dayNum]?.items || []}
-                  travelers={tripData.travelers}
-                  currency={tripData.pax.currency}
-                  onAddItem={handleAddItem}
-                  onUpdateItem={handleUpdateItem}
-                  onDeleteItem={handleDeleteItem}
-                  tripSettings={tripData.settings}
-                  allHotelDefinitions={allHotelDefinitions} 
-                />
-              </div>
-            ))}
-          </ScrollArea>
+          {isLoadingAnything ? (
+            <div className="flex flex-col items-center justify-center p-10 min-h-[300px] bg-card rounded-lg shadow-sm border">
+                <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
+                <p className="text-muted-foreground">Loading itinerary data and service definitions...</p>
+            </div>
+          ) : (
+            <ScrollArea className="h-auto lg:max-h-[calc(100vh-280px)] pr-2">
+              {Array.from({ length: tripData.settings.numDays }, (_, i) => i + 1).map(dayNum => (
+                <div key={dayNum} style={{ display: dayNum === currentDayView ? 'block' : 'none' }}>
+                  <DayView
+                    dayNumber={dayNum}
+                    items={tripData.days[dayNum]?.items || []}
+                    travelers={tripData.travelers}
+                    currency={tripData.pax.currency}
+                    onAddItem={handleAddItem}
+                    onUpdateItem={handleUpdateItem}
+                    onDeleteItem={handleDeleteItem}
+                    tripSettings={tripData.settings}
+                    allHotelDefinitions={allHotelDefinitions} 
+                  />
+                </div>
+              ))}
+            </ScrollArea>
+          )}
         </div>
 
         <div className="lg:col-span-4 space-y-6">
@@ -220,7 +227,12 @@ export function ItineraryPlanner({ tripData, onReset, onUpdateTripData }: Itiner
               <CardTitle className="text-xl text-primary">Cost Summary</CardTitle>
             </CardHeader>
             <CardContent>
-              {isLoadingAnything ? <p>Loading service data...</p> : costSummary ? (
+              {isLoadingAnything ? (
+                 <div className="flex items-center justify-center py-6">
+                    <Loader2 className="h-6 w-6 animate-spin text-primary mr-2" /> 
+                    <p className="text-muted-foreground">Loading costs...</p>
+                 </div>
+              ) : costSummary ? (
                 <>
                   <CostBreakdownTable summary={costSummary} currency={tripData.pax.currency} travelers={tripData.travelers} showCosts={showCosts} />
                   {showCosts && (
@@ -255,7 +267,12 @@ export function ItineraryPlanner({ tripData, onReset, onUpdateTripData }: Itiner
           </div>
         </CardHeader>
         <CardContent>
-           {isLoadingAnything ? <p>Loading service data...</p> : costSummary ? (
+           {isLoadingAnything ? (
+                <div className="flex items-center justify-center py-10">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary mr-3" /> 
+                    <p className="text-muted-foreground">Loading full details...</p>
+                </div>
+           ) : costSummary ? (
             <DetailsSummaryTable summary={costSummary} currency={tripData.pax.currency} showCosts={showCosts} />
           ) : <p>Loading details...</p>}
         </CardContent>
@@ -272,3 +289,4 @@ export function ItineraryPlanner({ tripData, onReset, onUpdateTripData }: Itiner
     </div>
   );
 }
+
