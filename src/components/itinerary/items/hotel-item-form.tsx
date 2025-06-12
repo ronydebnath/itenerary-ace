@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { PlusCircle, Trash2, ChevronDown, ChevronUp, Users, BedDouble, Info } from 'lucide-react';
-import { useHotelDefinitions } from '@/hooks/useHotelDefinitions';
+// Removed: import { useHotelDefinitions } from '@/hooks/useHotelDefinitions'; // No longer using internal hook call
 import { generateGUID } from '@/lib/utils';
 
 interface HotelItemFormProps {
@@ -26,42 +26,38 @@ interface HotelItemFormProps {
 }
 
 export function HotelItemForm({ item, travelers, currency, dayNumber, tripSettings, onUpdate, onDelete, allHotelDefinitions }: HotelItemFormProps) {
-  const { getHotelDefinitionById, getHotelDefinitions } = useHotelDefinitions(); // Using the context hook directly
-
   const [availableHotels, setAvailableHotels] = React.useState<HotelDefinition[]>([]);
   const [selectedHotelDef, setSelectedHotelDef] = React.useState<HotelDefinition | undefined>(undefined);
   
-  // For managing traveler assignment visibility for each selected room
   const [openTravelerAssignments, setOpenTravelerAssignments] = React.useState<{[key: string]: boolean}>({});
-
 
   React.useEffect(() => {
     if (item.province) {
-      setAvailableHotels(getHotelDefinitions(item.province));
+      setAvailableHotels(allHotelDefinitions.filter(hd => hd.province === item.province || !hd.province));
     } else {
-      setAvailableHotels(getHotelDefinitions()); // Or an empty array if province is mandatory for hotel selection
+      setAvailableHotels(allHotelDefinitions); 
     }
-  }, [item.province, getHotelDefinitions]);
+  }, [item.province, allHotelDefinitions]);
 
   React.useEffect(() => {
     if (item.hotelDefinitionId) {
-      setSelectedHotelDef(getHotelDefinitionById(item.hotelDefinitionId));
+      setSelectedHotelDef(allHotelDefinitions.find(hd => hd.id === item.hotelDefinitionId));
     } else {
       setSelectedHotelDef(undefined);
     }
-  }, [item.hotelDefinitionId, getHotelDefinitionById]);
+  }, [item.hotelDefinitionId, allHotelDefinitions]);
 
 
   const handleHotelDefinitionChange = (hotelDefId: string) => {
-    const newHotelDef = getHotelDefinitionById(hotelDefId);
+    const newHotelDef = allHotelDefinitions.find(hd => hd.id === hotelDefId); // Use prop
     if (newHotelDef) {
       onUpdate({ 
         ...item, 
         hotelDefinitionId: hotelDefId, 
-        name: item.name === 'New hotel' || !item.name || !item.hotelDefinitionId ? newHotelDef.name : item.name, // Update name if default
-        selectedRooms: [] // Reset selected rooms when hotel changes
+        name: item.name === 'New hotel' || !item.name || !item.hotelDefinitionId ? newHotelDef.name : item.name,
+        selectedRooms: [] 
       });
-    } else { // "None" selected
+    } else { 
        onUpdate({ 
         ...item, 
         hotelDefinitionId: '', 
@@ -73,13 +69,13 @@ export function HotelItemForm({ item, travelers, currency, dayNumber, tripSettin
   const handleCheckoutDayChange = (value: string) => {
     const numValue = value === '' ? undefined : parseInt(value, 10);
     if (numValue !== undefined && (numValue <= dayNumber || numValue > tripSettings.numDays + 1)) {
-      // Invalid input, could add validation feedback
+      // Invalid input
     }
     onUpdate({ ...item, checkoutDay: numValue || (dayNumber + 1) });
   };
 
   const handleAddRoomBooking = () => {
-    if (!selectedHotelDef || selectedHotelDef.roomTypes.length === 0) return; // Cannot add if no hotel or no room types
+    if (!selectedHotelDef || selectedHotelDef.roomTypes.length === 0) return; 
     
     const defaultRoomType = selectedHotelDef.roomTypes[0];
     const newRoomBooking: SelectedHotelRoomConfiguration = {
@@ -154,16 +150,16 @@ export function HotelItemForm({ item, travelers, currency, dayNumber, tripSettin
           <Select
             value={item.hotelDefinitionId || "none"}
             onValueChange={handleHotelDefinitionChange}
-            disabled={!item.province && availableHotels.length === 0} // Disable if no province selected and no generic hotels
+            disabled={!item.province && availableHotels.length === 0}
           >
             <SelectTrigger>
-              <SelectValue placeholder={item.province ? "Choose a hotel..." : "Select province first..."} />
+              <SelectValue placeholder={item.province ? "Choose a hotel..." : (availableHotels.length > 0 ? "Choose a hotel (generic)..." : "Select province first...")} />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="none">None</SelectItem>
               {availableHotels.map(hotelDef => (
                 <SelectItem key={hotelDef.id} value={hotelDef.id}>
-                  {hotelDef.name} ({hotelDef.province})
+                  {hotelDef.name} ({hotelDef.province || 'Generic'})
                 </SelectItem>
               ))}
             </SelectContent>
@@ -187,7 +183,7 @@ export function HotelItemForm({ item, travelers, currency, dayNumber, tripSettin
             value={item.checkoutDay ?? ''}
             onChange={(e) => handleCheckoutDayChange(e.target.value)}
             min={dayNumber + 1}
-            max={tripSettings.numDays + 1} // Max checkout is one day after trip ends
+            max={tripSettings.numDays + 1} 
             placeholder={`Day ${dayNumber + 1}`}
           />
         </FormField>
@@ -303,13 +299,13 @@ export function HotelItemForm({ item, travelers, currency, dayNumber, tripSettin
       {!item.hotelDefinitionId && item.province && (
           <p className="text-sm text-muted-foreground text-center pt-4">Please select a hotel to configure room bookings.</p>
       )}
-       {!item.province && (
+       {!item.province && availableHotels.length === 0 && (
           <p className="text-sm text-muted-foreground text-center pt-4">Please select a province first to see available hotels.</p>
       )}
-
+      {!item.province && availableHotels.length > 0 && (
+          <p className="text-sm text-muted-foreground text-center pt-4">Please select a province or choose from generic hotels to configure room bookings.</p>
+      )}
 
     </BaseItemForm>
   );
 }
-
-    
