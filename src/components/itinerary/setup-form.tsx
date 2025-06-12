@@ -80,7 +80,7 @@ export function SetupForm({ onStartPlanning }: SetupFormProps) {
 
   return (
     <div className="flex justify-center items-center min-h-screen p-4">
-      <Card className="w-full max-w-lg shadow-2xl">
+      <Card className="w-full max-w-lg shadow-xl">
         <CardHeader>
           <CardTitle className="text-3xl font-headline text-center text-primary">Itinerary Ace Setup</CardTitle>
         </CardHeader>
@@ -121,7 +121,7 @@ export function SetupForm({ onStartPlanning }: SetupFormProps) {
                 <span className="ml-2 text-muted-foreground">Loading provinces...</span>
               </div>
             ) : availableProvinces.length > 0 ? (
-              <ScrollArea className="h-32 w-full rounded-md border p-3 bg-muted/30">
+              <ScrollArea className="h-32 w-full rounded-md border p-3 bg-background">
                 <div className="grid grid-cols-2 gap-x-4 gap-y-2">
                   {availableProvinces.map((province) => (
                     <div key={province.id} className="flex items-center space-x-2">

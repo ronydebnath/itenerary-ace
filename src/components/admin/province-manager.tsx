@@ -106,7 +106,7 @@ export function ProvinceManager() {
           if (!open) setEditingProvince(undefined);
         }}>
           <DialogTrigger asChild>
-            <Button className="bg-accent hover:bg-accent/90 text-accent-foreground">
+            <Button className="bg-primary hover:bg-primary/90 text-primary-foreground">
               <PlusCircle className="mr-2 h-5 w-5" /> Add New Province
             </Button>
           </DialogTrigger>
@@ -154,7 +154,7 @@ export function ProvinceManager() {
                 </AlertDialogHeader>
                 <AlertDialogFooter>
                   <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction onClick={() => handleDelete(provinceId)} className="bg-destructive hover:bg-destructive/90">
+                  <AlertDialogAction onClick={() => handleDelete(provinceId)} className="bg-destructive hover:bg-destructive/90 text-destructive-foreground">
                     Delete
                   </AlertDialogAction>
                 </AlertDialogFooter>

@@ -118,7 +118,7 @@ export function PricingManager() {
         category: extractedData.category || "misc",
         subCategory: extractedData.subCategory || "",
         currency: extractedData.currency || "THB",
-        unitDescription: extractedData.unitDescription || undefined, // Unit description now optional
+        unitDescription: extractedData.unitDescription || undefined,
         notes: extractedData.notes || "",
         maxPassengers: extractedData.maxPassengers,
       };
@@ -136,6 +136,7 @@ export function PricingManager() {
             characteristics: [],
             seasonalPrices: (extractedData.price1 !== undefined ? [{
                   id: generateGUID(),
+                  seasonName: "Imported Season",
                   startDate: new Date().toISOString().split('T')[0],
                   endDate: new Date(new Date().setDate(new Date().getDate() + 30)).toISOString().split('T')[0],
                   rate: extractedData.price1,
@@ -266,7 +267,7 @@ export function PricingManager() {
           </Dialog>
 
           <Link href="/admin/pricing/new" passHref>
-            <Button className="bg-primary hover:bg-primary/90">
+            <Button className="bg-primary hover:bg-primary/90 text-primary-foreground">
               <PlusCircle className="mr-2 h-5 w-5" /> Add New Service Price
             </Button>
           </Link>
@@ -315,7 +316,7 @@ export function PricingManager() {
                       </AlertDialogHeader>
                       <AlertDialogFooter>
                         <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={() => handleDelete(serviceId)} className="bg-destructive hover:bg-destructive/90">
+                        <AlertDialogAction onClick={() => handleDelete(serviceId)} className="bg-destructive hover:bg-destructive/90 text-destructive-foreground">
                           Delete
                         </AlertDialogAction>
                       </AlertDialogFooter>
