@@ -29,7 +29,7 @@ interface DayViewProps {
   onUpdateItem: (day: number, updatedItem: ItineraryItem) => void;
   onDeleteItem: (day: number, itemId: string) => void;
   allHotelDefinitions: HotelDefinition[]; 
-  allServicePrices: ServicePriceItem[]; // Add allServicePrices prop
+  allServicePrices: ServicePriceItem[]; 
 }
 
 const ITEM_CONFIG = {
@@ -71,21 +71,12 @@ export function DayView({
         />
       );
     }
-    // For other item types, they use the useServicePrices hook internally,
-    // so allServicePrices doesn't need to be explicitly passed unless we refactor them too.
-    // However, if we *do* refactor them to take allServicePrices as a prop for consistency
-    // and to avoid multiple hook calls, we would pass it here:
-    //
-    // if (item.type === 'transfer' || item.type === 'activity' || item.type === 'meal' || item.type === 'misc') {
-    //   return <ConfigComponent {...commonProps} allServicePrices={allServicePrices} />;
-    // }
-
-
-    return <ConfigComponent {...commonProps} />;
+    
+    return <ConfigComponent {...commonProps} allServicePrices={allServicePrices} />;
   };
 
   return (
-    <Card className="mb-6 shadow-md border-primary/20 max-w-4xl mx-auto">
+    <Card className="mb-6 shadow-md border-primary/20">
       <CardHeader className="pb-2 pt-4 px-4 md:px-6">
       </CardHeader>
       <CardContent className="px-2 py-2 md:px-4 md:py-4">
