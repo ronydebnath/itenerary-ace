@@ -8,7 +8,7 @@
  * - SuggestItineraryRefinementsOutput - The return type for the suggestItineraryRefinements function.
  */
 
-import { z } from 'genkit'; 
+import { z } from 'genkit';
 
 const SuggestItineraryRefinementsInputSchema = z.object({
   itineraryDescription: z.string().describe('A detailed description of the current travel itinerary, including destinations, activities, accommodations, and transportation.'),
@@ -28,12 +28,6 @@ const SuggestItineraryRefinementsOutputSchema = z.object({
 });
 export type SuggestItineraryRefinementsOutput = z.infer<typeof SuggestItineraryRefinementsOutputSchema>;
 
-// export function suggestItineraryRefinements(_x) {
-//   return _suggestItineraryRefinements.apply(this, arguments);
-// }
-
-// function _suggestItineraryRefinements() {
-//   _suggestItineraryRefinements = _asyncToGenerator( /*#__PURE__*/_regeneratorRuntime.mark(function _callee(input) {
 export async function suggestItineraryRefinements(
   input: SuggestItineraryRefinementsInput
 ): Promise<SuggestItineraryRefinementsOutput> {
@@ -89,14 +83,14 @@ Ensure the JSON is well-formed.`;
       method: "POST",
       headers: headers,
       body: JSON.stringify({
-        "model": "google/gemma-3n-e4b-it:free", 
+        "model": "google/gemma-3n-e4b-it:free",
         "messages": [
           {
             "role": "user",
             "content": promptText
           }
         ],
-        "response_format": { "type": "json_object" } 
+        "response_format": { "type": "json_object" }
       })
     });
 
@@ -110,25 +104,22 @@ Ensure the JSON is well-formed.`;
 
     if (data.choices && data.choices.length > 0 && data.choices[0].message && data.choices[0].message.content) {
       let suggestionsContent = data.choices[0].message.content;
-      
+
       if (suggestionsContent.startsWith("```json")) {
         suggestionsContent = suggestionsContent.substring(7);
         if (suggestionsContent.endsWith("```")) {
           suggestionsContent = suggestionsContent.substring(0, suggestionsContent.length - 3);
         }
       }
-      
+
       try {
         const parsedJson = JSON.parse(suggestionsContent);
-        // Validate against the Zod schema
         const validationResult = SuggestItineraryRefinementsOutputSchema.safeParse(parsedJson);
         if (validationResult.success) {
           return validationResult.data;
         } else {
           console.error('OpenRouter response JSON does not match expected schema:', validationResult.error.errors);
           console.error('Received JSON string:', suggestionsContent);
-          // For debugging, you might want to return the raw parsedJson or throw a more specific error.
-          // For now, we'll throw an error indicating validation failure.
           throw new Error('Failed to validate itinerary suggestions from OpenRouter API response. Check console for details.');
         }
       } catch (jsonError: any) {
