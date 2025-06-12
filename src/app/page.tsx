@@ -19,20 +19,23 @@ const generateItineraryId = (): string => {
   const year = now.getFullYear();
   const month = String(now.getMonth() + 1).padStart(2, '0');
   const day = String(now.getDate()).padStart(2, '0');
-  // Make suffix more unique and shorter
   const randomSuffix = String(Date.now()).slice(-5) + String(Math.floor(Math.random() * 100)).padStart(2, '0');
   return `ITN-${year}${month}${day}-${randomSuffix}`;
 };
+
+type PageStatus = 'loading' | 'setup' | 'planner';
 
 export default function HomePage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [tripData, setTripData] = React.useState<TripData | null>(null);
   const [currentItineraryId, setCurrentItineraryId] = React.useState<string | null>(null);
-  const [isInitialized, setIsInitialized] = React.useState(false);
+  const [pageStatus, setPageStatus] = React.useState<PageStatus>('loading');
   const debouncedSaveTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
 
   React.useEffect(() => {
+    setPageStatus('loading'); // Explicitly set to loading when effect runs
+
     const itineraryIdFromUrl = searchParams.get('itineraryId');
     let idToLoad = itineraryIdFromUrl;
 
@@ -49,11 +52,10 @@ export default function HomePage() {
       try {
         const savedData = localStorage.getItem(`${ITINERARY_DATA_PREFIX}${idToLoad}`);
         if (savedData) {
-          const parsedData = JSON.parse(savedData) as Partial<TripData>; // Load as partial initially for migration
+          const parsedData = JSON.parse(savedData) as Partial<TripData>;
 
-          // Ensure core fields and ID are present, migrate if necessary
           const dataToSet: TripData = {
-            id: parsedData.id || idToLoad, // Crucial: Assign ID if missing
+            id: parsedData.id || idToLoad,
             itineraryName: parsedData.itineraryName || `Itinerary ${idToLoad.slice(-6)}`,
             clientName: parsedData.clientName || undefined,
             createdAt: parsedData.createdAt || new Date().toISOString(),
@@ -63,13 +65,13 @@ export default function HomePage() {
             travelers: parsedData.travelers && parsedData.travelers.length > 0 ? parsedData.travelers : [{ id: generateGUID(), label: 'Adult 1', type: 'adult' }],
             days: parsedData.days || { 1: { items: [] } },
           };
-          
-          // Further ensure selectedProvinces is an array within settings
           dataToSet.settings.selectedProvinces = dataToSet.settings.selectedProvinces || [];
 
 
           setTripData(dataToSet);
           setCurrentItineraryId(dataToSet.id);
+          setPageStatus('planner');
+
           if (!itineraryIdFromUrl && dataToSet.id) {
             router.replace(`/?itineraryId=${dataToSet.id}`, { shallow: true });
           }
@@ -80,19 +82,21 @@ export default function HomePage() {
           }
           setCurrentItineraryId(null);
           setTripData(null);
+          setPageStatus('setup');
           if (itineraryIdFromUrl) router.replace('/', { shallow: true });
         }
       } catch (error) {
         console.error("Failed to load data from localStorage:", error);
         setCurrentItineraryId(null);
         setTripData(null);
+        setPageStatus('setup');
         if (itineraryIdFromUrl) router.replace('/', { shallow: true });
       }
     } else {
       setTripData(null);
       setCurrentItineraryId(null);
+      setPageStatus('setup');
     }
-    setIsInitialized(true);
   }, [searchParams, router]);
 
 
@@ -127,19 +131,18 @@ export default function HomePage() {
       createdAt: now,
       updatedAt: now,
     };
-    setCurrentItineraryId(newId); // Set currentItineraryId first or together
+    setCurrentItineraryId(newId);
     setTripData(newTripData);
+    setPageStatus('planner'); // Transition to planner
     router.replace(`/?itineraryId=${newId}`, { shallow: true });
   }, [router]);
 
   const handleUpdateTripData = React.useCallback((updatedTripDataFromPlanner: Partial<TripData>) => {
     setTripData(prevTripData => {
-      if (!prevTripData && !currentItineraryId) { // Should not happen if planner is visible
+      if (!prevTripData && !currentItineraryId) {
           console.error("Attempted to update trip data without a current itinerary.");
           return null;
       }
-      // Ensure the ID from currentItineraryId is preserved if not in updatedTripDataFromPlanner
-      // And ensure other core fields from prevTripData are preserved if not in updatedTripDataFromPlanner
       const baseData = prevTripData || { id: currentItineraryId! } as TripData;
 
       const newDays = { ...(baseData.days || {}), ...(updatedTripDataFromPlanner.days || {}) };
@@ -150,10 +153,10 @@ export default function HomePage() {
       const dataToSave: TripData = {
         ...baseData,
         ...updatedTripDataFromPlanner,
-        id: baseData.id || currentItineraryId!, // Prioritize existing ID
+        id: baseData.id || currentItineraryId!,
         days: newDays,
         settings: newSettings,
-        updatedAt: new Date().toISOString(), // Always update timestamp
+        updatedAt: new Date().toISOString(),
       };
       return dataToSave;
     });
@@ -165,12 +168,12 @@ export default function HomePage() {
       clearTimeout(debouncedSaveTimeoutRef.current);
     }
 
-    if (tripData && currentItineraryId && isInitialized && tripData.id === currentItineraryId) {
+    if (pageStatus === 'planner' && tripData && currentItineraryId && tripData.id === currentItineraryId) {
       debouncedSaveTimeoutRef.current = setTimeout(() => {
         try {
           const dataToSave: TripData = {
             ...tripData,
-            updatedAt: new Date().toISOString(), // Ensure updatedAt is fresh
+            updatedAt: new Date().toISOString(),
           };
 
           localStorage.setItem(`${ITINERARY_DATA_PREFIX}${currentItineraryId}`, JSON.stringify(dataToSave));
@@ -198,24 +201,24 @@ export default function HomePage() {
         } catch (e) {
           console.error("Error during debounced save:", e);
         }
-      }, 1000); // 1-second debounce
+      }, 1000);
     }
     return () => {
       if (debouncedSaveTimeoutRef.current) {
         clearTimeout(debouncedSaveTimeoutRef.current);
       }
     };
-  }, [tripData, currentItineraryId, isInitialized]);
+  }, [tripData, currentItineraryId, pageStatus]);
 
   const handleStartNewItinerary = React.useCallback(() => {
-    // Current itinerary is auto-saved. Just clear state for new setup.
     setCurrentItineraryId(null);
     setTripData(null);
     localStorage.removeItem('lastActiveItineraryId');
+    // The router.replace will trigger the main useEffect, which will then set pageStatus to 'setup'
     router.replace('/', { shallow: true });
   }, [router]);
 
-  if (!isInitialized) {
+  if (pageStatus === 'loading') {
     return <div className="flex justify-center items-center min-h-screen bg-background"><p>Loading Itinerary Ace...</p></div>;
   }
 
@@ -236,11 +239,11 @@ export default function HomePage() {
         </Link>
       </div>
 
-      {tripData && currentItineraryId && tripData.id === currentItineraryId ? (
-        <ItineraryPlanner 
-          tripData={tripData} 
-          onReset={handleStartNewItinerary} 
-          onUpdateTripData={handleUpdateTripData} 
+      {pageStatus === 'planner' && tripData && currentItineraryId && tripData.id === currentItineraryId ? (
+        <ItineraryPlanner
+          tripData={tripData}
+          onReset={handleStartNewItinerary}
+          onUpdateTripData={handleUpdateTripData}
         />
       ) : (
         <SetupForm onStartPlanning={handleStartPlanning} />
