@@ -7,7 +7,6 @@ import { BaseItemForm, FormField } from './base-item-form';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-// Removed: import { useServicePrices } from '@/hooks/useServicePrices'; 
 import { Badge } from '@/components/ui/badge';
 import { format, parseISO, isValid } from 'date-fns';
 import { CalendarDays, Info, Tag, AlertCircle } from 'lucide-react';
@@ -21,13 +20,12 @@ interface ActivityItemFormProps {
   tripSettings: TripSettings;
   onUpdate: (item: ActivityItemType) => void;
   onDelete: () => void;
-  allServicePrices: ServicePriceItem[]; // Added prop
+  allServicePrices: ServicePriceItem[];
 }
 
 const WEEKDAYS_MAP = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 export function ActivityItemForm({ item, travelers, currency, dayNumber, tripSettings, onUpdate, onDelete, allServicePrices }: ActivityItemFormProps) {
-  // const { getServicePrices, getServicePriceById, isLoading: isLoadingServices } = useServicePrices(); // Removed
   const [activityServices, setActivityServices] = React.useState<ServicePriceItem[]>([]);
   
   const getServicePriceById = React.useCallback((id: string) => {
@@ -83,6 +81,7 @@ export function ActivityItemForm({ item, travelers, currency, dayNumber, tripSet
         selectedPackageId: undefined,
         adultPrice: 0, 
         childPrice: undefined,
+        // Note: item.note is intentionally not cleared here
       });
     } else {
       const service = getServicePriceById(selectedValue);
@@ -95,6 +94,7 @@ export function ActivityItemForm({ item, travelers, currency, dayNumber, tripSet
           selectedPackageId: defaultPackage?.id,
           adultPrice: defaultPackage?.price1 ?? service.price1 ?? 0,
           childPrice: defaultPackage?.price2 ?? service.price2 ?? undefined,
+          note: service.notes || undefined,
         });
       } else {
         onUpdate({
@@ -103,6 +103,7 @@ export function ActivityItemForm({ item, travelers, currency, dayNumber, tripSet
           selectedPackageId: undefined,
           adultPrice: 0,
           childPrice: undefined,
+          // Note: item.note is not changed if service not found
         });
       }
     }
@@ -117,6 +118,7 @@ export function ActivityItemForm({ item, travelers, currency, dayNumber, tripSet
         selectedPackageId: undefined,
         adultPrice: selectedActivityService.price1 ?? 0,
         childPrice: selectedActivityService.price2 ?? undefined,
+        // Note: item.note not changed (could be service.notes or custom)
       });
     } else {
       const pkg = selectedActivityService.activityPackages.find(p => p.id === packageId);
@@ -126,6 +128,8 @@ export function ActivityItemForm({ item, travelers, currency, dayNumber, tripSet
           selectedPackageId: pkg.id,
           adultPrice: pkg.price1,
           childPrice: pkg.price2,
+          // Note: item.note not changed (could be service.notes, pkg.notes or custom)
+          // If we want pkg.notes to take precedence: note: pkg.notes || selectedActivityService.notes || undefined
         });
       }
     }
@@ -134,7 +138,9 @@ export function ActivityItemForm({ item, travelers, currency, dayNumber, tripSet
   const calculatedEndDay = item.endDay || dayNumber;
   const duration = Math.max(1, calculatedEndDay - dayNumber + 1);
 
-  const isPriceReadOnly = !!item.selectedPackageId && !!selectedActivityService?.activityPackages?.length && !!selectedPackage;
+  const isPriceReadOnly = !!(item.selectedPackageId && selectedActivityService?.activityPackages?.length && selectedPackage) || 
+                         !!(item.selectedServicePriceId && selectedActivityService && (!selectedActivityService.activityPackages || selectedActivityService.activityPackages.length === 0));
+
   const serviceDefinitionNotFound = item.selectedServicePriceId && !selectedActivityService;
 
   return (
@@ -144,7 +150,6 @@ export function ActivityItemForm({ item, travelers, currency, dayNumber, tripSet
           <Select
             value={item.selectedServicePriceId || "none"}
             onValueChange={handlePredefinedServiceSelect}
-            // disabled={isLoadingServices} // isLoadingServices not available here
           >
             <SelectTrigger>
               <SelectValue placeholder="Choose an activity or set custom price..." />

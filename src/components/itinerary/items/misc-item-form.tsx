@@ -45,14 +45,12 @@ export function MiscItemForm({ item, travelers, currency, onUpdate, onDelete, al
     onUpdate({ 
       ...item, 
       [field]: value, 
-      // Cost assignment and quantity can be changed independently of predefined service price
       selectedServicePriceId: (field === 'costAssignment' || field === 'quantity') ? item.selectedServicePriceId : undefined 
     });
   };
 
   const handleNumericInputChange = (field: keyof MiscItemType, value: string) => {
     const numValue = value === '' ? undefined : parseFloat(value);
-    // If user manually changes unitCost, assume custom pricing
     onUpdate({ 
       ...item, 
       [field]: numValue, 
@@ -65,7 +63,7 @@ export function MiscItemForm({ item, travelers, currency, onUpdate, onDelete, al
       onUpdate({
         ...item,
         selectedServicePriceId: undefined,
-        // Keep existing unitCost when deselecting
+        // Note: item.note and unitCost are not cleared here
       });
     } else {
       const service = getServicePriceById(selectedValue);
@@ -75,14 +73,14 @@ export function MiscItemForm({ item, travelers, currency, onUpdate, onDelete, al
           name: item.name === `New misc` || !item.name || !item.selectedServicePriceId ? service.name : item.name,
           unitCost: service.price1 ?? 0,
           selectedServicePriceId: service.id,
-          // Potentially set subCategory from service.subCategory if desired, but it's often more for display
-          // subCategory: service.subCategory || item.subCategory 
+          note: service.notes || undefined,
         });
       } else {
         onUpdate({
           ...item,
-          selectedServicePriceId: selectedValue, // Keep ID for error display
-          unitCost: 0, // Default if service not found
+          selectedServicePriceId: selectedValue, 
+          unitCost: 0,
+          // Note: item.note is not changed if service not found
         });
       }
     }
@@ -167,3 +165,4 @@ export function MiscItemForm({ item, travelers, currency, onUpdate, onDelete, al
     </BaseItemForm>
   );
 }
+

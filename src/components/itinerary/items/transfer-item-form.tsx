@@ -40,8 +40,8 @@ export function TransferItemForm({ item, travelers, currency, onUpdate, onDelete
     let modeAndProvinceFilteredServices = allCategoryServices;
 
     modeAndProvinceFilteredServices = modeAndProvinceFilteredServices.filter(s => {
-      if (item.mode === 'ticket') return s.subCategory === 'ticket'; // Ensure only 'ticket' type services for ticket mode
-      if (item.mode === 'vehicle') return s.transferMode === 'vehicle'; // Ensure only 'vehicle' mode services for vehicle mode
+      if (item.mode === 'ticket') return s.subCategory === 'ticket';
+      if (item.mode === 'vehicle') return s.transferMode === 'vehicle';
       return false;
     });
     
@@ -68,7 +68,6 @@ export function TransferItemForm({ item, travelers, currency, onUpdate, onDelete
         onUpdate({ 
           ...item, 
           [field]: value, 
-          // If vehicleType is changed manually, clear selected service and option ID
           selectedServicePriceId: (field === 'vehicleType') ? undefined : item.selectedServicePriceId,
           selectedVehicleOptionId: (field === 'vehicleType') ? undefined : item.selectedVehicleOptionId,
         });
@@ -96,6 +95,7 @@ export function TransferItemForm({ item, travelers, currency, onUpdate, onDelete
         costPerVehicle: item.mode === 'vehicle' ? 0 : undefined,
         vehicleType: item.mode === 'vehicle' ? (item.vehicleType || VEHICLE_TYPES[0]) : undefined,
         vehicles: item.mode === 'vehicle' ? (item.vehicles || 1) : undefined,
+        // Note: item.note is intentionally not cleared here
       });
     } else {
       const service = getServicePriceById(selectedValue);
@@ -104,6 +104,7 @@ export function TransferItemForm({ item, travelers, currency, onUpdate, onDelete
           name: (item.name === `New transfer` || !item.name || !item.selectedServicePriceId) ? service.name : item.name,
           selectedServicePriceId: service.id,
           selectedVehicleOptionId: undefined, 
+          note: service.notes || undefined,
         };
         if (item.mode === 'ticket') {
           updatedItemPartial.adultTicketPrice = service.price1 ?? 0;
@@ -115,29 +116,28 @@ export function TransferItemForm({ item, travelers, currency, onUpdate, onDelete
           updatedItemPartial.adultTicketPrice = undefined;
           updatedItemPartial.childTicketPrice = undefined;
           if (service.vehicleOptions && service.vehicleOptions.length > 0) {
-            // Let user pick from options; don't pre-set cost/type from service's base price1.
-            updatedItemPartial.costPerVehicle = undefined; // Will be set by handleVehicleOptionSelect
-            updatedItemPartial.vehicleType = undefined;   // Will be set by handleVehicleOptionSelect
+            updatedItemPartial.costPerVehicle = undefined; 
+            updatedItemPartial.vehicleType = undefined;   
           } else {
-            // This service is vehicle mode but has no specific options, so use its direct price/type.
             updatedItemPartial.costPerVehicle = service.price1 ?? 0;
             updatedItemPartial.vehicleType = (service.subCategory && VEHICLE_TYPES.includes(service.subCategory as VehicleType)) 
                                              ? service.subCategory as VehicleType 
                                              : VEHICLE_TYPES[0];
           }
-          updatedItemPartial.vehicles = item.vehicles || 1; // Keep existing or default to 1
+          updatedItemPartial.vehicles = item.vehicles || 1;
         }
         onUpdate({ ...item, ...updatedItemPartial });
-      } else { // Service ID selected but service not found in current list (e.g., different province)
+      } else { 
          onUpdate({ 
           ...item,
-          selectedServicePriceId: selectedValue, // Keep the ID, but form will show error
+          selectedServicePriceId: selectedValue, 
           selectedVehicleOptionId: undefined,
           adultTicketPrice: item.mode === 'ticket' ? 0 : undefined,
           childTicketPrice: undefined,
           costPerVehicle: item.mode === 'vehicle' ? 0 : undefined,
           vehicleType: item.mode === 'vehicle' ? (item.vehicleType || VEHICLE_TYPES[0]) : undefined,
           vehicles: item.mode === 'vehicle' ? (item.vehicles || 1) : undefined,
+          // Note: item.note is not changed if service not found
         });
       }
     }
@@ -150,16 +150,16 @@ export function TransferItemForm({ item, travelers, currency, onUpdate, onDelete
       onUpdate({
         ...item,
         selectedVehicleOptionId: option.id,
-        costPerVehicle: option.price, // Set cost from selected option
-        vehicleType: option.vehicleType,   // Set type from selected option
+        costPerVehicle: option.price, 
+        vehicleType: option.vehicleType,   
+        // Note: item.note is not changed here, could inherit option.notes if desired
       });
     } else { 
-      // User selected "None" or option not found - revert to service base price if no options, or custom if options existed
       const baseCost = (selectedService.vehicleOptions && selectedService.vehicleOptions.length > 0) 
-                       ? 0 // If options existed, "none" means custom, so price is 0 to be filled
+                       ? 0 
                        : selectedService.price1 ?? 0;
       const baseType = (selectedService.vehicleOptions && selectedService.vehicleOptions.length > 0)
-                       ? VEHICLE_TYPES[0] // Default if reverting from options
+                       ? VEHICLE_TYPES[0] 
                        : (selectedService.subCategory && VEHICLE_TYPES.includes(selectedService.subCategory as VehicleType)) 
                          ? selectedService.subCategory as VehicleType 
                          : VEHICLE_TYPES[0];
@@ -174,13 +174,12 @@ export function TransferItemForm({ item, travelers, currency, onUpdate, onDelete
   
   const serviceDefinitionNotFound = item.selectedServicePriceId && !selectedService;
 
-  // Determine read-only state for cost/type fields in vehicle mode
   let isVehicleCostTypeReadOnly = false;
   if (item.mode === 'vehicle' && selectedService) {
     if (selectedService.vehicleOptions && selectedService.vehicleOptions.length > 0) {
-      isVehicleCostTypeReadOnly = !!item.selectedVehicleOptionId; // Read-only if an option is chosen
+      isVehicleCostTypeReadOnly = !!item.selectedVehicleOptionId; 
     } else {
-      isVehicleCostTypeReadOnly = true; // Read-only if service has no options (direct price)
+      isVehicleCostTypeReadOnly = true; 
     }
   }
 
@@ -260,7 +259,7 @@ export function TransferItemForm({ item, travelers, currency, onUpdate, onDelete
               onChange={(e) => handleNumericInputChange('adultTicketPrice', e.target.value)}
               min="0"
               placeholder="0.00"
-              readOnly={!!selectedService} // Read-only if a predefined service is selected
+              readOnly={!!selectedService} 
               className={!!selectedService ? "bg-muted/50 cursor-not-allowed" : ""}
             />
           </FormField>
@@ -272,7 +271,7 @@ export function TransferItemForm({ item, travelers, currency, onUpdate, onDelete
               onChange={(e) => handleNumericInputChange('childTicketPrice', e.target.value)}
               min="0"
               placeholder="Defaults to adult price"
-              readOnly={!!selectedService} // Read-only if a predefined service is selected
+              readOnly={!!selectedService} 
               className={!!selectedService ? "bg-muted/50 cursor-not-allowed" : ""}
             />
           </FormField>
@@ -339,7 +338,7 @@ export function TransferItemForm({ item, travelers, currency, onUpdate, onDelete
                 type="number"
                 id={`numVehicles-${item.id}`}
                 value={item.vehicles ?? ''}
-                onChange={(e) => handleInputChange('vehicles', parseInt(e.target.value,10) || 1)} // Ensure it's an int & >=1
+                onChange={(e) => handleInputChange('vehicles', parseInt(e.target.value,10) || 1)}
                 min="1"
                 placeholder="1"
               />
@@ -361,3 +360,4 @@ export function TransferItemForm({ item, travelers, currency, onUpdate, onDelete
   );
 }
     
+

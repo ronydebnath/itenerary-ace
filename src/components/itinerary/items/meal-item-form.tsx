@@ -43,8 +43,6 @@ export function MealItemForm({ item, travelers, currency, onUpdate, onDelete, al
 
   const handleNumericInputChange = (field: keyof MealItemType, value: string) => {
     const numValue = value === '' ? undefined : parseFloat(value);
-    // If user manually changes a price or totalMeals, we assume they want custom pricing,
-    // so we clear the selectedServicePriceId.
     onUpdate({ 
       ...item, 
       [field]: numValue, 
@@ -57,7 +55,7 @@ export function MealItemForm({ item, travelers, currency, onUpdate, onDelete, al
       onUpdate({
         ...item,
         selectedServicePriceId: undefined,
-        // Keep existing prices when deselecting, allowing user to revert to custom
+        // Note: item.note and prices are not cleared here to preserve custom entries
       });
     } else {
       const service = getServicePriceById(selectedValue);
@@ -68,13 +66,15 @@ export function MealItemForm({ item, travelers, currency, onUpdate, onDelete, al
           adultMealPrice: service.price1 ?? 0,
           childMealPrice: service.price2 ?? undefined,
           selectedServicePriceId: service.id,
+          note: service.notes || undefined,
         });
       } else {
          onUpdate({ 
           ...item,
-          selectedServicePriceId: selectedValue, // Keep the ID for error display
-          adultMealPrice: 0, // Default to 0 if service not found
+          selectedServicePriceId: selectedValue, 
+          adultMealPrice: 0, 
           childMealPrice: undefined,
+          // Note: item.note is not changed if service not found
         });
       }
     }
@@ -161,3 +161,4 @@ export function MealItemForm({ item, travelers, currency, onUpdate, onDelete, al
     </BaseItemForm>
   );
 }
+

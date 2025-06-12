@@ -2,7 +2,7 @@
 "use client";
 
 import * as React from 'react';
-import type { HotelItem as HotelItemType, SelectedHotelRoomConfiguration, Traveler, CurrencyCode, TripSettings, HotelDefinition, HotelRoomTypeDefinition } from '@/types/itinerary';
+import type { HotelItem as HotelItemType, SelectedHotelRoomConfiguration, Traveler, CurrencyCode, TripSettings, HotelDefinition, HotelRoomTypeDefinition, ServicePriceItem } from '@/types/itinerary';
 import { BaseItemForm, FormField } from './base-item-form';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -23,21 +23,22 @@ interface HotelItemFormProps {
   onUpdate: (item: HotelItemType) => void;
   onDelete: () => void;
   allHotelDefinitions: HotelDefinition[];
+  allServicePrices: ServicePriceItem[]; // Added to get notes from the wrapped ServicePriceItem
 }
 
-export function HotelItemForm({ item, travelers, currency, dayNumber, tripSettings, onUpdate, onDelete, allHotelDefinitions }: HotelItemFormProps) {
+export function HotelItemForm({ item, travelers, currency, dayNumber, tripSettings, onUpdate, onDelete, allHotelDefinitions, allServicePrices }: HotelItemFormProps) {
   const [availableHotels, setAvailableHotels] = React.useState<HotelDefinition[]>([]);
   const [selectedHotelDef, setSelectedHotelDef] = React.useState<HotelDefinition | undefined>(undefined);
+  const [selectedHotelServicePrice, setSelectedHotelServicePrice] = React.useState<ServicePriceItem | undefined>(undefined);
+
 
   const [openTravelerAssignments, setOpenTravelerAssignments] = React.useState<{[key: string]: boolean}>({});
 
   React.useEffect(() => {
     let filteredHotels: HotelDefinition[];
     if (item.province) {
-      // Show hotels matching the province OR generic hotels (no province set on the definition)
       filteredHotels = allHotelDefinitions.filter(hd => hd.province === item.province || !hd.province);
     } else {
-      // If item has no province, show all hotels (including those with specific provinces and generic ones)
       filteredHotels = allHotelDefinitions;
     }
     setAvailableHotels(filteredHotels);
@@ -45,28 +46,42 @@ export function HotelItemForm({ item, travelers, currency, dayNumber, tripSettin
 
   React.useEffect(() => {
     if (item.hotelDefinitionId) {
-      setSelectedHotelDef(allHotelDefinitions.find(hd => hd.id === item.hotelDefinitionId));
+      const hotelDef = allHotelDefinitions.find(hd => hd.id === item.hotelDefinitionId);
+      setSelectedHotelDef(hotelDef);
+      // Find the corresponding ServicePriceItem that wraps this HotelDefinition
+      // This assumes HotelDefinition ID might be stored in selectedServicePriceId for hotels,
+      // or we find it by matching hotelDetails.id
+      const servicePrice = allServicePrices.find(sp => sp.category === 'hotel' && (sp.id === item.selectedServicePriceId || sp.hotelDetails?.id === item.hotelDefinitionId));
+      setSelectedHotelServicePrice(servicePrice);
+
     } else {
       setSelectedHotelDef(undefined);
+      setSelectedHotelServicePrice(undefined);
     }
-  }, [item.hotelDefinitionId, allHotelDefinitions]);
+  }, [item.hotelDefinitionId, item.selectedServicePriceId, allHotelDefinitions, allServicePrices]);
 
 
   const handleHotelDefinitionChange = (hotelDefId: string) => {
     const newHotelDef = allHotelDefinitions.find(hd => hd.id === hotelDefId);
+    const newHotelServicePrice = allServicePrices.find(sp => sp.category === 'hotel' && sp.hotelDetails?.id === hotelDefId);
+    
     if (newHotelDef) {
       onUpdate({
         ...item,
         hotelDefinitionId: hotelDefId,
+        selectedServicePriceId: newHotelServicePrice?.id, // Store the ServicePriceItem id
         name: item.name === 'New hotel' || !item.name || !item.hotelDefinitionId ? newHotelDef.name : item.name,
-        selectedRooms: [] // Reset rooms when hotel changes
+        selectedRooms: [],
+        note: newHotelServicePrice?.notes || undefined,
       });
     } else {
        onUpdate({
         ...item,
         hotelDefinitionId: '',
-        name: 'New hotel', // Reset name to default placeholder
-        selectedRooms: []
+        selectedServicePriceId: undefined,
+        name: 'New hotel', 
+        selectedRooms: [],
+        // Note: item.note is intentionally not cleared here
       });
     }
   };
@@ -74,7 +89,6 @@ export function HotelItemForm({ item, travelers, currency, dayNumber, tripSettin
   const handleCheckoutDayChange = (value: string) => {
     const numValue = value === '' ? undefined : parseInt(value, 10);
     if (numValue !== undefined && (numValue <= dayNumber || numValue > tripSettings.numDays + 1)) {
-      // Invalid input, maybe show a toast or message, or clamp
     }
     onUpdate({ ...item, checkoutDay: numValue || (dayNumber + 1) });
   };
@@ -86,7 +100,7 @@ export function HotelItemForm({ item, travelers, currency, dayNumber, tripSettin
     const newRoomBooking: SelectedHotelRoomConfiguration = {
       id: generateGUID(),
       roomTypeDefinitionId: defaultRoomType.id,
-      roomTypeNameCache: defaultRoomType.name, // Cache name
+      roomTypeNameCache: defaultRoomType.name, 
       numRooms: 1,
       assignedTravelerIds: [],
     };
@@ -109,7 +123,7 @@ export function HotelItemForm({ item, travelers, currency, dayNumber, tripSettin
             handleUpdateRoomBooking({
                 ...updatedBooking,
                 roomTypeDefinitionId,
-                roomTypeNameCache: roomTypeDef.name // Update cached name
+                roomTypeNameCache: roomTypeDef.name 
             });
         }
     }
@@ -159,7 +173,7 @@ export function HotelItemForm({ item, travelers, currency, dayNumber, tripSettin
           <Select
             value={item.hotelDefinitionId || "none"}
             onValueChange={handleHotelDefinitionChange}
-            disabled={availableHotels.length === 0 && !item.province} // Disable if no province selected and no generic hotels
+            disabled={availableHotels.length === 0 && !item.province} 
           >
             <SelectTrigger>
               <SelectValue placeholder={
@@ -178,11 +192,12 @@ export function HotelItemForm({ item, travelers, currency, dayNumber, tripSettin
             </SelectContent>
           </Select>
         </FormField>
-         <div className="md:col-span-1"> {/* Placeholder for potential hotel details if selectedHotelDef */}
+         <div className="md:col-span-1"> 
            {selectedHotelDef && (
              <Card className="text-xs bg-muted/30 p-2 border-dashed">
                <p><strong>Selected:</strong> {selectedHotelDef.name}</p>
                <p><strong>Province:</strong> {selectedHotelDef.province || "N/A"}</p>
+               {selectedHotelServicePrice?.notes && <p className="mt-1 italic"><strong>Notes:</strong> {selectedHotelServicePrice.notes}</p>}
              </Card>
            )}
         </div>
@@ -352,4 +367,3 @@ export function HotelItemForm({ item, travelers, currency, dayNumber, tripSettin
     </BaseItemForm>
   );
 }
-
