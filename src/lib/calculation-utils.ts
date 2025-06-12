@@ -61,7 +61,7 @@ function calculateTransferCost(
       individualContributions[id] = (allTravelers.find(t=>t.id===id)?.type === 'adult' ? adultPrice : childPrice);
     });
   } else { // vehicle mode
-    const numVehicles = item.vehicles || 1; // Define numVehicles
+    const numVehicles = item.vehicles || 1;
     let baseCostPerVehicle = (serviceDefinition?.price1 ?? item.costPerVehicle) || 0;
     let appliedSurcharge = 0;
     let surchargeName = "";
@@ -137,7 +137,7 @@ function calculateHotelCost(
   allTravelers: Traveler[],
   currency: string, 
   tripSettings: TripSettings,
-  allHotelDefinitions: HotelDefinition[] 
+  allHotelDefinitionsSafe: HotelDefinition[] // Renamed to indicate it's now safe (an array)
 ) {
   const { participatingIds: itemOverallParticipatingIds, excludedTravelerLabels } = getParticipatingTravelers(item, allTravelers);
   
@@ -145,7 +145,7 @@ function calculateHotelCost(
   const checkoutDay = item.checkoutDay; 
   const nights = Math.max(0, checkoutDay - checkinDay);
 
-  const hotelDefinition = allHotelDefinitions.find(hd => hd.id === item.hotelDefinitionId);
+  const hotelDefinition = allHotelDefinitionsSafe.find(hd => hd.id === item.hotelDefinitionId);
 
   let baseSpecificDetails = `Hotel: ${hotelDefinition?.name || 'Unknown Hotel'} (ID: ${item.hotelDefinitionId || 'N/A'})`;
   if (item.province) baseSpecificDetails += `; Prov: ${item.province}`;
@@ -344,9 +344,13 @@ function calculateMiscCost(item: MiscItem, allTravelers: Traveler[], currency: s
 
 export function calculateAllCosts(
   tripData: TripData, 
-  allServicePrices: ServicePriceItem[], 
-  allHotelDefinitions: HotelDefinition[] 
+  allServicePricesInput: ServicePriceItem[], 
+  allHotelDefinitionsInput: HotelDefinition[] 
 ): CostSummary {
+  // Ensure inputs are always arrays
+  const allServicePrices = Array.isArray(allServicePricesInput) ? allServicePricesInput : [];
+  const allHotelDefinitions = Array.isArray(allHotelDefinitionsInput) ? allHotelDefinitionsInput : [];
+
   let grandTotal = 0;
   const perPersonTotals: { [travelerId: string]: number } = {};
   tripData.travelers.forEach(t => perPersonTotals[t.id] = 0);
