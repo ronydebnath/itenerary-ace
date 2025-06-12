@@ -28,7 +28,9 @@ const SuggestItineraryRefinementsOutputSchema = z.object({
 });
 export type SuggestItineraryRefinementsOutput = z.infer<typeof SuggestItineraryRefinementsOutputSchema>;
 
-export async function suggestItineraryRefinements(input: SuggestItineraryRefinementsInput): Promise<SuggestItineraryRefinementsOutput> {
+export async function suggestItineraryRefinements(
+  input: SuggestItineraryRefinementsInput
+): Promise<SuggestItineraryRefinementsOutput> {
   const apiKey = process.env.OPENROUTER_API_KEY;
   const httpReferer = process.env.OPENROUTER_HTTP_REFERER;
   const xTitle = process.env.OPENROUTER_X_TITLE;
@@ -112,13 +114,16 @@ Ensure the JSON is well-formed.`;
       
       try {
         const parsedJson = JSON.parse(suggestionsContent);
+        // Validate against the Zod schema
         const validationResult = SuggestItineraryRefinementsOutputSchema.safeParse(parsedJson);
         if (validationResult.success) {
           return validationResult.data;
         } else {
           console.error('OpenRouter response JSON does not match expected schema:', validationResult.error.errors);
           console.error('Received JSON string:', suggestionsContent);
-          throw new Error('Failed to validate itinerary suggestions from OpenRouter API response.');
+          // For debugging, you might want to return the raw parsedJson or throw a more specific error.
+          // For now, we'll throw an error indicating validation failure.
+          throw new Error('Failed to validate itinerary suggestions from OpenRouter API response. Check console for details.');
         }
       } catch (jsonError: any) {
         console.error('Error parsing JSON from OpenRouter for itinerary suggestions:', jsonError);

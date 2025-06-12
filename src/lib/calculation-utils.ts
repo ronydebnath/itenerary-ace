@@ -61,8 +61,7 @@ function calculateTransferCost(
       individualContributions[id] = (allTravelers.find(t=>t.id===id)?.type === 'adult' ? adultPrice : childPrice);
     });
   } else { // vehicle mode
-    let baseCostPerVehicle = serviceDefinition?.price1 ?? item.costPerVehicle || 0;
-    const numVehicles = item.vehicles || 1;
+    let baseCostPerVehicle = (serviceDefinition?.price1 ?? item.costPerVehicle) || 0; // Added parentheses
     let appliedSurcharge = 0;
     let surchargeName = "";
 
