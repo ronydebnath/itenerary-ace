@@ -34,7 +34,7 @@ export default function HomePage() {
   const debouncedSaveTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
 
   React.useEffect(() => {
-    setPageStatus('loading'); // Explicitly set to loading when effect runs
+    setPageStatus('loading'); 
 
     const itineraryIdFromUrl = searchParams.get('itineraryId');
     let idToLoad = itineraryIdFromUrl;
@@ -62,7 +62,7 @@ export default function HomePage() {
             updatedAt: parsedData.updatedAt || new Date().toISOString(),
             settings: parsedData.settings || { numDays: 1, startDate: new Date().toISOString().split('T')[0], selectedProvinces: [] },
             pax: parsedData.pax || { adults: 1, children: 0, currency: 'USD' },
-            travelers: parsedData.travelers && parsedData.travelers.length > 0 ? parsedData.travelers : [{ id: generateGUID(), label: 'Adult 1', type: 'adult' }],
+            travelers: parsedData.travelers && parsedData.travelers.length > 0 ? parsedData.travelers : [{ id: generateGUID(), label: 'Adult 1', type: 'adult' as const }],
             days: parsedData.days || { 1: { items: [] } },
           };
           dataToSet.settings.selectedProvinces = dataToSet.settings.selectedProvinces || [];
@@ -133,7 +133,7 @@ export default function HomePage() {
     };
     setCurrentItineraryId(newId);
     setTripData(newTripData);
-    setPageStatus('planner'); // Transition to planner
+    setPageStatus('planner'); 
     router.replace(`/?itineraryId=${newId}`, { shallow: true });
   }, [router]);
 
@@ -211,11 +211,10 @@ export default function HomePage() {
   }, [tripData, currentItineraryId, pageStatus]);
 
   const handleStartNewItinerary = React.useCallback(() => {
-    setCurrentItineraryId(null);
+    setCurrentItineraryId(null); 
     setTripData(null);
     localStorage.removeItem('lastActiveItineraryId');
-    // The router.replace will trigger the main useEffect, which will then set pageStatus to 'setup'
-    router.replace('/', { shallow: true });
+    router.replace('/', { shallow: true }); 
   }, [router]);
 
   if (pageStatus === 'loading') {
@@ -239,7 +238,8 @@ export default function HomePage() {
         </Link>
       </div>
 
-      {pageStatus === 'planner' && tripData && currentItineraryId && tripData.id === currentItineraryId ? (
+      {/* Conditional rendering based on pageStatus */}
+      {pageStatus === 'planner' && tripData && currentItineraryId ? (
         <ItineraryPlanner
           tripData={tripData}
           onReset={handleStartNewItinerary}
