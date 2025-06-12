@@ -7,11 +7,10 @@ import { VEHICLE_TYPES } from '@/types/itinerary';
 import { BaseItemForm, FormField } from './base-item-form';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-// Removed: import { useServicePrices } from '@/hooks/useServicePrices';
 import { AlertCircle } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { format, parseISO } from 'date-fns'; // For displaying surcharge dates
-import { formatCurrency } from '@/lib/utils'; // For displaying surcharge amounts
+import { format, parseISO } from 'date-fns';
+import { formatCurrency } from '@/lib/utils';
 
 interface TransferItemFormProps {
   item: TransferItemType;
@@ -19,11 +18,10 @@ interface TransferItemFormProps {
   currency: CurrencyCode;
   onUpdate: (item: TransferItemType) => void;
   onDelete: () => void;
-  allServicePrices: ServicePriceItem[]; // Added prop
+  allServicePrices: ServicePriceItem[];
 }
 
 export function TransferItemForm({ item, travelers, currency, onUpdate, onDelete, allServicePrices }: TransferItemFormProps) {
-  // const { getServicePrices, getServicePriceById, isLoading: isLoadingServices } = useServicePrices(); // Removed
   const [transferServices, setTransferServices] = React.useState<ServicePriceItem[]>([]);
 
   const getServicePriceById = React.useCallback((id: string) => {
@@ -42,8 +40,8 @@ export function TransferItemForm({ item, travelers, currency, onUpdate, onDelete
     let modeAndProvinceFilteredServices = allCategoryServices;
 
     modeAndProvinceFilteredServices = modeAndProvinceFilteredServices.filter(s => {
-      if (item.mode === 'ticket') return s.subCategory === 'ticket';
-      if (item.mode === 'vehicle') return s.transferMode === 'vehicle';
+      if (item.mode === 'ticket') return s.subCategory === 'ticket'; // Ensure only 'ticket' type services for ticket mode
+      if (item.mode === 'vehicle') return s.transferMode === 'vehicle'; // Ensure only 'vehicle' mode services for vehicle mode
       return false;
     });
     
@@ -59,10 +57,10 @@ export function TransferItemForm({ item, travelers, currency, onUpdate, onDelete
             ...item, 
             [field]: value, 
             selectedServicePriceId: undefined, 
-            adultTicketPrice: value === 'ticket' ? 0 : undefined, 
-            childTicketPrice: undefined, 
-            costPerVehicle: value === 'vehicle' ? 0 : undefined, 
-            vehicles: value === 'vehicle' ? 1 : undefined, 
+            adultTicketPrice: value === 'ticket' ? (item.adultTicketPrice ?? 0) : undefined, 
+            childTicketPrice: value === 'ticket' ? item.childTicketPrice : undefined, 
+            costPerVehicle: value === 'vehicle' ? (item.costPerVehicle ?? 0) : undefined, 
+            vehicles: value === 'vehicle' ? (item.vehicles || 1) : undefined, 
             vehicleType: value === 'vehicle' ? (item.vehicleType || VEHICLE_TYPES[0]) : undefined,
             selectedVehicleOptionId: undefined, 
         });
@@ -70,14 +68,21 @@ export function TransferItemForm({ item, travelers, currency, onUpdate, onDelete
         onUpdate({ 
           ...item, 
           [field]: value, 
-          selectedServicePriceId: (field === 'vehicleType' || field === 'selectedVehicleOptionId') ? item.selectedServicePriceId : undefined 
+          // If vehicleType is changed manually, clear selected service and option ID
+          selectedServicePriceId: (field === 'vehicleType') ? undefined : item.selectedServicePriceId,
+          selectedVehicleOptionId: (field === 'vehicleType') ? undefined : item.selectedVehicleOptionId,
         });
     }
   };
   
   const handleNumericInputChange = (field: keyof TransferItemType, value: string) => {
     const numValue = value === '' ? undefined : parseFloat(value);
-    onUpdate({ ...item, [field]: numValue, selectedServicePriceId: undefined, selectedVehicleOptionId: undefined });
+    onUpdate({ 
+      ...item, 
+      [field]: numValue, 
+      selectedServicePriceId: undefined, 
+      selectedVehicleOptionId: undefined 
+    });
   };
 
   const handlePredefinedServiceSelect = (selectedValue: string) => {
@@ -85,12 +90,12 @@ export function TransferItemForm({ item, travelers, currency, onUpdate, onDelete
       onUpdate({
         ...item,
         selectedServicePriceId: undefined,
+        selectedVehicleOptionId: undefined,
         adultTicketPrice: item.mode === 'ticket' ? 0 : undefined,
-        childTicketPrice: item.mode === 'ticket' ? undefined : undefined,
+        childTicketPrice: undefined,
         costPerVehicle: item.mode === 'vehicle' ? 0 : undefined,
         vehicleType: item.mode === 'vehicle' ? (item.vehicleType || VEHICLE_TYPES[0]) : undefined,
-        selectedVehicleOptionId: undefined,
-        vehicles: item.mode === 'vehicle' ? item.vehicles || 1 : undefined,
+        vehicles: item.mode === 'vehicle' ? (item.vehicles || 1) : undefined,
       });
     } else {
       const service = getServicePriceById(selectedValue);
@@ -110,23 +115,29 @@ export function TransferItemForm({ item, travelers, currency, onUpdate, onDelete
           updatedItemPartial.adultTicketPrice = undefined;
           updatedItemPartial.childTicketPrice = undefined;
           if (service.vehicleOptions && service.vehicleOptions.length > 0) {
-            // Don't pre-set cost/type if options exist, let user choose.
+            // Let user pick from options; don't pre-set cost/type from service's base price1.
+            updatedItemPartial.costPerVehicle = undefined; // Will be set by handleVehicleOptionSelect
+            updatedItemPartial.vehicleType = undefined;   // Will be set by handleVehicleOptionSelect
           } else {
+            // This service is vehicle mode but has no specific options, so use its direct price/type.
             updatedItemPartial.costPerVehicle = service.price1 ?? 0;
-            updatedItemPartial.vehicleType = (service.subCategory && VEHICLE_TYPES.includes(service.subCategory as VehicleType)) ? service.subCategory as VehicleType : (item.vehicleType || VEHICLE_TYPES[0]);
+            updatedItemPartial.vehicleType = (service.subCategory && VEHICLE_TYPES.includes(service.subCategory as VehicleType)) 
+                                             ? service.subCategory as VehicleType 
+                                             : VEHICLE_TYPES[0];
           }
-          updatedItemPartial.vehicles = item.vehicles || 1;
+          updatedItemPartial.vehicles = item.vehicles || 1; // Keep existing or default to 1
         }
         onUpdate({ ...item, ...updatedItemPartial });
-      } else {
+      } else { // Service ID selected but service not found in current list (e.g., different province)
          onUpdate({ 
           ...item,
-          selectedServicePriceId: selectedValue,
+          selectedServicePriceId: selectedValue, // Keep the ID, but form will show error
+          selectedVehicleOptionId: undefined,
           adultTicketPrice: item.mode === 'ticket' ? 0 : undefined,
           childTicketPrice: undefined,
           costPerVehicle: item.mode === 'vehicle' ? 0 : undefined,
           vehicleType: item.mode === 'vehicle' ? (item.vehicleType || VEHICLE_TYPES[0]) : undefined,
-          selectedVehicleOptionId: undefined,
+          vehicles: item.mode === 'vehicle' ? (item.vehicles || 1) : undefined,
         });
       }
     }
@@ -139,21 +150,51 @@ export function TransferItemForm({ item, travelers, currency, onUpdate, onDelete
       onUpdate({
         ...item,
         selectedVehicleOptionId: option.id,
-        costPerVehicle: option.price,
-        vehicleType: option.vehicleType,
+        costPerVehicle: option.price, // Set cost from selected option
+        vehicleType: option.vehicleType,   // Set type from selected option
       });
     } else { 
+      // User selected "None" or option not found - revert to service base price if no options, or custom if options existed
+      const baseCost = (selectedService.vehicleOptions && selectedService.vehicleOptions.length > 0) 
+                       ? 0 // If options existed, "none" means custom, so price is 0 to be filled
+                       : selectedService.price1 ?? 0;
+      const baseType = (selectedService.vehicleOptions && selectedService.vehicleOptions.length > 0)
+                       ? VEHICLE_TYPES[0] // Default if reverting from options
+                       : (selectedService.subCategory && VEHICLE_TYPES.includes(selectedService.subCategory as VehicleType)) 
+                         ? selectedService.subCategory as VehicleType 
+                         : VEHICLE_TYPES[0];
       onUpdate({
         ...item,
         selectedVehicleOptionId: undefined,
-        costPerVehicle: selectedService.price1 ?? 0, 
-        vehicleType: (selectedService.subCategory && VEHICLE_TYPES.includes(selectedService.subCategory as VehicleType)) ? selectedService.subCategory as VehicleType : (item.vehicleType || VEHICLE_TYPES[0]),
+        costPerVehicle: baseCost,
+        vehicleType: baseType,
       });
     }
   };
   
   const serviceDefinitionNotFound = item.selectedServicePriceId && !selectedService;
-  const isPriceReadOnly = !!item.selectedServicePriceId && !!selectedService && (item.mode === 'ticket' || (item.mode === 'vehicle' && !!item.selectedVehicleOptionId));
+
+  // Determine read-only state for cost/type fields in vehicle mode
+  let isVehicleCostTypeReadOnly = false;
+  if (item.mode === 'vehicle' && selectedService) {
+    if (selectedService.vehicleOptions && selectedService.vehicleOptions.length > 0) {
+      isVehicleCostTypeReadOnly = !!item.selectedVehicleOptionId; // Read-only if an option is chosen
+    } else {
+      isVehicleCostTypeReadOnly = true; // Read-only if service has no options (direct price)
+    }
+  }
+
+  const displayedVehicleType = item.mode === 'vehicle' 
+    ? (item.selectedVehicleOptionId && selectedService?.vehicleOptions?.find(vo => vo.id === item.selectedVehicleOptionId)?.vehicleType) || 
+      (!item.selectedVehicleOptionId && selectedService && (!selectedService.vehicleOptions || selectedService.vehicleOptions.length === 0) && (VEHICLE_TYPES.includes(selectedService.subCategory as VehicleType) ? selectedService.subCategory as VehicleType : selectedService.vehicleType || item.vehicleType)) ||
+      item.vehicleType || VEHICLE_TYPES[0]
+    : undefined;
+
+  const displayedCostPerVehicle = item.mode === 'vehicle'
+    ? (item.selectedVehicleOptionId && selectedService?.vehicleOptions?.find(vo => vo.id === item.selectedVehicleOptionId)?.price) ??
+      (!item.selectedVehicleOptionId && selectedService && (!selectedService.vehicleOptions || selectedService.vehicleOptions.length === 0) ? selectedService.price1 : item.costPerVehicle) ?? 0
+    : undefined;
+
 
   return (
     <BaseItemForm item={item} travelers={travelers} currency={currency} onUpdate={onUpdate} onDelete={onDelete} itemTypeLabel="Transfer">
@@ -180,7 +221,6 @@ export function TransferItemForm({ item, travelers, currency, onUpdate, onDelete
                 <Select
                 value={item.selectedServicePriceId || "none"}
                 onValueChange={handlePredefinedServiceSelect}
-                // disabled={isLoadingServices} // isLoadingServices not available
                 >
                 <SelectTrigger>
                     <SelectValue placeholder={`Choose ${item.mode} service...`} />
@@ -220,8 +260,8 @@ export function TransferItemForm({ item, travelers, currency, onUpdate, onDelete
               onChange={(e) => handleNumericInputChange('adultTicketPrice', e.target.value)}
               min="0"
               placeholder="0.00"
-              readOnly={isPriceReadOnly}
-              className={isPriceReadOnly ? "bg-muted/50 cursor-not-allowed" : ""}
+              readOnly={!!selectedService} // Read-only if a predefined service is selected
+              className={!!selectedService ? "bg-muted/50 cursor-not-allowed" : ""}
             />
           </FormField>
           <FormField label={`Child Ticket Price (${currency}) (Optional)`} id={`childTicketPrice-${item.id}`}>
@@ -232,8 +272,8 @@ export function TransferItemForm({ item, travelers, currency, onUpdate, onDelete
               onChange={(e) => handleNumericInputChange('childTicketPrice', e.target.value)}
               min="0"
               placeholder="Defaults to adult price"
-              readOnly={isPriceReadOnly}
-              className={isPriceReadOnly ? "bg-muted/50 cursor-not-allowed" : ""}
+              readOnly={!!selectedService} // Read-only if a predefined service is selected
+              className={!!selectedService ? "bg-muted/50 cursor-not-allowed" : ""}
             />
           </FormField>
         </div>
@@ -252,7 +292,7 @@ export function TransferItemForm({ item, travelers, currency, onUpdate, onDelete
                     <SelectValue placeholder="Choose vehicle option..." />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="none">None (Use Service Base Price or Custom)</SelectItem>
+                    <SelectItem value="none">None (Use Custom or Service Base Price)</SelectItem>
                     {selectedService.vehicleOptions.map(opt => (
                       <SelectItem key={opt.id} value={opt.id}>
                         {opt.vehicleType} - {currency} {opt.price} (Max: {opt.maxPassengers} Pax)
@@ -268,11 +308,11 @@ export function TransferItemForm({ item, travelers, currency, onUpdate, onDelete
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
             <FormField label="Vehicle Type" id={`vehicleType-${item.id}`}>
               <Select
-                value={item.vehicleType || VEHICLE_TYPES[0]} 
+                value={displayedVehicleType} 
                 onValueChange={(value: VehicleType) => handleInputChange('vehicleType', value)}
-                disabled={!!item.selectedVehicleOptionId} 
+                disabled={isVehicleCostTypeReadOnly} 
               >
-                <SelectTrigger className={!!item.selectedVehicleOptionId ? "bg-muted/50 cursor-not-allowed" : ""}>
+                <SelectTrigger className={isVehicleCostTypeReadOnly ? "bg-muted/50 cursor-not-allowed" : ""}>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -286,12 +326,12 @@ export function TransferItemForm({ item, travelers, currency, onUpdate, onDelete
               <Input
                 type="number"
                 id={`costPerVehicle-${item.id}`}
-                value={item.costPerVehicle ?? ''}
+                value={displayedCostPerVehicle ?? ''}
                 onChange={(e) => handleNumericInputChange('costPerVehicle', e.target.value)}
                 min="0"
                 placeholder="0.00"
-                readOnly={isPriceReadOnly}
-                className={isPriceReadOnly ? "bg-muted/50 cursor-not-allowed" : ""}
+                readOnly={isVehicleCostTypeReadOnly}
+                className={isVehicleCostTypeReadOnly ? "bg-muted/50 cursor-not-allowed" : ""}
               />
             </FormField>
             <FormField label="# of Vehicles" id={`numVehicles-${item.id}`}>
@@ -299,7 +339,7 @@ export function TransferItemForm({ item, travelers, currency, onUpdate, onDelete
                 type="number"
                 id={`numVehicles-${item.id}`}
                 value={item.vehicles ?? ''}
-                onChange={(e) => handleNumericInputChange('vehicles', e.target.value)}
+                onChange={(e) => handleInputChange('vehicles', parseInt(e.target.value,10) || 1)} // Ensure it's an int & >=1
                 min="1"
                 placeholder="1"
               />
@@ -320,5 +360,4 @@ export function TransferItemForm({ item, travelers, currency, onUpdate, onDelete
     </BaseItemForm>
   );
 }
-
     
