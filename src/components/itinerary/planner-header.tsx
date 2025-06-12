@@ -12,7 +12,7 @@ import { DatePicker } from '@/components/ui/date-picker';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Edit3, Save, Info, CalendarDays, Users, MapPin, Route, Loader2, DollarSign, Globe } from 'lucide-react';
+import { Edit3, Save, Info, CalendarDays, Users, MapPin, Route, Loader2, DollarSign, Globe, FileText } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
 import { format, parseISO, isValid } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
@@ -119,7 +119,42 @@ export function PlannerHeader({
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
+        {/* Template Settings Section */}
+        <div className="border-t pt-4 mt-4">
+            <div className="flex items-center space-x-2">
+                <Checkbox
+                id="isTemplate"
+                checked={tripData.settings.isTemplate || false}
+                onCheckedChange={(checked) => {
+                    const isNowTemplate = !!checked;
+                    onUpdateSettings({ 
+                        isTemplate: isNowTemplate,
+                        // If unchecking, also clear category. If checking, category might already be set or can be set.
+                        templateCategory: isNowTemplate ? tripData.settings.templateCategory : undefined 
+                    });
+                }}
+                />
+                <Label htmlFor="isTemplate" className="text-sm font-normal cursor-pointer flex items-center">
+                <FileText className="mr-2 h-4 w-4 text-muted-foreground" /> Mark as Itinerary Template
+                </Label>
+            </div>
+
+            {tripData.settings.isTemplate && (
+            <div className="mt-3 ml-6"> {/* Indent category input */}
+                <Label htmlFor="templateCategory" className="text-xs font-medium text-muted-foreground">Template Category (Optional)</Label>
+                <Input
+                id="templateCategory"
+                value={tripData.settings.templateCategory || ''}
+                onChange={(e) => onUpdateSettings({ templateCategory: e.target.value || undefined })}
+                placeholder="e.g., Beach Holiday, Cultural Tour"
+                className="text-sm h-9 mt-1 bg-background/70"
+                />
+            </div>
+            )}
+        </div>
+
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-end border-t pt-4 mt-4">
           <div>
             <Label htmlFor="startDate" className="text-xs font-medium text-muted-foreground flex items-center"><CalendarDays className="h-3 w-3 mr-1"/>Start Date</Label>
             <DatePicker
@@ -199,9 +234,9 @@ export function PlannerHeader({
             )}
         </div>
         
-        {/* Summary display moved for better grouping, removed redundant items */}
         <div className="mt-4 p-3 bg-secondary/20 rounded-lg border border-secondary/30 text-xs text-muted-foreground">
             <p><strong className="text-foreground">Current Config:</strong> {tripData.settings.numDays} Days starting {displayStartDate}. For {tripData.pax.adults} Adult(s), {tripData.pax.children} Child(ren). Currency: {tripData.pax.currency}.
+            {tripData.settings.isTemplate ? <Badge variant="outline" className="ml-1 border-accent text-accent">TEMPLATE{tripData.settings.templateCategory ? `: ${tripData.settings.templateCategory}` : ''}</Badge> : ""}
             {tripData.settings.selectedProvinces.length > 0 ? ` Provinces: ${tripData.settings.selectedProvinces.join(', ')}.` : " All provinces."}
             {showCosts && tripData.settings.budget ? ` Budget: ${formatCurrency(tripData.settings.budget, tripData.pax.currency)}.` : ""}
             </p>
