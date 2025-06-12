@@ -6,7 +6,6 @@ import type { MealItem as MealItemType, Traveler, CurrencyCode, ServicePriceItem
 import { BaseItemForm, FormField } from './base-item-form';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-// Removed: import { useServicePrices } from '@/hooks/useServicePrices';
 import { AlertCircle } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
@@ -16,17 +15,16 @@ interface MealItemFormProps {
   currency: CurrencyCode;
   onUpdate: (item: MealItemType) => void;
   onDelete: () => void;
-  allServicePrices: ServicePriceItem[]; // Added prop
+  allServicePrices: ServicePriceItem[];
 }
 
 export function MealItemForm({ item, travelers, currency, onUpdate, onDelete, allServicePrices }: MealItemFormProps) {
-  // const { getServicePrices, getServicePriceById, isLoading: isLoadingServices } = useServicePrices(); // Removed
   const [mealServices, setMealServices] = React.useState<ServicePriceItem[]>([]);
 
   const getServicePriceById = React.useCallback((id: string) => {
     return allServicePrices.find(sp => sp.id === id);
   }, [allServicePrices]);
-
+  
   const selectedService = React.useMemo(() => {
     if (item.selectedServicePriceId) {
       return getServicePriceById(item.selectedServicePriceId);
@@ -45,10 +43,12 @@ export function MealItemForm({ item, travelers, currency, onUpdate, onDelete, al
 
   const handleNumericInputChange = (field: keyof MealItemType, value: string) => {
     const numValue = value === '' ? undefined : parseFloat(value);
+    // If user manually changes a price or totalMeals, we assume they want custom pricing,
+    // so we clear the selectedServicePriceId.
     onUpdate({ 
       ...item, 
       [field]: numValue, 
-      selectedServicePriceId: (field === 'adultMealPrice' || field === 'childMealPrice' || field === 'totalMeals') ? undefined : item.selectedServicePriceId 
+      selectedServicePriceId: (field === 'adultMealPrice' || field === 'childMealPrice') ? undefined : item.selectedServicePriceId,
     });
   };
 
@@ -57,8 +57,7 @@ export function MealItemForm({ item, travelers, currency, onUpdate, onDelete, al
       onUpdate({
         ...item,
         selectedServicePriceId: undefined,
-        adultMealPrice: 0,
-        childMealPrice: undefined,
+        // Keep existing prices when deselecting, allowing user to revert to custom
       });
     } else {
       const service = getServicePriceById(selectedValue);
@@ -73,8 +72,8 @@ export function MealItemForm({ item, travelers, currency, onUpdate, onDelete, al
       } else {
          onUpdate({ 
           ...item,
-          selectedServicePriceId: selectedValue,
-          adultMealPrice: 0,
+          selectedServicePriceId: selectedValue, // Keep the ID for error display
+          adultMealPrice: 0, // Default to 0 if service not found
           childMealPrice: undefined,
         });
       }
@@ -93,7 +92,6 @@ export function MealItemForm({ item, travelers, currency, onUpdate, onDelete, al
             <Select
               value={item.selectedServicePriceId || "none"}
               onValueChange={handlePredefinedServiceSelect}
-              // disabled={isLoadingServices} // isLoadingServices not available
             >
               <SelectTrigger>
                 <SelectValue placeholder="Choose a predefined meal..." />
@@ -104,12 +102,13 @@ export function MealItemForm({ item, travelers, currency, onUpdate, onDelete, al
                   <SelectItem key={service.id} value={service.id}>
                     {service.name} ({service.province || 'Generic'}) - {currency} {service.price1}
                     {service.price2 !== undefined ? ` / Ch: ${service.price2}` : ''}
+                    {service.subCategory ? ` (${service.subCategory})` : ''}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </FormField>
-          {selectedService && <p className="text-xs text-muted-foreground pt-1">Using: {selectedService.name}</p>}
+          {selectedService && <p className="text-xs text-muted-foreground pt-1">Using: {selectedService.name}{selectedService.subCategory ? ` (${selectedService.subCategory})` : ''}</p>}
         </div>
       )}
 
@@ -162,5 +161,3 @@ export function MealItemForm({ item, travelers, currency, onUpdate, onDelete, al
     </BaseItemForm>
   );
 }
-
-    

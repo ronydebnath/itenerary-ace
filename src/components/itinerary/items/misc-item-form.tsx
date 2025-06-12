@@ -6,7 +6,6 @@ import type { MiscItem as MiscItemType, Traveler, CurrencyCode, ServicePriceItem
 import { BaseItemForm, FormField } from './base-item-form';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-// Removed: import { useServicePrices } from '@/hooks/useServicePrices';
 import { AlertCircle } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
@@ -16,11 +15,10 @@ interface MiscItemFormProps {
   currency: CurrencyCode;
   onUpdate: (item: MiscItemType) => void;
   onDelete: () => void;
-  allServicePrices: ServicePriceItem[]; // Added prop
+  allServicePrices: ServicePriceItem[];
 }
 
 export function MiscItemForm({ item, travelers, currency, onUpdate, onDelete, allServicePrices }: MiscItemFormProps) {
-  // const { getServicePrices, getServicePriceById, isLoading: isLoadingServices } = useServicePrices(); // Removed
   const [miscServices, setMiscServices] = React.useState<ServicePriceItem[]>([]);
 
   const getServicePriceById = React.useCallback((id: string) => {
@@ -47,16 +45,18 @@ export function MiscItemForm({ item, travelers, currency, onUpdate, onDelete, al
     onUpdate({ 
       ...item, 
       [field]: value, 
-      selectedServicePriceId: field === 'costAssignment' ? item.selectedServicePriceId : undefined 
+      // Cost assignment and quantity can be changed independently of predefined service price
+      selectedServicePriceId: (field === 'costAssignment' || field === 'quantity') ? item.selectedServicePriceId : undefined 
     });
   };
 
   const handleNumericInputChange = (field: keyof MiscItemType, value: string) => {
     const numValue = value === '' ? undefined : parseFloat(value);
+    // If user manually changes unitCost, assume custom pricing
     onUpdate({ 
       ...item, 
       [field]: numValue, 
-      selectedServicePriceId: undefined 
+      selectedServicePriceId: field === 'unitCost' ? undefined : item.selectedServicePriceId
     });
   };
 
@@ -65,7 +65,7 @@ export function MiscItemForm({ item, travelers, currency, onUpdate, onDelete, al
       onUpdate({
         ...item,
         selectedServicePriceId: undefined,
-        unitCost: 0,
+        // Keep existing unitCost when deselecting
       });
     } else {
       const service = getServicePriceById(selectedValue);
@@ -75,12 +75,14 @@ export function MiscItemForm({ item, travelers, currency, onUpdate, onDelete, al
           name: item.name === `New misc` || !item.name || !item.selectedServicePriceId ? service.name : item.name,
           unitCost: service.price1 ?? 0,
           selectedServicePriceId: service.id,
+          // Potentially set subCategory from service.subCategory if desired, but it's often more for display
+          // subCategory: service.subCategory || item.subCategory 
         });
       } else {
         onUpdate({
           ...item,
-          selectedServicePriceId: selectedValue,
-          unitCost: 0,
+          selectedServicePriceId: selectedValue, // Keep ID for error display
+          unitCost: 0, // Default if service not found
         });
       }
     }
@@ -97,7 +99,6 @@ export function MiscItemForm({ item, travelers, currency, onUpdate, onDelete, al
             <Select
               value={item.selectedServicePriceId || "none"}
               onValueChange={handlePredefinedServiceSelect}
-              // disabled={isLoadingServices} // isLoadingServices not available
             >
               <SelectTrigger>
                 <SelectValue placeholder="Choose a predefined item..." />
@@ -107,12 +108,13 @@ export function MiscItemForm({ item, travelers, currency, onUpdate, onDelete, al
                 {miscServices.map(service => (
                   <SelectItem key={service.id} value={service.id}>
                     {service.name} ({service.province || 'Generic'}) - {currency} {service.price1}
+                    {service.subCategory ? ` (${service.subCategory})` : ''}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </FormField>
-          {selectedService && <p className="text-xs text-muted-foreground pt-1">Using: {selectedService.name}</p>}
+          {selectedService && <p className="text-xs text-muted-foreground pt-1">Using: {selectedService.name}{selectedService.subCategory ? ` (${selectedService.subCategory})` : ''}</p>}
         </div>
       )}
 
@@ -165,5 +167,3 @@ export function MiscItemForm({ item, travelers, currency, onUpdate, onDelete, al
     </BaseItemForm>
   );
 }
-
-    
