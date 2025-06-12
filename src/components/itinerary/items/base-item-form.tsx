@@ -59,7 +59,18 @@ export function BaseItemForm<T extends ItineraryItem>({
   
   const handleProvinceChange = (value: string) => {
     const provinceValue = value === "none" ? undefined : value;
-    onUpdate({ ...item, province: provinceValue, selectedServicePriceId: undefined }); // Reset selected service if province changes
+    // Reset selectedServicePriceId and dependent fields when province changes
+    // This forces re-selection of service if a province-specific one is desired
+    // And also clears any dependent fields in item forms that rely on selectedServicePriceId
+    const updatedItem: Partial<ItineraryItem> = {
+        province: provinceValue,
+        selectedServicePriceId: undefined,
+        // @ts-ignore - these fields may or may not exist on T, but clearing them is safe
+        selectedPackageId: undefined, 
+        // @ts-ignore
+        selectedVehicleOptionId: undefined,
+    };
+    onUpdate({ ...item, ...updatedItem as Partial<T> });
   };
 
   return (
