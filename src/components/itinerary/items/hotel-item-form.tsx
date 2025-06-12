@@ -28,7 +28,7 @@ interface HotelItemFormProps {
 export function HotelItemForm({ item, travelers, currency, dayNumber, tripSettings, onUpdate, onDelete, allHotelDefinitions }: HotelItemFormProps) {
   const [availableHotels, setAvailableHotels] = React.useState<HotelDefinition[]>([]);
   const [selectedHotelDef, setSelectedHotelDef] = React.useState<HotelDefinition | undefined>(undefined);
-  
+
   const [openTravelerAssignments, setOpenTravelerAssignments] = React.useState<{[key: string]: boolean}>({});
 
   React.useEffect(() => {
@@ -55,18 +55,18 @@ export function HotelItemForm({ item, travelers, currency, dayNumber, tripSettin
   const handleHotelDefinitionChange = (hotelDefId: string) => {
     const newHotelDef = allHotelDefinitions.find(hd => hd.id === hotelDefId);
     if (newHotelDef) {
-      onUpdate({ 
-        ...item, 
-        hotelDefinitionId: hotelDefId, 
+      onUpdate({
+        ...item,
+        hotelDefinitionId: hotelDefId,
         name: item.name === 'New hotel' || !item.name || !item.hotelDefinitionId ? newHotelDef.name : item.name,
         selectedRooms: [] // Reset rooms when hotel changes
       });
-    } else { 
-       onUpdate({ 
-        ...item, 
-        hotelDefinitionId: '', 
-        name: 'New hotel', // Reset name if no hotel is selected
-        selectedRooms: [] 
+    } else {
+       onUpdate({
+        ...item,
+        hotelDefinitionId: '',
+        name: 'New hotel', // Reset name to default placeholder
+        selectedRooms: []
       });
     }
   };
@@ -80,8 +80,8 @@ export function HotelItemForm({ item, travelers, currency, dayNumber, tripSettin
   };
 
   const handleAddRoomBooking = () => {
-    if (!selectedHotelDef || selectedHotelDef.roomTypes.length === 0) return; 
-    
+    if (!selectedHotelDef || selectedHotelDef.roomTypes.length === 0) return;
+
     const defaultRoomType = selectedHotelDef.roomTypes[0];
     const newRoomBooking: SelectedHotelRoomConfiguration = {
       id: generateGUID(),
@@ -99,16 +99,16 @@ export function HotelItemForm({ item, travelers, currency, dayNumber, tripSettin
     const newSelectedRooms = currentSelectedRooms.map(rb => rb.id === updatedBooking.id ? updatedBooking : rb);
     onUpdate({ ...item, selectedRooms: newSelectedRooms });
   };
-  
+
   const handleRoomTypeChangeForBooking = (bookingId: string, roomTypeDefinitionId: string) => {
     const roomTypeDef = selectedHotelDef?.roomTypes.find(rt => rt.id === roomTypeDefinitionId);
     if (roomTypeDef) {
         const currentSelectedRooms = item.selectedRooms || [];
         const updatedBooking = currentSelectedRooms.find(rb => rb.id === bookingId);
         if (updatedBooking) {
-            handleUpdateRoomBooking({ 
-                ...updatedBooking, 
-                roomTypeDefinitionId, 
+            handleUpdateRoomBooking({
+                ...updatedBooking,
+                roomTypeDefinitionId,
                 roomTypeNameCache: roomTypeDef.name // Update cached name
             });
         }
@@ -129,7 +129,7 @@ export function HotelItemForm({ item, travelers, currency, dayNumber, tripSettin
     const newSelectedRooms = currentSelectedRooms.filter(rb => rb.id !== bookingId);
     onUpdate({ ...item, selectedRooms: newSelectedRooms });
   };
-  
+
   const handleToggleTravelerAssignment = (bookingId: string) => {
     setOpenTravelerAssignments(prev => ({...prev, [bookingId]: !prev[bookingId]}));
   };
@@ -163,7 +163,7 @@ export function HotelItemForm({ item, travelers, currency, dayNumber, tripSettin
           >
             <SelectTrigger>
               <SelectValue placeholder={
-                item.province 
+                item.province
                   ? (availableHotels.length > 0 ? "Choose a hotel..." : "No hotels for this province")
                   : (allHotelDefinitions.length > 0 ? "Choose a hotel or select province..." : "No hotels defined")
               } />
@@ -187,7 +187,7 @@ export function HotelItemForm({ item, travelers, currency, dayNumber, tripSettin
            )}
         </div>
       </div>
-      
+
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
         <FormField label="Check-in Day" id={`checkinDay-${item.id}`}>
           <p className="font-code text-sm p-2.5 bg-muted rounded-md h-10 flex items-center">Day {dayNumber}</p>
@@ -199,7 +199,7 @@ export function HotelItemForm({ item, travelers, currency, dayNumber, tripSettin
             value={item.checkoutDay ?? ''}
             onChange={(e) => handleCheckoutDayChange(e.target.value)}
             min={dayNumber + 1}
-            max={tripSettings.numDays + 1} 
+            max={tripSettings.numDays + 1}
             placeholder={`Day ${dayNumber + 1}`}
           />
         </FormField>
@@ -215,7 +215,7 @@ export function HotelItemForm({ item, travelers, currency, dayNumber, tripSettin
              <Info className="h-4 w-4 text-blue-600" />
              <AlertTitle className="text-blue-700">Configure Hotel</AlertTitle>
              <AlertDescription className="text-blue-600">
-               Please select a hotel from the dropdown above to configure room bookings. 
+               Please select a hotel from the dropdown above to configure room bookings.
                If no hotels appear, ensure the correct province is selected for this item, or check Admin settings.
              </AlertDescription>
            </Alert>
@@ -239,7 +239,7 @@ export function HotelItemForm({ item, travelers, currency, dayNumber, tripSettin
               <PlusCircle className="mr-2 h-4 w-4" /> Add Room Booking
             </Button>
           </div>
-          
+
           {currentSelectedRoomsForRender.length === 0 && (
               <p className="text-sm text-muted-foreground text-center py-4">No room types booked for this hotel yet. Click "Add Room Booking".</p>
           )}
@@ -305,10 +305,10 @@ export function HotelItemForm({ item, travelers, currency, dayNumber, tripSettin
                       ))}
                        <li><strong>Extra Bed:</strong> {currentRoomTypeDef.extraBedAllowed ? 'Allowed' : 'Not Allowed'}</li>
                     </ul>
-                   
+
                   </div>
                 )}
-                
+
                 <div>
                   <button
                     onClick={() => handleToggleTravelerAssignment(roomBooking.id)}
@@ -352,3 +352,4 @@ export function HotelItemForm({ item, travelers, currency, dayNumber, tripSettin
     </BaseItemForm>
   );
 }
+
