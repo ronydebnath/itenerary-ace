@@ -8,7 +8,8 @@ import { SetupForm } from '@/components/itinerary/setup-form';
 import { ItineraryPlanner } from '@/components/itinerary/itinerary-planner';
 import type { TripSettings, PaxDetails, TripData } from '@/types/itinerary';
 import { generateGUID } from '@/lib/utils';
-import { Cog, Image as ImageIconLucide } from 'lucide-react'; 
+import { Cog, Image as ImageIconLucide, Route } from 'lucide-react'; // Added Route for consistency with planner
+import { Badge } from '@/components/ui/badge'; // Added Badge for consistency with planner
 
 const LOCAL_STORAGE_KEY = 'itineraryAceData';
 
@@ -31,18 +32,18 @@ export default function HomePage() {
              setTripData(parsedData);
            } else {
              console.warn("Loaded trip data has invalid or missing startDate. Clearing data to re-initialize.");
-             localStorage.removeItem(LOCAL_STORAGE_KEY); 
-             setTripData(null); 
+             localStorage.removeItem(LOCAL_STORAGE_KEY);
+             setTripData(null);
            }
         } else {
           console.warn("Loaded trip data is structurally invalid. Clearing data.");
-          localStorage.removeItem(LOCAL_STORAGE_KEY); 
+          localStorage.removeItem(LOCAL_STORAGE_KEY);
           setTripData(null);
         }
       }
     } catch (error) {
       console.error("Failed to load data from localStorage:", error);
-      localStorage.removeItem(LOCAL_STORAGE_KEY); 
+      localStorage.removeItem(LOCAL_STORAGE_KEY);
       setTripData(null);
     }
     setIsInitialized(true);
@@ -61,11 +62,11 @@ export default function HomePage() {
     for (let i = 1; i <= settings.numDays; i++) {
       initialDaysData[i] = { items: [] };
     }
-    
+
     const newTripData: TripData = {
-      settings: { // Ensure selectedProvinces is initialized
+      settings: {
         ...settings,
-        selectedProvinces: settings.selectedProvinces || [],
+        selectedProvinces: settings.selectedProvinces || [], // Ensure it's an array
       },
       pax,
       travelers: newTravelers,
@@ -77,7 +78,7 @@ export default function HomePage() {
     } catch (error) {
       console.error("Failed to save data to localStorage:", error);
     }
-  }, []); 
+  }, []);
 
   const handleReset = React.useCallback(() => {
     setTripData(null);
@@ -86,24 +87,35 @@ export default function HomePage() {
     } catch (error) {
       console.error("Failed to remove data from localStorage:", error);
     }
-  }, []); 
+  }, []);
 
-  const handleUpdateTripData = React.useCallback((updatedTripData: TripData) => {
-    // Ensure selectedProvinces is part of the settings when updating
-    const dataToSave = {
-      ...updatedTripData,
-      settings: {
-        ...updatedTripData.settings,
-        selectedProvinces: updatedTripData.settings.selectedProvinces || [],
-      },
-    };
-    setTripData(dataToSave);
-     try {
-      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(dataToSave));
-    } catch (error) {
-      console.error("Failed to save data to localStorage:", error);
-    }
-  }, []); 
+  const handleUpdateTripData = React.useCallback((newDataFromPlanner: TripData) => {
+    setTripData(prevTripData => {
+      // Ensure new references for days and settings objects for robust update detection
+      const newDays = { ...(prevTripData?.days || {}), ...newDataFromPlanner.days };
+      const newSettingsFromPlanner = newDataFromPlanner.settings || {};
+      const prevSettings = prevTripData?.settings || { numDays: 0, startDate: '', selectedProvinces: []};
+
+
+      const dataToSave: TripData = {
+        ...(prevTripData || {} as TripData), // Base default on prev or empty
+        ...newDataFromPlanner,        // Spread all incoming data
+        days: newDays,                // Explicitly set newly constructed days
+        settings: {                   // Explicitly set newly constructed settings
+          ...prevSettings,
+          ...newSettingsFromPlanner,
+          selectedProvinces: newSettingsFromPlanner.selectedProvinces || prevSettings.selectedProvinces || [],
+        },
+      };
+
+      try {
+        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(dataToSave));
+      } catch (error) {
+        console.error("Failed to save data to localStorage:", error);
+      }
+      return dataToSave;
+    });
+  }, []);
 
   if (!isInitialized) {
     return <div className="flex justify-center items-center min-h-screen bg-background"><p>Loading Itinerary Ace...</p></div>;
@@ -114,7 +126,7 @@ export default function HomePage() {
       <div className="absolute top-4 right-4 md:top-6 md:right-6 z-10 flex gap-2">
         <Link href="/image-describer">
           <Button variant="outline" size="sm" className="bg-card hover:bg-muted shadow-md">
-            <ImageIconLucide className="mr-2 h-4 w-4" /> 
+            <ImageIconLucide className="mr-2 h-4 w-4" />
             Describe Image
           </Button>
         </Link>
@@ -125,7 +137,7 @@ export default function HomePage() {
           </Button>
         </Link>
       </div>
-      
+
       {tripData ? (
         <ItineraryPlanner tripData={tripData} onReset={handleReset} onUpdateTripData={handleUpdateTripData} />
       ) : (
