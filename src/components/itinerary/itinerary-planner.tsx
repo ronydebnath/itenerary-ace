@@ -2,15 +2,12 @@
 "use client";
 
 import * as React from 'react';
-import type { TripData, ItineraryItem, CostSummary, ServicePriceItem, HotelDefinition, HotelItem as HotelItemType, SelectedHotelRoomConfiguration } from '@/types/itinerary';
+import type { TripData, ItineraryItem, CostSummary } from '@/types/itinerary';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { ChevronLeft, ChevronRight, Printer, RotateCcw, MapPin, CalendarDays, Users, Eye, EyeOff, Hotel, Loader2, Route, Info, Edit3, Save } from 'lucide-react'; // Added Save icon
+import { Printer, Eye, EyeOff, Loader2 } from 'lucide-react';
 import { formatCurrency, generateGUID } from '@/lib/utils';
 import { AISuggestions } from '../itinerary/ai-suggestions';
 import { PrintLayout } from '../itinerary/print-layout';
@@ -21,13 +18,14 @@ import { calculateAllCosts } from '@/lib/calculation-utils';
 import { useServicePrices } from '@/hooks/useServicePrices';
 import { useHotelDefinitions } from '@/hooks/useHotelDefinitions';
 import { addDays, format, parseISO } from 'date-fns';
-import { Badge } from '@/components/ui/badge';
+import { PlannerHeader } from './planner-header';
+import { DayNavigation } from './day-navigation';
 
 interface ItineraryPlannerProps {
   tripData: TripData;
-  onReset: () => void; 
-  onUpdateTripData: (updatedTripData: Partial<TripData>) => void; // Changed to Partial for more flexibility
-  onManualSave: () => void; // New prop for manual save
+  onReset: () => void;
+  onUpdateTripData: (updatedTripData: Partial<TripData>) => void;
+  onManualSave: () => void;
 }
 
 export function ItineraryPlanner({ tripData, onReset, onUpdateTripData, onManualSave }: ItineraryPlannerProps) {
@@ -40,7 +38,7 @@ export function ItineraryPlanner({ tripData, onReset, onUpdateTripData, onManual
 
   React.useEffect(() => {
     if (tripData && !isLoadingServices && !isLoadingHotelDefinitions) {
-      const summary = calculateAllCosts(tripData); 
+      const summary = calculateAllCosts(tripData);
       setCostSummary(summary);
     } else {
       setCostSummary(null);
@@ -55,7 +53,7 @@ export function ItineraryPlanner({ tripData, onReset, onUpdateTripData, onManual
       dayItems[itemIndex] = updatedItem;
     }
     newDays[day] = { items: dayItems };
-    onUpdateTripData({ days: newDays }); // Only pass partial update for days
+    onUpdateTripData({ days: newDays });
   }, [tripData.days, onUpdateTripData]);
 
   const handleAddItem = React.useCallback((day: number, itemType: ItineraryItem['type']) => {
@@ -77,12 +75,12 @@ export function ItineraryPlanner({ tripData, onReset, onUpdateTripData, onManual
         break;
       case 'hotel':
         newItem = {
-            ...baseNewItem,
-            type: 'hotel',
-            checkoutDay: day + 1,
-            hotelDefinitionId: '',
-            selectedRooms: []
-        } as HotelItemType;
+          ...baseNewItem,
+          type: 'hotel',
+          checkoutDay: day + 1,
+          hotelDefinitionId: '',
+          selectedRooms: []
+        };
         break;
       case 'meal':
         newItem = { ...baseNewItem, type: 'meal', adultMealPrice: 0, childMealPrice: 0, totalMeals: 1 };
@@ -126,126 +124,35 @@ export function ItineraryPlanner({ tripData, onReset, onUpdateTripData, onManual
     }
   }, [tripData.settings.startDate]);
 
-  const displayStartDate = React.useMemo(() => {
-    return tripData.settings.startDate ? format(parseISO(tripData.settings.startDate), "MMMM d, yyyy") : 'N/A';
-  }, [tripData.settings.startDate]);
-
-
   if (isPrinting && costSummary) {
     return <PrintLayout tripData={tripData} costSummary={costSummary} showCosts={showCosts} />;
   }
 
   const isLoadingAnything = isLoadingServices || isLoadingHotelDefinitions;
-  const { selectedProvinces = [] } = tripData.settings;
-
 
   return (
     <div className="w-full max-w-[1600px] mx-auto p-4 md:p-6 lg:p-8">
-      <Card className="mb-6 shadow-xl">
-        <CardHeader className="bg-primary/10">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
-            <div>
-              <CardTitle className="text-3xl font-headline text-primary">Itinerary Ace Planner</CardTitle>
-            </div>
-            <div className="flex gap-2">
-                <Button onClick={onManualSave} size="sm" className="bg-accent hover:bg-accent/90 text-accent-foreground">
-                    <Save className="mr-2 h-4 w-4" /> Save Itinerary
-                </Button>
-                <Button variant="outline" onClick={onReset} size="sm" className="border-accent text-accent hover:bg-accent/10">
-                <Edit3 className="mr-2 h-4 w-4" /> Start New Itinerary
-                </Button>
-            </div>
-          </div>
-          <CardDescription className="text-foreground/70 pt-2">
-            Plan and calculate costs for your upcoming trip. Use the fields below to name your itinerary and assign a client.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="pt-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm mb-6 p-4 bg-secondary/30 rounded-lg border border-secondary">
-                {tripData.id ? (
-                  <div className="md:col-span-3 flex items-center mb-3">
-                    <Info className="mr-2 h-5 w-5 text-muted-foreground" />
-                    <strong>ID:</strong><span className="ml-1 font-mono text-xs bg-muted px-2 py-1 rounded">{tripData.id}</span>
-                  </div>
-                ) : (
-                  <div className="md:col-span-3 text-red-500 font-bold mb-3 bg-red-100 p-2 rounded-md border border-red-300">DEBUG: Itinerary ID is NOT available in tripData!</div>
-                )}
-                <div className="md:col-span-3 space-y-2 mb-3">
-                    <Label htmlFor="itineraryName" className="text-xs font-medium text-muted-foreground">Itinerary Name</Label>
-                    <Input
-                        id="itineraryName"
-                        value={tripData.itineraryName || ''}
-                        onChange={(e) => onUpdateTripData({ itineraryName: e.target.value })}
-                        placeholder="Enter itinerary name"
-                        className="text-base font-semibold h-9 bg-background/70"
-                    />
-                </div>
-                 <div className="md:col-span-3 space-y-2 mb-3">
-                    <Label htmlFor="clientName" className="text-xs font-medium text-muted-foreground">Client Name (Optional)</Label>
-                    <Input
-                        id="clientName"
-                        value={tripData.clientName || ''}
-                        onChange={(e) => onUpdateTripData({ clientName: e.target.value })}
-                        placeholder="Enter client name"
-                        className="text-base h-9 bg-background/70"
-                    />
-                </div>
-                <div className="flex items-center"><CalendarDays className="mr-2 h-5 w-5 text-primary" /> <strong>Days:</strong><span className="ml-1 font-code">{tripData.settings.numDays}</span></div>
-                <div className="flex items-center"><Users className="mr-2 h-5 w-5 text-primary" /> <strong>Adults:</strong><span className="ml-1 font-code">{tripData.pax.adults}</span>, <strong>Children:</strong><span className="ml-1 font-code">{tripData.pax.children}</span></div>
-                <div className="flex items-center"><MapPin className="mr-2 h-5 w-5 text-primary" /> <strong>Start Date:</strong><span className="ml-1 font-code">{displayStartDate}</span></div>
-                <div className="flex items-center col-span-1 md:col-span-3"><Route className="mr-2 h-5 w-5 text-primary" /> <strong>Selected Provinces:</strong>
-                  {selectedProvinces.length > 0 ? (
-                    <span className="ml-1 flex flex-wrap gap-1">
-                      {selectedProvinces.map(p => <Badge key={p} variant="outline" className="bg-background">{p}</Badge>)}
-                    </span>
-                  ) : (
-                    <span className="ml-1 font-code text-muted-foreground italic">All provinces</span>
-                  )}
-                </div>
-                <div className="flex items-center col-span-1 md:col-span-3"><Users className="mr-2 h-5 w-5 text-primary" /> <strong>Currency:</strong><span className="ml-1 font-code">{tripData.pax.currency}</span>
-                  {showCosts && tripData.settings.budget && (<span className="ml-4"><strong>Budget:</strong> <span className="ml-1 font-code">{formatCurrency(tripData.settings.budget, tripData.pax.currency)}</span></span>)}
-                </div>
-            </div>
-        </CardContent>
-      </Card>
+      <PlannerHeader
+        tripData={tripData}
+        onUpdateTripData={onUpdateTripData}
+        onManualSave={onManualSave}
+        onReset={onReset}
+        showCosts={showCosts}
+      />
 
-      <div className="md:hidden mb-4">
-        <Select value={String(currentDayView)} onValueChange={(val) => setCurrentDayView(Number(val))}>
-            <SelectTrigger className="w-full">
-                <SelectValue placeholder="Select Day" />
-            </SelectTrigger>
-            <SelectContent>
-                {Array.from({ length: tripData.settings.numDays }, (_, i) => i + 1).map(dayNum => (
-                    <SelectItem key={dayNum} value={String(dayNum)}>{getFormattedDateForDay(dayNum)}</SelectItem>
-                ))}
-            </SelectContent>
-        </Select>
-      </div>
-
-      <div className="hidden md:flex justify-between items-center mb-6 p-3 bg-card border rounded-lg shadow-sm">
-        <Button
-          onClick={() => setCurrentDayView(prev => Math.max(1, prev - 1))}
-          disabled={currentDayView === 1}
-          variant="outline"
-        >
-          <ChevronLeft className="h-5 w-5 mr-1" /> Previous Day
-        </Button>
-        <h2 className="text-xl font-semibold text-primary">{getFormattedDateForDay(currentDayView)}</h2>
-        <Button
-          onClick={() => setCurrentDayView(prev => Math.min(tripData.settings.numDays, prev + 1))}
-          disabled={currentDayView === tripData.settings.numDays}
-          variant="outline"
-        >
-          Next Day <ChevronRight className="h-5 w-5 ml-1" />
-        </Button>
-      </div>
+      <DayNavigation
+        currentDayView={currentDayView}
+        setCurrentDayView={setCurrentDayView}
+        numDays={tripData.settings.numDays}
+        getFormattedDateForDay={getFormattedDateForDay}
+      />
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 min-h-[60vh]">
         <div className="lg:col-span-8 flex flex-col">
           {isLoadingAnything ? (
             <div className="flex flex-col items-center justify-center p-10 min-h-[300px] bg-card rounded-lg shadow-sm border flex-grow">
-                <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
-                <p className="text-muted-foreground">Loading itinerary data and service definitions...</p>
+              <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
+              <p className="text-muted-foreground">Loading itinerary data and service definitions...</p>
             </div>
           ) : (
             <ScrollArea className="flex-1 pr-2">
@@ -269,7 +176,7 @@ export function ItineraryPlanner({ tripData, onReset, onUpdateTripData, onManual
           )}
         </div>
 
-        <div className="lg:col-span-4 flex flex-col space-y-6">
+        <div className="lg:col-span-4 flex flex-col space-y-6 no-print">
           <AISuggestions
             tripData={tripData}
             onApplySuggestion={(modifiedTripData) => onUpdateTripData(modifiedTripData)}
@@ -281,10 +188,10 @@ export function ItineraryPlanner({ tripData, onReset, onUpdateTripData, onManual
             </CardHeader>
             <CardContent className="flex-grow">
               {isLoadingAnything ? (
-                 <div className="flex items-center justify-center py-6">
-                    <Loader2 className="h-6 w-6 animate-spin text-primary mr-2" />
-                    <p className="text-muted-foreground">Loading costs...</p>
-                 </div>
+                <div className="flex items-center justify-center py-6">
+                  <Loader2 className="h-6 w-6 animate-spin text-primary mr-2" />
+                  <p className="text-muted-foreground">Loading costs...</p>
+                </div>
               ) : costSummary ? (
                 <>
                   <CostBreakdownTable summary={costSummary} currency={tripData.pax.currency} travelers={tripData.travelers} showCosts={showCosts} />
@@ -310,7 +217,7 @@ export function ItineraryPlanner({ tripData, onReset, onUpdateTripData, onManual
       </div>
 
       <Card className="mt-8 shadow-lg">
-        <CardHeader>
+        <CardHeader className="no-print">
           <div className="flex justify-between items-center">
             <CardTitle className="text-2xl font-headline text-primary">Full Itinerary Details</CardTitle>
             <Button variant="outline" size="sm" onClick={() => setShowCosts(!showCosts)} className="ml-4">
@@ -320,21 +227,19 @@ export function ItineraryPlanner({ tripData, onReset, onUpdateTripData, onManual
           </div>
         </CardHeader>
         <CardContent>
-           {isLoadingAnything ? (
-                <div className="flex items-center justify-center py-10">
-                    <Loader2 className="h-8 w-8 animate-spin text-primary mr-3" />
-                    <p className="text-muted-foreground">Loading full details...</p>
-                </div>
-           ) : costSummary ? (
+          {isLoadingAnything ? (
+            <div className="flex items-center justify-center py-10">
+              <Loader2 className="h-8 w-8 animate-spin text-primary mr-3" />
+              <p className="text-muted-foreground">Loading full details...</p>
+            </div>
+          ) : costSummary ? (
             <DetailsSummaryTable summary={costSummary} currency={tripData.pax.currency} showCosts={showCosts} />
           ) : <p>Loading details...</p>}
         </CardContent>
       </Card>
 
       <div className="mt-8 py-6 border-t border-border flex flex-col sm:flex-row justify-center items-center gap-4 no-print">
-        <Button onClick={onManualSave} className="w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white">
-            <Save className="mr-2 h-4 w-4" /> Save Current Itinerary
-        </Button>
+        {/* Removed Reset Calculator button as Start New Itinerary is in header */}
         <Button onClick={handlePrint} className="w-full sm:w-auto bg-accent hover:bg-accent/90 text-accent-foreground">
           <Printer className="mr-2 h-4 w-4" /> Print Itinerary
         </Button>
