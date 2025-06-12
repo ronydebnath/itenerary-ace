@@ -6,7 +6,9 @@ import type { MiscItem as MiscItemType, Traveler, CurrencyCode, ServicePriceItem
 import { BaseItemForm, FormField } from './base-item-form';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useServicePrices } from '@/hooks/useServicePrices';
+// Removed: import { useServicePrices } from '@/hooks/useServicePrices';
+import { AlertCircle } from 'lucide-react';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 interface MiscItemFormProps {
   item: MiscItemType;
@@ -14,30 +16,48 @@ interface MiscItemFormProps {
   currency: CurrencyCode;
   onUpdate: (item: MiscItemType) => void;
   onDelete: () => void;
+  allServicePrices: ServicePriceItem[]; // Added prop
 }
 
-export function MiscItemForm({ item, travelers, currency, onUpdate, onDelete }: MiscItemFormProps) {
-  const { getServicePrices, getServicePriceById, isLoading: isLoadingServices } = useServicePrices();
+export function MiscItemForm({ item, travelers, currency, onUpdate, onDelete, allServicePrices }: MiscItemFormProps) {
+  // const { getServicePrices, getServicePriceById, isLoading: isLoadingServices } = useServicePrices(); // Removed
   const [miscServices, setMiscServices] = React.useState<ServicePriceItem[]>([]);
 
-  React.useEffect(() => {
-    if (!isLoadingServices) {
-      const allCategoryServices = getServicePrices('misc').filter(s => s.currency === currency);
-      let filteredServices = allCategoryServices;
-      if (item.province) {
-        filteredServices = allCategoryServices.filter(s => s.province === item.province || !s.province);
-      }
-      setMiscServices(filteredServices);
+  const getServicePriceById = React.useCallback((id: string) => {
+    return allServicePrices.find(sp => sp.id === id);
+  }, [allServicePrices]);
+  
+  const selectedService = React.useMemo(() => {
+    if (item.selectedServicePriceId) {
+      return getServicePriceById(item.selectedServicePriceId);
     }
-  }, [isLoadingServices, getServicePrices, currency, item.province]);
+    return undefined;
+  }, [item.selectedServicePriceId, getServicePriceById]);
+
+  React.useEffect(() => {
+    const allCategoryServices = allServicePrices.filter(s => s.category === 'misc' && s.currency === currency);
+    let filteredServices = allCategoryServices;
+    if (item.province) {
+      filteredServices = allCategoryServices.filter(s => s.province === item.province || !s.province);
+    }
+    setMiscServices(filteredServices);
+  }, [allServicePrices, currency, item.province]);
 
   const handleInputChange = (field: keyof MiscItemType, value: any) => {
-    onUpdate({ ...item, [field]: value, selectedServicePriceId: undefined });
+    onUpdate({ 
+      ...item, 
+      [field]: value, 
+      selectedServicePriceId: field === 'costAssignment' ? item.selectedServicePriceId : undefined 
+    });
   };
 
   const handleNumericInputChange = (field: keyof MiscItemType, value: string) => {
     const numValue = value === '' ? undefined : parseFloat(value);
-    onUpdate({ ...item, [field]: numValue, selectedServicePriceId: undefined });
+    onUpdate({ 
+      ...item, 
+      [field]: numValue, 
+      selectedServicePriceId: undefined 
+    });
   };
 
   const handlePredefinedServiceSelect = (selectedValue: string) => {
@@ -48,20 +68,26 @@ export function MiscItemForm({ item, travelers, currency, onUpdate, onDelete }: 
         unitCost: 0,
       });
     } else {
-      const selectedService = getServicePriceById(selectedValue);
-      if (selectedService) {
+      const service = getServicePriceById(selectedValue);
+      if (service) {
         onUpdate({
           ...item,
-          name: item.name === `New misc` || !item.name || item.selectedServicePriceId ? selectedService.name : item.name,
-          unitCost: selectedService.price1,
-          selectedServicePriceId: selectedService.id,
-          // Do not override item.province
+          name: item.name === `New misc` || !item.name || !item.selectedServicePriceId ? service.name : item.name,
+          unitCost: service.price1 ?? 0,
+          selectedServicePriceId: service.id,
+        });
+      } else {
+        onUpdate({
+          ...item,
+          selectedServicePriceId: selectedValue,
+          unitCost: 0,
         });
       }
     }
   };
   
-  const selectedServiceName = item.selectedServicePriceId ? getServicePriceById(item.selectedServicePriceId)?.name : null;
+  const serviceDefinitionNotFound = item.selectedServicePriceId && !selectedService;
+  const isPriceReadOnly = !!item.selectedServicePriceId && !!selectedService;
 
   return (
     <BaseItemForm item={item} travelers={travelers} currency={currency} onUpdate={onUpdate} onDelete={onDelete} itemTypeLabel="Miscellaneous Item">
@@ -71,6 +97,7 @@ export function MiscItemForm({ item, travelers, currency, onUpdate, onDelete }: 
             <Select
               value={item.selectedServicePriceId || "none"}
               onValueChange={handlePredefinedServiceSelect}
+              // disabled={isLoadingServices} // isLoadingServices not available
             >
               <SelectTrigger>
                 <SelectValue placeholder="Choose a predefined item..." />
@@ -85,9 +112,20 @@ export function MiscItemForm({ item, travelers, currency, onUpdate, onDelete }: 
               </SelectContent>
             </Select>
           </FormField>
-          {selectedServiceName && <p className="text-xs text-muted-foreground pt-1">Using: {selectedServiceName}</p>}
+          {selectedService && <p className="text-xs text-muted-foreground pt-1">Using: {selectedService.name}</p>}
         </div>
       )}
+
+      {serviceDefinitionNotFound && (
+        <Alert variant="destructive" className="mt-4">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Service Not Found</AlertTitle>
+          <AlertDescription>
+            The selected miscellaneous item (ID: {item.selectedServicePriceId}) could not be found. It might have been deleted. Please choose another or set a custom price.
+          </AlertDescription>
+        </Alert>
+      )}
+
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
         <FormField label={`Unit Cost (${currency})`} id={`unitCost-${item.id}`}>
           <Input
@@ -97,6 +135,8 @@ export function MiscItemForm({ item, travelers, currency, onUpdate, onDelete }: 
             onChange={(e) => handleNumericInputChange('unitCost', e.target.value)}
             min="0"
             placeholder="0.00"
+            readOnly={isPriceReadOnly}
+            className={isPriceReadOnly ? "bg-muted/50 cursor-not-allowed" : ""}
           />
         </FormField>
         <FormField label="Quantity" id={`quantity-${item.id}`}>
@@ -125,3 +165,5 @@ export function MiscItemForm({ item, travelers, currency, onUpdate, onDelete }: 
     </BaseItemForm>
   );
 }
+
+    

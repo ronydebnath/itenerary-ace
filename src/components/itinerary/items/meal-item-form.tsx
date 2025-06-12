@@ -6,7 +6,9 @@ import type { MealItem as MealItemType, Traveler, CurrencyCode, ServicePriceItem
 import { BaseItemForm, FormField } from './base-item-form';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useServicePrices } from '@/hooks/useServicePrices';
+// Removed: import { useServicePrices } from '@/hooks/useServicePrices';
+import { AlertCircle } from 'lucide-react';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 interface MealItemFormProps {
   item: MealItemType;
@@ -14,26 +16,40 @@ interface MealItemFormProps {
   currency: CurrencyCode;
   onUpdate: (item: MealItemType) => void;
   onDelete: () => void;
+  allServicePrices: ServicePriceItem[]; // Added prop
 }
 
-export function MealItemForm({ item, travelers, currency, onUpdate, onDelete }: MealItemFormProps) {
-  const { getServicePrices, getServicePriceById, isLoading: isLoadingServices } = useServicePrices();
+export function MealItemForm({ item, travelers, currency, onUpdate, onDelete, allServicePrices }: MealItemFormProps) {
+  // const { getServicePrices, getServicePriceById, isLoading: isLoadingServices } = useServicePrices(); // Removed
   const [mealServices, setMealServices] = React.useState<ServicePriceItem[]>([]);
 
-  React.useEffect(() => {
-    if (!isLoadingServices) {
-      const allCategoryServices = getServicePrices('meal').filter(s => s.currency === currency);
-      let filteredServices = allCategoryServices;
-      if (item.province) {
-        filteredServices = allCategoryServices.filter(s => s.province === item.province || !s.province);
-      }
-      setMealServices(filteredServices);
+  const getServicePriceById = React.useCallback((id: string) => {
+    return allServicePrices.find(sp => sp.id === id);
+  }, [allServicePrices]);
+
+  const selectedService = React.useMemo(() => {
+    if (item.selectedServicePriceId) {
+      return getServicePriceById(item.selectedServicePriceId);
     }
-  }, [isLoadingServices, getServicePrices, currency, item.province]);
+    return undefined;
+  }, [item.selectedServicePriceId, getServicePriceById]);
+
+  React.useEffect(() => {
+    const allCategoryServices = allServicePrices.filter(s => s.category === 'meal' && s.currency === currency);
+    let filteredServices = allCategoryServices;
+    if (item.province) {
+      filteredServices = allCategoryServices.filter(s => s.province === item.province || !s.province);
+    }
+    setMealServices(filteredServices);
+  }, [allServicePrices, currency, item.province]);
 
   const handleNumericInputChange = (field: keyof MealItemType, value: string) => {
     const numValue = value === '' ? undefined : parseFloat(value);
-    onUpdate({ ...item, [field]: numValue, selectedServicePriceId: undefined });
+    onUpdate({ 
+      ...item, 
+      [field]: numValue, 
+      selectedServicePriceId: (field === 'adultMealPrice' || field === 'childMealPrice' || field === 'totalMeals') ? undefined : item.selectedServicePriceId 
+    });
   };
 
   const handlePredefinedServiceSelect = (selectedValue: string) => {
@@ -45,21 +61,29 @@ export function MealItemForm({ item, travelers, currency, onUpdate, onDelete }: 
         childMealPrice: undefined,
       });
     } else {
-      const selectedService = getServicePriceById(selectedValue);
-      if (selectedService) {
+      const service = getServicePriceById(selectedValue);
+      if (service) {
         onUpdate({
           ...item,
-          name: item.name === `New meal` || !item.name || item.selectedServicePriceId ? selectedService.name : item.name,
-          adultMealPrice: selectedService.price1,
-          childMealPrice: selectedService.price2,
-          selectedServicePriceId: selectedService.id,
-          // Do not override item.province
+          name: item.name === `New meal` || !item.name || !item.selectedServicePriceId ? service.name : item.name,
+          adultMealPrice: service.price1 ?? 0,
+          childMealPrice: service.price2 ?? undefined,
+          selectedServicePriceId: service.id,
+        });
+      } else {
+         onUpdate({ 
+          ...item,
+          selectedServicePriceId: selectedValue,
+          adultMealPrice: 0,
+          childMealPrice: undefined,
         });
       }
     }
   };
   
-  const selectedServiceName = item.selectedServicePriceId ? getServicePriceById(item.selectedServicePriceId)?.name : null;
+  const serviceDefinitionNotFound = item.selectedServicePriceId && !selectedService;
+  const isPriceReadOnly = !!item.selectedServicePriceId && !!selectedService;
+
 
   return (
     <BaseItemForm item={item} travelers={travelers} currency={currency} onUpdate={onUpdate} onDelete={onDelete} itemTypeLabel="Meal">
@@ -69,6 +93,7 @@ export function MealItemForm({ item, travelers, currency, onUpdate, onDelete }: 
             <Select
               value={item.selectedServicePriceId || "none"}
               onValueChange={handlePredefinedServiceSelect}
+              // disabled={isLoadingServices} // isLoadingServices not available
             >
               <SelectTrigger>
                 <SelectValue placeholder="Choose a predefined meal..." />
@@ -84,9 +109,20 @@ export function MealItemForm({ item, travelers, currency, onUpdate, onDelete }: 
               </SelectContent>
             </Select>
           </FormField>
-          {selectedServiceName && <p className="text-xs text-muted-foreground pt-1">Using: {selectedServiceName}</p>}
+          {selectedService && <p className="text-xs text-muted-foreground pt-1">Using: {selectedService.name}</p>}
         </div>
       )}
+
+      {serviceDefinitionNotFound && (
+        <Alert variant="destructive" className="mt-4">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Service Not Found</AlertTitle>
+          <AlertDescription>
+            The selected meal service (ID: {item.selectedServicePriceId}) could not be found. It might have been deleted. Please choose another or set a custom price.
+          </AlertDescription>
+        </Alert>
+      )}
+
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
         <FormField label={`Adult Meal Price (${currency})`} id={`adultMealPrice-${item.id}`}>
           <Input
@@ -96,6 +132,8 @@ export function MealItemForm({ item, travelers, currency, onUpdate, onDelete }: 
             onChange={(e) => handleNumericInputChange('adultMealPrice', e.target.value)}
             min="0"
             placeholder="0.00"
+            readOnly={isPriceReadOnly}
+            className={isPriceReadOnly ? "bg-muted/50 cursor-not-allowed" : ""}
           />
         </FormField>
         <FormField label={`Child Meal Price (${currency}) (Optional)`} id={`childMealPrice-${item.id}`}>
@@ -106,6 +144,8 @@ export function MealItemForm({ item, travelers, currency, onUpdate, onDelete }: 
             onChange={(e) => handleNumericInputChange('childMealPrice', e.target.value)}
             min="0"
             placeholder="Defaults to adult price"
+            readOnly={isPriceReadOnly}
+            className={isPriceReadOnly ? "bg-muted/50 cursor-not-allowed" : ""}
           />
         </FormField>
         <FormField label="# of Meals (Units)" id={`totalMeals-${item.id}`}>
@@ -122,3 +162,5 @@ export function MealItemForm({ item, travelers, currency, onUpdate, onDelete }: 
     </BaseItemForm>
   );
 }
+
+    

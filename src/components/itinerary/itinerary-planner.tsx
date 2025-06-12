@@ -209,6 +209,7 @@ export function ItineraryPlanner({ tripData, onReset, onUpdateTripData }: Itiner
                     onDeleteItem={handleDeleteItem}
                     tripSettings={tripData.settings}
                     allHotelDefinitions={allHotelDefinitions} 
+                    allServicePrices={allServicePrices} // Pass allServicePrices
                   />
                 </div>
               ))}
@@ -289,4 +290,6 @@ export function ItineraryPlanner({ tripData, onReset, onUpdateTripData }: Itiner
     </div>
   );
 }
+    
 
+    

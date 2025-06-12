@@ -7,10 +7,11 @@ import { BaseItemForm, FormField } from './base-item-form';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useServicePrices } from '@/hooks/useServicePrices'; 
+// Removed: import { useServicePrices } from '@/hooks/useServicePrices'; 
 import { Badge } from '@/components/ui/badge';
 import { format, parseISO, isValid } from 'date-fns';
-import { CalendarDays, Info, Tag } from 'lucide-react';
+import { CalendarDays, Info, Tag, AlertCircle } from 'lucide-react';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 interface ActivityItemFormProps {
   item: ActivityItemType;
@@ -20,59 +21,56 @@ interface ActivityItemFormProps {
   tripSettings: TripSettings;
   onUpdate: (item: ActivityItemType) => void;
   onDelete: () => void;
+  allServicePrices: ServicePriceItem[]; // Added prop
 }
 
 const WEEKDAYS_MAP = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-export function ActivityItemForm({ item, travelers, currency, dayNumber, tripSettings, onUpdate, onDelete }: ActivityItemFormProps) {
-  const { getServicePrices, getServicePriceById, isLoading: isLoadingServices } = useServicePrices();
+export function ActivityItemForm({ item, travelers, currency, dayNumber, tripSettings, onUpdate, onDelete, allServicePrices }: ActivityItemFormProps) {
+  // const { getServicePrices, getServicePriceById, isLoading: isLoadingServices } = useServicePrices(); // Removed
   const [activityServices, setActivityServices] = React.useState<ServicePriceItem[]>([]);
-  const [selectedActivityService, setSelectedActivityService] = React.useState<ServicePriceItem | undefined>(undefined);
-  const [selectedPackage, setSelectedPackage] = React.useState<ActivityPackageDefinition | undefined>(undefined);
+  
+  const getServicePriceById = React.useCallback((id: string) => {
+    return allServicePrices.find(sp => sp.id === id);
+  }, [allServicePrices]);
+
+  const selectedActivityService = React.useMemo(() => {
+    if (item.selectedServicePriceId) {
+      return getServicePriceById(item.selectedServicePriceId);
+    }
+    return undefined;
+  }, [item.selectedServicePriceId, getServicePriceById]);
+
+  const selectedPackage = React.useMemo(() => {
+    if (selectedActivityService && item.selectedPackageId) {
+      return selectedActivityService.activityPackages?.find(p => p.id === item.selectedPackageId);
+    }
+    return undefined;
+  }, [selectedActivityService, item.selectedPackageId]);
   
   React.useEffect(() => {
-    if (!isLoadingServices) {
-      const allCategoryServices = getServicePrices('activity').filter(s => s.currency === currency);
-      let filteredServices = allCategoryServices;
-      if (item.province) {
-        filteredServices = allCategoryServices.filter(s => s.province === item.province || !s.province);
-      }
-      setActivityServices(filteredServices);
+    const allCategoryServices = allServicePrices.filter(s => s.category === 'activity' && s.currency === currency);
+    let filteredServices = allCategoryServices;
+    if (item.province) {
+      filteredServices = allCategoryServices.filter(s => s.province === item.province || !s.province);
     }
-  }, [isLoadingServices, getServicePrices, currency, item.province]);
-
-  React.useEffect(() => {
-    if (item.selectedServicePriceId) {
-      const service = getServicePriceById(item.selectedServicePriceId);
-      setSelectedActivityService(service);
-      if (service && item.selectedPackageId) {
-        const pkg = service.activityPackages?.find(p => p.id === item.selectedPackageId);
-        setSelectedPackage(pkg);
-      } else {
-        setSelectedPackage(undefined);
-      }
-    } else {
-      setSelectedActivityService(undefined);
-      setSelectedPackage(undefined);
-    }
-  }, [item.selectedServicePriceId, item.selectedPackageId, getServicePriceById]);
-
+    setActivityServices(filteredServices);
+  }, [allServicePrices, currency, item.province]);
 
   const handleNumericInputChange = (field: keyof ActivityItemType, value: string) => {
     const numValue = value === '' ? undefined : parseFloat(value);
-    // If manual price input, clear selected package and service
     onUpdate({ 
         ...item, 
         [field]: numValue, 
-        selectedServicePriceId: undefined, 
-        selectedPackageId: undefined 
+        selectedServicePriceId: field === 'adultPrice' || field === 'childPrice' ? undefined : item.selectedServicePriceId, 
+        selectedPackageId: field === 'adultPrice' || field === 'childPrice' ? undefined : item.selectedPackageId,
     });
   };
 
   const handleEndDayChange = (value: string) => {
     const numValue = value === '' ? undefined : parseInt(value, 10);
     if (numValue !== undefined && (numValue < dayNumber || numValue > tripSettings.numDays)) {
-      // Invalid input
+      // Potentially add validation message here if needed, or clamp
     }
     onUpdate({ ...item, endDay: numValue });
   };
@@ -94,22 +92,31 @@ export function ActivityItemForm({ item, travelers, currency, dayNumber, tripSet
           ...item,
           name: item.name === `New activity` || !item.name || !item.selectedServicePriceId ? service.name : item.name,
           selectedServicePriceId: service.id,
-          selectedPackageId: defaultPackage?.id, // Auto-select first package or none
+          selectedPackageId: defaultPackage?.id,
           adultPrice: defaultPackage?.price1 ?? service.price1 ?? 0,
           childPrice: defaultPackage?.price2 ?? service.price2 ?? undefined,
+        });
+      } else {
+        onUpdate({
+          ...item,
+          selectedServicePriceId: selectedValue, 
+          selectedPackageId: undefined,
+          adultPrice: 0,
+          childPrice: undefined,
         });
       }
     }
   };
 
   const handlePackageSelect = (packageId: string) => {
-    if (packageId === "none" || !selectedActivityService?.activityPackages) {
+    if (!selectedActivityService) return; 
+
+    if (packageId === "none" || !selectedActivityService.activityPackages) {
       onUpdate({
         ...item,
         selectedPackageId: undefined,
-        // If a service is selected but "None" package, use service's base price or revert to 0 if no base price
-        adultPrice: selectedActivityService?.price1 ?? 0,
-        childPrice: selectedActivityService?.price2 ?? undefined,
+        adultPrice: selectedActivityService.price1 ?? 0,
+        childPrice: selectedActivityService.price2 ?? undefined,
       });
     } else {
       const pkg = selectedActivityService.activityPackages.find(p => p.id === packageId);
@@ -127,7 +134,8 @@ export function ActivityItemForm({ item, travelers, currency, dayNumber, tripSet
   const calculatedEndDay = item.endDay || dayNumber;
   const duration = Math.max(1, calculatedEndDay - dayNumber + 1);
 
-  const isPriceReadOnly = !!item.selectedPackageId && !!selectedActivityService?.activityPackages?.length;
+  const isPriceReadOnly = !!item.selectedPackageId && !!selectedActivityService?.activityPackages?.length && !!selectedPackage;
+  const serviceDefinitionNotFound = item.selectedServicePriceId && !selectedActivityService;
 
   return (
     <BaseItemForm item={item} travelers={travelers} currency={currency} onUpdate={onUpdate} onDelete={onDelete} itemTypeLabel="Activity">
@@ -136,7 +144,7 @@ export function ActivityItemForm({ item, travelers, currency, dayNumber, tripSet
           <Select
             value={item.selectedServicePriceId || "none"}
             onValueChange={handlePredefinedServiceSelect}
-            disabled={isLoadingServices}
+            // disabled={isLoadingServices} // isLoadingServices not available here
           >
             <SelectTrigger>
               <SelectValue placeholder="Choose an activity or set custom price..." />
@@ -178,7 +186,17 @@ export function ActivityItemForm({ item, travelers, currency, dayNumber, tripSet
         )}
       </div>
       
-      {selectedPackage && (
+      {serviceDefinitionNotFound && (
+        <Alert variant="destructive" className="mt-4">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Service Not Found</AlertTitle>
+          <AlertDescription>
+            The selected activity (ID: {item.selectedServicePriceId}) could not be found. It might have been deleted. Please choose another or set a custom price.
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {selectedPackage && selectedActivityService && ( 
         <div className="mt-3 p-3 border rounded-md bg-muted/30 space-y-2 text-sm">
           <div className="flex items-center font-medium text-primary">
             <Tag className="h-4 w-4 mr-2"/> Package: {selectedPackage.name}
@@ -207,7 +225,6 @@ export function ActivityItemForm({ item, travelers, currency, dayNumber, tripSet
           )}
         </div>
       )}
-
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4">
         <FormField label={`Adult Price (${currency})`} id={`adultPrice-${item.id}`}>
@@ -264,5 +281,6 @@ export function ActivityItemForm({ item, travelers, currency, dayNumber, tripSet
     </BaseItemForm>
   );
 }
+    
 
     

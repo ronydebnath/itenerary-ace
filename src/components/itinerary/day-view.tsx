@@ -2,7 +2,7 @@
 "use client";
 
 import * as React from 'react';
-import type { ItineraryItem, Traveler, CurrencyCode, TripSettings, HotelDefinition } from '@/types/itinerary'; // Added HotelDefinition
+import type { ItineraryItem, Traveler, CurrencyCode, TripSettings, HotelDefinition, ServicePriceItem } from '@/types/itinerary'; // Added HotelDefinition, ServicePriceItem
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { PlusCircle, Hotel, Utensils, Car, Ticket, ShoppingBag, AlertTriangle } from 'lucide-react';
@@ -29,6 +29,7 @@ interface DayViewProps {
   onUpdateItem: (day: number, updatedItem: ItineraryItem) => void;
   onDeleteItem: (day: number, itemId: string) => void;
   allHotelDefinitions: HotelDefinition[]; 
+  allServicePrices: ServicePriceItem[]; // Add allServicePrices prop
 }
 
 const ITEM_CONFIG = {
@@ -42,7 +43,7 @@ const ITEM_CONFIG = {
 
 export function DayView({ 
   dayNumber, items, travelers, currency, tripSettings, 
-  onAddItem, onUpdateItem, onDeleteItem, allHotelDefinitions 
+  onAddItem, onUpdateItem, onDeleteItem, allHotelDefinitions, allServicePrices
 }: DayViewProps) {
   
   const renderItemForm = (item: ItineraryItem) => {
@@ -51,35 +52,36 @@ export function DayView({
     
     const specificItem = item as any; 
 
-    // Special handling for HotelItemForm to pass allHotelDefinitions
+    const commonProps = {
+      key: item.id,
+      item: specificItem,
+      travelers: travelers,
+      currency: currency,
+      dayNumber: dayNumber,
+      tripSettings: tripSettings,
+      onUpdate: (updatedItem: ItineraryItem) => onUpdateItem(dayNumber, updatedItem),
+      onDelete: () => onDeleteItem(dayNumber, item.id),
+    };
+
     if (item.type === 'hotel') {
       return (
         <HotelItemForm
-          key={item.id}
-          item={specificItem}
-          travelers={travelers}
-          currency={currency}
-          dayNumber={dayNumber}
-          tripSettings={tripSettings}
-          onUpdate={(updatedItem) => onUpdateItem(dayNumber, updatedItem)}
-          onDelete={() => onDeleteItem(dayNumber, item.id)}
+          {...commonProps}
           allHotelDefinitions={allHotelDefinitions} 
         />
       );
     }
+    // For other item types, they use the useServicePrices hook internally,
+    // so allServicePrices doesn't need to be explicitly passed unless we refactor them too.
+    // However, if we *do* refactor them to take allServicePrices as a prop for consistency
+    // and to avoid multiple hook calls, we would pass it here:
+    //
+    // if (item.type === 'transfer' || item.type === 'activity' || item.type === 'meal' || item.type === 'misc') {
+    //   return <ConfigComponent {...commonProps} allServicePrices={allServicePrices} />;
+    // }
 
-    return (
-      <ConfigComponent
-        key={item.id}
-        item={specificItem}
-        travelers={travelers}
-        currency={currency}
-        dayNumber={dayNumber}
-        tripSettings={tripSettings}
-        onUpdate={(updatedItem) => onUpdateItem(dayNumber, updatedItem)}
-        onDelete={() => onDeleteItem(dayNumber, item.id)}
-      />
-    );
+
+    return <ConfigComponent {...commonProps} />;
   };
 
   return (
@@ -120,3 +122,5 @@ export function DayView({
     </Card>
   );
 }
+
+    
