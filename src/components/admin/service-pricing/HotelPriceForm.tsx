@@ -4,7 +4,7 @@
 import * as React from 'react';
 import { useFormContext, useFieldArray, Controller } from "react-hook-form";
 import {
-  FormField as ShadcnFormField, // Renamed to avoid conflict
+  FormField as ShadcnFormField,
   FormItem,
   FormLabel,
   FormControl,
@@ -16,36 +16,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Card } from "@/components/ui/card"; // Using Card for grouping
+import { Card } from "@/components/ui/card";
 import { PlusCircle, XIcon } from 'lucide-react';
 import { generateGUID } from '@/lib/utils';
 import { addDays, isValid, parseISO } from 'date-fns';
 import type { ServicePriceFormValues } from './ServicePriceFormRouter';
 import type { CurrencyCode } from '@/types/itinerary';
-
-interface HotelPriceFormProps {
-  form: ReturnType<typeof useFormContext<ServicePriceFormValues>>;
-}
-
-// Helper function to create default room type structure for the form
-function createDefaultRoomTypeForForm(index: number) {
-  const today = new Date();
-  return {
-    id: generateGUID(),
-    name: `Room Type ${index + 1}`,
-    extraBedAllowed: false,
-    notes: '',
-    characteristics: [], // Assuming characteristics are not managed in this simplified UI for now
-    seasonalPrices: [{
-      id: generateGUID(),
-      seasonName: 'Default Season',
-      startDate: today,
-      endDate: addDays(today, 30),
-      rate: 0,
-      extraBedRate: undefined,
-    }]
-  };
-}
+import { Label } from "@/components/ui/label"; // Ensure this import is present
 
 // Helper function to create default seasonal price for the form
 function createDefaultSeasonalPriceForForm() {
@@ -60,6 +37,21 @@ function createDefaultSeasonalPriceForForm() {
   };
 }
 
+// Helper function to create default room type structure for the form
+function createDefaultRoomTypeForForm(index: number) {
+  return {
+    id: generateGUID(),
+    name: `Room Type ${index + 1}`,
+    extraBedAllowed: false,
+    notes: '',
+    characteristics: [],
+    seasonalPrices: [createDefaultSeasonalPriceForForm()]
+  };
+}
+
+interface HotelPriceFormProps {
+  form: ReturnType<typeof useFormContext<ServicePriceFormValues>>;
+}
 
 export function HotelPriceForm({ form }: HotelPriceFormProps) {
   const hotelNameForLegend = form.watch('name');
@@ -72,18 +64,14 @@ export function HotelPriceForm({ form }: HotelPriceFormProps) {
     keyName: "roomTypeFieldId"
   });
   
-  // Initialize with one room type if hotelDetails exists but roomTypes is empty
   React.useEffect(() => {
     const hotelDetails = form.getValues('hotelDetails');
     if (hotelDetails && (!hotelDetails.roomTypes || hotelDetails.roomTypes.length === 0)) {
-      // This ensures that if hotelDetails exists (e.g., from initial prefill or category switch)
-      // but is missing roomTypes, we add a default one.
-      // This is important for the form to have a valid structure for react-hook-form to manage.
       const defaultRoom = createDefaultRoomTypeForForm(0);
       form.setValue('hotelDetails.roomTypes', [defaultRoom], { shouldValidate: true, shouldDirty: true });
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [form.getValues('hotelDetails')?.id]); // Re-run if hotelDetails ID changes (e.g., when category switches to hotel)
+  }, [form.getValues('hotelDetails')?.id]);
 
 
   return (
@@ -178,7 +166,6 @@ function RoomTypeCard({ form, roomIndex, currency, removeRoomType, canRemoveRoom
                   checked={field.value}
                   onCheckedChange={(checked) => {
                     field.onChange(checked);
-                    // If unchecking, clear extra bed rates for all seasons of this room type
                     if (!checked) {
                       const seasons = form.getValues(`hotelDetails.roomTypes.${roomIndex}.seasonalPrices`);
                       seasons.forEach((_, seasonIdx) => {
@@ -346,5 +333,3 @@ function SeasonalRatesTableForRoomType({ form, roomIndex, currency }: SeasonalRa
     </div>
   );
 }
-
-    
