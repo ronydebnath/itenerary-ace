@@ -196,7 +196,7 @@ export function ItineraryPlanner({ tripData, onReset, onUpdateTripData }: Itiner
                 <p className="text-muted-foreground">Loading itinerary data and service definitions...</p>
             </div>
           ) : (
-            <ScrollArea className="h-auto lg:max-h-[calc(100vh-280px)] pr-2">
+            <ScrollArea className="h-auto lg:h-[calc(100vh-280px)] pr-2">
               {Array.from({ length: tripData.settings.numDays }, (_, i) => i + 1).map(dayNum => (
                 <div key={dayNum} style={{ display: dayNum === currentDayView ? 'block' : 'none' }}>
                   <DayView
@@ -209,7 +209,7 @@ export function ItineraryPlanner({ tripData, onReset, onUpdateTripData }: Itiner
                     onDeleteItem={handleDeleteItem}
                     tripSettings={tripData.settings}
                     allHotelDefinitions={allHotelDefinitions} 
-                    allServicePrices={allServicePrices} // Pass allServicePrices
+                    allServicePrices={allServicePrices}
                   />
                 </div>
               ))}
