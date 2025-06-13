@@ -5,7 +5,7 @@ export interface Traveler {
   type: 'adult' | 'child';
 }
 
-export const CURRENCIES = ['USD', 'EUR', 'GBP', 'THB', 'JPY', 'MYR'] as const; // Added MYR
+export const CURRENCIES = ['USD', 'EUR', 'GBP', 'THB', 'JPY', 'MYR', 'SGD', 'VND'] as const;
 export type CurrencyCode = typeof CURRENCIES[number];
 
 export interface PaxDetails {
@@ -41,7 +41,7 @@ export interface BaseItem {
   aiSuggested?: boolean;
   originalCost?: number;
   countryId?: string; // ID of the country for this item
-  countryName?: string; // Name of the country for this item
+  countryName?: string; // Name of the country for this item (denormalized for convenience)
   province?: string; // Province name
 }
 
@@ -58,30 +58,30 @@ export interface TransferItem extends BaseItem {
   mode: 'ticket' | 'vehicle';
   adultTicketPrice?: number;
   childTicketPrice?: number;
-  vehicleType?: VehicleType;
-  costPerVehicle?: number;
-  vehicles?: number;
-  selectedVehicleOptionId?: string;
+  vehicleType?: VehicleType; // For vehicle mode if not using detailed vehicleOptions from service
+  costPerVehicle?: number;   // For vehicle mode if not using detailed vehicleOptions from service
+  vehicles?: number;         // For vehicle mode
+  selectedVehicleOptionId?: string; // Refers to VehicleOption.id within a ServicePriceItem
 }
 
 export interface ActivityPackageDefinition {
   id: string;
   name: string;
-  price1: number;
-  price2?: number;
+  price1: number; // Typically adult price
+  price2?: number; // Typically child price
   notes?: string;
-  validityStartDate?: string;
-  validityEndDate?: string;
-  closedWeekdays?: number[];
-  specificClosedDates?: string[];
+  validityStartDate?: string; // YYYY-MM-DD
+  validityEndDate?: string;   // YYYY-MM-DD
+  closedWeekdays?: number[]; // 0 (Sun) to 6 (Sat)
+  specificClosedDates?: string[]; // Array of YYYY-MM-DD
 }
 
 export interface ActivityItem extends BaseItem {
   type: 'activity';
-  adultPrice: number;
-  childPrice?: number;
-  endDay?: number;
-  selectedPackageId?: string;
+  adultPrice: number;    // Actual price used for this item instance
+  childPrice?: number;   // Actual price used for this item instance
+  endDay?: number;       // For multi-day activities
+  selectedPackageId?: string; // Refers to ActivityPackageDefinition.id within a ServicePriceItem
 }
 
 export interface HotelCharacteristic {
@@ -93,9 +93,9 @@ export interface HotelCharacteristic {
 export interface RoomTypeSeasonalPrice {
   id: string;
   seasonName?: string;
-  startDate: string;
-  endDate: string;
-  rate: number;
+  startDate: string; // YYYY-MM-DD
+  endDate: string;   // YYYY-MM-DD
+  rate: number;      // Nightly rate for the room
   extraBedRate?: number;
 }
 
@@ -106,9 +106,10 @@ export interface HotelRoomTypeDefinition {
   notes?: string;
   seasonalPrices: RoomTypeSeasonalPrice[];
   characteristics: HotelCharacteristic[];
-  price1?: number; // For simpler old data migration if needed, but ideally not used
+  price1?: number; // Fallback for simple data, but seasonalPrices is preferred
 }
 
+// Represents the master definition of a hotel, stored globally
 export interface HotelDefinition {
   id: string;
   name: string;
@@ -117,33 +118,36 @@ export interface HotelDefinition {
   roomTypes: HotelRoomTypeDefinition[];
 }
 
+// Represents a specific room configuration selected for an itinerary item
 export interface SelectedHotelRoomConfiguration {
-  id: string;
-  roomTypeDefinitionId: string;
-  roomTypeNameCache: string;
+  id: string; // Unique ID for this specific booking instance of a room type
+  roomTypeDefinitionId: string; // Refers to HotelRoomTypeDefinition.id
+  roomTypeNameCache: string; // Denormalized for display convenience
   numRooms: number;
-  assignedTravelerIds: string[];
+  assignedTravelerIds: string[]; // IDs of travelers assigned to this room block
+  // Cost details are calculated, not stored here
 }
 
 export interface HotelItem extends BaseItem {
   type: 'hotel';
   checkoutDay: number;
   hotelDefinitionId: string; // Refers to HotelDefinition.id
-  selectedRooms: SelectedHotelRoomConfiguration[];
+  selectedRooms: SelectedHotelRoomConfiguration[]; // Array of specific room bookings
+  // childrenSharingBed: boolean; // This logic might be too complex for item level; handle via room assignment/pricing
 }
 
 export interface MealItem extends BaseItem {
   type: 'meal';
   adultMealPrice: number;
   childMealPrice?: number;
-  totalMeals: number;
+  totalMeals: number; // Number of this meal (e.g., 2 for 2 dinners)
 }
 
 export interface MiscItem extends BaseItem {
   type: 'misc';
   unitCost: number;
   quantity: number;
-  costAssignment: 'perPerson' | 'total';
+  costAssignment: 'perPerson' | 'total'; // How the cost is applied
 }
 
 export type ItineraryItemType = 'transfer' | 'activity' | 'hotel' | 'meal' | 'misc';
@@ -181,21 +185,21 @@ export interface CostSummary {
 
 export interface DetailedSummaryItem {
   id: string;
-  type: string;
+  type: string; // e.g., "Hotels", "Activities"
   day?: number;
   name: string;
   note?: string;
-  countryName?: string;
-  province?: string;
+  countryName?: string; // For display in summary
+  province?: string;  // For display in summary
   configurationDetails: string;
   excludedTravelers: string;
   adultCost: number;
   childCost: number;
   totalCost: number;
-  occupancyDetails?: HotelOccupancyDetail[];
+  occupancyDetails?: HotelOccupancyDetail[]; // Specific to hotels
 }
 
-export interface HotelOccupancyDetail {
+export interface HotelOccupancyDetail { // For cost summary display
   roomTypeName: string;
   numRooms: number;
   nights: number;
@@ -219,27 +223,38 @@ export interface SurchargePeriod {
   endDate: string;   // YYYY-MM-DD
   surchargeAmount: number;
 }
-
+// Represents a master service price definition, stored globally
 export interface ServicePriceItem {
   id: string;
   name: string;
-  countryId?: string;
-  province?: string; // Name of the province
+  countryId?: string; // Country this service is primarily associated with
+  province?: string;  // Province this service is primarily associated with
   category: ItineraryItemType;
-  price1?: number;
-  price2?: number;
-  subCategory?: string;
+  
+  // For simple pricing (ticket transfers, meals, misc, or fallback for activities)
+  price1?: number;       // e.g., Adult price, Unit cost
+  price2?: number;       // e.g., Child price
+  subCategory?: string;  // e.g., Meal type, Misc item type, or "ticket" for transfers
+
+  // Transfer specific
   transferMode?: 'ticket' | 'vehicle';
-  vehicleOptions?: VehicleOption[];
-  maxPassengers?: number;
+  vehicleOptions?: VehicleOption[]; // For vehicle-based transfers
+  maxPassengers?: number; // General max pax if not using vehicleOptions
+
+  // Currency for this service's price(s)
   currency: CurrencyCode;
-  unitDescription?: string;
+  unitDescription?: string; // e.g., "per person", "per night", "per vehicle"
   notes?: string;
-  hotelDetails?: HotelDefinition;
-  activityPackages?: ActivityPackageDefinition[];
-  surchargePeriods?: SurchargePeriod[];
-  selectedServicePriceId?: string; // Used in forms, not directly stored for final service definition
+
+  // Complex pricing structures
+  hotelDetails?: HotelDefinition; // If category is 'hotel', this links to full hotel def
+  activityPackages?: ActivityPackageDefinition[]; // If category is 'activity'
+  surchargePeriods?: SurchargePeriod[]; // Mainly for vehicle transfers
+
+  // For UI state in forms, not part of the core definition itself
+  selectedServicePriceId?: string; 
 }
+
 
 export interface CountryItem {
   id: string;

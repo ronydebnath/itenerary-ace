@@ -6,7 +6,31 @@ import { generateGUID } from '@/lib/utils';
 
 const COUNTRIES_STORAGE_KEY = 'itineraryAceCountries';
 
-// DEFAULT_COUNTRIES_INFO has been removed
+const DEFAULT_COUNTRY_DATA: Omit<CountryItem, 'id'>[] = [
+  { name: "Thailand", defaultCurrency: "THB" },
+  { name: "Malaysia", defaultCurrency: "MYR" },
+  { name: "Singapore", defaultCurrency: "SGD" },
+  { name: "Vietnam", defaultCurrency: "VND" },
+];
+
+// Fixed IDs for default countries for consistent demo data generation
+export const DEFAULT_THAILAND_ID = "f47ac10b-58cc-4372-a567-0e02b2c3d479";
+export const DEFAULT_MALAYSIA_ID = "986a76d0-9490-4e0f-806a-1a3e9728a708";
+export const DEFAULT_SINGAPORE_ID = "a1b2c3d4-e5f6-7890-1234-567890abcdef";
+export const DEFAULT_VIETNAM_ID = "b2c3d4e5-f6a7-8901-2345-67890abcdeff";
+
+
+const assignFixedIds = (data: Omit<CountryItem, 'id'>[]): CountryItem[] => {
+  return data.map(country => {
+    let id = generateGUID();
+    if (country.name === "Thailand") id = DEFAULT_THAILAND_ID;
+    else if (country.name === "Malaysia") id = DEFAULT_MALAYSIA_ID;
+    else if (country.name === "Singapore") id = DEFAULT_SINGAPORE_ID;
+    else if (country.name === "Vietnam") id = DEFAULT_VIETNAM_ID;
+    return { ...country, id };
+  });
+};
+
 
 export function useCountries() {
   const [countries, setCountries] = React.useState<CountryItem[]>([]);
@@ -23,15 +47,33 @@ export function useCountries() {
         try {
           countriesToSet = JSON.parse(storedCountries);
         } catch (parseError) {
-          console.error("Error parsing countries from localStorage, starting fresh:", parseError);
-          localStorage.removeItem(COUNTRIES_STORAGE_KEY); // Clear corrupted data
+          console.warn("Error parsing countries from localStorage, seeding defaults:", parseError);
+          localStorage.removeItem(COUNTRIES_STORAGE_KEY);
+          countriesToSet = assignFixedIds(DEFAULT_COUNTRY_DATA);
+          localStorage.setItem(COUNTRIES_STORAGE_KEY, JSON.stringify(countriesToSet));
         }
+      } else {
+        countriesToSet = assignFixedIds(DEFAULT_COUNTRY_DATA);
+        localStorage.setItem(COUNTRIES_STORAGE_KEY, JSON.stringify(countriesToSet));
       }
       
-      // No longer seeding default countries if localStorage is empty.
-      // It will just start with an empty array.
-      if (!Array.isArray(countriesToSet)) {
-          countriesToSet = [];
+      if (!Array.isArray(countriesToSet) || countriesToSet.length === 0) {
+          console.warn("Countries list is invalid or empty after load, attempting to re-seed.");
+          countriesToSet = assignFixedIds(DEFAULT_COUNTRY_DATA);
+          localStorage.setItem(COUNTRIES_STORAGE_KEY, JSON.stringify(countriesToSet));
+      } else {
+        // Ensure default countries exist with correct IDs if other data is present
+        const defaultCountriesWithFixedIds = assignFixedIds(DEFAULT_COUNTRY_DATA);
+        defaultCountriesWithFixedIds.forEach(dc => {
+          const existing = countriesToSet.find(c => c.name === dc.name);
+          if (existing) {
+            if (existing.id !== dc.id) { // Correct ID if mismatched
+              existing.id = dc.id;
+            }
+          } else { // Add if missing
+            countriesToSet.push(dc);
+          }
+        });
       }
 
       countriesToSet.sort((a, b) => a.name.localeCompare(b.name));
@@ -39,7 +81,7 @@ export function useCountries() {
     } catch (e: any) {
       console.error("Error initializing countries from localStorage:", e);
       setError("Failed to load countries from local storage.");
-      setCountries([]); // Fallback to empty array
+      setCountries([]); 
     }
     setIsLoading(false);
   }, []);

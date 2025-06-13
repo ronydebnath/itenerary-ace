@@ -2,11 +2,34 @@
 import * as React from 'react';
 import type { ProvinceItem, CountryItem } from '@/types/itinerary';
 import { generateGUID } from '@/lib/utils';
-import { useCountries } from './useCountries';
+import { useCountries, DEFAULT_THAILAND_ID, DEFAULT_MALAYSIA_ID, DEFAULT_SINGAPORE_ID, DEFAULT_VIETNAM_ID } from './useCountries';
 
 const PROVINCES_STORAGE_KEY = 'itineraryAceProvinces';
 
-// Default province lists and country IDs have been removed
+const DEFAULT_PROVINCE_DATA: Omit<ProvinceItem, 'id'>[] = [
+  // Thailand
+  { name: "Bangkok", countryId: DEFAULT_THAILAND_ID },
+  { name: "Pattaya", countryId: DEFAULT_THAILAND_ID },
+  { name: "Phuket", countryId: DEFAULT_THAILAND_ID },
+  { name: "Chiang Mai", countryId: DEFAULT_THAILAND_ID },
+  { name: "Krabi", countryId: DEFAULT_THAILAND_ID },
+  { name: "Surat Thani (Samui/Phangan/Tao)", countryId: DEFAULT_THAILAND_ID },
+  // Malaysia
+  { name: "Kuala Lumpur", countryId: DEFAULT_MALAYSIA_ID },
+  { name: "Penang", countryId: DEFAULT_MALAYSIA_ID },
+  { name: "Langkawi", countryId: DEFAULT_MALAYSIA_ID },
+  { name: "Malacca", countryId: DEFAULT_MALAYSIA_ID },
+  { name: "Sabah (Kota Kinabalu)", countryId: DEFAULT_MALAYSIA_ID },
+  { name: "Johor Bahru", countryId: DEFAULT_MALAYSIA_ID },
+  // Singapore
+  { name: "Singapore", countryId: DEFAULT_SINGAPORE_ID },
+  // Vietnam
+  { name: "Hanoi", countryId: DEFAULT_VIETNAM_ID },
+  { name: "Ho Chi Minh City", countryId: DEFAULT_VIETNAM_ID },
+  { name: "Da Nang", countryId: DEFAULT_VIETNAM_ID },
+  { name: "Hoi An", countryId: DEFAULT_VIETNAM_ID },
+];
+
 
 export function useProvinces() {
   const { countries, isLoading: isLoadingCountries, getCountryById } = useCountries();
@@ -23,19 +46,36 @@ export function useProvinces() {
     try {
       const storedProvinces = localStorage.getItem(PROVINCES_STORAGE_KEY);
       let provincesToSet: ProvinceItem[] = [];
+
       if (storedProvinces) {
         try {
           provincesToSet = JSON.parse(storedProvinces);
         } catch (parseError) {
-          console.error("Error parsing provinces from localStorage, starting fresh:", parseError);
-          localStorage.removeItem(PROVINCES_STORAGE_KEY); // Clear corrupted data
+          console.warn("Error parsing provinces from localStorage, seeding defaults:", parseError);
+          localStorage.removeItem(PROVINCES_STORAGE_KEY);
+          provincesToSet = DEFAULT_PROVINCE_DATA.map(p => ({ ...p, id: generateGUID() }));
+          localStorage.setItem(PROVINCES_STORAGE_KEY, JSON.stringify(provincesToSet));
         }
+      } else {
+        provincesToSet = DEFAULT_PROVINCE_DATA.map(p => ({ ...p, id: generateGUID() }));
+        localStorage.setItem(PROVINCES_STORAGE_KEY, JSON.stringify(provincesToSet));
       }
       
-      // No longer seeding default provinces if localStorage is empty.
-      // It will just start with an empty array.
-      if (!Array.isArray(provincesToSet)) {
-          provincesToSet = [];
+      if (!Array.isArray(provincesToSet) || provincesToSet.length === 0) {
+        console.warn("Provinces list is invalid or empty after load, attempting to re-seed.");
+        provincesToSet = DEFAULT_PROVINCE_DATA.map(p => ({ ...p, id: generateGUID() }));
+        localStorage.setItem(PROVINCES_STORAGE_KEY, JSON.stringify(provincesToSet));
+      } else {
+        // Ensure default provinces exist and are linked correctly
+        const defaultProvincesWithGuids = DEFAULT_PROVINCE_DATA.map(p => ({...p, id: generateGUID()})); // Generate IDs here for comparison
+        defaultProvincesWithGuids.forEach(dp => {
+          const existing = provincesToSet.find(p => p.name === dp.name && p.countryId === dp.countryId);
+          if (!existing) {
+            provincesToSet.push(dp); // Add if missing
+          } else if (existing.countryId !== dp.countryId) { // Correct countryId if mismatched
+            existing.countryId = dp.countryId;
+          }
+        });
       }
       
       provincesToSet.sort((a, b) => {
@@ -51,10 +91,10 @@ export function useProvinces() {
     } catch (e: any) {
       console.error("Error initializing provinces from localStorage:", e);
       setError("Failed to load provinces from local storage.");
-      setProvinces([]); // Fallback to empty if error
+      setProvinces([]);
     }
     setIsLoading(false);
-  }, [isLoadingCountries, getCountryById, countries]);
+  }, [isLoadingCountries, getCountryById, countries]); // Added countries to dependency array
 
   React.useEffect(() => {
     fetchAndSeedProvinces();
