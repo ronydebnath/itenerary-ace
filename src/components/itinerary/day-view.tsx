@@ -41,7 +41,7 @@ const ITEM_CONFIG = {
 };
 
 
-export function DayView({
+function DayViewComponent({
   dayNumber, items, travelers, currency, tripSettings,
   onAddItem, onUpdateItem, onDeleteItem, allHotelDefinitions, allServicePrices
 }: DayViewProps) {
@@ -59,8 +59,8 @@ export function DayView({
       currency: currency,
       dayNumber: dayNumber,
       tripSettings: tripSettings, // Pass full tripSettings which includes selectedProvinces
-      onUpdate: (updatedItem: ItineraryItem) => onUpdateItem(dayNumber, updatedItem),
-      onDelete: () => onDeleteItem(dayNumber, item.id),
+      onUpdate: onUpdateItem, // Pass the memoized callback
+      onDelete: onDeleteItem, // Pass the memoized callback
       allServicePrices: allServicePrices,
     };
 
@@ -115,3 +115,4 @@ export function DayView({
     </Card>
   );
 }
+export const DayView = React.memo(DayViewComponent);

@@ -23,7 +23,7 @@ interface MealItemFormProps {
   allServicePrices: ServicePriceItem[];
 }
 
-export function MealItemForm({ item, travelers, currency, tripSettings, dayNumber, onUpdate, onDelete, allServicePrices: passedInAllServicePrices }: MealItemFormProps) {
+function MealItemFormComponent({ item, travelers, currency, tripSettings, dayNumber, onUpdate, onDelete, allServicePrices: passedInAllServicePrices }: MealItemFormProps) {
   const { allServicePrices: hookServicePrices, isLoading: isLoadingServices } = useServicePrices();
   const currentAllServicePrices = passedInAllServicePrices || hookServicePrices;
   const { countries, getCountryById } = useCountries();
@@ -241,4 +241,5 @@ export function MealItemForm({ item, travelers, currency, tripSettings, dayNumbe
   );
 }
 
+export const MealItemForm = React.memo(MealItemFormComponent);
     

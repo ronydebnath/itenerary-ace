@@ -28,7 +28,7 @@ interface ActivityItemFormProps {
 
 const WEEKDAYS_MAP = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-export function ActivityItemForm({ item, travelers, currency, dayNumber, tripSettings, onUpdate, onDelete, allServicePrices: passedInAllServicePrices }: ActivityItemFormProps) {
+function ActivityItemFormComponent({ item, travelers, currency, dayNumber, tripSettings, onUpdate, onDelete, allServicePrices: passedInAllServicePrices }: ActivityItemFormProps) {
   const { allServicePrices: hookServicePrices, isLoading: isLoadingServices } = useServicePrices();
   const currentAllServicePrices = passedInAllServicePrices || hookServicePrices;
   const { countries, getCountryById } = useCountries();
@@ -183,38 +183,41 @@ export function ActivityItemForm({ item, travelers, currency, dayNumber, tripSet
 
   return (
     <BaseItemForm item={item} travelers={travelers} currency={currency} tripSettings={tripSettings} onUpdate={onUpdate} onDelete={onDelete} itemTypeLabel="Activity" dayNumber={dayNumber}>
-        <div className="mb-4">
-          <FormField label={`Select Predefined Activity (${locationContext})`} id={`predefined-activity-${item.id}`}>
-            {actualLoadingState ? (
-                 <div className="flex items-center h-10 border rounded-md px-3 bg-muted/50">
-                    <Loader2 className="h-4 w-4 animate-spin mr-2 text-muted-foreground" />
-                    <span className="text-sm text-muted-foreground">Loading activities...</span>
-                </div>
-            ) : (
-                <Select
-                value={item.selectedServicePriceId || "none"}
-                onValueChange={handlePredefinedServiceSelect}
-                disabled={activityServices.length === 0 && !item.selectedServicePriceId}
-                >
-                <SelectTrigger>
-                    <SelectValue placeholder={activityServices.length === 0 && !item.selectedServicePriceId ? "No activities match criteria" : "Choose an activity..."} />
-                </SelectTrigger>
-                <SelectContent>
-                    <SelectItem value="none">None (Custom Price)</SelectItem>
-                    {activityServices.map(service => (
-                    <SelectItem key={service.id} value={service.id}>
-                        {service.name} ({service.province || (service.countryId ? countries.find(c=>c.id === service.countryId)?.name : 'Generic')})
-                        {service.activityPackages && service.activityPackages.length > 0
-                        ? ` - ${service.activityPackages.length} pkg(s)`
-                        : service.price1 !== undefined ? ` - ${currency} ${service.price1}` : ''}
-                    </SelectItem>
-                    ))}
-                </SelectContent>
-                </Select>
-            )}
-          </FormField>
-          {selectedActivityService && <p className="text-xs text-muted-foreground pt-1">Using: {selectedActivityService.name}</p>}
-        </div>
+        {(activityServices.length > 0 || item.selectedServicePriceId || actualLoadingState) && (
+            <div className="mb-4">
+            <FormField label={`Select Predefined Activity (${locationContext})`} id={`predefined-activity-${item.id}`}>
+                {actualLoadingState ? (
+                    <div className="flex items-center h-10 border rounded-md px-3 bg-muted/50">
+                        <Loader2 className="h-4 w-4 animate-spin mr-2 text-muted-foreground" />
+                        <span className="text-sm text-muted-foreground">Loading activities...</span>
+                    </div>
+                ) : (
+                    <Select
+                    value={item.selectedServicePriceId || "none"}
+                    onValueChange={handlePredefinedServiceSelect}
+                    disabled={activityServices.length === 0 && !item.selectedServicePriceId}
+                    >
+                    <SelectTrigger>
+                        <SelectValue placeholder={activityServices.length === 0 && !item.selectedServicePriceId ? "No activities match criteria" : "Choose an activity..."} />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="none">None (Custom Price)</SelectItem>
+                        {activityServices.map(service => (
+                        <SelectItem key={service.id} value={service.id}>
+                            {service.name} ({service.province || (service.countryId ? countries.find(c=>c.id === service.countryId)?.name : 'Generic')})
+                            {service.activityPackages && service.activityPackages.length > 0
+                            ? ` - ${service.activityPackages.length} pkg(s)`
+                            : service.price1 !== undefined ? ` - ${currency} ${service.price1}` : ''}
+                        </SelectItem>
+                        ))}
+                    </SelectContent>
+                    </Select>
+                )}
+            </FormField>
+            {selectedActivityService && <p className="text-xs text-muted-foreground pt-1">Using: {selectedActivityService.name}</p>}
+            </div>
+        )}
+
 
         {selectedActivityService && selectedActivityService.activityPackages && selectedActivityService.activityPackages.length > 0 && (
         <div className="mb-4">
@@ -361,5 +364,5 @@ export function ActivityItemForm({ item, travelers, currency, dayNumber, tripSet
     </BaseItemForm>
   );
 }
-
+export const ActivityItemForm = React.memo(ActivityItemFormComponent);
     

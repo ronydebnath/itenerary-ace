@@ -9,8 +9,8 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Printer, Eye, EyeOff, Loader2 } from 'lucide-react';
 import { formatCurrency, generateGUID } from '@/lib/utils';
-import { AISuggestions } from '../itinerary/ai-suggestions';
-import { PrintLayout } from '../itinerary/print-layout';
+// import { AISuggestions } from '../itinerary/ai-suggestions'; // Dynamic import
+// import { PrintLayout } from '../itinerary/print-layout'; // Dynamic import
 import { DayView } from '../itinerary/day-view';
 import { CostBreakdownTable } from '../itinerary/cost-breakdown-table';
 import { DetailsSummaryTable } from '../itinerary/details-summary-table';
@@ -20,6 +20,18 @@ import { useHotelDefinitions } from '@/hooks/useHotelDefinitions';
 import { addDays, format, parseISO } from 'date-fns';
 import { PlannerHeader } from './planner-header';
 import { DayNavigation } from './day-navigation';
+import dynamic from 'next/dynamic';
+
+const AISuggestions = dynamic(() => import('../itinerary/ai-suggestions').then(mod => mod.AISuggestions), {
+  loading: () => <div className="flex justify-center items-center p-4"><Loader2 className="h-5 w-5 animate-spin" /> <span className="ml-2 text-sm">Loading AI...</span></div>,
+  ssr: false
+});
+
+const PrintLayout = dynamic(() => import('../itinerary/print-layout').then(mod => mod.PrintLayout), {
+  loading: () => <div className="flex justify-center items-center h-screen"><Loader2 className="h-8 w-8 animate-spin" /> <span className="ml-2">Preparing print view...</span></div>,
+  ssr: false
+});
+
 
 interface ItineraryPlannerProps {
   tripData: TripData;

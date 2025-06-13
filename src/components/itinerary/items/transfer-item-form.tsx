@@ -27,7 +27,7 @@ interface TransferItemFormProps {
   allServicePrices: ServicePriceItem[];
 }
 
-export function TransferItemForm({ item, travelers, currency, tripSettings, dayNumber, onUpdate, onDelete, allServicePrices: passedInAllServicePrices }: TransferItemFormProps) {
+function TransferItemFormComponent({ item, travelers, currency, tripSettings, dayNumber, onUpdate, onDelete, allServicePrices: passedInAllServicePrices }: TransferItemFormProps) {
   const { allServicePrices: hookServicePrices, isLoading: isLoadingServices } = useServicePrices();
   const currentAllServicePrices = passedInAllServicePrices || hookServicePrices;
   const { countries, getCountryById } = useCountries();
@@ -446,3 +446,4 @@ export function TransferItemForm({ item, travelers, currency, tripSettings, dayN
     </BaseItemForm>
   );
 }
+export const TransferItemForm = React.memo(TransferItemFormComponent);

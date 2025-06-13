@@ -23,7 +23,7 @@ interface MiscItemFormProps {
   allServicePrices: ServicePriceItem[];
 }
 
-export function MiscItemForm({ item, travelers, currency, tripSettings, dayNumber, onUpdate, onDelete, allServicePrices: passedInAllServicePrices }: MiscItemFormProps) {
+function MiscItemFormComponent({ item, travelers, currency, tripSettings, dayNumber, onUpdate, onDelete, allServicePrices: passedInAllServicePrices }: MiscItemFormProps) {
   const { allServicePrices: hookServicePrices, isLoading: isLoadingServices } = useServicePrices();
   const currentAllServicePrices = passedInAllServicePrices || hookServicePrices;
   const { countries, getCountryById } = useCountries();
@@ -244,5 +244,5 @@ export function MiscItemForm({ item, travelers, currency, tripSettings, dayNumbe
     </BaseItemForm>
   );
 }
-
+export const MiscItemForm = React.memo(MiscItemFormComponent);
     

@@ -29,7 +29,7 @@ interface HotelItemFormProps {
   allServicePrices: ServicePriceItem[]; // Passed directly now
 }
 
-export function HotelItemForm({ item, travelers, currency, dayNumber, tripSettings, onUpdate, onDelete, allHotelDefinitions: hookHotelDefinitions, allServicePrices }: HotelItemFormProps) {
+function HotelItemFormComponent({ item, travelers, currency, dayNumber, tripSettings, onUpdate, onDelete, allHotelDefinitions: hookHotelDefinitions, allServicePrices }: HotelItemFormProps) {
   const { isLoading: isLoadingHotelDefs } = useHotelDefinitions(); // Still use hook for loading state logic, but data from props
   const { countries, getCountryById } = useCountries();
   const [availableHotels, setAvailableHotels] = React.useState<HotelDefinition[]>([]);
@@ -424,3 +424,4 @@ export function HotelItemForm({ item, travelers, currency, dayNumber, tripSettin
     </BaseItemForm>
   );
 }
+export const HotelItemForm = React.memo(HotelItemFormComponent);
