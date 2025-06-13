@@ -1,4 +1,12 @@
-
+/**
+ * @fileoverview This component renders the common input fields shared across various
+ * service price forms, such as country, province, category, name, currency, and notes.
+ * It helps in centralizing the logic for these basic details to avoid repetition.
+ *
+ * @bangla এই কম্পোনেন্টটি বিভিন্ন পরিষেবা মূল্য ফর্ম জুড়ে ব্যবহৃত সাধারণ ইনপুট ক্ষেত্রগুলি
+ * (যেমন দেশ, প্রদেশ, বিভাগ, নাম, মুদ্রা এবং নোট) রেন্ডার করে। এটি পুনরাবৃত্তি এড়াতে
+ * এই মৌলিক বিবরণগুলির জন্য যুক্তিকে কেন্দ্রীভূত করতে সহায়তা করে।
+ */
 "use client";
 
 import * as React from 'react';

@@ -1,4 +1,14 @@
-
+/**
+ * @fileoverview This component provides a specialized form for defining and editing
+ * hotel service prices. It includes fields for hotel-specific details like star ratings,
+ * and allows managing multiple room types, each with its own seasonal pricing periods,
+ * rates, and extra bed options. It is used within the `ServicePriceFormRouter`.
+ *
+ * @bangla এই কম্পোনেন্টটি হোটেল পরিষেবা মূল্যের সংজ্ঞা এবং সম্পাদনার জন্য একটি বিশেষায়িত
+ * ফর্ম সরবরাহ করে। এতে তারকা রেটিংয়ের মতো হোটেল-নির্দিষ্ট বিবরণের জন্য ক্ষেত্র রয়েছে
+ * এবং একাধিক রুমের প্রকার পরিচালনা করার অনুমতি দেয়, যার প্রতিটির নিজস্ব মরশুমি মূল্য নির্ধারণের
+ * সময়কাল, হার এবং অতিরিক্ত বিছানার বিকল্প রয়েছে। এটি `ServicePriceFormRouter`-এর মধ্যে ব্যবহৃত হয়।
+ */
 "use client";
 
 import * as React from 'react';

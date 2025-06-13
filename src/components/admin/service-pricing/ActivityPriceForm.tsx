@@ -1,4 +1,15 @@
-
+/**
+ * @fileoverview This component provides a specialized form for defining and editing
+ * activity service prices. It allows users to select predefined activity services,
+ * manage multiple activity packages (each with its own pricing and scheduling), and
+ * utilize an AI-powered parser to prefill package data from unstructured text.
+ *
+ * @bangla এই কম্পোনেন্টটি কার্যকলাপ পরিষেবা মূল্যের সংজ্ঞা এবং সম্পাদনার জন্য একটি বিশেষায়িত
+ * ফর্ম সরবরাহ করে। এটি ব্যবহারকারীদের পূর্বনির্ধারিত কার্যকলাপ পরিষেবা নির্বাচন করতে,
+ * একাধিক কার্যকলাপ প্যাকেজ (প্রতিটির নিজস্ব মূল্য এবং সময়সূচী সহ) পরিচালনা করতে এবং
+ * অসংগঠিত টেক্সট থেকে প্যাকেজ ডেটা প্রিফিল করার জন্য একটি এআই-চালিত পার্সার ব্যবহার
+ * করার অনুমতি দেয়।
+ */
 "use client";
 
 import * as React from 'react';

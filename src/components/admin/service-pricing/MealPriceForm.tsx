@@ -1,4 +1,12 @@
-
+/**
+ * @fileoverview This component provides a specialized form for defining and editing
+ * meal service prices. It allows users to select predefined meal services or enter
+ * custom prices for adult and child meals, along with specifying the meal type.
+ *
+ * @bangla এই কম্পোনেন্টটি খাবার পরিষেবা মূল্যের সংজ্ঞা এবং সম্পাদনার জন্য একটি বিশেষায়িত
+ * ফর্ম সরবরাহ করে। এটি ব্যবহারকারীদের পূর্বনির্ধারিত খাবার পরিষেবা নির্বাচন করতে বা প্রাপ্তবয়স্ক
+ * এবং শিশুদের খাবারের জন্য কাস্টম মূল্য লিখতে এবং খাবারের ধরণ নির্দিষ্ট করার অনুমতি দেয়।
+ */
 "use client";
 
 import * as React from 'react';

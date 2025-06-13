@@ -1,4 +1,14 @@
-
+/**
+ * @fileoverview This component provides a specialized form for defining and editing
+ * transfer service prices. It handles different transfer modes (ticket vs. vehicle),
+ * allows selection of predefined transfer services, and manages vehicle-specific
+ * options (like type, price, max passengers) and surcharge periods for vehicle-based transfers.
+ *
+ * @bangla এই কম্পোনেন্টটি ট্রান্সফার পরিষেবা মূল্যের সংজ্ঞা এবং সম্পাদনার জন্য একটি বিশেষায়িত
+ * ফর্ম সরবরাহ করে। এটি বিভিন্ন ট্রান্সফার মোড (টিকিট বনাম যান) পরিচালনা করে, পূর্বনির্ধারিত
+ * ট্রান্সফার পরিষেবা নির্বাচনের অনুমতি দেয় এবং যান-ভিত্তিক ট্রান্সফারের জন্য যান-নির্দিষ্ট
+ * বিকল্পগুলি (যেমন প্রকার, মূল্য, সর্বোচ্চ যাত্রী) এবং সারচার্জের সময়কাল পরিচালনা করে।
+ */
 "use client";
 
 import * as React from 'react';
