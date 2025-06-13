@@ -3,11 +3,25 @@ import * as React from 'react';
 import type { HotelDefinition, CountryItem, HotelRoomTypeDefinition, RoomTypeSeasonalPrice } from '@/types/itinerary';
 import { generateGUID } from '@/lib/utils';
 import { useCountries, DEFAULT_THAILAND_ID, DEFAULT_MALAYSIA_ID, DEFAULT_SINGAPORE_ID, DEFAULT_VIETNAM_ID } from './useCountries';
-import { addDays, format } from 'date-fns';
+import { addDays, format, getYear, setYear } from 'date-fns';
 
 const HOTEL_DEFINITIONS_STORAGE_KEY = 'itineraryAceHotelDefinitions';
-const currentYear = new Date().getFullYear();
-const nextYear = currentYear + 1;
+
+const createGenericSeasonalPrices = (baseRate: number, baseExtraBed: number | undefined, prefix: string): RoomTypeSeasonalPrice[] => {
+  const currentActualYear = getYear(new Date());
+  const yearsToCover = [currentActualYear, currentActualYear + 1, currentActualYear + 2]; // Cover current, next, and year after
+  const seasons: RoomTypeSeasonalPrice[] = [];
+
+  yearsToCover.forEach(year => {
+    seasons.push(
+      { id: generateGUID(), seasonName: `${prefix} Low ${year}`, startDate: format(new Date(year, 0, 1), 'yyyy-MM-dd'), endDate: format(new Date(year, 3, 30), 'yyyy-MM-dd'), rate: baseRate, extraBedRate: baseExtraBed }, // Jan 1 - Apr 30
+      { id: generateGUID(), seasonName: `${prefix} Mid ${year}`, startDate: format(new Date(year, 4, 1), 'yyyy-MM-dd'), endDate: format(new Date(year, 8, 30), 'yyyy-MM-dd'), rate: Math.round(baseRate * 1.2), extraBedRate: baseExtraBed ? Math.round(baseExtraBed * 1.2) : undefined }, // May 1 - Sep 30
+      { id: generateGUID(), seasonName: `${prefix} High ${year}`, startDate: format(new Date(year, 9, 1), 'yyyy-MM-dd'), endDate: format(new Date(year, 11, 31), 'yyyy-MM-dd'), rate: Math.round(baseRate * 1.5), extraBedRate: baseExtraBed ? Math.round(baseExtraBed * 1.5) : undefined } // Oct 1 - Dec 31
+    );
+  });
+  return seasons;
+};
+
 
 const createDemoHotelDefinitions = (countries: CountryItem[]): HotelDefinition[] => {
   const thailand = countries.find(c => c.id === DEFAULT_THAILAND_ID);
@@ -15,89 +29,55 @@ const createDemoHotelDefinitions = (countries: CountryItem[]): HotelDefinition[]
   const singapore = countries.find(c => c.id === DEFAULT_SINGAPORE_ID);
   const vietnam = countries.find(c => c.id === DEFAULT_VIETNAM_ID);
 
-  const today = new Date();
-  const nextMonth = addDays(today, 30);
-  const monthAfterNext = addDays(today, 60);
-  const threeMonthsLater = addDays(today, 90);
-
-  // --- Shared Seasonal Price Sets ---
-  const standardLowSeason: RoomTypeSeasonalPrice = { id: generateGUID(), seasonName: "Green Season Special", startDate: format(today, 'yyyy-MM-dd'), endDate: format(addDays(nextMonth, -1), 'yyyy-MM-dd'), rate: 2800, extraBedRate: 700 };
-  const standardHighSeason: RoomTypeSeasonalPrice = { id: generateGUID(), seasonName: "High Season Rate", startDate: format(nextMonth, 'yyyy-MM-dd'), endDate: format(monthAfterNext, 'yyyy-MM-dd'), rate: 3500, extraBedRate: 900 };
-  const standardPeakSeason: RoomTypeSeasonalPrice = { id: generateGUID(), seasonName: "Peak Holiday Rate", startDate: format(addDays(monthAfterNext,1), 'yyyy-MM-dd'), endDate: format(threeMonthsLater, 'yyyy-MM-dd'), rate: 4200, extraBedRate: 1000 };
-
-  const deluxeLowSeason: RoomTypeSeasonalPrice = { id: generateGUID(), seasonName: "Deluxe Off-Peak", startDate: format(today, 'yyyy-MM-dd'), endDate: format(addDays(nextMonth, -1), 'yyyy-MM-dd'), rate: 4500, extraBedRate: 1000 };
-  const deluxeHighSeason: RoomTypeSeasonalPrice = { id: generateGUID(), seasonName: "Deluxe High Season", startDate: format(nextMonth, 'yyyy-MM-dd'), endDate: format(monthAfterNext, 'yyyy-MM-dd'), rate: 5800, extraBedRate: 1200 };
-  const deluxePeakSeason: RoomTypeSeasonalPrice = { id: generateGUID(), seasonName: "Deluxe Peak Holiday", startDate: format(addDays(monthAfterNext,1), 'yyyy-MM-dd'), endDate: format(threeMonthsLater, 'yyyy-MM-dd'), rate: 6500, extraBedRate: 1500 };
-
-  const suiteLowSeason: RoomTypeSeasonalPrice = { id: generateGUID(), seasonName: "Suite Saver", startDate: format(today, 'yyyy-MM-dd'), endDate: format(addDays(nextMonth, -1), 'yyyy-MM-dd'), rate: 7000, extraBedRate: 1500 };
-  const suiteHighSeason: RoomTypeSeasonalPrice = { id: generateGUID(), seasonName: "Suite High Season", startDate: format(nextMonth, 'yyyy-MM-dd'), endDate: format(monthAfterNext, 'yyyy-MM-dd'), rate: 9000, extraBedRate: 2000 };
-  const suitePeakSeason: RoomTypeSeasonalPrice = { id: generateGUID(), seasonName: "Suite Peak Holiday", startDate: format(addDays(monthAfterNext,1), 'yyyy-MM-dd'), endDate: format(threeMonthsLater, 'yyyy-MM-dd'), rate: 12000, extraBedRate: 2500 };
-
   // --- Shared Room Type Definitions ---
   const standardCityRoom: HotelRoomTypeDefinition = {
-    id: generateGUID(), name: "Standard City View", extraBedAllowed: true, notes: "Comfortable 30sqm room with city view, en-suite bathroom, Wi-Fi, and mini-bar.", seasonalPrices: [standardLowSeason, standardHighSeason, standardPeakSeason], characteristics: [{id: generateGUID(), key: "View", value: "City"}, {id: generateGUID(), key: "Bed", value: "King or Twin"}, {id: generateGUID(), key: "Size", value: "30sqm"}]
+    id: generateGUID(), name: "Standard City View", extraBedAllowed: true, notes: "Comfortable 30sqm room with city view, en-suite bathroom, Wi-Fi, and mini-bar.", seasonalPrices: createGenericSeasonalPrices(2800, 700, "Std City"), characteristics: [{id: generateGUID(), key: "View", value: "City"}, {id: generateGUID(), key: "Bed", value: "King or Twin"}, {id: generateGUID(), key: "Size", value: "30sqm"}]
   };
   const deluxeRiverRoom: HotelRoomTypeDefinition = {
-    id: generateGUID(), name: "Deluxe River View", extraBedAllowed: true, notes: "Spacious 40sqm room with stunning river views, balcony, premium amenities, and bathtub.", seasonalPrices: [deluxeLowSeason, deluxeHighSeason, deluxePeakSeason], characteristics: [{id: generateGUID(), key: "View", value: "River"}, {id: generateGUID(), key: "Bed", value: "King"}, {id: generateGUID(), key: "Size", value: "40sqm"}, {id: generateGUID(), key: "Features", value: "Balcony, Bathtub"}]
+    id: generateGUID(), name: "Deluxe River View", extraBedAllowed: true, notes: "Spacious 40sqm room with stunning river views, balcony, premium amenities, and bathtub.", seasonalPrices: createGenericSeasonalPrices(4500, 1000, "Dlx River"), characteristics: [{id: generateGUID(), key: "View", value: "River"}, {id: generateGUID(), key: "Bed", value: "King"}, {id: generateGUID(), key: "Size", value: "40sqm"}, {id: generateGUID(), key: "Features", value: "Balcony, Bathtub"}]
   };
    const familySuiteCity: HotelRoomTypeDefinition = {
-    id: generateGUID(), name: "Family Suite City View", extraBedAllowed: true, notes: "60sqm two-bedroom suite ideal for families, kitchenette, living area.", seasonalPrices: [suiteLowSeason, suiteHighSeason, suitePeakSeason], characteristics: [{id: generateGUID(), key: "View", value: "City"}, {id: generateGUID(), key: "Bed", value: "1 King, 2 Twin"}, {id: generateGUID(), key: "Size", value: "60sqm"}, {id: generateGUID(), key: "Features", value: "Two Bedrooms, Kitchenette"}]
+    id: generateGUID(), name: "Family Suite City View", extraBedAllowed: true, notes: "60sqm two-bedroom suite ideal for families, kitchenette, living area.", seasonalPrices: createGenericSeasonalPrices(7000, 1500, "Fam Suite City"), characteristics: [{id: generateGUID(), key: "View", value: "City"}, {id: generateGUID(), key: "Bed", value: "1 King, 2 Twin"}, {id: generateGUID(), key: "Size", value: "60sqm"}, {id: generateGUID(), key: "Features", value: "Two Bedrooms, Kitchenette"}]
   };
 
   const superiorPoolAccessRoom: HotelRoomTypeDefinition = {
-    id: generateGUID(), name: "Superior Pool Access", extraBedAllowed: true, notes: "35sqm room with direct access to the resort's lagoon pool from your private terrace.", seasonalPrices: [deluxeLowSeason, deluxeHighSeason, {...deluxePeakSeason, rate: deluxePeakSeason.rate * 1.1, extraBedRate: (deluxePeakSeason.extraBedRate || 1500) * 1.1 }], characteristics: [{id: generateGUID(), key: "Feature", value: "Direct Pool Access"}, {id: generateGUID(), key: "Bed", value: "King"}, {id: generateGUID(), key: "Size", value: "35sqm"}]
+    id: generateGUID(), name: "Superior Pool Access", extraBedAllowed: true, notes: "35sqm room with direct access to the resort's lagoon pool from your private terrace.", seasonalPrices: createGenericSeasonalPrices(5800, 1200, "Sup Pool"), characteristics: [{id: generateGUID(), key: "Feature", value: "Direct Pool Access"}, {id: generateGUID(), key: "Bed", value: "King"}, {id: generateGUID(), key: "Size", value: "35sqm"}]
   };
   const beachfrontVilla: HotelRoomTypeDefinition = {
-    id: generateGUID(), name: "Beachfront Villa", extraBedAllowed: false, notes: "Luxurious 70sqm villa with private plunge pool, direct beach access, and personalized butler service.", seasonalPrices: [suiteLowSeason, suiteHighSeason, {...suitePeakSeason, rate: suitePeakSeason.rate * 1.3, extraBedRate: (suitePeakSeason.extraBedRate || 2500) * 1.3}].map(sp => ({...sp, rate: sp.rate * 1.5, extraBedRate: sp.extraBedRate ? sp.extraBedRate * 1.5 : undefined})), characteristics: [{id: generateGUID(), key: "Feature", value: "Private Plunge Pool, Beach Access"}, {id: generateGUID(), key: "Bed", value: "King"}, {id: generateGUID(), key: "Size", value: "70sqm"}, {id: generateGUID(), key: "Service", value: "Butler Service"}]
+    id: generateGUID(), name: "Beachfront Villa", extraBedAllowed: false, notes: "Luxurious 70sqm villa with private plunge pool, direct beach access, and personalized butler service.", seasonalPrices: createGenericSeasonalPrices(12000 * 1.5, undefined, "Beach Villa"), characteristics: [{id: generateGUID(), key: "Feature", value: "Private Plunge Pool, Beach Access"}, {id: generateGUID(), key: "Bed", value: "King"}, {id: generateGUID(), key: "Size", value: "70sqm"}, {id: generateGUID(), key: "Service", value: "Butler Service"}]
   };
    const twoBedroomFamilyVilla: HotelRoomTypeDefinition = {
-    id: generateGUID(), name: "Two-Bedroom Family Villa", extraBedAllowed: true, notes: "100sqm villa with two separate bedrooms, living area, kitchenette and garden.", seasonalPrices: [suiteLowSeason, suiteHighSeason, suitePeakSeason].map(sp => ({...sp, rate: sp.rate * 1.8, extraBedRate: sp.extraBedRate ? sp.extraBedRate * 1.8 : 2000})), characteristics: [{id: generateGUID(), key: "Feature", value: "Two Bedrooms, Garden"}, {id: generateGUID(), key: "Bed", value: "1 King, 2 Twin"}, {id: generateGUID(), key: "Size", value: "100sqm"}]
+    id: generateGUID(), name: "Two-Bedroom Family Villa", extraBedAllowed: true, notes: "100sqm villa with two separate bedrooms, living area, kitchenette and garden.", seasonalPrices: createGenericSeasonalPrices(9000 * 1.8, 2000 * 1.8, "2BR Fam Villa"), characteristics: [{id: generateGUID(), key: "Feature", value: "Two Bedrooms, Garden"}, {id: generateGUID(), key: "Bed", value: "1 King, 2 Twin"}, {id: generateGUID(), key: "Size", value: "100sqm"}]
   };
 
   // --- New Room Types for Bangkok Hotels ---
   const superiorQueenBKK: HotelRoomTypeDefinition = {
     id: generateGUID(), name: "Superior Queen", extraBedAllowed: true, notes: "Modern 25sqm room with a comfortable queen bed and city outlook.",
-    seasonalPrices: [
-      { ...standardLowSeason, rate: 1800, extraBedRate: 500, id: generateGUID(), seasonName: "BKK Superior Low" },
-      { ...standardHighSeason, rate: 2200, extraBedRate: 600, id: generateGUID(), seasonName: "BKK Superior High" },
-      { ...standardPeakSeason, rate: 2800, extraBedRate: 700, id: generateGUID(), seasonName: "BKK Superior Peak" }
-    ],
+    seasonalPrices: createGenericSeasonalPrices(1800, 500, "Sup Queen BKK"),
     characteristics: [{id: generateGUID(), key: "Bed", value: "Queen"}, {id: generateGUID(), key: "Size", value: "25sqm"}]
   };
 
   const deluxeKingBalconyBKK: HotelRoomTypeDefinition = {
     id: generateGUID(), name: "Deluxe King with Balcony", extraBedAllowed: true, notes: "Elegant 35sqm room featuring a king-size bed, private balcony with city views.",
-    seasonalPrices: [
-      { ...standardLowSeason, rate: 2500, extraBedRate: 600, id: generateGUID(), seasonName: "BKK Deluxe Balcony Low" },
-      { ...standardHighSeason, rate: 3000, extraBedRate: 700, id: generateGUID(), seasonName: "BKK Deluxe Balcony High" },
-      { ...standardPeakSeason, rate: 3800, extraBedRate: 800, id: generateGUID(), seasonName: "BKK Deluxe Balcony Peak" }
-    ],
+    seasonalPrices: createGenericSeasonalPrices(2500, 600, "Dlx King Balc BKK"),
     characteristics: [{id: generateGUID(), key: "Bed", value: "King"}, {id: generateGUID(), key: "Size", value: "35sqm"}, {id: generateGUID(), key: "Feature", value: "Balcony"}]
   };
   
   const deluxeKingBalconyGrandChaoPhraya: HotelRoomTypeDefinition = {
-    id: "060fa81f-8c45-46bd-a4bb-7b564aaab977", // Keep existing ID if possible for stability or generate new if intended
+    id: "060fa81f-8c45-46bd-a4bb-7b564aaab977", 
     name: "Deluxe King with Balcony", 
     extraBedAllowed: true, 
     notes: "Elegant 35sqm room featuring a king-size bed, private balcony with city views, premium amenities.",
-    seasonalPrices: [
-      { ...deluxeLowSeason, id: generateGUID(), seasonName: "Grand Deluxe Balcony Low", extraBedRate: 1200 },
-      { ...deluxeHighSeason, id: generateGUID(), seasonName: "Grand Deluxe Balcony High", extraBedRate: 1400 },
-      { ...deluxePeakSeason, id: generateGUID(), seasonName: "Grand Deluxe Balcony Peak", extraBedRate: 1600 }
-    ],
+    seasonalPrices: createGenericSeasonalPrices(4500, 1200, "Grand Dlx Balc"),
     characteristics: [{id: generateGUID(), key: "Bed", value: "King"}, {id: generateGUID(), key: "Size", value: "35sqm"}, {id: generateGUID(), key: "Feature", value: "Balcony, Premium Amenities"}]
   };
 
   const executiveSuiteGrandChaoPhraya: HotelRoomTypeDefinition = {
-    id: generateGUID(), 
+    id: "ceec7c4e-9010-4c82-b88b-e61786523957", // Preserve ID from user's example if it's stable
     name: "Executive Suite River View", 
     extraBedAllowed: true, 
     notes: "Luxurious 55sqm suite with king bed, separate living area, panoramic river views, and executive club lounge access.",
-    seasonalPrices: [
-      { ...suiteLowSeason, id: generateGUID(), seasonName: "Grand Executive Suite Low", extraBedRate: 1800 },
-      { ...suiteHighSeason, id: generateGUID(), seasonName: "Grand Executive Suite High", extraBedRate: 2200 },
-      { ...suitePeakSeason, id: generateGUID(), seasonName: "Grand Executive Suite Peak", extraBedRate: 2800 }
-    ],
+    seasonalPrices: createGenericSeasonalPrices(7000, 1800, "Grand Exec Suite"),
     characteristics: [{id: generateGUID(), key: "Bed", value: "King"}, {id: generateGUID(), key: "Size", value: "55sqm"}, {id: generateGUID(), key: "Feature", value: "Separate Living Area, River View, Club Access"}]
   };
 
@@ -106,11 +86,7 @@ const createDemoHotelDefinitions = (countries: CountryItem[]): HotelDefinition[]
     name: "Two-Bedroom Family Residence", 
     extraBedAllowed: true, 
     notes: "Spacious 80sqm two-bedroom residence with one king and two twin beds, living room, and city/river views. Ideal for families.",
-    seasonalPrices: [
-      { ...suiteLowSeason, rate: 10000, extraBedRate: 2000, id: generateGUID(), seasonName: "Grand Family Residence Low" },
-      { ...suiteHighSeason, rate: 13000, extraBedRate: 2500, id: generateGUID(), seasonName: "Grand Family Residence High" },
-      { ...suitePeakSeason, rate: 16000, extraBedRate: 3000, id: generateGUID(), seasonName: "Grand Family Residence Peak" }
-    ],
+    seasonalPrices: createGenericSeasonalPrices(10000, 2000, "Grand 2BR Fam Res"),
     characteristics: [{id: generateGUID(), key: "Bed", value: "1 King, 2 Twin"}, {id: generateGUID(), key: "Size", value: "80sqm"}, {id: generateGUID(), key: "Feature", value: "Two Bedrooms, Living Room"}]
   };
 
@@ -121,7 +97,6 @@ const createDemoHotelDefinitions = (countries: CountryItem[]): HotelDefinition[]
     demoHotels.push(
       { id: "hotel-bkk-central-demo", name: "Bangkok Central Hotel", countryId: thailand.id, province: "Bangkok", starRating: 4, roomTypes: [standardCityRoom, deluxeRiverRoom, familySuiteCity] },
       { id: "hotel-phuket-paradise-demo", name: "Phuket Paradise Resort", countryId: thailand.id, province: "Phuket", starRating: 5, roomTypes: [superiorPoolAccessRoom, beachfrontVilla, twoBedroomFamilyVilla] },
-      // New Bangkok Hotels
       { id: "hotel-bkk-cityhub-3star-demo", name: "Bangkok City Hub Hotel", countryId: thailand.id, province: "Bangkok", starRating: 3, roomTypes: [superiorQueenBKK, deluxeKingBalconyBKK] },
       { id: "hotel-bkk-grandchao-5star-demo", name: "The Grand Chao Phraya Residence", countryId: thailand.id, province: "Bangkok", starRating: 5, roomTypes: [deluxeKingBalconyGrandChaoPhraya, executiveSuiteGrandChaoPhraya, twoBedroomFamilyGrandChaoPhraya] }
     );
@@ -173,14 +148,20 @@ export function useHotelDefinitions() {
             DEMO_HOTELS.forEach(demoHotel => {
               const existingDemoHotelIndex = definitionsToSet.findIndex(def => def.id === demoHotel.id);
               if (existingDemoHotelIndex !== -1) {
-                 definitionsToSet[existingDemoHotelIndex] = demoHotel; 
+                 // Update existing demo hotel with potentially new structure/room types
+                 definitionsToSet[existingDemoHotelIndex] = {
+                   ...demoHotel, // Takes new structure
+                   // Preserve user-made changes to top-level name/province/country if any, but not room types
+                   name: definitionsToSet[existingDemoHotelIndex].name, 
+                   province: definitionsToSet[existingDemoHotelIndex].province,
+                   countryId: definitionsToSet[existingDemoHotelIndex].countryId,
+                   starRating: definitionsToSet[existingDemoHotelIndex].starRating,
+                 };
               } else {
                 const existingByName = definitionsToSet.find(def => def.name === demoHotel.name && def.province === demoHotel.province && def.countryId === demoHotel.countryId);
                 if (!existingByName) {
                     definitionsToSet.push(demoHotel); 
                 } else if (existingByName.id !== demoHotel.id && demoHotel.id.includes("-demo")) {
-                    // If a demo hotel (with -demo in ID) exists by name/location but with a different (likely older user-generated) ID,
-                    // replace the old one with the new demo structure to ensure demo data consistency.
                     definitionsToSet = definitionsToSet.filter(d => d.id !== existingByName.id);
                     definitionsToSet.push(demoHotel);
                 }
