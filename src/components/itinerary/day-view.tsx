@@ -63,9 +63,9 @@ function DayViewComponent({
       case 'transfer':
         const transfer = item as TransferItem;
         if (transfer.mode === 'ticket') {
-          return `Ticket: ${formatCurrency(transfer.adultTicketPrice || 0, currency)}`;
+          return `Ticket Based`;
         } else {
-          return `Vehicle: ${transfer.vehicleType || 'N/A'}, Cost: ${formatCurrency(transfer.costPerVehicle || 0, currency)}`;
+          return `Vehicle: ${transfer.vehicleType || 'N/A'}`;
         }
       case 'hotel':
         const hotel = item as HotelItem;
@@ -74,13 +74,13 @@ function DayViewComponent({
       case 'activity':
         const activity = item as ActivityItem;
         const duration = Math.max(1, (activity.endDay || dayNumber) - dayNumber + 1);
-        return `Price: ${formatCurrency(activity.adultPrice || 0, currency)}${duration > 1 ? `, ${duration} days` : ''}`;
+        return `Activity for ${duration > 1 ? `${duration} days` : 'the day'}`;
       case 'meal':
         const meal = item as MealItem;
-        return `Price: ${formatCurrency(meal.adultMealPrice || 0, currency)}, ${meal.totalMeals} meal(s)`;
+        return `${meal.totalMeals} meal(s) planned`;
       case 'misc':
         const misc = item as MiscItem;
-        return `Cost: ${formatCurrency(misc.unitCost || 0, currency)} x ${misc.quantity}`;
+        return `${misc.quantity} unit(s), assignment: ${misc.costAssignment}`;
       default:
         return null;
     }
@@ -123,7 +123,7 @@ function DayViewComponent({
 
   return (
     <Card className="mb-6 shadow-md border-primary/20 w-full">
-      <CardContent className="px-2 py-2 md:px-4 md:py-4">
+      <CardContent className="px-1 py-2 sm:px-2 md:px-4 md:py-4">
         <div className="space-y-4">
           {items.length > 0 ? (
             items.map(item => renderItemForm(item))
@@ -139,7 +139,7 @@ function DayViewComponent({
         <Separator className="my-4 md:my-6" />
 
         <div>
-          <h3 className="text-sm font-semibold mb-2 text-center text-primary uppercase tracking-wider">Add Service to Day {dayNumber}</h3>
+          <h3 className="text-base font-semibold mb-2 text-center text-primary uppercase tracking-wider">Add Service to Day {dayNumber}</h3>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 sm:gap-3">
             {SERVICE_TYPES_CONFIG.map(serviceConfig => {
               const IconComponent = serviceConfig.icon;
@@ -147,11 +147,11 @@ function DayViewComponent({
                 <Button
                   key={serviceConfig.type}
                   variant="outline"
-                  className="flex-col h-auto py-3 sm:py-4 border-dashed hover:border-solid hover:bg-primary/5 hover:text-primary group transition-all duration-150 ease-in-out"
+                  className="flex-col h-auto px-2 py-3 sm:px-3 sm:py-4 border-dashed hover:border-solid hover:bg-primary/5 hover:text-primary group transition-all duration-150 ease-in-out"
                   onClick={() => onAddItem(dayNumber, serviceConfig.type)}
                 >
-                  <IconComponent className="h-5 w-5 sm:h-6 sm:w-6 mb-1 text-muted-foreground group-hover:text-primary transition-colors" />
-                  <span className="text-xs sm:text-sm">{serviceConfig.label}</span>
+                  <IconComponent className="h-6 w-6 sm:h-5 sm:w-5 mb-1 text-muted-foreground group-hover:text-primary transition-colors" />
+                  <span className="text-xs sm:text-sm font-medium">{serviceConfig.label}</span>
                 </Button>
               );
             })}
@@ -162,4 +162,3 @@ function DayViewComponent({
   );
 }
 export const DayView = React.memo(DayViewComponent);
-
