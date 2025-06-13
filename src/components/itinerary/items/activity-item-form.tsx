@@ -24,11 +24,26 @@ interface ActivityItemFormProps {
   onUpdate: (item: ActivityItemType) => void;
   onDelete: () => void;
   allServicePrices: ServicePriceItem[];
+  itemSummaryLine: React.ReactNode;
+  isCurrentlyExpanded: boolean;
+  onToggleExpand: () => void;
 }
 
 const WEEKDAYS_MAP = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-function ActivityItemFormComponent({ item, travelers, currency, dayNumber, tripSettings, onUpdate, onDelete, allServicePrices: passedInAllServicePrices }: ActivityItemFormProps) {
+function ActivityItemFormComponent({
+  item,
+  travelers,
+  currency,
+  dayNumber,
+  tripSettings,
+  onUpdate,
+  onDelete,
+  allServicePrices: passedInAllServicePrices,
+  itemSummaryLine,
+  isCurrentlyExpanded,
+  onToggleExpand
+}: ActivityItemFormProps) {
   const { allServicePrices: hookServicePrices, isLoading: isLoadingServices } = useServicePrices();
   const currentAllServicePrices = passedInAllServicePrices || hookServicePrices;
   const { countries, getCountryById } = useCountries();
@@ -124,7 +139,7 @@ function ActivityItemFormComponent({ item, travelers, currency, dayNumber, tripS
         onUpdate({
           ...item,
           name: `New activity`,
-          selectedServicePriceId: selectedValue, // Keep the ID even if service not found, for error display
+          selectedServicePriceId: selectedValue,
           selectedPackageId: undefined,
           adultPrice: 0,
           childPrice: undefined,
@@ -182,7 +197,19 @@ function ActivityItemFormComponent({ item, travelers, currency, dayNumber, tripS
   }
 
   return (
-    <BaseItemForm item={item} travelers={travelers} currency={currency} tripSettings={tripSettings} onUpdate={onUpdate} onDelete={onDelete} itemTypeLabel="Activity" dayNumber={dayNumber}>
+    <BaseItemForm
+      item={item}
+      travelers={travelers}
+      currency={currency}
+      tripSettings={tripSettings}
+      onUpdate={onUpdate as any}
+      onDelete={onDelete}
+      itemTypeLabel="Activity"
+      dayNumber={dayNumber}
+      itemSummaryLine={itemSummaryLine}
+      isCurrentlyExpanded={isCurrentlyExpanded}
+      onToggleExpand={onToggleExpand}
+    >
         {(activityServices.length > 0 || item.selectedServicePriceId || actualLoadingState) && (
             <div className="mb-4">
             <FormField label={`Select Predefined Activity (${locationContext})`} id={`predefined-activity-${item.id}`}>

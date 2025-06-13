@@ -21,9 +21,24 @@ interface MealItemFormProps {
   onUpdate: (item: MealItemType) => void;
   onDelete: () => void;
   allServicePrices: ServicePriceItem[];
+  itemSummaryLine: React.ReactNode;
+  isCurrentlyExpanded: boolean;
+  onToggleExpand: () => void;
 }
 
-function MealItemFormComponent({ item, travelers, currency, tripSettings, dayNumber, onUpdate, onDelete, allServicePrices: passedInAllServicePrices }: MealItemFormProps) {
+function MealItemFormComponent({
+  item,
+  travelers,
+  currency,
+  tripSettings,
+  dayNumber,
+  onUpdate,
+  onDelete,
+  allServicePrices: passedInAllServicePrices,
+  itemSummaryLine,
+  isCurrentlyExpanded,
+  onToggleExpand
+}: MealItemFormProps) {
   const { allServicePrices: hookServicePrices, isLoading: isLoadingServices } = useServicePrices();
   const currentAllServicePrices = passedInAllServicePrices || hookServicePrices;
   const { countries, getCountryById } = useCountries();
@@ -130,7 +145,19 @@ function MealItemFormComponent({ item, travelers, currency, tripSettings, dayNum
   }
 
   return (
-    <BaseItemForm item={item} travelers={travelers} currency={currency} tripSettings={tripSettings} onUpdate={onUpdate} onDelete={onDelete} itemTypeLabel="Meal" dayNumber={dayNumber}>
+    <BaseItemForm
+      item={item}
+      travelers={travelers}
+      currency={currency}
+      tripSettings={tripSettings}
+      onUpdate={onUpdate as any}
+      onDelete={onDelete}
+      itemTypeLabel="Meal"
+      dayNumber={dayNumber}
+      itemSummaryLine={itemSummaryLine}
+      isCurrentlyExpanded={isCurrentlyExpanded}
+      onToggleExpand={onToggleExpand}
+    >
       {(mealServices.length > 0 || item.selectedServicePriceId || actualLoadingState) && (
         <div className="mb-4">
           <FormField label={`Select Predefined Meal (${locationContext})`} id={`predefined-meal-${item.id}`}>

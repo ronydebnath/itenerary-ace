@@ -25,12 +25,28 @@ interface HotelItemFormProps {
   tripSettings: TripSettings;
   onUpdate: (item: HotelItemType) => void;
   onDelete: () => void;
-  allHotelDefinitions: HotelDefinition[]; // Passed directly now
-  allServicePrices: ServicePriceItem[]; // Passed directly now
+  allHotelDefinitions: HotelDefinition[];
+  allServicePrices: ServicePriceItem[];
+  itemSummaryLine: React.ReactNode;
+  isCurrentlyExpanded: boolean;
+  onToggleExpand: () => void;
 }
 
-function HotelItemFormComponent({ item, travelers, currency, dayNumber, tripSettings, onUpdate, onDelete, allHotelDefinitions: hookHotelDefinitions, allServicePrices }: HotelItemFormProps) {
-  const { isLoading: isLoadingHotelDefs } = useHotelDefinitions(); // Still use hook for loading state logic, but data from props
+function HotelItemFormComponent({
+  item,
+  travelers,
+  currency,
+  dayNumber,
+  tripSettings,
+  onUpdate,
+  onDelete,
+  allHotelDefinitions: hookHotelDefinitions,
+  allServicePrices,
+  itemSummaryLine,
+  isCurrentlyExpanded,
+  onToggleExpand
+}: HotelItemFormProps) {
+  const { isLoading: isLoadingHotelDefs } = useHotelDefinitions();
   const { countries, getCountryById } = useCountries();
   const [availableHotels, setAvailableHotels] = React.useState<HotelDefinition[]>([]);
   const [selectedHotelDef, setSelectedHotelDef] = React.useState<HotelDefinition | undefined>(undefined);
@@ -186,7 +202,19 @@ function HotelItemFormComponent({ item, travelers, currency, dayNumber, tripSett
                         : (item.province || (tripSettings.selectedProvinces.length > 0 ? tripSettings.selectedProvinces.join('/') : (tripSettings.selectedCountries.length > 0 ? (tripSettings.selectedCountries.map(cid => countries.find(c=>c.id === cid)?.name).filter(Boolean).join('/')) : 'Any Location')));
 
   return (
-    <BaseItemForm item={item} travelers={travelers} currency={currency} tripSettings={tripSettings} onUpdate={onUpdate} onDelete={onDelete} itemTypeLabel="Hotel Stay" dayNumber={dayNumber}>
+    <BaseItemForm
+      item={item}
+      travelers={travelers}
+      currency={currency}
+      tripSettings={tripSettings}
+      onUpdate={onUpdate as any}
+      onDelete={onDelete}
+      itemTypeLabel="Hotel Stay"
+      dayNumber={dayNumber}
+      itemSummaryLine={itemSummaryLine}
+      isCurrentlyExpanded={isCurrentlyExpanded}
+      onToggleExpand={onToggleExpand}
+    >
       <div className="mb-4">
         <FormField label={`Select Hotel (${locationDisplay || 'Global'})`} id={`hotel-def-${item.id}`}>
           {isLoadingHotelDefs ? (
@@ -425,3 +453,4 @@ function HotelItemFormComponent({ item, travelers, currency, dayNumber, tripSett
   );
 }
 export const HotelItemForm = React.memo(HotelItemFormComponent);
+

@@ -25,9 +25,24 @@ interface TransferItemFormProps {
   onUpdate: (item: TransferItemType) => void;
   onDelete: () => void;
   allServicePrices: ServicePriceItem[];
+  itemSummaryLine: React.ReactNode;
+  isCurrentlyExpanded: boolean;
+  onToggleExpand: () => void;
 }
 
-function TransferItemFormComponent({ item, travelers, currency, tripSettings, dayNumber, onUpdate, onDelete, allServicePrices: passedInAllServicePrices }: TransferItemFormProps) {
+function TransferItemFormComponent({
+  item,
+  travelers,
+  currency,
+  tripSettings,
+  dayNumber,
+  onUpdate,
+  onDelete,
+  allServicePrices: passedInAllServicePrices,
+  itemSummaryLine,
+  isCurrentlyExpanded,
+  onToggleExpand
+}: TransferItemFormProps) {
   const { allServicePrices: hookServicePrices, isLoading: isLoadingServices } = useServicePrices();
   const currentAllServicePrices = passedInAllServicePrices || hookServicePrices;
   const { countries, getCountryById } = useCountries();
@@ -151,7 +166,6 @@ function TransferItemFormComponent({ item, travelers, currency, tripSettings, da
             updatedItemPartial.selectedVehicleOptionId = firstOption.id;
             updatedItemPartial.costPerVehicle = firstOption.price;
             updatedItemPartial.vehicleType = firstOption.vehicleType;
-            // Preserve user's note if service note is empty
             updatedItemPartial.note = firstOption.notes || service.notes || item.note || undefined;
           } else {
             updatedItemPartial.costPerVehicle = service.price1 ?? 0;
@@ -188,12 +202,11 @@ function TransferItemFormComponent({ item, travelers, currency, tripSettings, da
         selectedVehicleOptionId: option.id,
         costPerVehicle: option.price,
         vehicleType: option.vehicleType,
-        note: option.notes || selectedService.notes || item.note || undefined, // Prioritize option note, then service note, then existing item note
+        note: option.notes || selectedService.notes || item.note || undefined,
       });
     } else {
-      // Fallback if "none" or invalid option is selected, try to use base service price if no options were defined on service
       const baseCost = (selectedService.vehicleOptions && selectedService.vehicleOptions.length > 0)
-                       ? undefined // If options exist, choosing "none" shouldn't set a price from base service.price1
+                       ? undefined
                        : selectedService.price1 ?? 0;
       const baseType = (selectedService.vehicleOptions && selectedService.vehicleOptions.length > 0)
                        ? undefined
@@ -243,7 +256,19 @@ function TransferItemFormComponent({ item, travelers, currency, tripSettings, da
   }
 
   return (
-    <BaseItemForm item={item} travelers={travelers} currency={currency} tripSettings={tripSettings} onUpdate={onUpdate} onDelete={onDelete} itemTypeLabel="Transfer" dayNumber={dayNumber}>
+    <BaseItemForm
+      item={item}
+      travelers={travelers}
+      currency={currency}
+      tripSettings={tripSettings}
+      onUpdate={onUpdate as any}
+      onDelete={onDelete}
+      itemTypeLabel="Transfer"
+      dayNumber={dayNumber}
+      itemSummaryLine={itemSummaryLine}
+      isCurrentlyExpanded={isCurrentlyExpanded}
+      onToggleExpand={onToggleExpand}
+    >
       <div className="pt-2">
         <FormField label="Mode" id={`transferMode-${item.id}`}>
           <Select value={item.mode} onValueChange={(value: 'ticket' | 'vehicle') => handleInputChange('mode', value)}>
@@ -447,3 +472,4 @@ function TransferItemFormComponent({ item, travelers, currency, tripSettings, da
   );
 }
 export const TransferItemForm = React.memo(TransferItemFormComponent);
+
