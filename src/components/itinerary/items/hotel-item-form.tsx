@@ -126,7 +126,7 @@ function HotelItemFormComponent({
       roomTypeNameCache: defaultRoomType.name,
       numRooms: 1,
       assignedTravelerIds: [],
-      addExtraBed: false, // Initialize new field
+      addExtraBed: false,
     };
     const currentSelectedRooms = item.selectedRooms || [];
     onUpdate({ ...item, selectedRooms: [...currentSelectedRooms, newRoomBooking] });
@@ -144,7 +144,7 @@ function HotelItemFormComponent({
         const currentSelectedRooms = item.selectedRooms || [];
         const updatedBooking = currentSelectedRooms.find(rb => rb.id === bookingId);
         if (updatedBooking) {
-            handleUpdateRoomBooking({ ...updatedBooking, roomTypeDefinitionId, roomTypeNameCache: roomTypeDef.name, addExtraBed: false /* Reset extra bed choice on room type change */ });
+            handleUpdateRoomBooking({ ...updatedBooking, roomTypeDefinitionId, roomTypeNameCache: roomTypeDef.name, addExtraBed: false });
         }
     }
   };
@@ -183,12 +183,25 @@ function HotelItemFormComponent({
     handleUpdateRoomBooking({ ...roomBooking, addExtraBed: checked });
   };
 
-
   const calculatedNights = Math.max(0, (item.checkoutDay || (dayNumber + 1)) - dayNumber);
   const currentSelectedRoomsForRender = item.selectedRooms || [];
   const hotelDefinitionNotFound = item.hotelDefinitionId && !selectedHotelDef && !isLoadingHotelDefs;
   const locationDisplay = item.countryName ? (item.province ? `${item.province}, ${item.countryName}` : item.countryName)
                         : (item.province || (tripSettings.selectedProvinces.length > 0 ? tripSettings.selectedProvinces.join('/') : (tripSettings.selectedCountries.length > 0 ? (tripSettings.selectedCountries.map(cid => countries.find(c=>c.id === cid)?.name).filter(Boolean).join('/')) : 'Any Location')));
+
+  const getFormattedDate = (dayOffset: number) => {
+    if (!tripSettings.startDate) return `Day ${dayNumber + dayOffset}`;
+    try {
+      const date = addDays(parseISO(tripSettings.startDate), dayNumber + dayOffset - 1);
+      return format(date, "MMM d, yyyy");
+    } catch (e) {
+      return `Day ${dayNumber + dayOffset}`;
+    }
+  };
+
+  const checkInDateDisplay = getFormattedDate(0);
+  const checkOutDateDisplay = item.checkoutDay ? getFormattedDate(item.checkoutDay - dayNumber) : getFormattedDate(1);
+
 
   return (
     <BaseItemForm item={item} travelers={travelers} currency={currency} tripSettings={tripSettings} onUpdate={onUpdate as any} onDelete={onDelete} itemTypeLabel="Hotel Stay" dayNumber={dayNumber} itemSummaryLine={itemSummaryLine} isCurrentlyExpanded={isCurrentlyExpanded} onToggleExpand={onToggleExpand}>
@@ -223,9 +236,18 @@ function HotelItemFormComponent({
       {item.hotelDefinitionId && selectedHotelDef && item.note && (<div className="mb-4 p-2 border rounded-md bg-blue-50 border-blue-200 text-xs text-blue-700"><strong>Booking Note for {selectedHotelDef.name}:</strong> {item.note}</div>)}
       <Separator className="my-4" /><div className="space-y-1 mb-2"><p className="text-sm font-medium text-muted-foreground">Stay Details</p></div>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <FormField label="Check-in Day" id={`checkinDay-${item.id}`}><p className="font-code text-sm p-2.5 bg-muted rounded-md h-10 flex items-center">Day {dayNumber}</p></FormField>
-        <FormField label="Checkout Day" id={`checkoutDay-${item.id}`}><Input type="number" id={`checkoutDay-${item.id}`} value={item.checkoutDay ?? ''} onChange={(e) => handleCheckoutDayChange(e.target.value)} min={dayNumber + 1} max={tripSettings.numDays + 1} placeholder={`Day ${dayNumber + 1}`} className="h-9 text-sm"/></FormField>
-        <FormField label="Total Nights" id={`totalNights-${item.id}`}><p className={`font-code text-sm p-2.5 rounded-md h-10 flex items-center ${calculatedNights <=0 && item.checkoutDay ? 'text-destructive bg-destructive/10 border border-destructive' : 'bg-muted'}`}>{calculatedNights > 0 ? calculatedNights : (item.checkoutDay ? "Invalid" : "0")}</p></FormField>
+        <FormField label="Check-in Date" id={`checkinDateDisplay-${item.id}`}>
+          <p className="font-code text-sm p-2.5 bg-muted rounded-md h-10 flex items-center">{checkInDateDisplay}</p>
+        </FormField>
+        <FormField label="Checkout Day (Day Number)" id={`checkoutDay-${item.id}`}>
+          <Input type="number" id={`checkoutDay-${item.id}`} value={item.checkoutDay ?? ''} onChange={(e) => handleCheckoutDayChange(e.target.value)} min={dayNumber + 1} max={tripSettings.numDays + 1} placeholder={`Day ${dayNumber + 1}`} className="h-9 text-sm"/>
+        </FormField>
+        <FormField label="Total Nights" id={`totalNights-${item.id}`}>
+            <div className={`font-code text-sm p-2.5 rounded-md h-10 flex flex-col justify-center ${calculatedNights <=0 && item.checkoutDay ? 'text-destructive bg-destructive/10 border border-destructive' : 'bg-muted'}`}>
+                <span>{calculatedNights > 0 ? calculatedNights : (item.checkoutDay ? "Invalid" : "0")}</span>
+                {item.checkoutDay && <span className="text-xs text-muted-foreground/80 -mt-0.5">({checkOutDateDisplay})</span>}
+            </div>
+        </FormField>
       </div>
       {!item.hotelDefinitionId && (<Alert variant="default" className="mt-4 bg-blue-50 border-blue-200"><Info className="h-4 w-4 text-blue-600" /><AlertTitle className="text-blue-700">Configure Hotel</AlertTitle><AlertDescription className="text-blue-600 text-xs">Please select a hotel from the dropdown above to configure room bookings.</AlertDescription></Alert>)}
       {hotelDefinitionNotFound && (<Alert variant="destructive" className="mt-4"><AlertCircle className="h-4 w-4" /><AlertTitle>Hotel Definition Error</AlertTitle><AlertDescription className="text-xs">The selected hotel definition (ID: {item.hotelDefinitionId}) could not be found. Please re-select a hotel.</AlertDescription></Alert>)}
@@ -312,4 +334,3 @@ function HotelItemFormComponent({
   );
 }
 export const HotelItemForm = React.memo(HotelItemFormComponent);
-
