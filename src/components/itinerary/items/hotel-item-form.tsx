@@ -254,7 +254,7 @@ function HotelItemFormComponent({
       {item.hotelDefinitionId && selectedHotelDef && (<>
         <Separator className="my-4" />
         <div className="space-y-4">
-          <div className="flex justify-between items-center"><Label className="text-md font-semibold">Room Bookings for {selectedHotelDef.name}</Label><Button variant="outline" size="sm" onClick={handleAddRoomBooking} className="border-primary text-primary hover:bg-primary/10 h-8 text-xs"><PlusCircle className="mr-1.5 h-3.5 w-3.5" /> Add Room Booking</Button></div>
+          <div className="flex justify-between items-center"><Label className="text-lg font-semibold">Room Bookings for {selectedHotelDef.name}</Label><Button variant="outline" size="sm" onClick={handleAddRoomBooking} className="border-primary text-primary hover:bg-primary/10 h-8 text-xs"><PlusCircle className="mr-1.5 h-3.5 w-3.5" /> Add Room Booking</Button></div>
           {currentSelectedRoomsForRender.length === 0 && (<p className="text-sm text-muted-foreground text-center py-4">No room types booked for this hotel yet. Click "Add Room Booking".</p>)}
           {currentSelectedRoomsForRender.map((roomBooking, index) => {
             const currentRoomTypeDef = selectedHotelDef.roomTypes.find(rt => rt.id === roomBooking.roomTypeDefinitionId);
@@ -296,7 +296,7 @@ function HotelItemFormComponent({
                 <CardTitle className="text-sm font-medium flex items-center"><BedDouble className="mr-1.5 h-4 w-4 text-primary/80"/> Booking {index + 1}: {currentRoomTypeDef?.name || 'Select Room Type'}</CardTitle>
                 <Button variant="ghost" size="icon" onClick={() => handleDeleteRoomBooking(roomBooking.id)} className="h-6 w-6 text-destructive hover:bg-destructive/10"><Trash2 className="h-3.5 w-3.5" /></Button>
               </CardHeader>
-              <CardContent className="p-3 space-y-2.5">
+              <CardContent className="p-2 sm:p-2.5 md:p-3 space-y-2.5">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
                   <FormField label="Room Type" id={`room-type-${roomBooking.id}`}><Select value={roomBooking.roomTypeDefinitionId} onValueChange={(rtId) => handleRoomTypeChangeForBooking(roomBooking.id, rtId)}><SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Select room type..." /></SelectTrigger><SelectContent>{selectedHotelDef.roomTypes.map(rtDef => (<SelectItem key={rtDef.id} value={rtDef.id}>{rtDef.name}</SelectItem>))}</SelectContent></Select></FormField>
                   <FormField label="# of these Rooms" id={`num-rooms-${roomBooking.id}`}><Input type="number" min="1" value={roomBooking.numRooms} onChange={(e) => handleNumRoomsChangeForBooking(roomBooking.id, e.target.value)} className="h-9 text-sm"/></FormField>

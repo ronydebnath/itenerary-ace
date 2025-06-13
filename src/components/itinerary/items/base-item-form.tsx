@@ -31,7 +31,7 @@ export interface BaseItemFormProps<T extends ItineraryItem> {
 export function FormField({label, id, children, className}: {label: string, id: string, children: React.ReactNode, className?: string}) {
   return (
     <div className={cn("space-y-1", className)}>
-      <Label htmlFor={id} className="text-xs sm:text-sm">{label}</Label>
+      <Label htmlFor={id} className="text-sm">{label}</Label>
       {children}
     </div>
   );
@@ -228,8 +228,8 @@ function BaseItemFormComponent<T extends ItineraryItem>({
       </CardHeader>
 
       {isCurrentlyExpanded && (
-        <CardContent id={`item-content-${item.id}`} className="p-3 sm:p-4 space-y-3 sm:space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 gap-3 sm:gap-4">
+        <CardContent id={`item-content-${item.id}`} className="p-2 sm:p-3 md:p-4 space-y-3 sm:space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             <FormField label="Country for this item (Optional)" id={`itemCountry-${item.id}`} className="md:col-span-1">
               <Select
                 value={item.countryId || "none"}
