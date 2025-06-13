@@ -171,7 +171,7 @@ export function MiscItemForm({ item, travelers, currency, tripSettings, dayNumbe
       )}
       
       <div className="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-1 gap-3 sm:gap-4 mb-4">
-        <FormField label={`${itemTypeLabel} Name / Description`} id={`itemName-${item.id}`} className="md:col-span-1">
+        <FormField label="Miscellaneous Item Name / Description" id={`itemName-${item.id}`} className="md:col-span-1">
             <Input
             id={`itemName-${item.id}`}
             value={item.name}
@@ -235,5 +235,3 @@ export function MiscItemForm({ item, travelers, currency, tripSettings, dayNumbe
     </BaseItemForm>
   );
 }
-
-    

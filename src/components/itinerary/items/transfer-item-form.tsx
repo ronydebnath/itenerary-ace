@@ -236,6 +236,7 @@ export function TransferItemForm({ item, travelers, currency, tripSettings, dayN
   const locationDisplay = item.countryName ? (item.province ? `${item.province}, ${item.countryName}` : item.countryName)
                         : (item.province || (tripSettings.selectedProvinces.length > 0 ? tripSettings.selectedProvinces.join('/') : (tripSettings.selectedCountries.length > 0 ? (tripSettings.selectedCountries.map(cid => countries.find(c=>c.id === cid)?.name).filter(Boolean).join('/')) : 'Any Location')));
 
+
   return (
     <BaseItemForm item={item} travelers={travelers} currency={currency} tripSettings={tripSettings} onUpdate={onUpdate} onDelete={onDelete} itemTypeLabel="Transfer" dayNumber={dayNumber}>
       <div className="pt-2">
@@ -318,7 +319,7 @@ export function TransferItemForm({ item, travelers, currency, tripSettings, dayN
       )}
 
       <div className="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-1 gap-3 sm:gap-4 mt-4">
-        <FormField label={`${itemTypeLabel} Name / Route Description`} id={`itemName-${item.id}`} className="md:col-span-1">
+        <FormField label="Transfer Name / Route Description" id={`itemName-${item.id}`} className="md:col-span-1">
             <Input
             id={`itemName-${item.id}`}
             value={item.name}
@@ -429,5 +430,3 @@ export function TransferItemForm({ item, travelers, currency, tripSettings, dayN
     </BaseItemForm>
   );
 }
-
-    
