@@ -1,4 +1,14 @@
-
+/**
+ * @fileoverview This component provides the user interface for managing countries.
+ * It allows users to view a list of existing countries, add new countries, edit existing
+ * ones, and delete them. It interacts with the `useCountries` hook to manage country data
+ * and persistence.
+ *
+ * @bangla এই কম্পোনেন্টটি দেশ পরিচালনার জন্য ব্যবহারকারী ইন্টারফেস সরবরাহ করে।
+ * এটি ব্যবহারকারীদের বিদ্যমান দেশগুলির একটি তালিকা দেখতে, নতুন দেশ যুক্ত করতে, বিদ্যমানগুলি
+ * সম্পাদনা করতে এবং সেগুলি মুছতে দেয়। এটি দেশের ডেটা এবং স্থায়ীত্ব পরিচালনা করার জন্য
+ * `useCountries` হুক ব্যবহার করে।
+ */
 "use client";
 
 import * as React from 'react';

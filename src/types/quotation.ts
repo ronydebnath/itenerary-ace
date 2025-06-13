@@ -1,4 +1,14 @@
-
+/**
+ * @fileoverview This file defines the data structures and Zod schemas for quotation requests.
+ * It includes schemas for client information, trip details (destinations, dates, budget),
+ * accommodation preferences, activity preferences, and flight requirements. These types are
+ * used when an agent submits a request for a new travel quotation.
+ *
+ * @bangla এই ফাইলটি উদ্ধৃতি অনুরোধের জন্য ডেটা কাঠামো এবং Zod স্কিমাগুলি সংজ্ঞায়িত করে।
+ * এটিতে ক্লায়েন্টের তথ্য, ভ্রমণের বিবরণ (গন্তব্য, তারিখ, বাজেট), আবাসনের পছন্দ, কার্যকলাপের
+ * পছন্দ এবং ফ্লাইটের প্রয়োজনীয়তার জন্য স্কিমা অন্তর্ভুক্ত রয়েছে। এই প্রকারগুলি ব্যবহৃত হয়
+ * যখন কোনও এজেন্ট নতুন ভ্রমণ উদ্ধৃতির জন্য অনুরোধ জমা দেয়।
+ */
 import { z } from 'zod';
 import { CURRENCIES, type CurrencyCode } from '@/types/itinerary';
 import { isValid, parseISO } from 'date-fns';

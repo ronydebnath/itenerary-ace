@@ -1,4 +1,14 @@
-
+/**
+ * @fileoverview This file defines Zod schemas for validating the input and output
+ * of AI flows related to contract data extraction. It ensures that data passed to
+ * and received from AI models for parsing service contracts adheres to expected structures
+ * and types, crucial for maintaining data integrity in AI-assisted features.
+ *
+ * @bangla এই ফাইলটি চুক্তি ডেটা নিষ্কাশন সম্পর্কিত AI ফ্লো-এর ইনপুট এবং আউটপুট
+ * যাচাই করার জন্য Zod স্কিমাগুলি সংজ্ঞায়িত করে। এটি নিশ্চিত করে যে পরিষেবা চুক্তিগুলি
+ * পার্স করার জন্য AI মডেলগুলিতে পাঠানো এবং গ্রহণ করা ডেটা প্রত্যাশিত কাঠামো এবং প্রকারগুলি
+ * মেনে চলে, যা AI-সহায়তা বৈশিষ্ট্যগুলিতে ডেটা অখণ্ডতা বজায় রাখার জন্য অত্যন্ত গুরুত্বপূর্ণ।
+ */
 import { z } from 'zod';
 import { CURRENCIES, SERVICE_CATEGORIES, ItineraryItemType, CurrencyCode, VEHICLE_TYPES, VehicleType } from '@/types/itinerary';
 
