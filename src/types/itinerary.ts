@@ -115,7 +115,7 @@ export interface HotelDefinition {
   name: string;
   countryId: string;
   province: string; // Province Name
-  starRating?: number; // Star rating from 1 to 5
+  starRating?: number | null; // Star rating from 1 to 5, or null/undefined if not rated
   roomTypes: HotelRoomTypeDefinition[];
 }
 
@@ -134,7 +134,6 @@ export interface HotelItem extends BaseItem {
   checkoutDay: number;
   hotelDefinitionId: string; // Refers to HotelDefinition.id
   selectedRooms: SelectedHotelRoomConfiguration[]; // Array of specific room bookings
-  // childrenSharingBed: boolean; // This logic might be too complex for item level; handle via room assignment/pricing
 }
 
 export interface MealItem extends BaseItem {
@@ -206,7 +205,7 @@ export interface HotelOccupancyDetail { // For cost summary display
   nights: number;
   characteristics?: string;
   assignedTravelerLabels: string;
-  totalRoomBlockCost: number;
+  totalRoomBlockCost: number; // Renamed from totalOccupancyCost for clarity
 }
 
 export type AISuggestion = {
@@ -270,3 +269,4 @@ export interface ProvinceItem {
 }
 
 export type SchedulingData = Pick<ActivityPackageDefinition, 'validityStartDate' | 'validityEndDate' | 'closedWeekdays' | 'specificClosedDates'>;
+
