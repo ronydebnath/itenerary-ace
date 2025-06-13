@@ -12,38 +12,66 @@ interface DetailsSummaryTableProps {
 }
 
 function DetailsSummaryTableComponent({ summary, currency, showCosts }: DetailsSummaryTableProps) {
-  const renderItemRow = (item: DetailedSummaryItem, isPrintView: boolean = false) => (
-    <React.Fragment key={`${item.id}-${isPrintView ? 'print' : 'screen'}-${showCosts ? 'costs' : 'no-costs'}`}>
-      <TableRow className={isPrintView ? 'print-details-item' : ''}>
-        <TableCell className="font-medium">{item.type}</TableCell>
-        <TableCell>{item.day && !isPrintView ? `(Day ${item.day}) ` : ''}{item.name}</TableCell>
-        <TableCell className="text-xs text-muted-foreground">{item.note}</TableCell>
-        <TableCell className="text-xs font-code whitespace-pre-wrap max-w-xs">{item.configurationDetails}</TableCell>
-        {!isPrintView && <TableCell className="text-xs">{item.excludedTravelers}</TableCell>}
-        {showCosts && !isPrintView && <TableCell className="text-right font-code">{formatCurrency(item.adultCost, currency)}</TableCell>}
-        {showCosts && !isPrintView && <TableCell className="text-right font-code">{formatCurrency(item.childCost, currency)}</TableCell>}
-        {showCosts && <TableCell className="text-right font-semibold font-code">{formatCurrency(item.totalCost, currency)}</TableCell>}
-      </TableRow>
-      {item.occupancyDetails && item.occupancyDetails.map((occDetail: HotelOccupancyDetail, index) => ( // Ensure occDetail is typed
-        <TableRow 
-            key={`${item.id}-occ-${index}-${isPrintView ? 'print' : 'screen'}-${showCosts ? 'costs' : 'no-costs'}`} 
-            className={`bg-muted/30 text-xs ${isPrintView ? 'print-hotel-occupancy-detail-item' : 'hotel-occupancy-detail-item'}`}
-        >
-          <TableCell></TableCell>
-          <TableCell className="pl-6">└ Room Type: {occDetail.roomTypeName}</TableCell>
-          <TableCell>#Rooms: {occDetail.numRooms}, Nights: {occDetail.nights}</TableCell>
-          <TableCell className="font-code whitespace-pre-wrap max-w-xs">
-            {occDetail.characteristics && `Details: ${occDetail.characteristics}`}<br/>
-            {occDetail.assignedTravelerLabels && <><br/>Assigned: {occDetail.assignedTravelerLabels}</>}
+  const renderItemRow = (item: DetailedSummaryItem, isPrintView: boolean = false) => {
+    const configDetailsArray = item.configurationDetails?.split(';').map(d => d.trim()).filter(Boolean) || [];
+
+    return (
+      <React.Fragment key={`${item.id}-${isPrintView ? 'print' : 'screen'}-${showCosts ? 'costs' : 'no-costs'}`}>
+        <TableRow className={isPrintView ? 'print-details-item' : ''}>
+          <TableCell className="font-medium align-top">{item.type}</TableCell>
+          <TableCell className="align-top">
+            {item.day && !isPrintView ? `(Day ${item.day}) ` : ''}
+            {item.name}
+            {item.province && <div className="text-xs text-muted-foreground">Loc: {item.province}{item.countryName ? `, ${item.countryName}` : ''}</div>}
           </TableCell>
-          {!isPrintView && <TableCell></TableCell>}
-          {showCosts && !isPrintView && <TableCell></TableCell>}
-          {showCosts && !isPrintView && <TableCell></TableCell>}
-          {showCosts && <TableCell className="text-right font-code">{formatCurrency(occDetail.totalRoomBlockCost, currency)}</TableCell>}
+          <TableCell className="text-xs text-muted-foreground align-top">{item.note || '-'}</TableCell>
+          <TableCell className="text-xs font-code align-top">
+            {configDetailsArray.length > 0 ? (
+              configDetailsArray.map((detail, idx) => (
+                <div key={idx} className="whitespace-normal break-words">{detail}</div>
+              ))
+            ) : '-'}
+          </TableCell>
+          {!isPrintView && <TableCell className="text-xs align-top">{item.excludedTravelers || 'All Included'}</TableCell>}
+          {showCosts && !isPrintView && <TableCell className="text-right font-code align-top">{formatCurrency(item.adultCost, currency)}</TableCell>}
+          {showCosts && !isPrintView && <TableCell className="text-right font-code align-top">{formatCurrency(item.childCost, currency)}</TableCell>}
+          {showCosts && <TableCell className="text-right font-semibold font-code align-top">{formatCurrency(item.totalCost, currency)}</TableCell>}
         </TableRow>
-      ))}
-    </React.Fragment>
-  );
+        {item.occupancyDetails && item.occupancyDetails.map((occDetail: HotelOccupancyDetail, index) => {
+          const characteristicsArray = occDetail.characteristics?.split(';').map(d => d.trim()).filter(Boolean) || [];
+          return (
+            <TableRow 
+                key={`${item.id}-occ-${index}-${isPrintView ? 'print' : 'screen'}-${showCosts ? 'costs' : 'no-costs'}`} 
+                className={`bg-muted/30 text-xs ${isPrintView ? 'print-hotel-occupancy-detail-item' : 'hotel-occupancy-detail-item'}`}
+            >
+              <TableCell className="py-1 pl-4 align-top"></TableCell> {/* Indent for sub-item */}
+              <TableCell className="py-1 pl-4 align-top italic">└ Room: {occDetail.roomTypeName}</TableCell>
+              <TableCell className="py-1 align-top">#Rooms: {occDetail.numRooms}, Nights: {occDetail.nights} {occDetail.extraBedAdded ? '(Incl. Extra Bed)' : ''}</TableCell>
+              <TableCell className="py-1 font-code align-top">
+                {characteristicsArray.length > 0 && (
+                  <div>
+                    <span className="font-medium">Details:</span>
+                    {characteristicsArray.map((char, idx) => (
+                      <div key={idx} className="ml-2 whitespace-normal break-words">{char}</div>
+                    ))}
+                  </div>
+                )}
+                {occDetail.assignedTravelerLabels && (
+                  <div className="mt-1">
+                    <span className="font-medium">Assigned:</span> {occDetail.assignedTravelerLabels}
+                  </div>
+                )}
+              </TableCell>
+              {!isPrintView && <TableCell className="py-1 align-top"></TableCell>}
+              {showCosts && !isPrintView && <TableCell className="py-1 align-top"></TableCell>}
+              {showCosts && !isPrintView && <TableCell className="py-1 align-top"></TableCell>}
+              {showCosts && <TableCell className="text-right font-code py-1 align-top">{formatCurrency(occDetail.totalRoomBlockCost, currency)}</TableCell>}
+            </TableRow>
+          );
+        })}
+      </React.Fragment>
+    );
+  };
 
   const groupedItems: { [type: string]: DetailedSummaryItem[] } = {};
   summary.detailedItems.forEach(item => {
@@ -65,14 +93,14 @@ function DetailsSummaryTableComponent({ summary, currency, showCosts }: DetailsS
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Type</TableHead>
-            <TableHead>Name/Description</TableHead>
-            <TableHead>Note</TableHead>
-            <TableHead>Configuration Details</TableHead>
-            <TableHead>Excluded Travelers</TableHead>
-            {showCosts && <TableHead className="text-right">Adult Cost</TableHead>}
-            {showCosts && <TableHead className="text-right">Child Cost</TableHead>}
-            {showCosts && <TableHead className="text-right">Total Cost</TableHead>}
+            <TableHead className="w-[100px]">Type</TableHead>
+            <TableHead className="min-w-[200px]">Name/Description</TableHead>
+            <TableHead className="min-w-[150px]">Note</TableHead>
+            <TableHead className="min-w-[250px]">Configuration Details</TableHead>
+            {!isPrintView && <TableHead className="w-[120px]">Excluded Travelers</TableHead>}
+            {showCosts && !isPrintView && <TableHead className="text-right w-[100px]">Adult Cost</TableHead>}
+            {showCosts && !isPrintView && <TableHead className="text-right w-[100px]">Child Cost</TableHead>}
+            {showCosts && <TableHead className="text-right w-[120px]">Total Cost</TableHead>}
           </TableRow>
         </TableHeader>
         <TableBody>
