@@ -2,7 +2,7 @@
 "use client";
 
 import * as React from 'react';
-import type { ItineraryItem, Traveler, CurrencyCode, TripSettings, CountryItem } from '@/types/itinerary';
+import type { ItineraryItem, Traveler, CurrencyCode, TripSettings, CountryItem, ProvinceItem } from '@/types/itinerary';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
@@ -47,21 +47,7 @@ export function BaseItemForm<T extends ItineraryItem>({
 }: BaseItemFormProps<T>) {
   const [isOptOutOpen, setIsOptOutOpen] = React.useState(item.excludedTravelerIds.length > 0);
   const { countries: allAvailableCountries, isLoading: isLoadingCountries, getCountryById } = useCountries();
-  const { provinces: allProvincesForHook, isLoading: isLoadingProvinces, getProvincesByCountry } = useProvinces();
-
-  const handleInputChange = (field: keyof T, value: any) => {
-    onUpdate({ ...item, [field]: value });
-  };
-
-  const handleOptOutChange = (travelerId: string, checked: boolean) => {
-    let newExcludedIds;
-    if (checked) {
-      newExcludedIds = [...item.excludedTravelerIds, travelerId];
-    } else {
-      newExcludedIds = item.excludedTravelerIds.filter(id => id !== travelerId);
-    }
-    onUpdate({ ...item, excludedTravelerIds: newExcludedIds });
-  };
+  const { provinces: allAvailableProvincesForHook, isLoading: isLoadingProvinces, getProvincesByCountry } = useProvinces();
 
   const displayableCountriesForItem = React.useMemo(() => {
     if (isLoadingCountries) return [];
@@ -72,27 +58,12 @@ export function BaseItemForm<T extends ItineraryItem>({
     return allAvailableCountries;
   }, [isLoadingCountries, tripSettings.selectedCountries, allAvailableCountries]);
 
-  React.useEffect(() => {
-    // If item has a countryId, check if it's still in the displayableCountriesForItem list
-    if (item.countryId && displayableCountriesForItem.length > 0) {
-      const isItemCountryStillValid = displayableCountriesForItem.some(c => c.id === item.countryId);
-      if (!isItemCountryStillValid) {
-        // Item's country is no longer valid based on global filters, reset it
-        handleItemCountryChange(undefined); // Pass undefined to reset
-      }
-    } else if (item.countryId && tripSettings.selectedCountries.length > 0 && displayableCountriesForItem.length === 0) {
-      // This edge case means global countries are selected, but this item's specific country isn't among them AND no countries match global selection (should be rare)
-      handleItemCountryChange(undefined);
-    }
-  }, [item.countryId, displayableCountriesForItem, tripSettings.selectedCountries]);
-
-
   const handleItemCountryChange = (countryIdValue?: string) => {
     const selectedCountry = allAvailableCountries.find(c => c.id === countryIdValue);
     const updatedItem: Partial<ItineraryItem> = {
       countryId: selectedCountry?.id,
       countryName: selectedCountry?.name,
-      province: undefined, // Always reset province when country changes
+      province: undefined, 
       selectedServicePriceId: undefined,
       selectedPackageId: undefined,
       selectedVehicleOptionId: undefined,
@@ -114,22 +85,52 @@ export function BaseItemForm<T extends ItineraryItem>({
     onUpdate({ ...item, ...updatedItem as Partial<T> });
   };
 
+  React.useEffect(() => {
+    if (item.countryId && displayableCountriesForItem.length > 0) {
+      const isItemCountryStillValid = displayableCountriesForItem.some(c => c.id === item.countryId);
+      if (!isItemCountryStillValid) {
+        handleItemCountryChange(undefined);
+      }
+    } else if (item.countryId && tripSettings.selectedCountries.length > 0 && displayableCountriesForItem.length === 0) {
+      handleItemCountryChange(undefined);
+    }
+  }, [item.countryId, displayableCountriesForItem, tripSettings.selectedCountries]);
+
+
   const displayProvincesForItem = React.useMemo(() => {
     if (isLoadingProvinces) return [];
-    if (item.countryId) { // If item has specific country, use its provinces
+
+    // 1. If item has a specific country, show provinces from that country.
+    if (item.countryId) {
       return getProvincesByCountry(item.countryId);
     }
-    // Else, use globally selected countries to filter provinces
-    if (tripSettings.selectedCountries.length > 0) {
-      let provincesFromGlobalCountries: any[] = [];
+
+    // 2. If no item-specific country, AND globally selected provinces exist, use those.
+    if (tripSettings.selectedProvinces && tripSettings.selectedProvinces.length > 0) {
+      return allAvailableProvincesForHook.filter(p => tripSettings.selectedProvinces.includes(p.name))
+        .sort((a,b) => a.name.localeCompare(b.name));
+    }
+
+    // 3. If no item-specific country AND no globally selected provinces, BUT globally selected countries exist,
+    //    show all provinces from those globally selected countries.
+    if (tripSettings.selectedCountries && tripSettings.selectedCountries.length > 0) {
+      let provincesFromGlobalCountries: ProvinceItem[] = [];
       tripSettings.selectedCountries.forEach(countryId => {
         provincesFromGlobalCountries = provincesFromGlobalCountries.concat(getProvincesByCountry(countryId));
       });
       return provincesFromGlobalCountries.sort((a,b) => a.name.localeCompare(b.name));
     }
-    // If no item country and no global countries, show all provinces
-    return allProvincesForHook.sort((a,b) => a.name.localeCompare(b.name));
-  }, [item.countryId, tripSettings.selectedCountries, allProvincesForHook, isLoadingProvinces, getProvincesByCountry]);
+
+    // 4. Fallback: No item country, no global provinces, no global countries. Show all.
+    return allAvailableProvincesForHook.sort((a,b) => a.name.localeCompare(b.name));
+  }, [
+    item.countryId, 
+    tripSettings.selectedProvinces, 
+    tripSettings.selectedCountries, 
+    allAvailableProvincesForHook, 
+    isLoadingProvinces, 
+    getProvincesByCountry
+  ]);
 
   return (
     <Card className="mb-4 shadow-sm border border-border hover:shadow-md transition-shadow duration-200">
@@ -174,15 +175,13 @@ export function BaseItemForm<T extends ItineraryItem>({
               <SelectTrigger className="h-9 text-sm">
                 <SelectValue placeholder={
                   isLoadingProvinces ? "Loading..." :
-                  (item.countryId && displayProvincesForItem.length === 0 ? "No provinces in item's country" :
-                  (!item.countryId && tripSettings.selectedCountries.length > 0 && displayProvincesForItem.length === 0 ? "No provinces in global countries" :
-                  (displayProvincesForItem.length === 0 ? "No provinces available" : "Select province...")))
+                  (displayProvincesForItem.length === 0 ? "No provinces match criteria" : "Select province...")
                 } />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="none">-- Any in selected country --</SelectItem>
                 {displayProvincesForItem.map(p => (
-                  <SelectItem key={p.id} value={p.name}>{p.name}</SelectItem>
+                  <SelectItem key={p.id} value={p.name}>{p.name} ({allAvailableCountries.find(c => c.id === p.countryId)?.name || 'N/A'})</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -240,4 +239,3 @@ export function BaseItemForm<T extends ItineraryItem>({
     </Card>
   );
 }
-
