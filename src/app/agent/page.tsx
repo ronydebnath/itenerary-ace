@@ -2,7 +2,7 @@
 "use client";
 
 import Link from 'next/link';
-import { Button } from '@/components/ui/button';
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Briefcase, Route, Users, ListOrdered, LayoutDashboard, UserCog } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -73,8 +73,8 @@ export default function AgentDashboardPage() {
           />
           <AgentDashboardCard
             title="My Client Itineraries"
-            description="View, edit, and organize all itineraries you have created for your clients."
-            href="/agent/itineraries" 
+            description="View, edit, and organize all itineraries you have created for your clients. (Coming Soon)"
+            href="#" 
             icon={ListOrdered}
             buttonText="View My Itineraries"
             className="lg:col-span-1"
@@ -82,8 +82,8 @@ export default function AgentDashboardPage() {
           />
            <AgentDashboardCard
             title="Client Management"
-            description="Manage your client profiles, contact information, and travel preferences."
-            href="/agent/clients" 
+            description="Manage your client profiles, contact information, and travel preferences. (Coming Soon)"
+            href="#" 
             icon={Users}
             buttonText="Manage Clients"
             disabled 
