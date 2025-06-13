@@ -2,7 +2,7 @@
 "use client";
 
 import * as React from 'react';
-import type { ActivityItem as ActivityItemType, Traveler, CurrencyCode, TripSettings, ServicePriceItem, ActivityPackageDefinition, CountryItem } from '@/types/itinerary';
+import type { ActivityItem as ActivityItemType, Traveler, CurrencyCode, TripSettings, ServicePriceItem, CountryItem } from '@/types/itinerary';
 import { BaseItemForm, FormField } from './base-item-form';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
