@@ -37,7 +37,7 @@ export function ActivityPriceForm({ form }: ActivityPriceFormProps) {
   const province = form.watch('province');
   const activityNameForLegend = form.watch('name');
 
-  const { fields: activityPackageFields, append: appendActivityPackage, remove: removeActivityPackage, update: updateActivityPackage } = useFieldArray({
+  const { fields: activityPackageFields, append: appendActivityPackage, remove: removeActivityPackage, replace: replaceActivityPackages } = useFieldArray({
     control: form.control, name: "activityPackages", keyName: "packageFieldId"
   });
 
@@ -62,13 +62,14 @@ export function ActivityPriceForm({ form }: ActivityPriceFormProps) {
     setAiParseError(null);
     if (serviceId === "none") {
       form.setValue('selectedServicePriceId', undefined);
+      // Keep existing packages or add a default one if none exist
       if (!form.getValues('activityPackages') || form.getValues('activityPackages').length === 0) {
-        form.setValue('activityPackages', [{
+        replaceActivityPackages([{
           id: generateGUID(), name: 'Standard Package', price1: 0, price2: undefined, notes: '',
           validityStartDate: new Date().toISOString().split('T')[0],
           validityEndDate: new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().split('T')[0],
           closedWeekdays: [], specificClosedDates: []
-        }], { shouldValidate: true });
+        }]);
       }
     } else {
       const service = getServicePriceById(serviceId);
@@ -76,14 +77,14 @@ export function ActivityPriceForm({ form }: ActivityPriceFormProps) {
         form.setValue('name', form.getValues('name') === "New activity" || !form.getValues('name') || !form.getValues('selectedServicePriceId') ? service.name : form.getValues('name'));
         form.setValue('selectedServicePriceId', service.id);
         if (service.activityPackages && service.activityPackages.length > 0) {
-          form.setValue('activityPackages', service.activityPackages.map(pkg => ({...pkg, id: pkg.id || generateGUID()})), { shouldValidate: true });
+          replaceActivityPackages(service.activityPackages.map(pkg => ({...pkg, id: pkg.id || generateGUID()})));
         } else {
-           form.setValue('activityPackages', [{
+           replaceActivityPackages([{
             id: generateGUID(), name: 'Standard Package', price1: service.price1 || 0, price2: service.price2, notes: service.notes || '',
             validityStartDate: new Date().toISOString().split('T')[0],
             validityEndDate: new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().split('T')[0],
             closedWeekdays: [], specificClosedDates: []
-          }], { shouldValidate: true });
+          }]);
         }
       }
     }
@@ -103,49 +104,38 @@ export function ActivityPriceForm({ form }: ActivityPriceFormProps) {
       const result = await parseActivityText({ activityText: aiInputText });
 
       const currentName = form.getValues('name');
-      if (result.name && (currentName === "New activity" || !currentName || currentName.startsWith("Package ") || !form.getValues('selectedServicePriceId'))) {
-        form.setValue('name', result.name, { shouldValidate: true });
+      if (result.activityName && (currentName === "New activity" || !currentName || !form.getValues('selectedServicePriceId'))) {
+        form.setValue('name', result.activityName, { shouldValidate: true });
       }
-      if (result.province && !form.getValues('province')) { // Only set if not already set
+      if (result.province && !form.getValues('province')) {
         form.setValue('province', result.province, { shouldValidate: true });
       }
-      if (result.currency) { // Always update currency if AI provides it
-        form.setValue('currency', result.currency, { shouldValidate: true });
-      }
-
-      let currentPackages = form.getValues('activityPackages') || [];
-      if (!Array.isArray(currentPackages)) {
-        currentPackages = [];
-      }
       
-      if (currentPackages.length === 0) {
-         appendActivityPackage({
-            id: generateGUID(), name: result.name || 'Parsed Package 1', 
-            price1: result.adultPrice ?? 0,
-            price2: result.childPrice,
-            notes: result.notes || '',
-            validityStartDate: new Date().toISOString().split('T')[0],
-            validityEndDate: new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().split('T')[0],
-            closedWeekdays: [], specificClosedDates: []
-          }, { shouldFocus: false });
+      const aiPackages = result.parsedPackages || [];
+      if (aiPackages.length > 0) {
+        const newFormPackages: ActivityPackageDefinition[] = aiPackages.map((p, index) => ({
+          id: generateGUID(),
+          name: p.packageName || `Parsed Package ${index + 1}`,
+          price1: p.adultPrice ?? 0,
+          price2: p.childPrice,
+          notes: p.notes || '',
+          validityStartDate: new Date().toISOString().split('T')[0], // Default validity, can be refined later
+          validityEndDate: new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().split('T')[0],
+          closedWeekdays: [], // AI currently doesn't parse scheduling
+          specificClosedDates: [], // AI currently doesn't parse scheduling
+        }));
+        replaceActivityPackages(newFormPackages);
+        if (aiPackages[0]?.currency && aiPackages[0].currency !== form.getValues('currency')) {
+            form.setValue('currency', aiPackages[0].currency, { shouldValidate: true });
+        }
+        toast({ title: "AI Parsing Successful", description: `${aiPackages.length} package(s) prefilled.` });
       } else {
-        // Update the first package
-        const firstPackageOriginal = currentPackages[0];
-        const updatedFirstPackage: ActivityPackageDefinition = {
-            ...firstPackageOriginal,
-            id: firstPackageOriginal.id || generateGUID(),
-            name: result.name || firstPackageOriginal.name || 'Parsed Package 1',
-            price1: result.adultPrice ?? firstPackageOriginal.price1 ?? 0,
-            price2: result.childPrice !== undefined ? result.childPrice : firstPackageOriginal.price2,
-            notes: (result.notes ? (firstPackageOriginal.notes ? `${firstPackageOriginal.notes}\nAI: ${result.notes}` : `AI: ${result.notes}`) : firstPackageOriginal.notes) || '',
-        };
-        updateActivityPackage(0, updatedFirstPackage);
+        toast({ title: "AI Parsing Note", description: "No distinct packages found by AI. Check the text or fill manually." });
       }
       
-      form.setValue('selectedServicePriceId', undefined); // Clear predefined selection as we're using AI parsed data
-
-      toast({ title: "AI Parsing Successful", description: "Activity form fields have been prefilled for the first package." });
+      form.setValue('selectedServicePriceId', undefined);
       setAiInputText("");
+
     } catch (error: any) {
       console.error("AI Parsing Error:", error);
       setAiParseError(`Failed to parse with AI: ${error.message || "Unknown error"}`);
@@ -157,7 +147,6 @@ export function ActivityPriceForm({ form }: ActivityPriceFormProps) {
 
   return (
     <div className="space-y-6">
-      {/* AI Parsing Section */}
       <div className="border border-border rounded-md p-4 relative mt-6">
         <p className="text-sm font-semibold -mt-6 ml-2 px-1 bg-background inline-block absolute left-2 top-[-0.7rem] mb-4">
           <Sparkles className="inline-block mr-2 h-4 w-4 text-accent" /> AI Activity Data Parser (Optional)
@@ -165,14 +154,14 @@ export function ActivityPriceForm({ form }: ActivityPriceFormProps) {
         <div className="space-y-3 pt-3">
           <div>
             <Label htmlFor="ai-activity-text-input">
-              Paste Activity Description
+              Paste Activity Description (Can include multiple packages)
             </Label>
             <Textarea
               id="ai-activity-text-input"
               value={aiInputText}
               onChange={(e) => setAiInputText(e.target.value)}
-              placeholder="e.g., Bangkok City Tour, half day, 9am to 1pm. Adult 1200 THB, Child 800 THB. Includes guide and temple entries..."
-              rows={4}
+              placeholder="e.g., Bangkok City Tour. Option 1: Half day, 9am-1pm. Adult 1200 THB. Option 2: Full day with lunch. Adult 2000 THB, Child 1500 THB..."
+              rows={5}
               className="mt-1"
             />
           </div>
@@ -203,11 +192,10 @@ export function ActivityPriceForm({ form }: ActivityPriceFormProps) {
             ) : (
               <Sparkles className="mr-2 h-4 w-4" />
             )}
-            Parse with AI & Prefill First Package
+            Parse with AI & Prefill Packages
           </Button>
         </div>
       </div>
-      {/* End AI Parsing Section */}
 
        {availableActivityServices.length > 0 && (
         <div className="border border-border rounded-md p-4 relative">
@@ -266,7 +254,7 @@ export function ActivityPriceForm({ form }: ActivityPriceFormProps) {
                     name={`activityPackages.${packageIndex}`}
                     render={({ field: { onChange, value }}) => (
                       <ActivityPackageScheduler
-                        packageId={packageField.id} // Use packageField.id which is stable
+                        packageId={packageField.id} 
                         initialSchedulingData={{
                           validityStartDate: value.validityStartDate,
                           validityEndDate: value.validityEndDate,
