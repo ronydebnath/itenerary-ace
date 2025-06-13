@@ -1,5 +1,3 @@
-
-'use server';
 /**
  * @fileOverview This file implements an AI flow to extract activity details, including multiple packages, from unstructured text.
  * It is designed to help pre-fill activity pricing forms by parsing descriptions and identifying potential packages, names, locations, and prices.
@@ -19,6 +17,7 @@
  * - `ParseActivityTextOutput`: ফ্লো থেকে স্ট্রাকচার্ড আউটপুটের জন্য Zod স্কিমা টাইপ।
  * - `ParseActivityTextInput`: ফ্লোতে ইনপুটের জন্য Zod স্কিমা টাইপ।
  */
+'use server';
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
 import type { CurrencyCode } from '@/types/itinerary';

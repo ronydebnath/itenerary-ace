@@ -1,4 +1,14 @@
-
+/**
+ * @fileoverview This page allows travel agents to submit a new quotation request.
+ * It presents a form with fields for client information, trip details (destination, dates,
+ * budget), accommodation preferences, activity preferences, and flight requirements.
+ * Submitted requests are stored locally using `localStorage`.
+ *
+ * @bangla এই পৃষ্ঠাটি ট্রাভেল এজেন্টদের একটি নতুন উদ্ধৃতি অনুরোধ জমা দেওয়ার অনুমতি দেয়।
+ * এটিতে ক্লায়েন্টের তথ্য, ভ্রমণের বিবরণ (গন্তব্য, তারিখ, বাজেট), আবাসনের পছন্দ,
+ * কার্যকলাপের পছন্দ এবং ফ্লাইটের প্রয়োজনীয়তার জন্য ক্ষেত্র সহ একটি ফর্ম উপস্থাপন করা হয়েছে।
+ * জমা দেওয়া অনুরোধগুলি স্থানীয়ভাবে `localStorage` ব্যবহার করে সংরক্ষণ করা হয়।
+ */
 "use client";
 
 import * as React from 'react';
@@ -86,3 +96,4 @@ export default function AgentQuotationRequestPage() {
     </main>
   );
 }
+
