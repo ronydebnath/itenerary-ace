@@ -11,7 +11,7 @@ interface DetailsSummaryTableProps {
   showCosts: boolean;
 }
 
-export function DetailsSummaryTable({ summary, currency, showCosts }: DetailsSummaryTableProps) {
+function DetailsSummaryTableComponent({ summary, currency, showCosts }: DetailsSummaryTableProps) {
   const renderItemRow = (item: DetailedSummaryItem, isPrintView: boolean = false) => (
     <React.Fragment key={`${item.id}-${isPrintView ? 'print' : 'screen'}-${showCosts ? 'costs' : 'no-costs'}`}>
       <TableRow className={isPrintView ? 'print-details-item' : ''}>
@@ -149,3 +149,5 @@ export function DetailsSummaryTable({ summary, currency, showCosts }: DetailsSum
     </>
   );
 }
+
+export const DetailsSummaryTable = React.memo(DetailsSummaryTableComponent);

@@ -45,7 +45,7 @@ const ITEM_TYPE_ICONS: { [key in ItineraryItem['type']]: React.ElementType } = {
   misc: ShoppingBag,
 };
 
-export function BaseItemForm<T extends ItineraryItem>({
+function BaseItemFormComponent<T extends ItineraryItem>({
   item,
   travelers,
   tripSettings,
@@ -197,13 +197,13 @@ export function BaseItemForm<T extends ItineraryItem>({
           aria-expanded={isCurrentlyExpanded}
           aria-controls={`item-content-${item.id}`}
         >
-          <IconComponent className="h-4 w-4 sm:h-5 sm:w-5 mr-2 flex-shrink-0 text-primary" />
+          <IconComponent className="h-5 w-5 mr-2 flex-shrink-0 text-primary" />
           <div className="flex-grow min-w-0">
-            <CardTitle className="text-sm sm:text-base font-medium text-primary truncate" title={`${itemTypeLabel}: ${itemNameDisplay}`}>
+            <CardTitle className="text-base font-semibold text-primary truncate" title={`${itemTypeLabel}: ${itemNameDisplay}`}>
               {itemTypeLabel}: {itemNameDisplay}
             </CardTitle>
             {itemSummaryLine && (
-              <div className={cn("text-xs text-muted-foreground truncate", isCurrentlyExpanded && "hidden sm:block")}>
+              <div className={cn("text-sm text-muted-foreground truncate", isCurrentlyExpanded && "hidden sm:block")}>
                 {itemSummaryLine}
               </div>
             )}
@@ -214,15 +214,15 @@ export function BaseItemForm<T extends ItineraryItem>({
             variant="ghost"
             size="icon"
             onClick={(e) => { e.stopPropagation(); onToggleExpand(); }}
-            className="h-7 w-7 sm:h-8 sm:w-8 text-muted-foreground hover:bg-primary/10"
+            className="h-8 w-8 sm:h-7 sm:w-7 text-muted-foreground hover:bg-primary/10"
             aria-label={isCurrentlyExpanded ? "Collapse" : "Expand"}
             aria-expanded={isCurrentlyExpanded}
             aria-controls={`item-content-${item.id}`}
           >
-            {isCurrentlyExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+            {isCurrentlyExpanded ? <ChevronUp className="h-5 w-5 sm:h-4 sm:w-4" /> : <ChevronDown className="h-5 w-5 sm:h-4 sm:w-4" />}
           </Button>
-          <Button variant="ghost" size="icon" onClick={onDelete} className="h-7 w-7 sm:h-8 sm:w-8 text-destructive hover:bg-destructive/10">
-            <Trash2 className="h-4 w-4" />
+          <Button variant="ghost" size="icon" onClick={onDelete} className="h-8 w-8 sm:h-7 sm:w-7 text-destructive hover:bg-destructive/10">
+            <Trash2 className="h-5 w-5 sm:h-4 sm:w-4" />
           </Button>
         </div>
       </CardHeader>
@@ -280,7 +280,7 @@ export function BaseItemForm<T extends ItineraryItem>({
           <div className="pt-1 sm:pt-2">
             <button
               onClick={() => setIsOptOutOpen(!isOptOutOpen)}
-              className="flex items-center justify-between w-full text-xs sm:text-sm font-medium text-left text-foreground/80 hover:text-primary py-1.5 sm:py-2 px-2 sm:px-3 rounded-md hover:bg-muted/50 transition-colors"
+              className="flex items-center justify-between w-full text-sm font-medium text-left text-foreground/80 hover:text-primary py-1.5 sm:py-2 px-2 sm:px-3 rounded-md hover:bg-muted/50 transition-colors"
               aria-expanded={isOptOutOpen}
               aria-controls={`optout-content-${item.id}`}
             >
@@ -296,15 +296,15 @@ export function BaseItemForm<T extends ItineraryItem>({
                         id={`optout-${item.id}-${traveler.id}`}
                         checked={item.excludedTravelerIds.includes(traveler.id)}
                         onCheckedChange={(checked) => handleOptOutToggle(traveler.id, !!checked)}
-                        className="h-3.5 w-3.5 sm:h-4 sm:w-4"
+                        className="h-4 w-4 sm:h-5 sm:w-5"
                       />
-                      <Label htmlFor={`optout-${item.id}-${traveler.id}`} className="text-xs sm:text-sm font-normal cursor-pointer">
+                      <Label htmlFor={`optout-${item.id}-${traveler.id}`} className="text-sm font-normal cursor-pointer">
                         {traveler.label}
                       </Label>
                     </div>
                   ))
                 ) : (
-                  <p className="text-xs sm:text-sm text-muted-foreground">No travelers defined.</p>
+                  <p className="text-sm text-muted-foreground">No travelers defined.</p>
                 )}
               </div>
             )}
@@ -314,3 +314,5 @@ export function BaseItemForm<T extends ItineraryItem>({
     </Card>
   );
 }
+
+export const BaseItemForm = React.memo(BaseItemFormComponent) as typeof BaseItemFormComponent;

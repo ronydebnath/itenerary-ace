@@ -1,6 +1,7 @@
 
 "use client";
 
+import * as React from 'react';
 import type { CostSummary, CurrencyCode, Traveler } from '@/types/itinerary';
 import { Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { formatCurrency } from '@/lib/utils';
@@ -12,7 +13,7 @@ interface CostBreakdownTableProps {
   showCosts: boolean;
 }
 
-export function CostBreakdownTable({ summary, currency, travelers, showCosts }: CostBreakdownTableProps) {
+function CostBreakdownTableComponent({ summary, currency, travelers, showCosts }: CostBreakdownTableProps) {
   return (
     <Table>
       <TableHeader>
@@ -52,3 +53,5 @@ export function CostBreakdownTable({ summary, currency, travelers, showCosts }: 
     </Table>
   );
 }
+
+export const CostBreakdownTable = React.memo(CostBreakdownTableComponent);

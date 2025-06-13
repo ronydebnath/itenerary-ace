@@ -13,7 +13,7 @@ interface DayNavigationProps {
   getFormattedDateForDay: (dayNum: number) => string;
 }
 
-export function DayNavigation({ currentDayView, setCurrentDayView, numDays, getFormattedDateForDay }: DayNavigationProps) {
+function DayNavigationComponent({ currentDayView, setCurrentDayView, numDays, getFormattedDateForDay }: DayNavigationProps) {
   return (
     <>
       <div className="md:hidden mb-4 no-print">
@@ -49,3 +49,5 @@ export function DayNavigation({ currentDayView, setCurrentDayView, numDays, getF
     </>
   );
 }
+
+export const DayNavigation = React.memo(DayNavigationComponent);

@@ -30,7 +30,7 @@ interface PlannerHeaderProps {
   showCosts: boolean;
 }
 
-export function PlannerHeader({
+function PlannerHeaderComponent({
   tripData,
   onUpdateTripData,
   onUpdateSettings,
@@ -160,13 +160,13 @@ export function PlannerHeader({
       <CardContent className="pt-3 sm:pt-4 md:pt-6 space-y-3 md:space-y-4">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4">
           <div>
-            <Label htmlFor="itineraryName" className="text-xs font-medium text-muted-foreground">Itinerary Name</Label>
+            <Label htmlFor="itineraryName" className="text-sm font-medium text-muted-foreground">Itinerary Name</Label>
             <Input
               id="itineraryName"
               value={tripData.itineraryName || ''}
               onChange={(e) => onUpdateTripData({ itineraryName: e.target.value })}
               placeholder="Enter itinerary name"
-              className="text-sm sm:text-base font-semibold h-9 bg-background/70 mt-1"
+              className="text-base font-semibold h-11 sm:h-10 bg-background/70 mt-1"
             />
              {tripData.id ? (
               <p className="text-xs text-muted-foreground mt-1">
@@ -177,13 +177,13 @@ export function PlannerHeader({
              )}
           </div>
           <div>
-            <Label htmlFor="clientName" className="text-xs font-medium text-muted-foreground">Client Name (Optional)</Label>
+            <Label htmlFor="clientName" className="text-sm font-medium text-muted-foreground">Client Name (Optional)</Label>
             <Input
               id="clientName"
               value={tripData.clientName || ''}
               onChange={(e) => onUpdateTripData({ clientName: e.target.value })}
               placeholder="Enter client name"
-              className="text-sm sm:text-base h-9 bg-background/70 mt-1"
+              className="text-base h-11 sm:h-10 bg-background/70 mt-1"
             />
           </div>
         </div>
@@ -200,21 +200,22 @@ export function PlannerHeader({
                         templateCategory: isNowTemplate ? tripData.settings.templateCategory : undefined
                     });
                 }}
+                className="h-5 w-5 sm:h-4 sm:w-4"
                 />
-                <Label htmlFor="isTemplate" className="text-xs sm:text-sm font-normal cursor-pointer flex items-center">
-                <FileText className="mr-2 h-3.5 w-3.5 sm:h-4 sm:w-4 text-muted-foreground" /> Mark as Itinerary Template
+                <Label htmlFor="isTemplate" className="text-sm font-normal cursor-pointer flex items-center">
+                <FileText className="mr-2 h-4 w-4 text-muted-foreground" /> Mark as Itinerary Template
                 </Label>
             </div>
 
             {tripData.settings.isTemplate && (
             <div className="mt-2 sm:mt-3 ml-6">
-                <Label htmlFor="templateCategory" className="text-xs font-medium text-muted-foreground">Template Category (Optional)</Label>
+                <Label htmlFor="templateCategory" className="text-sm font-medium text-muted-foreground">Template Category (Optional)</Label>
                 <Input
                 id="templateCategory"
                 value={tripData.settings.templateCategory || ''}
                 onChange={(e) => onUpdateSettings({ templateCategory: e.target.value || undefined })}
                 placeholder="e.g., Beach Holiday, Cultural Tour"
-                className="text-xs sm:text-sm h-9 mt-1 bg-background/70"
+                className="text-base sm:text-sm h-11 sm:h-10 mt-1 bg-background/70"
                 />
             </div>
             )}
@@ -223,31 +224,31 @@ export function PlannerHeader({
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 items-end border-t pt-3 md:pt-4 mt-3 md:mt-4">
           <div>
-            <Label htmlFor="startDate" className="text-xs font-medium text-muted-foreground flex items-center"><CalendarDays className="h-3 w-3 mr-1"/>Start Date</Label>
+            <Label htmlFor="startDate" className="text-sm font-medium text-muted-foreground flex items-center"><CalendarDays className="h-4 w-4 mr-1"/>Start Date</Label>
             <DatePicker
               date={startDateForPicker}
               onDateChange={(date) => handleSettingsChange('startDate', date ? date.toISOString().split('T')[0] : new Date().toISOString().split('T')[0])}
             />
           </div>
           <div>
-            <Label htmlFor="numDays" className="text-xs font-medium text-muted-foreground">Days</Label>
-            <Input id="numDays" type="number" value={tripData.settings.numDays} onChange={(e) => handleSettingsChange('numDays', parseInt(e.target.value, 10) || 1)} min="1" className="text-sm sm:text-base h-9 mt-1"/>
+            <Label htmlFor="numDays" className="text-sm font-medium text-muted-foreground">Days</Label>
+            <Input id="numDays" type="number" value={tripData.settings.numDays} onChange={(e) => handleSettingsChange('numDays', parseInt(e.target.value, 10) || 1)} min="1" className="text-base h-11 sm:h-10 mt-1"/>
           </div>
           <div>
-            <Label htmlFor="globalAdults" className="text-xs font-medium text-muted-foreground flex items-center"><Users className="h-3 w-3 mr-1"/>Adults</Label>
-            <Input id="globalAdults" type="number" value={tripData.pax.adults} onChange={(e) => handlePaxChange('adults', parseInt(e.target.value, 10) || 0)} min="0" className="text-sm sm:text-base h-9 mt-1"/>
+            <Label htmlFor="globalAdults" className="text-sm font-medium text-muted-foreground flex items-center"><Users className="h-4 w-4 mr-1"/>Adults</Label>
+            <Input id="globalAdults" type="number" value={tripData.pax.adults} onChange={(e) => handlePaxChange('adults', parseInt(e.target.value, 10) || 0)} min="0" className="text-base h-11 sm:h-10 mt-1"/>
           </div>
           <div>
-            <Label htmlFor="globalChildren" className="text-xs font-medium text-muted-foreground">Children</Label>
-            <Input id="globalChildren" type="number" value={tripData.pax.children} onChange={(e) => handlePaxChange('children', parseInt(e.target.value, 10) || 0)} min="0" className="text-sm sm:text-base h-9 mt-1"/>
+            <Label htmlFor="globalChildren" className="text-sm font-medium text-muted-foreground">Children</Label>
+            <Input id="globalChildren" type="number" value={tripData.pax.children} onChange={(e) => handlePaxChange('children', parseInt(e.target.value, 10) || 0)} min="0" className="text-base h-11 sm:h-10 mt-1"/>
           </div>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4 items-end">
             <div>
-                <Label htmlFor="currency" className="text-xs font-medium text-muted-foreground flex items-center"><Globe className="h-3 w-3 mr-1"/>Currency</Label>
+                <Label htmlFor="currency" className="text-sm font-medium text-muted-foreground flex items-center"><Globe className="h-4 w-4 mr-1"/>Currency</Label>
                 <Select value={tripData.pax.currency} onValueChange={(value) => handlePaxChange('currency', value as CurrencyCode)}>
-                <SelectTrigger id="currency" className="w-full text-sm sm:text-base h-9 mt-1">
+                <SelectTrigger id="currency" className="w-full text-base h-11 sm:h-10 mt-1">
                     <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -258,21 +259,21 @@ export function PlannerHeader({
                 </Select>
             </div>
             <div>
-                <Label htmlFor="budget" className="text-xs font-medium text-muted-foreground flex items-center"><DollarSign className="h-3 w-3 mr-1"/>Budget (Optional)</Label>
-                <Input id="budget" type="number" value={tripData.settings.budget || ''} onChange={(e) => handleSettingsChange('budget', e.target.value ? parseFloat(e.target.value) : undefined)} min="0" placeholder="e.g., 1000" className="text-sm sm:text-base h-9 mt-1"/>
+                <Label htmlFor="budget" className="text-sm font-medium text-muted-foreground flex items-center"><DollarSign className="h-4 w-4 mr-1"/>Budget (Optional)</Label>
+                <Input id="budget" type="number" value={tripData.settings.budget || ''} onChange={(e) => handleSettingsChange('budget', e.target.value ? parseFloat(e.target.value) : undefined)} min="0" placeholder="e.g., 1000" className="text-base h-11 sm:h-10 mt-1"/>
             </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 border-t pt-3 md:pt-4 mt-3 md:mt-4">
           <div>
-            <Label className="text-xs font-medium text-muted-foreground flex items-center"><Globe className="h-3 w-3 mr-1"/>Selected Countries (Optional)</Label>
+            <Label className="text-sm font-medium text-muted-foreground flex items-center"><Globe className="h-4 w-4 mr-1"/>Selected Countries (Optional)</Label>
             <p className="text-xs text-muted-foreground/80 mb-1">
               Filters available provinces and services.
             </p>
             {isLoadingCountries ? (
               <div className="flex items-center justify-center h-24 border rounded-md bg-muted/50">
                 <Loader2 className="h-5 w-5 animate-spin text-primary" />
-                <span className="ml-2 text-xs sm:text-sm text-muted-foreground">Loading countries...</span>
+                <span className="ml-2 text-sm text-muted-foreground">Loading countries...</span>
               </div>
             ) : availableCountries.length > 0 ? (
               <ScrollArea className="h-24 md:h-28 w-full rounded-md border p-2 sm:p-3 bg-background/70">
@@ -283,9 +284,9 @@ export function PlannerHeader({
                         id={`country-select-${country.id}`}
                         checked={(tripData.settings.selectedCountries || []).includes(country.id)}
                         onCheckedChange={() => handleCountryToggle(country.id)}
-                        className="h-3.5 w-3.5"
+                        className="h-5 w-5 sm:h-4 sm:w-4"
                       />
-                      <Label htmlFor={`country-select-${country.id}`} className="text-xs font-normal cursor-pointer">
+                      <Label htmlFor={`country-select-${country.id}`} className="text-sm font-normal cursor-pointer">
                         {country.name}
                       </Label>
                     </div>
@@ -293,7 +294,7 @@ export function PlannerHeader({
                 </div>
               </ScrollArea>
             ) : (
-               <p className="text-xs text-muted-foreground text-center py-3 border rounded-md bg-muted/50">No countries available.</p>
+               <p className="text-sm text-muted-foreground text-center py-3 border rounded-md bg-muted/50">No countries available.</p>
             )}
              {selectedCountryNames.length > 0 && (
                 <div className="pt-1 text-xs text-muted-foreground">
@@ -303,14 +304,14 @@ export function PlannerHeader({
           </div>
 
           <div>
-            <Label className="text-xs font-medium text-muted-foreground flex items-center"><MapPin className="h-3 w-3 mr-1"/>Selected Provinces (Optional)</Label>
+            <Label className="text-sm font-medium text-muted-foreground flex items-center"><MapPin className="h-4 w-4 mr-1"/>Selected Provinces (Optional)</Label>
             <p className="text-xs text-muted-foreground/80 mb-1">
               Filters services within selected countries or all provinces.
             </p>
             {isLoadingProvinces ? (
               <div className="flex items-center justify-center h-24 border rounded-md bg-muted/50">
                 <Loader2 className="h-5 w-5 animate-spin text-primary" />
-                <span className="ml-2 text-xs sm:text-sm text-muted-foreground">Loading provinces...</span>
+                <span className="ml-2 text-sm text-muted-foreground">Loading provinces...</span>
               </div>
             ) : Object.keys(groupedProvinces).length > 0 ? (
               <ScrollArea className="h-24 md:h-28 w-full rounded-md border p-2 sm:p-3 bg-background/70">
@@ -330,9 +331,9 @@ export function PlannerHeader({
                                 id={`province-select-${province.id}`}
                                 checked={(tripData.settings.selectedProvinces || []).includes(province.name)}
                                 onCheckedChange={() => handleProvinceToggle(province.name)}
-                                className="h-3.5 w-3.5"
+                                className="h-5 w-5 sm:h-4 sm:w-4"
                               />
-                              <Label htmlFor={`province-select-${province.id}`} className="text-xs font-normal cursor-pointer">
+                              <Label htmlFor={`province-select-${province.id}`} className="text-sm font-normal cursor-pointer">
                                 {province.name}
                               </Label>
                             </div>
@@ -345,7 +346,7 @@ export function PlannerHeader({
                 })}
               </ScrollArea>
             ) : (
-               <p className="text-xs text-muted-foreground text-center py-3 border rounded-md bg-muted/50">
+               <p className="text-sm text-muted-foreground text-center py-3 border rounded-md bg-muted/50">
                  { (tripData.settings.selectedCountries || []).length > 0 ? "No provinces for selected countries." : "No provinces available."}
                </p>
             )}
@@ -372,3 +373,5 @@ export function PlannerHeader({
     </Card>
   );
 }
+
+export const PlannerHeader = React.memo(PlannerHeaderComponent);
