@@ -1,17 +1,20 @@
 
 import * as React from 'react';
 import type { ExchangeRate, CurrencyCode } from '@/types/itinerary';
+import { CURRENCIES } from '@/types/itinerary'; // Import CURRENCIES
 import { generateGUID } from '@/lib/utils';
 import { useToast } from './use-toast';
 
 const EXCHANGE_RATES_STORAGE_KEY = 'itineraryAceExchangeRates';
 const EXCHANGE_BUFFER_STORAGE_KEY = 'itineraryAceExchangeBuffer';
+const REFERENCE_CURRENCY: CurrencyCode = "USD";
 
 const DEFAULT_RATES_DATA: Omit<ExchangeRate, 'id' | 'updatedAt'>[] = [
   { fromCurrency: "USD", toCurrency: "THB", rate: 36.50 },
   { fromCurrency: "EUR", toCurrency: "THB", rate: 39.20 },
   { fromCurrency: "GBP", toCurrency: "THB", rate: 45.80 },
   { fromCurrency: "USD", toCurrency: "EUR", rate: 0.92 },
+  { fromCurrency: "USD", toCurrency: "GBP", rate: 0.79 }, // Added for better USD hub
   { fromCurrency: "USD", toCurrency: "JPY", rate: 157.00 },
   { fromCurrency: "THB", toCurrency: "MYR", rate: 0.125 },
   { fromCurrency: "THB", toCurrency: "SGD", rate: 0.037 },
@@ -35,6 +38,7 @@ export function useExchangeRates() {
       if (storedRatesString) {
         try {
           ratesToSet = JSON.parse(storedRatesString);
+          // Ensure all default rates are present, add if missing
           DEFAULT_RATES_DATA.forEach(defaultRate => {
             const existing = ratesToSet.find(r => r.fromCurrency === defaultRate.fromCurrency && r.toCurrency === defaultRate.toCurrency);
             if (!existing) {
@@ -63,10 +67,10 @@ export function useExchangeRates() {
         if (!isNaN(parsedBuffer) && parsedBuffer >= 0) {
           setBufferPercentageState(parsedBuffer);
         } else {
-          setBufferPercentageState(0); // Default if invalid
+          setBufferPercentageState(0); 
         }
       } else {
-        setBufferPercentageState(0); // Default if not found
+        setBufferPercentageState(0); 
       }
 
     } catch (e: any) {
@@ -98,11 +102,6 @@ export function useExchangeRates() {
       toast({ title: "Invalid Buffer", description: "Buffer percentage must be a non-negative number.", variant: "destructive"});
       return;
     }
-    // Optional: Add an upper limit if desired, e.g., newBuffer > 50
-    // if (newBuffer > 50) {
-    //   toast({ title: "Invalid Buffer", description: "Buffer percentage cannot exceed 50%.", variant: "destructive"});
-    //   return;
-    // }
     try {
       localStorage.setItem(EXCHANGE_BUFFER_STORAGE_KEY, String(newBuffer));
       setBufferPercentageState(newBuffer);
@@ -147,17 +146,39 @@ export function useExchangeRates() {
     }
   };
 
-  const getRate = (fromCurrency: CurrencyCode, toCurrency: CurrencyCode): number | null => {
-    if (fromCurrency === toCurrency) return 1;
+  // Internal helper to find a base rate (direct or inverse) without buffer or intermediaries
+  const findBaseRate = React.useCallback((from: CurrencyCode, to: CurrencyCode): number | null => {
+    if (from === to) return 1;
 
-    let baseRate: number | null = null;
-    const directRate = exchangeRates.find(r => r.fromCurrency === fromCurrency && r.toCurrency === toCurrency);
+    const directRate = exchangeRates.find(r => r.fromCurrency === from && r.toCurrency === to);
     if (directRate) {
-      baseRate = directRate.rate;
-    } else {
-      const inverseRate = exchangeRates.find(r => r.fromCurrency === toCurrency && r.toCurrency === fromCurrency);
-      if (inverseRate && inverseRate.rate !== 0) {
-        baseRate = 1 / inverseRate.rate;
+      return directRate.rate;
+    }
+
+    const inverseRate = exchangeRates.find(r => r.fromCurrency === to && r.toCurrency === from);
+    if (inverseRate && inverseRate.rate !== 0) {
+      return 1 / inverseRate.rate;
+    }
+    return null;
+  }, [exchangeRates]);
+
+  const getRate = React.useCallback((fromCurrency: CurrencyCode, toCurrency: CurrencyCode): number | null => {
+    if (!CURRENCIES.includes(fromCurrency) || !CURRENCIES.includes(toCurrency)) {
+      console.error("Invalid currency code provided to getRate", fromCurrency, toCurrency);
+      return null;
+    }
+    
+    let baseRate = findBaseRate(fromCurrency, toCurrency);
+
+    if (baseRate === null) {
+      // Attempt conversion via REFERENCE_CURRENCY if not already involving it
+      if (fromCurrency !== REFERENCE_CURRENCY && toCurrency !== REFERENCE_CURRENCY) {
+        const rateFromToRef = findBaseRate(fromCurrency, REFERENCE_CURRENCY);
+        const rateRefToTo = findBaseRate(REFERENCE_CURRENCY, toCurrency);
+
+        if (rateFromToRef !== null && rateRefToTo !== null) {
+          baseRate = rateFromToRef * rateRefToTo;
+        }
       }
     }
 
@@ -166,7 +187,7 @@ export function useExchangeRates() {
     // Apply buffer: user gets less of the target currency
     const effectiveRate = baseRate * (1 - (bufferPercentage / 100));
     return Math.max(0.000001, effectiveRate); // Prevent zero or negative rates
-  };
+  }, [findBaseRate, bufferPercentage]);
 
   return { 
     exchangeRates, 
@@ -178,6 +199,6 @@ export function useExchangeRates() {
     getRate, 
     bufferPercentage,
     setGlobalBuffer,
-    refreshRates: fetchAndSeedData // Changed to fetchAndSeedData to also reload buffer
+    refreshRates: fetchAndSeedData
   };
 }
