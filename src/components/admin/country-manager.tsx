@@ -5,7 +5,7 @@ import * as React from 'react';
 import Link from 'next/link';
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { PlusCircle, Globe, Trash2, LayoutDashboard } from 'lucide-react';
+import { PlusCircle, Globe, Trash2, LayoutDashboard, MapPinned } from 'lucide-react';
 import type { CountryItem } from '@/types/itinerary';
 import { CountryForm } from './country-form';
 import { CountryTable } from './country-table';
@@ -43,18 +43,11 @@ export function CountryManager() {
   };
 
   return (
-    <div className="container mx-auto py-8">
+    <div className="py-4">
       <div className="flex justify-between items-center mb-6">
-        <div className="flex items-center gap-2">
-          <Link href="/">
-            <Button variant="outline" size="icon" className="h-10 w-10">
-              <LayoutDashboard className="h-5 w-5" />
-            </Button>
-          </Link>
-          <h1 className="text-3xl font-bold text-primary flex items-center">
-            <Globe className="mr-3 h-8 w-8" /> Manage Countries
-          </h1>
-        </div>
+        <h2 className="text-2xl font-semibold text-foreground flex items-center">
+          <Globe className="mr-2 h-6 w-6" /> All Countries
+        </h2>
         <Dialog open={isFormOpen} onOpenChange={(open) => {
           setIsFormOpen(open);
           if (!open) setEditingCountry(undefined);

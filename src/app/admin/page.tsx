@@ -4,7 +4,7 @@
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
-import { Cog, MapPinned, ListPlus, LayoutDashboard, ListOrdered, DollarSign, Users, BarChart3, Wand2, Route, Globe, Repeat, Briefcase } from 'lucide-react';
+import { Cog, MapPinned, ListPlus, LayoutDashboard, ListOrdered, DollarSign, Users, BarChart3, Wand2, Route, Globe, Repeat, Briefcase, Map } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface DashboardCardProps {
@@ -79,19 +79,11 @@ export default function AdminDashboardPage() {
             className="lg:col-span-1"
           />
           <DashboardCard
-            title="Manage Countries"
-            description="Define and manage countries for multi-destination tour operations."
-            href="/admin/countries"
-            icon={Globe}
-            buttonText="Edit Countries"
-            className="lg:col-span-1"
-          />
-           <DashboardCard
-            title="Manage Provinces"
-            description="Define and update geographical locations (provinces or cities) used for pricing and filtering, linked to countries."
-            href="/admin/provinces"
-            icon={MapPinned}
-            buttonText="Edit Provinces"
+            title="Location Management"
+            description="Define and manage countries and their associated provinces/cities for tour operations and pricing."
+            href="/admin/locations"
+            icon={Map}
+            buttonText="Manage Locations"
             className="lg:col-span-1"
           />
           <DashboardCard

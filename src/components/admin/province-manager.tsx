@@ -8,15 +8,15 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { PlusCircle, MapPinned, Trash2, LayoutDashboard, ListPlus, Globe } from 'lucide-react';
 import type { ProvinceItem } from '@/types/itinerary';
 import { ProvinceForm } from './province-form';
-import { ProvinceTable } from './province-table'; // Assuming ProvinceTable is updated to show country
+import { ProvinceTable } from './province-table'; 
 import { useToast } from "@/hooks/use-toast";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useProvinces } from '@/hooks/useProvinces';
-import { useCountries } from '@/hooks/useCountries'; // Import useCountries
+import { useCountries } from '@/hooks/useCountries'; 
 
 export function ProvinceManager() {
   const { provinces, addProvince, updateProvince, deleteProvince, isLoading: isLoadingProvinces } = useProvinces();
-  const { countries, isLoading: isLoadingCountries } = useCountries(); // Get countries for display
+  const { countries, isLoading: isLoadingCountries } = useCountries(); 
 
   const [isFormOpen, setIsFormOpen] = React.useState(false);
   const [editingProvince, setEditingProvince] = React.useState<ProvinceItem | undefined>(undefined);
@@ -48,18 +48,11 @@ export function ProvinceManager() {
   const isLoading = isLoadingProvinces || isLoadingCountries;
 
   return (
-    <div className="container mx-auto py-8">
+    <div className="py-4">
       <div className="flex justify-between items-center mb-6">
-        <div className="flex items-center gap-2">
-          <Link href="/">
-            <Button variant="outline" size="icon" className="h-10 w-10">
-              <LayoutDashboard className="h-5 w-5" />
-            </Button>
-          </Link>
-          <h1 className="text-3xl font-bold text-primary flex items-center">
-            <MapPinned className="mr-3 h-8 w-8" /> Manage Provinces
-          </h1>
-        </div>
+         <h2 className="text-2xl font-semibold text-foreground flex items-center">
+          <MapPinned className="mr-2 h-6 w-6" /> All Provinces
+        </h2>
         <Dialog open={isFormOpen} onOpenChange={(open) => {
           setIsFormOpen(open);
           if (!open) setEditingProvince(undefined);
@@ -86,14 +79,10 @@ export function ProvinceManager() {
         </Dialog>
       </div>
       <div className="mb-6 flex gap-4">
-        <Link href="/admin/countries">
-          <Button variant="link" className="text-primary flex items-center">
-             <Globe className="mr-2 h-5 w-5" /> Manage Countries
-          </Button>
-        </Link>
+        {/* Link to pricing can remain if useful contextually */}
         <Link href="/admin/pricing">
-          <Button variant="link" className="text-primary flex items-center">
-             <ListPlus className="mr-2 h-5 w-5" /> Manage Service Prices
+          <Button variant="link" className="text-primary flex items-center p-1 text-sm">
+             <ListPlus className="mr-2 h-4 w-4" /> Manage Service Prices
           </Button>
         </Link>
       </div>
@@ -103,7 +92,7 @@ export function ProvinceManager() {
       ) : provinces.length > 0 ? (
         <ProvinceTable
           provinces={provinces}
-          countries={countries} // Pass countries to the table for lookup
+          countries={countries} 
           onEdit={handleEdit}
           onDeleteConfirmation={(provinceId) => (
             <AlertDialog>
