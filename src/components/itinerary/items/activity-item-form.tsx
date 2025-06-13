@@ -5,7 +5,6 @@ import * as React from 'react';
 import type { ActivityItem as ActivityItemType, Traveler, CurrencyCode, TripSettings, ServicePriceItem, CountryItem } from '@/types/itinerary';
 import { BaseItemForm, FormField } from './base-item-form';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from '@/components/ui/badge';
 import { format, parseISO, isValid } from 'date-fns';
@@ -53,7 +52,7 @@ export function ActivityItemForm({ item, travelers, currency, dayNumber, tripSet
   }, [selectedActivityService, item.selectedPackageId]);
 
   React.useEffect(() => {
-    if (isLoadingServices && !passedInAllServicePrices) { 
+    if (isLoadingServices && !passedInAllServicePrices) {
       setActivityServices([]);
       return;
     }
@@ -100,7 +99,7 @@ export function ActivityItemForm({ item, travelers, currency, dayNumber, tripSet
         adultPrice: 0,
         childPrice: undefined,
         note: undefined,
-        province: item.province, // Keep existing province unless service overwrites
+        province: item.province, 
         countryId: item.countryId,
         countryName: item.countryId ? countries.find(c => c.id === item.countryId)?.name : undefined,
       });
@@ -124,7 +123,7 @@ export function ActivityItemForm({ item, travelers, currency, dayNumber, tripSet
         onUpdate({
           ...item,
           name: `New activity`,
-          selectedServicePriceId: selectedValue, 
+          selectedServicePriceId: selectedValue,
           selectedPackageId: undefined,
           adultPrice: 0,
           childPrice: undefined,
@@ -167,15 +166,15 @@ export function ActivityItemForm({ item, travelers, currency, dayNumber, tripSet
 
   const actualLoadingState = passedInAllServicePrices ? false : isLoadingServices;
   const serviceDefinitionNotFound = item.selectedServicePriceId && !selectedActivityService && !actualLoadingState;
-  
+
   const itemCountryName = item.countryId ? countries.find(c => c.id === item.countryId)?.name : undefined;
   const globalCountryNames = tripSettings.selectedCountries.map(id => countries.find(c => c.id === id)?.name).filter(Boolean) as string[];
   let locationContext = "Global";
   if (itemCountryName) {
     locationContext = item.province ? `${item.province}, ${itemCountryName}` : itemCountryName;
   } else if (globalCountryNames.length > 0) {
-    locationContext = tripSettings.selectedProvinces.length > 0 
-      ? `${tripSettings.selectedProvinces.join('/')} (${globalCountryNames.join('/')})` 
+    locationContext = tripSettings.selectedProvinces.length > 0
+      ? `${tripSettings.selectedProvinces.join('/')} (${globalCountryNames.join('/')})`
       : globalCountryNames.join('/');
   } else if (tripSettings.selectedProvinces.length > 0) {
     locationContext = tripSettings.selectedProvinces.join('/');
@@ -272,7 +271,7 @@ export function ActivityItemForm({ item, travelers, currency, dayNumber, tripSet
             />
         </FormField>
       </div>
-      
+
       {selectedPackage && selectedActivityService && (
         <div className="mb-4 p-3 border rounded-md bg-muted/30 space-y-2 text-sm">
           <div className="flex items-center font-medium text-primary">
@@ -302,7 +301,6 @@ export function ActivityItemForm({ item, travelers, currency, dayNumber, tripSet
           )}
         </div>
       )}
-
 
       <Separator className="my-4" />
       <div className="space-y-1 mb-2">
@@ -364,4 +362,5 @@ export function ActivityItemForm({ item, travelers, currency, dayNumber, tripSet
     </BaseItemForm>
   );
 }
+
     

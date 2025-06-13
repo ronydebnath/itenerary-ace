@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AlertCircle, Loader2 } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { format, parseISO } from 'date-fns';
+import { format as formatDateFns, parseISO } from 'date-fns';
 import { formatCurrency } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';
 import { useServicePrices } from '@/hooks/useServicePrices';
@@ -120,7 +120,7 @@ export function TransferItemForm({ item, travelers, currency, tripSettings, dayN
         vehicleType: item.mode === 'vehicle' ? (item.vehicleType || VEHICLE_TYPES[0]) : undefined,
         vehicles: item.mode === 'vehicle' ? (item.vehicles || 1) : undefined,
         note: undefined,
-        province: item.province, // Keep existing
+        province: item.province,
         countryId: item.countryId,
         countryName: item.countryId ? countries.find(c => c.id === item.countryId)?.name : undefined,
       });
@@ -150,9 +150,9 @@ export function TransferItemForm({ item, travelers, currency, tripSettings, dayN
             updatedItemPartial.selectedVehicleOptionId = firstOption.id;
             updatedItemPartial.costPerVehicle = firstOption.price;
             updatedItemPartial.vehicleType = firstOption.vehicleType;
-            updatedItemPartial.note = firstOption.notes || service.notes || undefined; 
+            updatedItemPartial.note = firstOption.notes || service.notes || undefined;
           } else {
-            updatedItemPartial.costPerVehicle = service.price1 ?? 0; 
+            updatedItemPartial.costPerVehicle = service.price1 ?? 0;
             updatedItemPartial.vehicleType = (service.subCategory && VEHICLE_TYPES.includes(service.subCategory as VehicleType))
                                              ? service.subCategory as VehicleType
                                              : VEHICLE_TYPES[0];
@@ -164,7 +164,7 @@ export function TransferItemForm({ item, travelers, currency, tripSettings, dayN
          onUpdate({
           ...item,
           name: `New transfer`,
-          selectedServicePriceId: selectedValue, 
+          selectedServicePriceId: selectedValue,
           selectedVehicleOptionId: undefined,
           adultTicketPrice: item.mode === 'ticket' ? 0 : undefined,
           childTicketPrice: undefined,
@@ -188,12 +188,12 @@ export function TransferItemForm({ item, travelers, currency, tripSettings, dayN
         vehicleType: option.vehicleType,
         note: option.notes || selectedService.notes || undefined,
       });
-    } else { 
+    } else {
       const baseCost = (selectedService.vehicleOptions && selectedService.vehicleOptions.length > 0)
-                       ? undefined 
-                       : selectedService.price1 ?? 0; 
+                       ? undefined
+                       : selectedService.price1 ?? 0;
       const baseType = (selectedService.vehicleOptions && selectedService.vehicleOptions.length > 0)
-                       ? undefined 
+                       ? undefined
                        : (selectedService.subCategory && VEHICLE_TYPES.includes(selectedService.subCategory as VehicleType))
                          ? selectedService.subCategory as VehicleType
                          : VEHICLE_TYPES[0];
@@ -212,11 +212,7 @@ export function TransferItemForm({ item, travelers, currency, tripSettings, dayN
 
   let isVehicleCostTypeReadOnly = false;
   if (item.mode === 'vehicle' && selectedService) {
-    if (selectedService.vehicleOptions && selectedService.vehicleOptions.length > 0) {
-      isVehicleCostTypeReadOnly = true; 
-    } else {
-      isVehicleCostTypeReadOnly = true; 
-    }
+    isVehicleCostTypeReadOnly = true;
   }
   const allowDirectVehicleEdit = item.mode === 'vehicle' && (!selectedService || (!selectedService.vehicleOptions || selectedService.vehicleOptions.length === 0) && !item.selectedVehicleOptionId);
 
@@ -237,13 +233,13 @@ export function TransferItemForm({ item, travelers, currency, tripSettings, dayN
   if (itemCountryName) {
     locationContext = item.province ? `${item.province}, ${itemCountryName}` : itemCountryName;
   } else if (globalCountryNames.length > 0) {
-    locationContext = tripSettings.selectedProvinces.length > 0 
-      ? `${tripSettings.selectedProvinces.join('/')} (${globalCountryNames.join('/')})` 
+    locationContext = tripSettings.selectedProvinces.length > 0
+      ? `${tripSettings.selectedProvinces.join('/')} (${globalCountryNames.join('/')})`
       : globalCountryNames.join('/');
   } else if (tripSettings.selectedProvinces.length > 0) {
     locationContext = tripSettings.selectedProvinces.join('/');
   }
-    
+
   return (
     <BaseItemForm item={item} travelers={travelers} currency={currency} tripSettings={tripSettings} onUpdate={onUpdate} onDelete={onDelete} itemTypeLabel="Transfer" dayNumber={dayNumber}>
       <div className="pt-2">
@@ -387,9 +383,9 @@ export function TransferItemForm({ item, travelers, currency, tripSettings, dayN
               <Select
                 value={displayedVehicleType}
                 onValueChange={(value: VehicleType) => handleInputChange('vehicleType', value)}
-                disabled={!allowDirectVehicleEdit}
+                disabled={isVehicleCostTypeReadOnly}
               >
-                <SelectTrigger className={!allowDirectVehicleEdit ? "bg-muted/50 cursor-not-allowed" : ""}>
+                <SelectTrigger className={isVehicleCostTypeReadOnly ? "bg-muted/50 cursor-not-allowed" : ""}>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -407,8 +403,8 @@ export function TransferItemForm({ item, travelers, currency, tripSettings, dayN
                 onChange={(e) => handleNumericInputChange('costPerVehicle', e.target.value)}
                 min="0"
                 placeholder="0.00"
-                readOnly={!allowDirectVehicleEdit}
-                className={!allowDirectVehicleEdit ? "bg-muted/50 cursor-not-allowed" : ""}
+                readOnly={isVehicleCostTypeReadOnly}
+                className={isVehicleCostTypeReadOnly ? "bg-muted/50 cursor-not-allowed" : ""}
               />
             </FormField>
             <FormField label="# of Vehicles" id={`numVehicles-${item.id}`}>
@@ -426,9 +422,18 @@ export function TransferItemForm({ item, travelers, currency, tripSettings, dayN
             <div className="mt-3 p-2 border rounded-md bg-muted/30 text-xs">
               <p className="font-medium">Note: This route has potential surcharges that will be applied automatically based on date:</p>
               <ul className="list-disc list-inside pl-2">
-                {selectedService.surchargePeriods.map(sp => (
-                  <li key={sp.id}>{sp.name}: +{formatCurrency(sp.surchargeAmount, currency)} ({format(parseISO(sp.startDate), 'dd MMM')} - {format(parseISO(sp.endDate), 'dd MMM')})</li>
-                ))}
+                {selectedService.surchargePeriods.map(sp => {
+                  try {
+                    return (
+                      <li key={sp.id}>
+                        {sp.name}: +{formatCurrency(sp.surchargeAmount, currency)}
+                        ({formatDateFns(parseISO(sp.startDate), 'dd MMM')} - {formatDateFns(parseISO(sp.endDate), 'dd MMM')})
+                      </li>
+                    );
+                  } catch (e) {
+                    return <li key={sp.id} className="text-destructive">Error parsing surcharge date for {sp.name}</li>
+                  }
+                })}
               </ul>
             </div>
           )}
@@ -437,4 +442,5 @@ export function TransferItemForm({ item, travelers, currency, tripSettings, dayN
     </BaseItemForm>
   );
 }
+
     

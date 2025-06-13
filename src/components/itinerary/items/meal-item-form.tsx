@@ -81,7 +81,7 @@ export function MealItemForm({ item, travelers, currency, tripSettings, dayNumbe
         adultMealPrice: 0,
         childMealPrice: undefined,
         note: undefined,
-        province: item.province, // Keep existing
+        province: item.province,
         countryId: item.countryId,
         countryName: item.countryId ? countries.find(c => c.id === item.countryId)?.name : undefined,
       });
@@ -122,8 +122,8 @@ export function MealItemForm({ item, travelers, currency, tripSettings, dayNumbe
   if (itemCountryName) {
     locationContext = item.province ? `${item.province}, ${itemCountryName}` : itemCountryName;
   } else if (globalCountryNames.length > 0) {
-    locationContext = tripSettings.selectedProvinces.length > 0 
-      ? `${tripSettings.selectedProvinces.join('/')} (${globalCountryNames.join('/')})` 
+    locationContext = tripSettings.selectedProvinces.length > 0
+      ? `${tripSettings.selectedProvinces.join('/')} (${globalCountryNames.join('/')})`
       : globalCountryNames.join('/');
   } else if (tripSettings.selectedProvinces.length > 0) {
     locationContext = tripSettings.selectedProvinces.join('/');
@@ -174,7 +174,7 @@ export function MealItemForm({ item, travelers, currency, tripSettings, dayNumbe
           </AlertDescription>
         </Alert>
       )}
-      
+
       <div className="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-1 gap-3 sm:gap-4 mb-4">
         <FormField label="Meal Name / Restaurant" id={`itemName-${item.id}`} className="md:col-span-1">
             <Input
@@ -240,4 +240,5 @@ export function MealItemForm({ item, travelers, currency, tripSettings, dayNumbe
     </BaseItemForm>
   );
 }
+
     
