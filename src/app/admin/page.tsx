@@ -4,7 +4,7 @@
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
-import { Cog, MapPinned, ListPlus, LayoutDashboard, ListOrdered, DollarSign, Users, BarChart3, Wand2, Route, Globe, Repeat } from 'lucide-react';
+import { Cog, MapPinned, ListPlus, LayoutDashboard, ListOrdered, DollarSign, Users, BarChart3, Wand2, Route, Globe, Repeat, Briefcase } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface DashboardCardProps {
@@ -109,6 +109,14 @@ export default function AdminDashboardPage() {
             icon={Repeat}
             buttonText="Use Converter"
             className="lg:col-span-1"
+          />
+          <DashboardCard
+            title="Agent Dashboard"
+            description="Access the dashboard designed for travel agents to manage their specific tasks and clients."
+            href="/agent"
+            icon={Briefcase} 
+            buttonText="Go to Agent View"
+            className="lg:col-span-1 border-secondary"
           />
         </div>
       </div>
