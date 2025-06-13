@@ -5,6 +5,7 @@ import * as React from 'react';
 import type { ActivityItem as ActivityItemType, Traveler, CurrencyCode, TripSettings, ServicePriceItem, CountryItem } from '@/types/itinerary';
 import { BaseItemForm, FormField } from './base-item-form';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label'; // Added import
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from '@/components/ui/badge';
 import { format, parseISO, isValid } from 'date-fns';
@@ -99,7 +100,7 @@ export function ActivityItemForm({ item, travelers, currency, dayNumber, tripSet
         adultPrice: 0,
         childPrice: undefined,
         note: undefined,
-        province: item.province, 
+        province: item.province,
         countryId: item.countryId,
         countryName: item.countryId ? countries.find(c => c.id === item.countryId)?.name : undefined,
       });
@@ -123,7 +124,7 @@ export function ActivityItemForm({ item, travelers, currency, dayNumber, tripSet
         onUpdate({
           ...item,
           name: `New activity`,
-          selectedServicePriceId: selectedValue,
+          selectedServicePriceId: selectedValue, // Keep the ID even if service not found, for error display
           selectedPackageId: undefined,
           adultPrice: 0,
           childPrice: undefined,
