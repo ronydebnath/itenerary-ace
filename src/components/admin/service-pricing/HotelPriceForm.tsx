@@ -20,7 +20,7 @@ import { Card } from "@/components/ui/card";
 import { PlusCircle, XIcon, Star } from 'lucide-react';
 import { Label } from "@/components/ui/label";
 import { generateGUID } from '@/lib/utils';
-import { addDays, isValid, parseISO, isWithinInterval, areIntervalsOverlapping } from 'date-fns';
+import { addDays, isValid, parseISO, isWithinInterval, areIntervalsOverlapping, format } from 'date-fns';
 import type { ServicePriceFormValues } from './ServicePriceFormRouter';
 import type { CurrencyCode, RoomTypeSeasonalPrice } from '@/types/itinerary';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -54,6 +54,26 @@ interface HotelPriceFormProps {
   form: ReturnType<typeof useFormContext<ServicePriceFormValues>>;
 }
 
+const starRatingValueMap: { [key: string]: number | null } = {
+  "unrated": null,
+  "one_star": 1,
+  "two_star": 2,
+  "three_star": 3,
+  "four_star": 4,
+  "five_star": 5
+};
+
+const getStarRatingPresentationalValue = (numericValue: number | null | undefined): string => {
+  if (numericValue == null) return "unrated";
+  for (const key in starRatingValueMap) {
+    if (starRatingValueMap[key] === numericValue) {
+      return key;
+    }
+  }
+  return "unrated"; // Fallback
+};
+
+
 export function HotelPriceForm({ form }: HotelPriceFormProps) {
   const hotelNameForLegend = form.watch('name');
   const hotelProvinceForLegend = form.watch('province');
@@ -72,7 +92,8 @@ export function HotelPriceForm({ form }: HotelPriceFormProps) {
       form.setValue('hotelDetails.roomTypes', [defaultRoom], { shouldValidate: true, shouldDirty: true });
     }
     if (hotelDetails && hotelDetails.starRating === undefined) {
-      form.setValue('hotelDetails.starRating', 3, { shouldValidate: true }); // Default star rating if not set
+      // Default to null (unrated) instead of 3 if not set, consistent with schema allowing null
+      form.setValue('hotelDetails.starRating', null, { shouldValidate: true });
     }
   }, [form]);
 
@@ -98,18 +119,20 @@ export function HotelPriceForm({ form }: HotelPriceFormProps) {
             <FormItem className="mb-3 sm:mb-4">
               <FormLabel className="text-xs sm:text-sm">Hotel Star Rating</FormLabel>
               <Select
-                onValueChange={(value) => field.onChange(value ? parseInt(value, 10) : undefined)}
-                value={field.value ? String(field.value) : ""}
+                value={getStarRatingPresentationalValue(field.value)}
+                onValueChange={(val: string) => {
+                  field.onChange(starRatingValueMap[val]);
+                }}
               >
                 <FormControl>
                   <SelectTrigger className="h-9 text-sm">
-                    <SelectValue placeholder="Select star rating (1-5)" />
+                    <SelectValue placeholder="Select star rating" />
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  <SelectItem value="">Unrated / Not Set</SelectItem>
+                  <SelectItem value="unrated">Unrated / Not Set</SelectItem>
                   {[1, 2, 3, 4, 5].map(star => (
-                    <SelectItem key={star} value={String(star)}>
+                    <SelectItem key={getStarRatingPresentationalValue(star)} value={getStarRatingPresentationalValue(star)}>
                       <div className="flex items-center">
                         {Array(star).fill(0).map((_, i) => <Star key={i} className="h-3 w-3 sm:h-4 sm:w-4 fill-yellow-400 text-yellow-400 mr-0.5" />)}
                         {Array(5-star).fill(0).map((_,i) => <Star key={`empty-${i}`} className="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground/50 mr-0.5" />)}
@@ -287,7 +310,7 @@ function SeasonalRatesTableForRoomType({ form, roomIndex, currency }: SeasonalRa
         return areIntervalsOverlapping(
           { start: currentSeasonStartDate, end: dateToDisable },
           { start: otherStart, end: otherEnd },
-          { inclusive: true }
+          { inclusive: true } 
         );
       }
       return false;
@@ -409,3 +432,4 @@ function SeasonalRatesTableForRoomType({ form, roomIndex, currency }: SeasonalRa
     </div>
   );
 }
+
