@@ -59,7 +59,7 @@ function calculateTransferCost(
     adultCost = adultCount * adultPrice;
     childCost = childCount * childPrice;
     totalCost = adultCost + childCost;
-    specificDetails += `; Ad: ${formatCurrency(adultPrice, currency)}, Ch: ${formatCurrency(childPrice, currency)}`;
+    specificDetails += `; Ticket Based`; // Removed price details
     participatingIds.forEach(id => {
       individualContributions[id] = (allTravelers.find(t=>t.id===id)?.type === 'adult' ? adultPrice : childPrice);
     });
@@ -104,11 +104,10 @@ function calculateTransferCost(
     const vehicleTotalCost = finalCostPerVehicle * numVehicles;
     totalCost = vehicleTotalCost;
     
-    specificDetails += `; Type: ${vehicleTypeDisplay}; #Veh: ${numVehicles}; Cost/V: ${formatCurrency(baseCostPerVehicle, currency)}`;
+    specificDetails += `; Type: ${vehicleTypeDisplay}; #Veh: ${numVehicles}`; // Removed price details
     if (appliedSurcharge > 0) {
-        specificDetails += `; Surcharge (${surchargeName}): ${formatCurrency(appliedSurcharge, currency)}`;
+        specificDetails += `; Surcharge Applied: ${surchargeName}`;
     }
-    specificDetails += `; Final/V: ${formatCurrency(finalCostPerVehicle, currency)}; Total: ${formatCurrency(vehicleTotalCost, currency)}`;
     
     const totalParticipants = adultCount + childCount;
     if (totalParticipants > 0) {
@@ -136,7 +135,7 @@ function calculateActivityCost(item: ActivityItem, allTravelers: Traveler[], cur
   const endDay = item.endDay || startDay;
   const duration = Math.max(1, endDay - startDay + 1);
 
-  let specificDetails = `Day ${startDay}${duration > 1 ? '-' + endDay : ''} (Dur: ${duration}d). Ad: ${formatCurrency(adultPrice, currency)}, Ch: ${formatCurrency(childPrice, currency)}. Fixed Price.`;
+  let specificDetails = `Day ${startDay}${duration > 1 ? '-' + endDay : ''} (Dur: ${duration}d). Fixed Price.`; // Removed price details
   if (item.province) specificDetails += `; Prov: ${item.province}`;
 
   const individualContributions: { [travelerId: string]: number } = {};
@@ -328,7 +327,7 @@ function calculateMealCost(item: MealItem, allTravelers: Traveler[], currency: C
   const childCost = childCount * childPrice * numMeals;
   const totalCost = adultCost + childCost;
 
-  let specificDetails = `# Meals: ${numMeals}, Ad: ${formatCurrency(adultPrice, currency)}, Ch: ${formatCurrency(childPrice, currency)}`;
+  let specificDetails = `# Meals: ${numMeals}`; // Removed price details
   if (item.province) specificDetails += `; Prov: ${item.province}`;
   const individualContributions: { [travelerId: string]: number } = {};
   const adultMealTotal = adultPrice * numMeals;
@@ -349,7 +348,7 @@ function calculateMiscCost(item: MiscItem, allTravelers: Traveler[], currency: C
   let adultCost = 0;
   let childCost = 0;
   let totalCost = 0;
-  let specificDetails = `Assign: ${item.costAssignment}, Cost: ${formatCurrency(unitCost, currency)}, Qty: ${quantity}`;
+  let specificDetails = `Assign: ${item.costAssignment}, Qty: ${quantity}`; // Removed price details
   if (item.province) specificDetails += `; Prov: ${item.province}`;
   const individualContributions: { [travelerId: string]: number } = {};
 
@@ -357,7 +356,7 @@ function calculateMiscCost(item: MiscItem, allTravelers: Traveler[], currency: C
     adultCost = adultCount * itemTotalForCalculation;
     childCost = childCount * itemTotalForCalculation;
     totalCost = adultCost + childCost;
-    specificDetails += `; Total: ${formatCurrency(totalCost, currency)} (Per Pers)`;
+    // specificDetails += `; Total: ${formatCurrency(totalCost, currency)} (Per Pers)`; // Removed price details
     participatingIds.forEach(id => {
       individualContributions[id] = itemTotalForCalculation;
     });
@@ -372,7 +371,7 @@ function calculateMiscCost(item: MiscItem, allTravelers: Traveler[], currency: C
         individualContributions[id] = perPersonShare;
       });
     }
-    specificDetails += `; Total Shared: ${formatCurrency(totalCost, currency)}`;
+    // specificDetails += `; Total Shared: ${formatCurrency(totalCost, currency)}`; // Removed price details
   }
   return { adultCost, childCost, totalCost, participatingIds, excludedTravelerLabels, specificDetails, individualContributions, province: item.province };
 }
@@ -458,3 +457,4 @@ export function calculateAllCosts(
 
   return { grandTotal, perPersonTotals, detailedItems };
 }
+
