@@ -19,6 +19,7 @@ import { MealPriceForm } from './MealPriceForm';
 import { MiscellaneousPriceForm } from './MiscellaneousPriceForm';
 import { addDays, isValid, parseISO, format, areIntervalsOverlapping } from 'date-fns';
 import { useCountries } from '@/hooks/useCountries';
+import { Loader2 } from 'lucide-react'; // Added import
 
 // --- Zod Schemas ---
 const hotelRoomSeasonalPriceSchema = z.object({
