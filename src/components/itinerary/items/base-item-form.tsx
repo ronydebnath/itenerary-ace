@@ -58,12 +58,64 @@ export function BaseItemForm<T extends ItineraryItem>({
     return allAvailableCountries;
   }, [isLoadingCountries, tripSettings.selectedCountries, allAvailableCountries]);
 
+  const displayableProvincesForItem = React.useMemo(() => {
+    if (isLoadingProvinces) return [];
+
+    const globallySelectedCountries = tripSettings.selectedCountries || [];
+    const globallySelectedProvincesFromSettings = tripSettings.selectedProvinces || [];
+    let provincesToDisplay: ProvinceItem[] = [];
+
+    if (item.countryId) { // Item has a specific country
+      provincesToDisplay = getProvincesByCountry(item.countryId);
+      if (globallySelectedProvincesFromSettings.length > 0) {
+        // Filter these by global province selection if any
+        provincesToDisplay = provincesToDisplay.filter(p => 
+          globallySelectedProvincesFromSettings.includes(p.name)
+        );
+      }
+    } else { // Item does NOT have a specific country (relies on global settings)
+      if (globallySelectedProvincesFromSettings.length > 0) {
+        // If global provinces are selected, use them directly.
+        provincesToDisplay = allAvailableProvincesForHook.filter(p => 
+          globallySelectedProvincesFromSettings.includes(p.name)
+        );
+         // If global countries are also selected, ensure these provinces belong to one of them.
+        if (globallySelectedCountries.length > 0) {
+            provincesToDisplay = provincesToDisplay.filter(p => 
+            globallySelectedCountries.includes(p.countryId)
+            );
+        }
+
+      } else if (globallySelectedCountries.length > 0) {
+        // No global provinces selected, but global countries are. Show all provinces from global countries.
+        globallySelectedCountries.forEach(countryId => {
+          provincesToDisplay = provincesToDisplay.concat(getProvincesByCountry(countryId));
+        });
+        // Remove duplicates if a province is in multiple selected countries (though unlikely with current data model)
+        provincesToDisplay = provincesToDisplay.filter((province, index, self) =>
+          index === self.findIndex((p) => p.id === province.id)
+        );
+      } else {
+        // No item-specific country, no global provinces, no global countries. Show all available.
+        provincesToDisplay = [...allAvailableProvincesForHook];
+      }
+    }
+    return provincesToDisplay.sort((a, b) => a.name.localeCompare(b.name));
+  }, [
+    item.countryId, 
+    tripSettings.selectedCountries, 
+    tripSettings.selectedProvinces, 
+    allAvailableProvincesForHook, 
+    isLoadingProvinces, 
+    getProvincesByCountry
+  ]);
+
   const handleItemCountryChange = React.useCallback((countryIdValue?: string) => {
     const selectedCountry = allAvailableCountries.find(c => c.id === countryIdValue);
     const updatedItem: Partial<ItineraryItem> = {
       countryId: selectedCountry?.id,
       countryName: selectedCountry?.name,
-      province: undefined,
+      province: undefined, // Reset province when country changes
       selectedServicePriceId: undefined,
       selectedPackageId: undefined,
       selectedVehicleOptionId: undefined,
@@ -85,76 +137,35 @@ export function BaseItemForm<T extends ItineraryItem>({
     onUpdate({ ...item, ...updatedItem as Partial<T> });
   }, [item, onUpdate]);
 
-  const displayProvincesForItem = React.useMemo(() => {
-    if (isLoadingProvinces) return [];
-
-    const globallySelectedCountries = tripSettings.selectedCountries || [];
-    const globallySelectedProvinces = tripSettings.selectedProvinces || [];
-
-    // Case 1: Item has a specific country selected.
-    if (item.countryId) {
-      let provincesWithinItemCountry = getProvincesByCountry(item.countryId);
-      if (globallySelectedProvinces.length > 0) {
-        // Further filter these by global province selection
-        provincesWithinItemCountry = provincesWithinItemCountry.filter(p => 
-          globallySelectedProvinces.includes(p.name)
-        );
-      }
-      return provincesWithinItemCountry.sort((a,b) => a.name.localeCompare(b.name));
-    }
-
-    // Case 2: Item does NOT have a specific country selected (relies on global settings).
-    // Filter by globally selected provinces first.
-    if (globallySelectedProvinces.length > 0) {
-      let provincesToDisplay = allAvailableProvincesForHook
-        .filter(p => globallySelectedProvinces.includes(p.name));
-      
-      // If global countries are also selected, ensure these provinces belong to one of them.
-      if (globallySelectedCountries.length > 0) {
-        provincesToDisplay = provincesToDisplay.filter(p => 
-          globallySelectedCountries.includes(p.countryId)
-        );
-      }
-      return provincesToDisplay.sort((a,b) => a.name.localeCompare(b.name));
-    }
-
-    // Case 3: No global provinces selected, but global countries are selected.
-    // Show all provinces from the globally selected countries.
-    if (globallySelectedCountries.length > 0) {
-      let provincesFromGlobalCountries: ProvinceItem[] = [];
-      globallySelectedCountries.forEach(countryId => {
-        provincesFromGlobalCountries = provincesFromGlobalCountries.concat(getProvincesByCountry(countryId));
-      });
-      return provincesFromGlobalCountries.sort((a,b) => a.name.localeCompare(b.name));
-    }
-
-    // Case 4: No item-specific country, no global provinces, no global countries. Show all.
-    return allAvailableProvincesForHook.sort((a,b) => a.name.localeCompare(b.name));
-
-  }, [
-    item.countryId, 
-    tripSettings.selectedProvinces, 
-    tripSettings.selectedCountries, 
-    allAvailableProvincesForHook, 
-    isLoadingProvinces, 
-    getProvincesByCountry
-  ]);
-
-
   React.useEffect(() => {
-    let provinceChangedByCountryResetLogic = false;
+    let countryReset = false;
     const currentItemCountryIsValid = !item.countryId || displayableCountriesForItem.some(c => c.id === item.countryId);
-    if (!currentItemCountryIsValid) {
+    if (!currentItemCountryIsValid && item.countryId) {
       handleItemCountryChange(undefined);
-      provinceChangedByCountryResetLogic = true; 
+      countryReset = true;
     }
 
-    if (item.province && !displayProvincesForItem.some(p => p.name === item.province)) {
-      if (!provinceChangedByCountryResetLogic) { 
+    // This check needs to happen after displayableProvincesForItem is guaranteed to be an array
+    if (!isLoadingProvinces && !countryReset) {
+      // Ensure displayableProvincesForItem is an array before calling .some on it
+      const provincesList = Array.isArray(displayableProvincesForItem) ? displayableProvincesForItem : [];
+      const currentItemProvinceIsValid = !item.province || provincesList.some(p => p.name === item.province);
+      if (!currentItemProvinceIsValid && item.province) {
         handleItemProvinceChange(undefined);
       }
     }
-  }, [item.countryId, item.province, displayableCountriesForItem, displayableProvincesForItem, handleItemCountryChange, handleItemProvinceChange]);
+  }, [
+    item.countryId,
+    item.province,
+    displayableCountriesForItem, // This should be an array
+    displayableProvincesForItem, // Added back: This must be an array.
+    tripSettings.selectedProvinces,
+    tripSettings.selectedCountries,
+    allAvailableProvincesForHook, // This is a dependency of displayableProvincesForItem
+    isLoadingProvinces, // Added to ensure effect runs when loading state changes
+    handleItemCountryChange,
+    handleItemProvinceChange
+  ]);
 
   const handleInputChange = (field: keyof T, value: any) => {
     onUpdate({ ...item, [field]: value });
@@ -167,21 +178,13 @@ export function BaseItemForm<T extends ItineraryItem>({
     onUpdate({ ...item, excludedTravelerIds: newExcludedTravelerIds });
   };
   
-  const locationDisplay = React.useMemo(() => {
-    const countryName = item.countryId ? allAvailableCountries.find(c => c.id === item.countryId)?.name : 
-                       (tripSettings.selectedCountries.length === 1 ? allAvailableCountries.find(c => c.id === tripSettings.selectedCountries[0])?.name : 
-                       (tripSettings.selectedCountries.length > 1 ? "Multiple Countries" : "Any Country"));
-    const provinceName = item.province || 
-                        (tripSettings.selectedProvinces.length === 1 ? tripSettings.selectedProvinces[0] :
-                        (tripSettings.selectedProvinces.length > 1 ? "Multiple Provinces" : "Any Province"));
-
+  const locationDisplayForServiceSelection = React.useMemo(() => {
     if (item.province) return `${item.province}${item.countryId ? `, ${allAvailableCountries.find(c => c.id === item.countryId)?.name}` : ''}`;
     if (item.countryId) return allAvailableCountries.find(c => c.id === item.countryId)?.name || 'Selected Country';
     if (tripSettings.selectedProvinces.length > 0) return tripSettings.selectedProvinces.join('/');
     if (tripSettings.selectedCountries.length > 0) return tripSettings.selectedCountries.map(cid => allAvailableCountries.find(c=>c.id === cid)?.name).filter(Boolean).join('/');
     return 'Global';
   }, [item.countryId, item.province, tripSettings.selectedCountries, tripSettings.selectedProvinces, allAvailableCountries]);
-
 
   return (
     <Card className="mb-4 shadow-sm border border-border hover:shadow-md transition-shadow duration-200">
@@ -200,12 +203,12 @@ export function BaseItemForm<T extends ItineraryItem>({
             <Select
               value={item.countryId || "none"}
               onValueChange={(value) => handleItemCountryChange(value === "none" ? undefined : value)}
-              disabled={isLoadingCountries || displayableCountriesForItem.length === 0 && tripSettings.selectedCountries.length > 0}
+              disabled={isLoadingCountries || (displayableCountriesForItem.length === 0 && tripSettings.selectedCountries.length > 0)}
             >
               <SelectTrigger className="h-9 text-sm">
                 <SelectValue placeholder={
                   isLoadingCountries ? "Loading..." :
-                  (tripSettings.selectedCountries.length > 0 && displayableCountriesForItem.length === 0 ? "No country matches global" :
+                  ((tripSettings.selectedCountries.length > 0 && displayableCountriesForItem.length === 0) ? "No country matches global" :
                   (displayableCountriesForItem.length === 0 ? "No countries available" : "-- Use Global / Any --"))
                 } />
               </SelectTrigger>
@@ -221,18 +224,17 @@ export function BaseItemForm<T extends ItineraryItem>({
             <Select
               value={item.province || "none"}
               onValueChange={(value) => handleItemProvinceChange(value)}
-              disabled={isLoadingProvinces || displayProvincesForItem.length === 0}
+              disabled={isLoadingProvinces || displayableProvincesForItem.length === 0}
             >
               <SelectTrigger className="h-9 text-sm">
-                <SelectValue placeholder={
+                 <SelectValue placeholder={
                   isLoadingProvinces ? "Loading..." :
-                  (item.countryId && displayProvincesForItem.length === 0 && tripSettings.selectedProvinces && tripSettings.selectedProvinces.length > 0 ? "No provinces match global & item country" :
-                  (displayProvincesForItem.length === 0 ? "No provinces match criteria" : "-- Any in selected scope --"))
+                  (displayableProvincesForItem.length === 0 ? "No provinces match criteria" : "-- Any in selected scope --")
                 } />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="none">-- Any in selected scope --</SelectItem>
-                {displayProvincesForItem.map(p => (
+                {displayableProvincesForItem.map(p => (
                   <SelectItem key={p.id} value={p.name}>{p.name} ({allAvailableCountries.find(c => c.id === p.countryId)?.name || 'N/A'})</SelectItem>
                 ))}
               </SelectContent>
@@ -291,4 +293,4 @@ export function BaseItemForm<T extends ItineraryItem>({
     </Card>
   );
 }
-
+    
