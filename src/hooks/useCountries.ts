@@ -4,7 +4,7 @@ import type { CountryItem } from '@/types/itinerary';
 import { generateGUID } from '@/lib/utils';
 
 const COUNTRIES_STORAGE_KEY = 'itineraryAceCountries';
-const DEFAULT_COUNTRY_NAME = "Thailand";
+const DEFAULT_COUNTRY_NAMES = ["Thailand", "Malaysia"]; // Added Malaysia
 
 export function useCountries() {
   const [countries, setCountries] = React.useState<CountryItem[]>([]);
@@ -27,16 +27,26 @@ export function useCountries() {
       console.error("Failed to load countries from localStorage:", error);
     }
 
-    // Ensure default "Thailand" country exists if no countries are loaded
-    const defaultCountryExists = loadedCountries.some(c => c.name === DEFAULT_COUNTRY_NAME);
-    if (!defaultCountryExists) {
-      const thailand: CountryItem = { id: generateGUID(), name: DEFAULT_COUNTRY_NAME };
-      loadedCountries.push(thailand);
+    // Ensure default countries exist if no countries are loaded or specific defaults are missing
+    let defaultsChangedLocalStorage = false;
+    DEFAULT_COUNTRY_NAMES.forEach(defaultName => {
+      const defaultCountryExists = loadedCountries.some(c => c.name === defaultName);
+      if (!defaultCountryExists) {
+        loadedCountries.push({ id: generateGUID(), name: defaultName });
+        defaultsChangedLocalStorage = true;
+      }
+    });
+    
+    if (defaultsChangedLocalStorage || (!localStorage.getItem(COUNTRIES_STORAGE_KEY) && loadedCountries.length > 0)) {
       try {
         localStorage.setItem(COUNTRIES_STORAGE_KEY, JSON.stringify(loadedCountries));
       } catch (saveError) {
-        console.error("Failed to save default country:", saveError);
+        console.error("Failed to save default country list:", saveError);
       }
+    } else if (!localStorage.getItem(COUNTRIES_STORAGE_KEY) && loadedCountries.length === 0) {
+        // This case should ideally not happen if defaults are always added,
+        // but as a fallback, ensure we don't store an empty array if it was never stored.
+        // localStorage.removeItem(COUNTRIES_STORAGE_KEY); // Or initialize with defaults
     }
     
     loadedCountries.sort((a,b) => a.name.localeCompare(b.name));
@@ -83,3 +93,4 @@ export function useCountries() {
 
   return { countries, isLoading, addCountry, updateCountry, deleteCountry, getCountryById, getCountryByName };
 }
+

@@ -6,11 +6,16 @@ import { useCountries } from './useCountries'; // Import useCountries
 
 const PROVINCES_STORAGE_KEY = 'itineraryAceProvinces';
 
-// Predefined list of famous Thai provinces
 const FAMOUS_THAI_PROVINCES_FOR_DEFAULT_COUNTRY: string[] = [
     "Bangkok", "Pattaya", "Phuket", "Chiang Mai", "Krabi", "Surat Thani"
 ];
-const DEFAULT_COUNTRY_FOR_PROVINCES = "Thailand";
+const DEFAULT_THAI_COUNTRY_NAME = "Thailand";
+
+const FAMOUS_MALAYSIAN_LOCATIONS: string[] = [ // Using "Locations" as some are Federal Territories
+    "Kuala Lumpur", "Penang", "Langkawi", "Malacca", "Sabah (Kota Kinabalu)", "Sarawak (Kuching)", "Johor Bahru"
+];
+const DEFAULT_MALAYSIAN_COUNTRY_NAME = "Malaysia";
+
 
 export function useProvinces() {
   const { countries, isLoading: isLoadingCountries, getCountryByName } = useCountries();
@@ -29,46 +34,82 @@ export function useProvinces() {
             loadedProvinces = parsedData.map(p => ({
             id: p.id || generateGUID(),
             name: p.name || "Unnamed Province",
-            countryId: p.countryId || "", // Ensure countryId exists
-          } as ProvinceItem)).filter(p => p.countryId); // Filter out provinces without countryId
+            countryId: p.countryId || "", 
+          } as ProvinceItem)).filter(p => p.countryId); 
         }
       }
     } catch (error) {
       console.error("Failed to load provinces from localStorage:", error);
     }
     
-    const defaultCountry = getCountryByName(DEFAULT_COUNTRY_FOR_PROVINCES);
     let provincesToAdd: ProvinceItem[] = [];
+    let localStorageNeedsUpdate = false;
 
-    if (defaultCountry) {
-      const existingNamesInDefaultCountry = new Set(
-        loadedProvinces.filter(p => p.countryId === defaultCountry.id).map(p => p.name)
+    // Add default Thai provinces
+    const thaiCountry = getCountryByName(DEFAULT_THAI_COUNTRY_NAME);
+    if (thaiCountry) {
+      const existingThaiProvinces = new Set(
+        loadedProvinces.filter(p => p.countryId === thaiCountry.id).map(p => p.name)
       );
-      provincesToAdd = FAMOUS_THAI_PROVINCES_FOR_DEFAULT_COUNTRY
-        .filter(name => !existingNamesInDefaultCountry.has(name))
-        .map(name => ({ id: generateGUID(), name, countryId: defaultCountry.id }));
+      const newThaiProvinces = FAMOUS_THAI_PROVINCES_FOR_DEFAULT_COUNTRY
+        .filter(name => !existingThaiProvinces.has(name))
+        .map(name => ({ id: generateGUID(), name, countryId: thaiCountry.id }));
+      if (newThaiProvinces.length > 0) {
+        provincesToAdd.push(...newThaiProvinces);
+        localStorageNeedsUpdate = true;
+      }
+    }
+
+    // Add default Malaysian provinces/locations
+    const malaysianCountry = getCountryByName(DEFAULT_MALAYSIAN_COUNTRY_NAME);
+    if (malaysianCountry) {
+      const existingMalaysianProvinces = new Set(
+        loadedProvinces.filter(p => p.countryId === malaysianCountry.id).map(p => p.name)
+      );
+      const newMalaysianProvinces = FAMOUS_MALAYSIAN_LOCATIONS
+        .filter(name => !existingMalaysianProvinces.has(name))
+        .map(name => ({ id: generateGUID(), name, countryId: malaysianCountry.id }));
+      if (newMalaysianProvinces.length > 0) {
+        provincesToAdd.push(...newMalaysianProvinces);
+        localStorageNeedsUpdate = true;
+      }
     }
     
     let finalProvinces = [...loadedProvinces, ...provincesToAdd];
     
-    if (finalProvinces.length === 0 && defaultCountry && FAMOUS_THAI_PROVINCES_FOR_DEFAULT_COUNTRY.length > 0) {
-        finalProvinces = FAMOUS_THAI_PROVINCES_FOR_DEFAULT_COUNTRY.map(name => ({ id: generateGUID(), name, countryId: defaultCountry.id }));
+    // Fallback: if storage was empty and we added defaults, ensure they are set
+    if (!localStorage.getItem(PROVINCES_STORAGE_KEY) && finalProvinces.length > 0) {
+        localStorageNeedsUpdate = true;
+    } else if (!localStorage.getItem(PROVINCES_STORAGE_KEY) && finalProvinces.length === 0) {
+        localStorage.removeItem(PROVINCES_STORAGE_KEY); // Clean up if it was set to empty
     }
     
-    finalProvinces.sort((a, b) => a.name.localeCompare(b.name));
+    finalProvinces.sort((a, b) => {
+      const countryA = countries.find(c=>c.id === a.countryId)?.name || '';
+      const countryB = countries.find(c=>c.id === b.countryId)?.name || '';
+      if (countryA.localeCompare(countryB) !== 0) {
+        return countryA.localeCompare(countryB);
+      }
+      return a.name.localeCompare(b.name);
+    });
     setProvinces(finalProvinces);
     
-    if (provincesToAdd.length > 0 || (!localStorage.getItem(PROVINCES_STORAGE_KEY) && finalProvinces.length > 0)) {
+    if (localStorageNeedsUpdate) {
        localStorage.setItem(PROVINCES_STORAGE_KEY, JSON.stringify(finalProvinces));
-    } else if (!localStorage.getItem(PROVINCES_STORAGE_KEY) && finalProvinces.length === 0) {
-      localStorage.removeItem(PROVINCES_STORAGE_KEY);
     }
 
     setIsLoading(false);
-  }, [isLoadingCountries, countries, getCountryByName]); // Depend on countries from useCountries
+  }, [isLoadingCountries, countries, getCountryByName]);
 
   const saveProvinces = (updatedProvinces: ProvinceItem[]) => {
-    updatedProvinces.sort((a, b) => a.name.localeCompare(b.name));
+    updatedProvinces.sort((a, b) => {
+      const countryA = countries.find(c=>c.id === a.countryId)?.name || '';
+      const countryB = countries.find(c=>c.id === b.countryId)?.name || '';
+      if (countryA.localeCompare(countryB) !== 0) {
+        return countryA.localeCompare(countryB);
+      }
+      return a.name.localeCompare(b.name);
+    });
     setProvinces(updatedProvinces);
     localStorage.setItem(PROVINCES_STORAGE_KEY, JSON.stringify(updatedProvinces));
   };
