@@ -63,12 +63,36 @@ export function BaseItemForm<T extends ItineraryItem>({
     onUpdate({ ...item, excludedTravelerIds: newExcludedIds });
   };
 
+  const displayableCountriesForItem = React.useMemo(() => {
+    if (isLoadingCountries) return [];
+    const globallySelectedCountries = tripSettings.selectedCountries || [];
+    if (globallySelectedCountries.length > 0) {
+      return allAvailableCountries.filter(country => globallySelectedCountries.includes(country.id));
+    }
+    return allAvailableCountries;
+  }, [isLoadingCountries, tripSettings.selectedCountries, allAvailableCountries]);
+
+  React.useEffect(() => {
+    // If item has a countryId, check if it's still in the displayableCountriesForItem list
+    if (item.countryId && displayableCountriesForItem.length > 0) {
+      const isItemCountryStillValid = displayableCountriesForItem.some(c => c.id === item.countryId);
+      if (!isItemCountryStillValid) {
+        // Item's country is no longer valid based on global filters, reset it
+        handleItemCountryChange(undefined); // Pass undefined to reset
+      }
+    } else if (item.countryId && tripSettings.selectedCountries.length > 0 && displayableCountriesForItem.length === 0) {
+      // This edge case means global countries are selected, but this item's specific country isn't among them AND no countries match global selection (should be rare)
+      handleItemCountryChange(undefined);
+    }
+  }, [item.countryId, displayableCountriesForItem, tripSettings.selectedCountries]);
+
+
   const handleItemCountryChange = (countryIdValue?: string) => {
     const selectedCountry = allAvailableCountries.find(c => c.id === countryIdValue);
     const updatedItem: Partial<ItineraryItem> = {
       countryId: selectedCountry?.id,
       countryName: selectedCountry?.name,
-      province: undefined,
+      province: undefined, // Always reset province when country changes
       selectedServicePriceId: undefined,
       selectedPackageId: undefined,
       selectedVehicleOptionId: undefined,
@@ -92,9 +116,10 @@ export function BaseItemForm<T extends ItineraryItem>({
 
   const displayProvincesForItem = React.useMemo(() => {
     if (isLoadingProvinces) return [];
-    if (item.countryId) {
+    if (item.countryId) { // If item has specific country, use its provinces
       return getProvincesByCountry(item.countryId);
     }
+    // Else, use globally selected countries to filter provinces
     if (tripSettings.selectedCountries.length > 0) {
       let provincesFromGlobalCountries: any[] = [];
       tripSettings.selectedCountries.forEach(countryId => {
@@ -102,6 +127,7 @@ export function BaseItemForm<T extends ItineraryItem>({
       });
       return provincesFromGlobalCountries.sort((a,b) => a.name.localeCompare(b.name));
     }
+    // If no item country and no global countries, show all provinces
     return allProvincesForHook.sort((a,b) => a.name.localeCompare(b.name));
   }, [item.countryId, tripSettings.selectedCountries, allProvincesForHook, isLoadingProvinces, getProvincesByCountry]);
 
@@ -118,24 +144,28 @@ export function BaseItemForm<T extends ItineraryItem>({
               className="h-9 text-sm"
             />
           </FormField>
-          <FormField label="Country (Optional)" id={`itemCountry-${item.id}`} className="md:col-span-1">
+          <FormField label="Country for this item (Optional)" id={`itemCountry-${item.id}`} className="md:col-span-1">
             <Select
               value={item.countryId || "none"}
               onValueChange={(value) => handleItemCountryChange(value === "none" ? undefined : value)}
-              disabled={isLoadingCountries}
+              disabled={isLoadingCountries || displayableCountriesForItem.length === 0}
             >
               <SelectTrigger className="h-9 text-sm">
-                <SelectValue placeholder={isLoadingCountries ? "Loading..." : "Select country..."} />
+                <SelectValue placeholder={
+                  isLoadingCountries ? "Loading..." :
+                  (displayableCountriesForItem.length === 0 && tripSettings.selectedCountries.length > 0 ? "No countries match global selection" :
+                  (displayableCountriesForItem.length === 0 ? "No countries available" : "Select country..."))
+                } />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="none">-- Use Global / Any --</SelectItem>
-                {allAvailableCountries.map(c => (
+                {displayableCountriesForItem.map(c => (
                   <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </FormField>
-          <FormField label="Province (Optional)" id={`itemProvince-${item.id}`} className="md:col-span-1">
+          <FormField label="Province for this item (Optional)" id={`itemProvince-${item.id}`} className="md:col-span-1">
             <Select
               value={item.province || "none"}
               onValueChange={(value) => handleItemProvinceChange(value)}
@@ -146,7 +176,7 @@ export function BaseItemForm<T extends ItineraryItem>({
                   isLoadingProvinces ? "Loading..." :
                   (item.countryId && displayProvincesForItem.length === 0 ? "No provinces in item's country" :
                   (!item.countryId && tripSettings.selectedCountries.length > 0 && displayProvincesForItem.length === 0 ? "No provinces in global countries" :
-                  "Select province..."))
+                  (displayProvincesForItem.length === 0 ? "No provinces available" : "Select province...")))
                 } />
               </SelectTrigger>
               <SelectContent>
@@ -210,3 +240,4 @@ export function BaseItemForm<T extends ItineraryItem>({
     </Card>
   );
 }
+
