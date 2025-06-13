@@ -91,7 +91,7 @@ function DayViewComponent({
     const itemKey = item.id;
     const specificItem = item as any;
 
-    const propsToSpread = {
+    const commonProps = {
       item: specificItem,
       travelers: travelers,
       currency: currency,
@@ -107,15 +107,15 @@ function DayViewComponent({
 
     switch (item.type) {
       case 'transfer':
-        return <TransferItemForm key={itemKey} {...propsToSpread} />;
+        return <TransferItemForm key={itemKey} {...commonProps} />;
       case 'activity':
-        return <ActivityItemForm key={itemKey} {...propsToSpread} />;
+        return <ActivityItemForm key={itemKey} {...commonProps} />;
       case 'hotel':
-        return <HotelItemForm key={itemKey} {...propsToSpread} allHotelDefinitions={allHotelDefinitions} />;
+        return <HotelItemForm key={itemKey} {...commonProps} allHotelDefinitions={allHotelDefinitions} />;
       case 'meal':
-        return <MealItemForm key={itemKey} {...propsToSpread} />;
+        return <MealItemForm key={itemKey} {...commonProps} />;
       case 'misc':
-        return <MiscItemForm key={itemKey} {...propsToSpread} />;
+        return <MiscItemForm key={itemKey} {...commonProps} />;
       default:
         return null;
     }
@@ -162,3 +162,4 @@ function DayViewComponent({
   );
 }
 export const DayView = React.memo(DayViewComponent);
+
