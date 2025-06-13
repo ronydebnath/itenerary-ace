@@ -126,7 +126,7 @@ export interface SelectedHotelRoomConfiguration {
   roomTypeNameCache: string; // Denormalized for display convenience
   numRooms: number;
   assignedTravelerIds: string[]; // IDs of travelers assigned to this room block
-  // Cost details are calculated, not stored here
+  addExtraBed?: boolean; // User's choice to add an extra bed for this booking
 }
 
 export interface HotelItem extends BaseItem {
@@ -205,7 +205,8 @@ export interface HotelOccupancyDetail { // For cost summary display
   nights: number;
   characteristics?: string;
   assignedTravelerLabels: string;
-  totalRoomBlockCost: number; // Renamed from totalOccupancyCost for clarity
+  totalRoomBlockCost: number;
+  extraBedAdded?: boolean; // To show if an extra bed was included in this block's cost
 }
 
 export type AISuggestion = {
@@ -269,4 +270,3 @@ export interface ProvinceItem {
 }
 
 export type SchedulingData = Pick<ActivityPackageDefinition, 'validityStartDate' | 'validityEndDate' | 'closedWeekdays' | 'specificClosedDates'>;
-

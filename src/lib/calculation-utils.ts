@@ -211,6 +211,7 @@ function calculateHotelCost(
         characteristics: "Error: Room type definition missing.",
         assignedTravelerLabels: selectedRoom.assignedTravelerIds.map(id => allTravelers.find(t => t.id === id)?.label || id).join(", ") || "None",
         totalRoomBlockCost: 0,
+        extraBedAdded: selectedRoom.addExtraBed,
       });
       return; 
     }
@@ -220,14 +221,14 @@ function calculateHotelCost(
       const dayNumberOfStay = checkinDay + currentNightIndex;
       let currentDateOfStay: Date;
       try {
-         currentDateOfStay = addDays(parseISO(tripSettings.startDate), dayNumberOfStay - 1);
+         currentDateOfStay = startOfDay(addDays(parseISO(tripSettings.startDate), dayNumberOfStay - 1));
       } catch (e) {
         console.error("Error parsing tripSettings.startDate in nightly loop for hotel cost:", tripSettings.startDate, e);
         continue; 
       }
       
-      const normalizedCurrentDateOfStay = startOfDay(currentDateOfStay);
       let nightlyRateForRoomType = 0;
+      let extraBedRateForNight = 0;
       let foundSeasonalRate = false;
 
       for (const seasonalPrice of roomTypeDef.seasonalPrices) {
@@ -237,8 +238,11 @@ function calculateHotelCost(
             const seasonEndDate = startOfDay(parseISO(seasonalPrice.endDate));
             
             if (isValid(seasonStartDate) && isValid(seasonEndDate)) {
-              if (isWithinInterval(normalizedCurrentDateOfStay, { start: seasonStartDate, end: seasonEndDate })) {
+              if (isWithinInterval(currentDateOfStay, { start: seasonStartDate, end: seasonEndDate })) {
                 nightlyRateForRoomType = seasonalPrice.rate;
+                if (selectedRoom.addExtraBed && roomTypeDef.extraBedAllowed && seasonalPrice.extraBedRate !== undefined) {
+                  extraBedRateForNight = seasonalPrice.extraBedRate;
+                }
                 foundSeasonalRate = true;
                 break; 
               }
@@ -254,10 +258,11 @@ function calculateHotelCost(
       }
       
       if (!foundSeasonalRate) {
-        console.warn(`No seasonal rate found for room type '${roomTypeDef.name}' on ${format(normalizedCurrentDateOfStay, 'yyyy-MM-dd')}. Assuming 0 rate for this night.`);
+        console.warn(`No seasonal rate found for room type '${roomTypeDef.name}' on ${format(currentDateOfStay, 'yyyy-MM-dd')}. Assuming 0 rate for this night.`);
         nightlyRateForRoomType = 0; 
+        extraBedRateForNight = 0;
       }
-      costForThisRoomBlock += nightlyRateForRoomType * selectedRoom.numRooms;
+      costForThisRoomBlock += (nightlyRateForRoomType + extraBedRateForNight) * selectedRoom.numRooms;
     }
     overallHotelTotalCost += costForThisRoomBlock;
 
@@ -268,6 +273,7 @@ function calculateHotelCost(
       characteristics: (roomTypeDef.characteristics || []).map(c => `${c.key}: ${c.value}`).join('; ') || 'N/A',
       assignedTravelerLabels: selectedRoom.assignedTravelerIds.map(id => allTravelers.find(t => t.id === id)?.label || id).join(", ") || "None",
       totalRoomBlockCost: costForThisRoomBlock,
+      extraBedAdded: selectedRoom.addExtraBed && roomTypeDef.extraBedAllowed,
     });
 
     const assignedParticipants = allTravelers.filter(t => selectedRoom.assignedTravelerIds.includes(t.id));

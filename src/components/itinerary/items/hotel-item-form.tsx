@@ -126,6 +126,7 @@ function HotelItemFormComponent({
       roomTypeNameCache: defaultRoomType.name,
       numRooms: 1,
       assignedTravelerIds: [],
+      addExtraBed: false, // Initialize new field
     };
     const currentSelectedRooms = item.selectedRooms || [];
     onUpdate({ ...item, selectedRooms: [...currentSelectedRooms, newRoomBooking] });
@@ -143,7 +144,7 @@ function HotelItemFormComponent({
         const currentSelectedRooms = item.selectedRooms || [];
         const updatedBooking = currentSelectedRooms.find(rb => rb.id === bookingId);
         if (updatedBooking) {
-            handleUpdateRoomBooking({ ...updatedBooking, roomTypeDefinitionId, roomTypeNameCache: roomTypeDef.name });
+            handleUpdateRoomBooking({ ...updatedBooking, roomTypeDefinitionId, roomTypeNameCache: roomTypeDef.name, addExtraBed: false /* Reset extra bed choice on room type change */ });
         }
     }
   };
@@ -174,6 +175,14 @@ function HotelItemFormComponent({
     let newAssignedTravelerIds = checked ? [...roomBooking.assignedTravelerIds, travelerId] : roomBooking.assignedTravelerIds.filter(id => id !== travelerId);
     handleUpdateRoomBooking({ ...roomBooking, assignedTravelerIds: newAssignedTravelerIds });
   };
+
+  const handleToggleExtraBed = (bookingId: string, checked: boolean) => {
+    const currentSelectedRooms = item.selectedRooms || [];
+    const roomBooking = currentSelectedRooms.find(rb => rb.id === bookingId);
+    if (!roomBooking) return;
+    handleUpdateRoomBooking({ ...roomBooking, addExtraBed: checked });
+  };
+
 
   const calculatedNights = Math.max(0, (item.checkoutDay || (dayNumber + 1)) - dayNumber);
   const currentSelectedRoomsForRender = item.selectedRooms || [];
@@ -230,7 +239,7 @@ function HotelItemFormComponent({
             if (!currentRoomTypeDef) { return (<Alert key={roomBooking.id} variant="destructive" className="my-2"><AlertCircle className="h-4 w-4" /><AlertTitle className="text-sm">Room Type Error</AlertTitle><AlertDescription className="text-xs">Room type definition for booking {index + 1} (ID: {roomBooking.roomTypeDefinitionId}) is missing for {selectedHotelDef.name}. Delete this booking and re-add.</AlertDescription><Button variant="ghost" size="sm" onClick={() => handleDeleteRoomBooking(roomBooking.id)} className="mt-2 text-destructive hover:bg-destructive/10 h-7 text-xs"><Trash2 className="mr-1 h-3 w-3" /> Delete This Booking</Button></Alert>); }
             
             let effectiveRateDisplay = null;
-            if (currentRoomTypeDef && tripSettings.startDate) {
+            if (currentRoomTypeDef && tripSettings.startDate && isValid(parseISO(tripSettings.startDate))) {
               try {
                 const checkInDateOfStay = startOfDay(addDays(parseISO(tripSettings.startDate), item.day - 1));
                 let foundRate: number | undefined = undefined;
@@ -238,7 +247,7 @@ function HotelItemFormComponent({
                 let seasonName: string | undefined = undefined;
 
                 for (const seasonalPrice of currentRoomTypeDef.seasonalPrices) {
-                  if (seasonalPrice.startDate && seasonalPrice.endDate) {
+                  if (seasonalPrice.startDate && seasonalPrice.endDate && typeof seasonalPrice.startDate === 'string' && typeof seasonalPrice.endDate === 'string') {
                     const seasonStartDate = startOfDay(parseISO(seasonalPrice.startDate));
                     const seasonEndDate = startOfDay(parseISO(seasonalPrice.endDate));
                     if (isValid(seasonStartDate) && isValid(seasonEndDate) && isWithinInterval(checkInDateOfStay, { start: seasonStartDate, end: seasonEndDate })) {
@@ -272,6 +281,18 @@ function HotelItemFormComponent({
                 </div>
                 {currentRoomTypeDef && (<div className="mt-1.5 p-1.5 border rounded-md bg-muted/20 text-xs"><p className="font-medium mb-0.5">About {currentRoomTypeDef.name}:</p>{currentRoomTypeDef.notes && <p className="italic">"{currentRoomTypeDef.notes}"</p>}<ul className="list-disc list-inside pl-1 space-y-0 mt-0.5">{currentRoomTypeDef.characteristics && currentRoomTypeDef.characteristics.map(char => (<li key={char.id}><strong>{char.key}:</strong> {char.value}</li>))}<li><strong>Extra Bed:</strong> {currentRoomTypeDef.extraBedAllowed ? 'Allowed' : 'Not Allowed'}</li></ul></div>)}
                 {effectiveRateDisplay}
+                {currentRoomTypeDef?.extraBedAllowed && (
+                    <div className="flex items-center space-x-2 mt-2">
+                        <Checkbox
+                        id={`extra-bed-${roomBooking.id}`}
+                        checked={!!roomBooking.addExtraBed}
+                        onCheckedChange={(checked) => handleToggleExtraBed(roomBooking.id, !!checked)}
+                        />
+                        <Label htmlFor={`extra-bed-${roomBooking.id}`} className="text-xs font-normal cursor-pointer">
+                        Add Extra Bed to this room block
+                        </Label>
+                    </div>
+                )}
                 <div>
                   <button onClick={() => handleToggleTravelerAssignment(roomBooking.id)} className="flex items-center justify-between w-full text-xs font-medium text-left text-foreground/80 hover:text-primary py-1.5 px-2 rounded-md hover:bg-muted/50 transition-colors mt-1.5 border-t pt-2" aria-expanded={openTravelerAssignments[roomBooking.id]}>
                     <span className="flex items-center"><Users className="mr-1.5 h-3.5 w-3.5"/> Assign Travelers ({roomBooking.assignedTravelerIds.length} assigned)</span>
