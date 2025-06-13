@@ -9,6 +9,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Trash2, ChevronDown, ChevronUp, Loader2 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Input } from '@/components/ui/input'; // Added for Name/Note
 import { useProvinces } from '@/hooks/useProvinces';
 import { useCountries } from '@/hooks/useCountries';
 import { cn } from '@/lib/utils';
@@ -20,7 +21,7 @@ export interface BaseItemFormProps<T extends ItineraryItem> {
   tripSettings: TripSettings;
   onUpdate: (item: T) => void;
   onDelete: () => void;
-  children: React.ReactNode;
+  children: React.ReactNode; // For predefined service selector and item-specific fields
   itemTypeLabel: string;
   dayNumber: number;
 }
@@ -40,7 +41,7 @@ export function BaseItemForm<T extends ItineraryItem>({
   tripSettings,
   onUpdate,
   onDelete,
-  children, // This will now contain Predefined, Name, Note, and specific config fields
+  children,
   itemTypeLabel,
   dayNumber,
 }: BaseItemFormProps<T>) {
@@ -54,10 +55,10 @@ export function BaseItemForm<T extends ItineraryItem>({
     if (globallySelectedCountries.length > 0) {
       return allAvailableCountriesHook.filter(country => globallySelectedCountries.includes(country.id));
     }
-    return allAvailableCountriesHook;
+    return allAvailableCountriesHook.sort((a,b) => a.name.localeCompare(b.name));
   }, [isLoadingCountries, tripSettings.selectedCountries, allAvailableCountriesHook]);
 
-  const displayProvincesForItem = React.useMemo(() => {
+  const displayableProvincesForItem = React.useMemo(() => {
     if (isLoadingProvinces) return [];
     const globallySelectedCountries = tripSettings.selectedCountries || [];
     const globallySelectedProvincesFromSettings = tripSettings.selectedProvinces || [];
@@ -94,11 +95,11 @@ export function BaseItemForm<T extends ItineraryItem>({
     }
     return provincesToDisplay.sort((a,b) => a.name.localeCompare(b.name));
   }, [
+    isLoadingProvinces,
     item.countryId, 
     tripSettings.selectedCountries, 
     tripSettings.selectedProvinces, 
     allAvailableProvincesForHook, 
-    isLoadingProvinces, 
     getProvincesByCountry
   ]);
 
@@ -107,7 +108,7 @@ export function BaseItemForm<T extends ItineraryItem>({
     const updatedItemPartial: Partial<ItineraryItem> = {
       countryId: selectedCountry?.id,
       countryName: selectedCountry?.name,
-      province: undefined,
+      province: undefined, // Always reset province when country changes
       selectedServicePriceId: undefined,
       selectedPackageId: undefined,
       selectedVehicleOptionId: undefined,
@@ -128,7 +129,7 @@ export function BaseItemForm<T extends ItineraryItem>({
     };
     onUpdate({ ...item, ...updatedItemPartial as Partial<T> });
   }, [item, onUpdate]);
-
+  
   React.useEffect(() => {
     let countryReset = false;
     const currentItemCountryIsValid = !item.countryId || displayableCountriesForItem.some(c => c.id === item.countryId);
@@ -146,14 +147,16 @@ export function BaseItemForm<T extends ItineraryItem>({
     item.countryId,
     item.province,
     displayableCountriesForItem,
-    isLoadingProvinces,
+    displayableProvincesForItem, // Added back as per last fix
+    isLoadingProvinces, // Added back as per last fix
     tripSettings.selectedProvinces,
     tripSettings.selectedCountries,
     allAvailableProvincesForHook,
-    getProvincesByCountry, 
-    handleItemCountryChange,
-    handleItemProvinceChange
+    getProvincesByCountry,       
+    handleItemCountryChange,     
+    handleItemProvinceChange     
   ]);
+
 
   const handleOptOutChange = (travelerId: string, checked: boolean) => {
     const newExcludedTravelerIds = checked
@@ -191,18 +194,20 @@ export function BaseItemForm<T extends ItineraryItem>({
             <Select
               value={item.province || "none"}
               onValueChange={(value) => handleItemProvinceChange(value)}
-              disabled={isLoadingProvinces || displayProvincesForItem.length === 0}
+              disabled={isLoadingProvinces || displayableProvincesForItem.length === 0}
             >
               <SelectTrigger className="h-9 text-sm">
                  <SelectValue placeholder={
                   isLoadingProvinces ? "Loading..." :
-                  (displayProvincesForItem.length === 0 ? "No provinces match criteria" : "-- Any in selected scope --")
+                  (displayableProvincesForItem.length === 0 ? "No provinces match criteria" : "-- Any in selected scope --")
                 } />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="none">-- Any in selected scope --</SelectItem>
-                {displayProvincesForItem.map(p => (
-                  <SelectItem key={p.id} value={p.name}>{p.name} ({allAvailableCountriesHook.find(c => c.id === p.countryId)?.name || 'N/A'})</SelectItem>
+                {displayableProvincesForItem.map(p => (
+                  <SelectItem key={p.id} value={p.name}>
+                    {p.name} ({allAvailableCountriesHook.find(c => c.id === p.countryId)?.name || 'N/A'})
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -251,5 +256,3 @@ export function BaseItemForm<T extends ItineraryItem>({
     </Card>
   );
 }
-
-    
