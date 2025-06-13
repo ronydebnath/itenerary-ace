@@ -12,12 +12,13 @@ import { DatePicker } from '@/components/ui/date-picker';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Edit3, Save, Info, CalendarDays, Users, MapPin, Route, Loader2, DollarSign, Globe, FileText } from 'lucide-react';
+import { Edit3, Save, Info, CalendarDays, Users, MapPin, Route, Loader2, DollarSign, Globe, FileText, Image as ImageIconLucide, Cog } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
 import { format, parseISO, isValid } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
 import { useProvinces } from '@/hooks/useProvinces';
 import { useCountries } from '@/hooks/useCountries';
+import Link from 'next/link';
 
 interface PlannerHeaderProps {
   tripData: TripData;
@@ -98,26 +99,38 @@ export function PlannerHeader({
 
 
   return (
-    <Card className="mb-6 shadow-xl no-print">
-      <CardHeader className="bg-primary/10 p-4 md:p-6">
+    <Card className="mb-4 md:mb-6 shadow-xl no-print">
+      <CardHeader className="bg-primary/10 p-3 sm:p-4 md:p-6">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
           <div>
-            <CardTitle className="text-2xl md:text-3xl font-headline text-primary">Itinerary Ace Planner</CardTitle>
+            <CardTitle className="text-xl sm:text-2xl md:text-3xl font-headline text-primary">Itinerary Ace Planner</CardTitle>
+            <CardDescription className="text-foreground/70 pt-1 text-xs sm:text-sm">
+              Plan and calculate costs. Changes to core settings update the itinerary.
+            </CardDescription>
           </div>
-          <div className="flex gap-2 flex-wrap mt-2 sm:mt-0">
-            <Button onClick={onManualSave} size="sm" className="bg-accent hover:bg-accent/90 text-accent-foreground text-xs sm:text-sm">
+          <div className="flex gap-2 flex-wrap mt-2 sm:mt-0 self-start sm:self-auto">
+            <Link href="/image-describer">
+              <Button variant="outline" size="sm" className="bg-card hover:bg-muted shadow-sm text-xs sm:text-sm">
+                <ImageIconLucide className="mr-1.5 h-3.5 w-3.5" />
+                Describe Image
+              </Button>
+            </Link>
+            <Link href="/">
+              <Button variant="outline" size="sm" className="bg-card hover:bg-muted shadow-sm text-xs sm:text-sm">
+                <Cog className="mr-1.5 h-3.5 w-3.5" />
+                Admin Dashboard
+              </Button>
+            </Link>
+             <Button onClick={onManualSave} size="sm" className="bg-accent hover:bg-accent/90 text-accent-foreground text-xs sm:text-sm">
               <Save className="mr-1.5 h-3.5 w-3.5 sm:h-4 sm:w-4" /> Save Itinerary
             </Button>
             <Button variant="outline" onClick={onReset} size="sm" className="border-accent text-accent hover:bg-accent/10 text-xs sm:text-sm">
-              <Edit3 className="mr-1.5 h-3.5 w-3.5 sm:h-4 sm:w-4" /> Start New Itinerary
+              <Edit3 className="mr-1.5 h-3.5 w-3.5 sm:h-4 sm:w-4" /> New/Reset
             </Button>
           </div>
         </div>
-        <CardDescription className="text-foreground/70 pt-1 md:pt-2 text-xs sm:text-sm">
-          Dynamically plan and calculate costs. Changes to core settings will update the itinerary.
-        </CardDescription>
       </CardHeader>
-      <CardContent className="pt-4 md:pt-6 space-y-4 md:space-y-6">
+      <CardContent className="pt-3 sm:pt-4 md:pt-6 space-y-3 md:space-y-4">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4">
           <div>
             <Label htmlFor="itineraryName" className="text-xs font-medium text-muted-foreground">Itinerary Name</Label>

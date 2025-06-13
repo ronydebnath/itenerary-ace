@@ -31,21 +31,7 @@ export default function PlannerPage() {
 
   return (
     <div className="relative min-h-screen bg-background">
-      <div className="absolute top-4 right-4 md:top-6 md:right-6 z-10 flex gap-2 no-print">
-        <Link href="/image-describer">
-          <Button variant="outline" size="sm" className="bg-card hover:bg-muted shadow-md">
-            <ImageIconLucide className="mr-2 h-4 w-4" />
-            Describe Image
-          </Button>
-        </Link>
-        <Link href="/">
-          <Button variant="outline" size="sm" className="bg-card hover:bg-muted shadow-md">
-            <Cog className="mr-2 h-4 w-4" />
-            Admin Dashboard
-          </Button>
-        </Link>
-      </div>
-
+      {/* Utility buttons moved to PlannerHeader component */}
       {pageStatus === 'planner' && tripData && (
         <ItineraryPlanner
           tripData={tripData}
