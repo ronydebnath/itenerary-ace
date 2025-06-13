@@ -39,7 +39,7 @@ const createDefaultTripData = (): TripData => {
   const settings: TripSettings = {
     numDays: 1,
     startDate: startDate.toISOString().split('T')[0],
-    selectedCountries: [], // Initialize selectedCountries
+    selectedCountries: [],
     selectedProvinces: [],
     budget: undefined,
   };
@@ -186,23 +186,25 @@ export function useItineraryManager() {
   const handleUpdateSettings = React.useCallback((newSettingsPartial: Partial<TripSettings>) => {
     setTripData(prevTripData => {
       if (!prevTripData) return null;
-      
-      let updatedSelectedProvinces = prevTripData.settings.selectedProvinces;
-      // If selectedCountries change, reset selectedProvinces
-      if (newSettingsPartial.selectedCountries && 
-          JSON.stringify(newSettingsPartial.selectedCountries) !== JSON.stringify(prevTripData.settings.selectedCountries)) {
-        updatedSelectedProvinces = [];
-      }
-      
-      const updatedSettings = { 
-        ...prevTripData.settings, 
-        ...newSettingsPartial,
-        selectedProvinces: updatedSelectedProvinces // Apply potentially reset provinces
-      };
-      
-      const newDaysData = { ...prevTripData.days };
 
-      if (newSettingsPartial.numDays !== undefined && newSettingsPartial.numDays !== prevTripData.settings.numDays) {
+      // Start with current settings and merge in the partial updates
+      const updatedSettings = {
+        ...prevTripData.settings,
+        ...newSettingsPartial,
+      };
+
+      // If selectedCountries was part of the update AND it actually changed, reset selectedProvinces
+      if (
+        newSettingsPartial.selectedCountries &&
+        JSON.stringify(newSettingsPartial.selectedCountries) !== JSON.stringify(prevTripData.settings.selectedCountries)
+      ) {
+        updatedSettings.selectedProvinces = [];
+      }
+      // If selectedProvinces was explicitly passed in newSettingsPartial, it's already applied.
+      // Otherwise, if selectedCountries didn't change (or wasn't in partial), selectedProvinces remains as it was from the merge.
+
+      const newDaysData = { ...prevTripData.days };
+      if (updatedSettings.numDays !== undefined && updatedSettings.numDays !== prevTripData.settings.numDays) {
         const oldNumDays = prevTripData.settings.numDays;
         const newNumDays = updatedSettings.numDays;
 
