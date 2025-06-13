@@ -9,10 +9,9 @@ import { PlusCircle, Globe, Trash2, LayoutDashboard } from 'lucide-react';
 import type { CountryItem } from '@/types/itinerary';
 import { CountryForm } from './country-form';
 import { CountryTable } from './country-table';
-import { generateGUID } from '@/lib/utils';
 import { useToast } from "@/hooks/use-toast";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { useCountries } from '@/hooks/useCountries'; // New hook
+import { useCountries } from '@/hooks/useCountries';
 
 export function CountryManager() {
   const { countries, addCountry, updateCountry, deleteCountry, isLoading } = useCountries();
@@ -115,7 +114,7 @@ export function CountryManager() {
       ) : (
         <div className="text-center py-10 border-2 border-dashed border-muted-foreground/30 rounded-lg">
           <p className="text-muted-foreground text-lg">No countries defined yet.</p>
-          <p className="text-sm text-muted-foreground mt-2">Click "Add New Country" to get started. "Thailand" will be added automatically if not present.</p>
+          <p className="text-sm text-muted-foreground mt-2">Click "Add New Country" to get started. Default countries like "Thailand" and "Malaysia" will be added automatically if not present.</p>
         </div>
       )}
     </div>

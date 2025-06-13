@@ -141,13 +141,13 @@ const servicePriceSchema = z.object({
   surchargePeriods: z.array(surchargePeriodSchema).optional(),
 }).superRefine((data, ctx) => {
   if (data.category === 'hotel') {
+    if (!data.countryId) ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Country is required for hotel services.", path: ["countryId"] });
+    if (!data.province) ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Province is required for hotel services.", path: ["province"] });
     if (!data.hotelDetails) {
       ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Hotel details are required.", path: ["hotelDetails"]});
     } else {
         if(!data.hotelDetails.countryId && data.countryId) data.hotelDetails.countryId = data.countryId;
         if(!data.hotelDetails.province && data.province) data.hotelDetails.province = data.province;
-        if (!data.hotelDetails.countryId) ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Country is required for hotel services.", path: ["countryId"] });
-        if (!data.hotelDetails.province) ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Province is required for hotel services.", path: ["province"] });
     }
     data.price1 = undefined; data.price2 = undefined; data.subCategory = undefined;
     data.vehicleOptions = undefined; data.transferMode = undefined; data.maxPassengers = undefined;
@@ -197,43 +197,61 @@ const createDefaultSeasonalPrice = (rate: number = 0): RoomTypeSeasonalPrice => 
 };
 const createDefaultRoomType = (name?: string): HotelRoomTypeDefinition => ({ id: generateGUID(), name: name || 'Standard Room', extraBedAllowed: false, notes: '', seasonalPrices: [createDefaultSeasonalPrice()], characteristics: [] });
 
-const transformInitialDataToFormValues = (data?: Partial<ServicePriceItem>, countries?: CountryItem[]): Partial<ServicePriceFormValues> => {
-  const defaultCurrency: CurrencyCode = "THB";
+const transformInitialDataToFormValues = (initialData?: Partial<ServicePriceItem>, countries?: CountryItem[]): Partial<ServicePriceFormValues> => {
   const defaultCategory: ItineraryItemType = "activity";
   const today = new Date();
-  const thailandCountry = countries?.find(c => c.name === "Thailand");
+  
+  let defaultCurrency: CurrencyCode = CURRENCIES.includes('USD') ? 'USD' : CURRENCIES[0];
+  if (initialData?.countryId) {
+    const country = countries?.find(c => c.id === initialData.countryId);
+    if (country?.defaultCurrency) {
+      defaultCurrency = country.defaultCurrency;
+    }
+  } else if (initialData?.category === 'hotel') {
+    const thailand = countries?.find(c => c.name === "Thailand");
+    if (thailand?.defaultCurrency) defaultCurrency = thailand.defaultCurrency;
+  }
 
   let baseTransformed: Partial<ServicePriceFormValues> = {
-    name: data?.name || "",
-    countryId: data?.countryId || (data?.category === 'hotel' ? thailandCountry?.id : undefined),
-    province: data?.province || undefined,
-    category: data?.category || defaultCategory,
-    currency: data?.currency || defaultCurrency,
-    notes: data?.notes || "",
-    selectedServicePriceId: data?.selectedServicePriceId || undefined,
+    name: initialData?.name || "",
+    countryId: initialData?.countryId || undefined,
+    province: initialData?.province || undefined,
+    category: initialData?.category || defaultCategory,
+    currency: initialData?.currency || defaultCurrency,
+    notes: initialData?.notes || "",
+    selectedServicePriceId: initialData?.selectedServicePriceId || undefined,
   };
+  
+  // Set countryId for new Hotels to Thailand by default if Thailand exists
+  if ((!initialData || Object.keys(initialData).length === 0 || !initialData.category) && baseTransformed.category === 'hotel' && !baseTransformed.countryId) {
+    const thailand = countries?.find(c => c.name === "Thailand");
+    if (thailand) {
+      baseTransformed.countryId = thailand.id;
+      if(thailand.defaultCurrency) baseTransformed.currency = thailand.defaultCurrency;
+    }
+  }
 
-  baseTransformed.surchargePeriods = data?.surchargePeriods?.map(sp => {
+
+  baseTransformed.surchargePeriods = initialData?.surchargePeriods?.map(sp => {
     const initialStartDate = sp.startDate && typeof sp.startDate === 'string' ? parseISO(sp.startDate) : (sp.startDate instanceof Date ? sp.startDate : today);
     const initialEndDate = sp.endDate && typeof sp.endDate === 'string' ? parseISO(sp.endDate) : (sp.endDate instanceof Date ? sp.endDate : addDays(initialStartDate, 30));
     return { ...sp, id: sp.id || generateGUID(), startDate: isValid(initialStartDate) ? initialStartDate : today, endDate: isValid(initialEndDate) ? initialEndDate : addDays(isValid(initialStartDate) ? initialStartDate : today, 30) };
   }) || [];
 
-  if (!data || Object.keys(data).length === 0) {
-    baseTransformed.category = defaultCategory;
-    if (defaultCategory === 'hotel') {
-        baseTransformed.hotelDetails = { id: generateGUID(), name: "", countryId: thailandCountry?.id || "", province: "", roomTypes: [createDefaultRoomType()] };
-    } else if (defaultCategory === 'activity') {
+  if (!initialData || Object.keys(initialData).length === 0) { // Default for brand new item
+    if (baseTransformed.category === 'hotel') {
+        baseTransformed.hotelDetails = { id: generateGUID(), name: baseTransformed.name || "New Hotel", countryId: baseTransformed.countryId || "", province: baseTransformed.province || "", roomTypes: [createDefaultRoomType()] };
+    } else if (baseTransformed.category === 'activity') {
       baseTransformed.activityPackages = [{ id: generateGUID(), name: 'Standard Package', price1: 0, validityStartDate: today.toISOString().split('T')[0], validityEndDate: addDays(today, 30).toISOString().split('T')[0], closedWeekdays: [], specificClosedDates: [] }];
-    } else if (defaultCategory === 'transfer') {
+    } else if (baseTransformed.category === 'transfer') {
       baseTransformed.transferMode = 'ticket'; baseTransformed.price1 = 0;
     } else { baseTransformed.price1 = 0; }
     return baseTransformed;
   }
 
   if (baseTransformed.category === 'hotel') {
-    const hotelDef = data.hotelDetails;
-    const transformedRoomTypes = (hotelDef?.roomTypes && hotelDef.roomTypes.length > 0 ? hotelDef.roomTypes : [createDefaultRoomType(data.subCategory)])
+    const hotelDef = initialData.hotelDetails;
+    const transformedRoomTypes = (hotelDef?.roomTypes && hotelDef.roomTypes.length > 0 ? hotelDef.roomTypes : [createDefaultRoomType(initialData.subCategory)])
         .map(rt => ({
             ...rt, id: rt.id || generateGUID(), name: rt.name || "Unnamed Room Type", extraBedAllowed: rt.extraBedAllowed ?? false, notes: rt.notes || "", characteristics: rt.characteristics || [],
             seasonalPrices: (Array.isArray(rt.seasonalPrices) && rt.seasonalPrices.length > 0 ? rt.seasonalPrices : [createDefaultSeasonalPrice(rt.price1 || 0)]).map(sp => { 
@@ -243,34 +261,34 @@ const transformInitialDataToFormValues = (data?: Partial<ServicePriceItem>, coun
             })
         }));
     baseTransformed.hotelDetails = {
-        id: hotelDef?.id || data.id || generateGUID(),
-        name: data.name || hotelDef?.name || "Hotel Name from Data",
-        countryId: data.countryId || hotelDef?.countryId || thailandCountry?.id || "",
-        province: data.province || hotelDef?.province || "",
+        id: hotelDef?.id || initialData.id || generateGUID(),
+        name: initialData.name || hotelDef?.name || "Hotel Name from Data",
+        countryId: initialData.countryId || hotelDef?.countryId || "",
+        province: initialData.province || hotelDef?.province || "",
         roomTypes: transformedRoomTypes
     };
   } else if (baseTransformed.category === 'activity') {
     let packages: ActivityPackageDefinition[] = [];
-    if (data.activityPackages && data.activityPackages.length > 0) {
-      packages = data.activityPackages.map(pkg => ({ ...pkg, id: pkg.id || generateGUID(), name: pkg.name || "Unnamed Package", price1: pkg.price1 ?? 0, validityStartDate: pkg.validityStartDate || today.toISOString().split('T')[0], validityEndDate: pkg.validityEndDate || addDays(today, 30).toISOString().split('T')[0], closedWeekdays: pkg.closedWeekdays || [], specificClosedDates: pkg.specificClosedDates || [] }));
-    } else if (data.price1 !== undefined) {
-      packages = [{ id: generateGUID(), name: data.subCategory || 'Standard Package', price1: data.price1, price2: data.price2, notes: data.notes || '', validityStartDate: today.toISOString().split('T')[0], validityEndDate: addDays(today, 30).toISOString().split('T')[0], closedWeekdays: [], specificClosedDates: [] }];
+    if (initialData.activityPackages && initialData.activityPackages.length > 0) {
+      packages = initialData.activityPackages.map(pkg => ({ ...pkg, id: pkg.id || generateGUID(), name: pkg.name || "Unnamed Package", price1: pkg.price1 ?? 0, validityStartDate: pkg.validityStartDate || today.toISOString().split('T')[0], validityEndDate: pkg.validityEndDate || addDays(today, 30).toISOString().split('T')[0], closedWeekdays: pkg.closedWeekdays || [], specificClosedDates: pkg.specificClosedDates || [] }));
+    } else if (initialData.price1 !== undefined) {
+      packages = [{ id: generateGUID(), name: initialData.subCategory || 'Standard Package', price1: initialData.price1, price2: initialData.price2, notes: initialData.notes || '', validityStartDate: today.toISOString().split('T')[0], validityEndDate: addDays(today, 30).toISOString().split('T')[0], closedWeekdays: [], specificClosedDates: [] }];
     }
     if (packages.length === 0) { packages = [{ id: generateGUID(), name: 'Standard Package', price1: 0, validityStartDate: today.toISOString().split('T')[0], validityEndDate: addDays(today, 30).toISOString().split('T')[0], closedWeekdays: [], specificClosedDates: [] }]; }
     baseTransformed.activityPackages = packages;
   } else if (baseTransformed.category === 'transfer') {
-    baseTransformed.transferMode = data.transferMode || (data.subCategory === 'ticket' ? 'ticket' : (data.vehicleOptions && data.vehicleOptions.length > 0 ? 'vehicle' : 'ticket'));
+    baseTransformed.transferMode = initialData.transferMode || (initialData.subCategory === 'ticket' ? 'ticket' : (initialData.vehicleOptions && initialData.vehicleOptions.length > 0 ? 'vehicle' : 'ticket'));
     if (baseTransformed.transferMode === 'vehicle') {
-      baseTransformed.vehicleOptions = data.vehicleOptions && data.vehicleOptions.length > 0 ? data.vehicleOptions.map(vo => ({...vo, id: vo.id || generateGUID(), vehicleType: vo.vehicleType || VEHICLE_TYPES[0], price: vo.price ?? 0, maxPassengers: vo.maxPassengers ?? 1 })) : [{ id: generateGUID(), vehicleType: VEHICLE_TYPES[0], price: 0, maxPassengers: 1, notes: '' }];
-    } else { baseTransformed.price1 = data.price1 ?? 0; baseTransformed.price2 = data.price2; baseTransformed.subCategory = 'ticket';}
-  } else { baseTransformed.subCategory = data.subCategory || ""; baseTransformed.price1 = data.price1 ?? 0; baseTransformed.price2 = data.price2; }
+      baseTransformed.vehicleOptions = initialData.vehicleOptions && initialData.vehicleOptions.length > 0 ? initialData.vehicleOptions.map(vo => ({...vo, id: vo.id || generateGUID(), vehicleType: vo.vehicleType || VEHICLE_TYPES[0], price: vo.price ?? 0, maxPassengers: vo.maxPassengers ?? 1 })) : [{ id: generateGUID(), vehicleType: VEHICLE_TYPES[0], price: 0, maxPassengers: 1, notes: '' }];
+    } else { baseTransformed.price1 = initialData.price1 ?? 0; baseTransformed.price2 = initialData.price2; baseTransformed.subCategory = 'ticket';}
+  } else { baseTransformed.subCategory = initialData.subCategory || ""; baseTransformed.price1 = initialData.price1 ?? 0; baseTransformed.price2 = initialData.price2; }
+  
   return baseTransformed;
 };
 
-function formatZodErrorsForAlert(errors: any): string { /* ... unchanged ... */ return "Validation errors occurred.";}
 
 export function ServicePriceFormRouter({ initialData, onSubmit, onCancel }: ServicePriceFormRouterProps) {
-  const { countries, isLoading: isLoadingCountries } = useCountries();
+  const { countries, isLoading: isLoadingCountries, getCountryById } = useCountries();
   const defaultValuesFromInitial = React.useMemo(() => transformInitialDataToFormValues(initialData, countries), [initialData, countries]);
   
   const form = useForm<ServicePriceFormValues>({
@@ -286,8 +304,11 @@ export function ServicePriceFormRouter({ initialData, onSubmit, onCancel }: Serv
   const isNewService = !initialData?.id;
 
   React.useEffect(() => {
-    form.reset(transformInitialDataToFormValues(initialData, countries));
-  }, [initialData, countries, form.reset, form]);
+    if(!isLoadingCountries) {
+      form.reset(transformInitialDataToFormValues(initialData, countries));
+    }
+  }, [initialData, countries, form.reset, form, isLoadingCountries]);
+
 
   React.useEffect(() => {
     const currentCategoryValue = form.getValues('category');
@@ -295,15 +316,13 @@ export function ServicePriceFormRouter({ initialData, onSubmit, onCancel }: Serv
     const currentCountryId = form.getValues('countryId');
     const currentProvince = form.getValues('province');
     const today = new Date();
-    const thailand = countries.find(c => c.name === "Thailand");
 
     const setFieldValue = (path: any, value: any) => form.setValue(path, value, { shouldValidate: true, shouldDirty: true });
     
-    // Conditional logic based on category
     if (currentCategoryValue === 'hotel') {
         let hotelDetailsCurrent = form.getValues('hotelDetails');
         const expectedHotelName = currentName || (isNewService ? "New Hotel (Default Name)" : hotelDetailsCurrent?.name);
-        const expectedCountryId = currentCountryId || (hotelDetailsCurrent?.countryId || thailand?.id || "");
+        const expectedCountryId = currentCountryId || (hotelDetailsCurrent?.countryId || "");
         const expectedProvince = currentProvince || hotelDetailsCurrent?.province || "";
 
         if (!hotelDetailsCurrent || (isNewService && (!hotelDetailsCurrent.id))) {
@@ -317,7 +336,6 @@ export function ServicePriceFormRouter({ initialData, onSubmit, onCancel }: Serv
             if (updateRequired) setFieldValue('hotelDetails', { ...hotelDetailsCurrent });
         }
     }
-    // ... other category logic ...
   }, [watchedCategory, watchedName, watchedCountryId, watchedProvince, isNewService, initialData, form, countries]);
 
 
@@ -336,18 +354,37 @@ export function ServicePriceFormRouter({ initialData, onSubmit, onCancel }: Serv
         })),
       }));
     } 
-    // ... other category data transformations for submit ...
+    
+    if (dataToSubmit.surchargePeriods) {
+        dataToSubmit.surchargePeriods = dataToSubmit.surchargePeriods.map((sp: any) => ({
+            ...sp,
+             startDate: (sp.startDate instanceof Date ? format(sp.startDate, 'yyyy-MM-dd') : (typeof sp.startDate === 'string' && isValid(parseISO(sp.startDate)) ? format(parseISO(sp.startDate), 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd'))),
+             endDate: (sp.endDate instanceof Date ? format(sp.endDate, 'yyyy-MM-dd') : (typeof sp.endDate === 'string' && isValid(parseISO(sp.endDate)) ? format(parseISO(sp.endDate), 'yyyy-MM-dd') : format(addDays(new Date(),30), 'yyyy-MM-dd'))),
+        }));
+    }
+    if (dataToSubmit.activityPackages) {
+        dataToSubmit.activityPackages = dataToSubmit.activityPackages.map((ap:any) => ({
+            ...ap,
+            validityStartDate: ap.validityStartDate || undefined,
+            validityEndDate: ap.validityEndDate || undefined,
+        }));
+    }
+
     if (dataToSubmit.countryId === "none") dataToSubmit.countryId = undefined;
     if (dataToSubmit.province === "none") dataToSubmit.province = undefined;
     onSubmit({ ...dataToSubmit } as Omit<ServicePriceItem, 'id'>);
   };
 
-  const handleFormError = (errors: any) => { /* ... */ };
+  const handleFormError = (errors: any) => { console.error("Form validation errors:", errors); };
+
+  if (isLoadingCountries) {
+    return <div className="flex justify-center items-center min-h-[200px]"><Loader2 className="h-8 w-8 animate-spin text-primary"/> <p className="ml-2">Loading form configuration...</p></div>;
+  }
 
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(handleActualSubmit, handleFormError)} className="space-y-6">
-        <ScrollArea className="h-[60vh] md:h-[70vh] pr-3">
+        <ScrollArea className="h-[calc(100vh-250px)] md:h-[calc(100vh-220px)] pr-3">
           <div className="space-y-6 p-1">
             <CommonPriceFields form={form} />
             {watchedCategory === 'hotel' && <HotelPriceForm form={form} />}

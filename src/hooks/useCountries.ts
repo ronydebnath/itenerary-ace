@@ -1,10 +1,22 @@
 
 import * as React from 'react';
-import type { CountryItem } from '@/types/itinerary';
+import type { CountryItem, CurrencyCode } from '@/types/itinerary';
+import { CURRENCIES } from '@/types/itinerary';
 import { generateGUID } from '@/lib/utils';
 
 const COUNTRIES_STORAGE_KEY = 'itineraryAceCountries';
-const DEFAULT_COUNTRY_NAMES = ["Thailand", "Malaysia"]; // Added Malaysia
+
+interface DefaultCountryInfo {
+  name: string;
+  defaultCurrency: CurrencyCode;
+}
+
+const DEFAULT_COUNTRIES_INFO: DefaultCountryInfo[] = [
+  { name: "Thailand", defaultCurrency: "THB" },
+  { name: "Malaysia", defaultCurrency: "MYR" },
+  { name: "Singapore", defaultCurrency: "USD" }, // Example, Singapore often uses SGD, but USD is common for tourism
+  { name: "Vietnam", defaultCurrency: "USD" },   // Example, VND is local, USD common for quotes
+];
 
 export function useCountries() {
   const [countries, setCountries] = React.useState<CountryItem[]>([]);
@@ -15,11 +27,12 @@ export function useCountries() {
     try {
       const storedCountriesString = localStorage.getItem(COUNTRIES_STORAGE_KEY);
       if (storedCountriesString) {
-        const parsedData = JSON.parse(storedCountriesString);
+        const parsedData = JSON.parse(storedCountriesString) as Partial<CountryItem>[]; // Allow partial for migration
         if (Array.isArray(parsedData) && parsedData.length > 0) {
           loadedCountries = parsedData.map(c => ({
             id: c.id || generateGUID(),
             name: c.name || "Unnamed Country",
+            defaultCurrency: c.defaultCurrency || (CURRENCIES.includes('USD') ? 'USD' : CURRENCIES[0]), // Fallback currency
           } as CountryItem));
         }
       }
@@ -27,13 +40,19 @@ export function useCountries() {
       console.error("Failed to load countries from localStorage:", error);
     }
 
-    // Ensure default countries exist if no countries are loaded or specific defaults are missing
     let defaultsChangedLocalStorage = false;
-    DEFAULT_COUNTRY_NAMES.forEach(defaultName => {
-      const defaultCountryExists = loadedCountries.some(c => c.name === defaultName);
+    DEFAULT_COUNTRIES_INFO.forEach(defaultInfo => {
+      const defaultCountryExists = loadedCountries.some(c => c.name === defaultInfo.name);
       if (!defaultCountryExists) {
-        loadedCountries.push({ id: generateGUID(), name: defaultName });
+        loadedCountries.push({ id: generateGUID(), name: defaultInfo.name, defaultCurrency: defaultInfo.defaultCurrency });
         defaultsChangedLocalStorage = true;
+      } else {
+        // Ensure existing default countries have a currency
+        const existing = loadedCountries.find(c => c.name === defaultInfo.name);
+        if (existing && !existing.defaultCurrency) {
+          existing.defaultCurrency = defaultInfo.defaultCurrency;
+          defaultsChangedLocalStorage = true;
+        }
       }
     });
     
@@ -43,10 +62,6 @@ export function useCountries() {
       } catch (saveError) {
         console.error("Failed to save default country list:", saveError);
       }
-    } else if (!localStorage.getItem(COUNTRIES_STORAGE_KEY) && loadedCountries.length === 0) {
-        // This case should ideally not happen if defaults are always added,
-        // but as a fallback, ensure we don't store an empty array if it was never stored.
-        // localStorage.removeItem(COUNTRIES_STORAGE_KEY); // Or initialize with defaults
     }
     
     loadedCountries.sort((a,b) => a.name.localeCompare(b.name));
@@ -71,12 +86,11 @@ export function useCountries() {
 
   const deleteCountry = (countryId: string) => {
     saveCountries(countries.filter(c => c.id !== countryId));
-    // Note: You might want to add logic here to also delete/disassociate provinces of this country.
   };
   
   const getCountryById = React.useCallback(
-    (id: string): CountryItem | undefined => {
-      if (isLoading) return undefined;
+    (id?: string): CountryItem | undefined => {
+      if (!id || isLoading) return undefined;
       return countries.find(c => c.id === id);
     },
     [countries, isLoading]
@@ -90,7 +104,5 @@ export function useCountries() {
     [countries, isLoading]
   );
 
-
   return { countries, isLoading, addCountry, updateCountry, deleteCountry, getCountryById, getCountryByName };
 }
-

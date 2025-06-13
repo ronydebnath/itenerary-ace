@@ -5,7 +5,7 @@ export interface Traveler {
   type: 'adult' | 'child';
 }
 
-export const CURRENCIES = ['USD', 'EUR', 'GBP', 'THB', 'JPY'] as const;
+export const CURRENCIES = ['USD', 'EUR', 'GBP', 'THB', 'JPY', 'MYR'] as const; // Added MYR
 export type CurrencyCode = typeof CURRENCIES[number];
 
 export interface PaxDetails {
@@ -106,6 +106,7 @@ export interface HotelRoomTypeDefinition {
   notes?: string;
   seasonalPrices: RoomTypeSeasonalPrice[];
   characteristics: HotelCharacteristic[];
+  price1?: number; // For simpler old data migration if needed, but ideally not used
 }
 
 export interface HotelDefinition {
@@ -237,12 +238,13 @@ export interface ServicePriceItem {
   hotelDetails?: HotelDefinition;
   activityPackages?: ActivityPackageDefinition[];
   surchargePeriods?: SurchargePeriod[];
-  selectedServicePriceId?: string;
+  selectedServicePriceId?: string; // Used in forms, not directly stored for final service definition
 }
 
 export interface CountryItem {
   id: string;
   name: string;
+  defaultCurrency: CurrencyCode;
 }
 
 export interface ProvinceItem {

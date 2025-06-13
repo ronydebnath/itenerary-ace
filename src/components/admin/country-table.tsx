@@ -26,6 +26,7 @@ export function CountryTable({ countries, onEdit, onDeleteConfirmation }: Countr
         <TableHeader className="bg-muted/50">
           <TableRow>
             <TableHead>Country Name</TableHead>
+            <TableHead>Default Currency</TableHead>
             <TableHead className="text-center w-[120px]">Actions</TableHead>
           </TableRow>
         </TableHeader>
@@ -33,6 +34,7 @@ export function CountryTable({ countries, onEdit, onDeleteConfirmation }: Countr
           {countries.map((country) => (
             <TableRow key={country.id}>
               <TableCell className="font-medium">{country.name}</TableCell>
+              <TableCell>{country.defaultCurrency}</TableCell>
               <TableCell className="text-center">
                 <Button variant="ghost" size="icon" onClick={() => onEdit(country)} className="mr-2 text-primary hover:bg-primary/10">
                   <Edit className="h-4 w-4" />

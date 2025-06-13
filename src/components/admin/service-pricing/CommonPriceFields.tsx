@@ -15,7 +15,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useProvinces } from '@/hooks/useProvinces';
 import { useCountries } from '@/hooks/useCountries';
-import { CURRENCIES, SERVICE_CATEGORIES, type CountryItem, type ProvinceItem } from '@/types/itinerary';
+import { CURRENCIES, SERVICE_CATEGORIES, type CountryItem, type ProvinceItem, type CurrencyCode } from '@/types/itinerary';
 import type { ServicePriceFormValues } from './ServicePriceFormRouter';
 import { Loader2 } from 'lucide-react';
 
@@ -24,22 +24,30 @@ interface CommonPriceFieldsProps {
 }
 
 export function CommonPriceFields({ form }: CommonPriceFieldsProps) {
-  const { countries, isLoading: isLoadingCountries } = useCountries();
+  const { countries, isLoading: isLoadingCountries, getCountryById } = useCountries();
   const { provinces, isLoading: isLoadingProvinces, getProvincesByCountry } = useProvinces();
 
   const selectedCountryId = useWatch({ control: form.control, name: "countryId" });
   const [filteredProvinces, setFilteredProvinces] = React.useState<ProvinceItem[]>([]);
+  const selectedCategory = form.watch("category");
 
   React.useEffect(() => {
     if (selectedCountryId && !isLoadingProvinces) {
       setFilteredProvinces(getProvincesByCountry(selectedCountryId));
-    } else {
-      setFilteredProvinces([]);
+      const selectedCountryDetails = getCountryById(selectedCountryId);
+      if (selectedCountryDetails && selectedCountryDetails.defaultCurrency) {
+        form.setValue('currency', selectedCountryDetails.defaultCurrency, { shouldValidate: true });
+      }
+    } else if (!selectedCountryId) {
+      setFilteredProvinces([]); // Clear provinces if no country selected
+      // Optionally, reset currency to a global default or leave as is
+      // form.setValue('currency', CURRENCIES[0] as CurrencyCode, { shouldValidate: true });
     }
-    // Reset province if country changes and current province is not in the new country's list
+    
     const currentProvinceName = form.getValues('province');
     if (selectedCountryId && currentProvinceName) {
-        const currentProvinceIsListed = getProvincesByCountry(selectedCountryId).some(p => p.name === currentProvinceName);
+        const currentCountryProvinces = getProvincesByCountry(selectedCountryId);
+        const currentProvinceIsListed = currentCountryProvinces.some(p => p.name === currentProvinceName);
         if(!currentProvinceIsListed) {
             form.setValue('province', undefined, { shouldValidate: true });
         }
@@ -47,7 +55,21 @@ export function CommonPriceFields({ form }: CommonPriceFieldsProps) {
          form.setValue('province', undefined, { shouldValidate: true });
     }
 
-  }, [selectedCountryId, isLoadingProvinces, getProvincesByCountry, form]);
+  }, [selectedCountryId, isLoadingProvinces, getProvincesByCountry, form, getCountryById]);
+
+
+  React.useEffect(() => {
+    // Auto-select Thailand and its currency if category is hotel and no country is selected yet
+    if (selectedCategory === 'hotel' && !form.getValues('countryId')) {
+      const thailand = countries.find(c => c.name === "Thailand");
+      if (thailand) {
+        form.setValue('countryId', thailand.id, { shouldValidate: true });
+        if (thailand.defaultCurrency) {
+          form.setValue('currency', thailand.defaultCurrency, { shouldValidate: true });
+        }
+      }
+    }
+  }, [selectedCategory, form, countries]);
 
   return (
     <div className="border border-border rounded-md p-4 relative">
@@ -58,11 +80,11 @@ export function CommonPriceFields({ form }: CommonPriceFieldsProps) {
           name="countryId"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Country (Required for Hotels, Optional for others)</FormLabel>
+              <FormLabel>Country {selectedCategory === 'hotel' ? '(Required for Hotels)' : '(Optional for others)'}</FormLabel>
               <Select
                 onValueChange={(value) => {
                   field.onChange(value === "none" ? undefined : value);
-                  form.setValue('province', undefined); // Reset province when country changes
+                  form.setValue('province', undefined); 
                 }}
                 value={field.value || "none"}
                 disabled={isLoadingCountries}
@@ -73,7 +95,7 @@ export function CommonPriceFields({ form }: CommonPriceFieldsProps) {
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  <SelectItem value="none">— Select Country (Optional for some) —</SelectItem>
+                  <SelectItem value="none">— Select Country —</SelectItem>
                   {countries.map(c => (
                     <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
                   ))}
@@ -120,14 +142,10 @@ export function CommonPriceFields({ form }: CommonPriceFieldsProps) {
           render={({ field }) => (
             <FormItem>
               <FormLabel>Category</FormLabel>
-              <Select onValueChange={(value) => {
-                  field.onChange(value);
-                  if (value === 'hotel' && !form.getValues('countryId')) {
-                     // If category is hotel and no country is selected, try to default to Thailand
-                     const thailand = countries.find(c=>c.name === "Thailand");
-                     if (thailand) form.setValue('countryId', thailand.id, { shouldValidate: true });
-                  }
-              }} value={field.value}>
+              <Select 
+                onValueChange={field.onChange} 
+                value={field.value}
+              >
                 <FormControl><SelectTrigger><SelectValue placeholder="Select category" /></SelectTrigger></FormControl>
                 <SelectContent>
                   {SERVICE_CATEGORIES.map(cat => <SelectItem key={cat} value={cat}>{cat.charAt(0).toUpperCase() + cat.slice(1)}</SelectItem>)}
@@ -154,12 +172,17 @@ export function CommonPriceFields({ form }: CommonPriceFieldsProps) {
           render={({ field }) => (
             <FormItem>
               <FormLabel>Currency</FormLabel>
-              <Select onValueChange={field.onChange} value={field.value}>
-                <FormControl><SelectTrigger><SelectValue placeholder="Select currency" /></SelectTrigger></FormControl>
+              <Select onValueChange={field.onChange} value={field.value} disabled={!!getCountryById(selectedCountryId)?.defaultCurrency && selectedCategory !== 'misc'}>
+                <FormControl>
+                    <SelectTrigger className={!!getCountryById(selectedCountryId)?.defaultCurrency && selectedCategory !== 'misc' ? "bg-muted/50 cursor-not-allowed" : ""}>
+                        <SelectValue placeholder="Select currency" />
+                    </SelectTrigger>
+                </FormControl>
                 <SelectContent>
                   {CURRENCIES.map(curr => <SelectItem key={curr} value={curr}>{curr}</SelectItem>)}
                 </SelectContent>
               </Select>
+              {!!getCountryById(selectedCountryId)?.defaultCurrency && selectedCategory !== 'misc' && <p className="text-xs text-muted-foreground mt-1">Currency auto-set based on selected country. For 'Miscellaneous' items, you can override this.</p>}
               <FormMessage />
             </FormItem>
           )}

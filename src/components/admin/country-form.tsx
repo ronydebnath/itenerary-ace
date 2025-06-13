@@ -15,17 +15,20 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import type { CountryItem } from '@/types/itinerary';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import type { CountryItem, CurrencyCode } from '@/types/itinerary';
+import { CURRENCIES } from '@/types/itinerary';
 
 const countrySchema = z.object({
   name: z.string().min(1, "Country name is required"),
+  defaultCurrency: z.custom<CurrencyCode>((val) => CURRENCIES.includes(val as CurrencyCode), "Invalid currency code"),
 });
 
 type CountryFormValues = z.infer<typeof countrySchema>;
 
 interface CountryFormProps {
   initialData?: CountryItem;
-  onSubmit: (data: Omit<CountryItem, 'id'>) => void;
+  onSubmit: (data: CountryFormValues) => void; // Changed to match form values
   onCancel: () => void;
 }
 
@@ -34,6 +37,7 @@ export function CountryForm({ initialData, onSubmit, onCancel }: CountryFormProp
     resolver: zodResolver(countrySchema),
     defaultValues: {
       name: initialData?.name || "",
+      defaultCurrency: initialData?.defaultCurrency || (CURRENCIES.includes('USD') ? 'USD' : CURRENCIES[0]),
     },
   });
 
@@ -51,6 +55,24 @@ export function CountryForm({ initialData, onSubmit, onCancel }: CountryFormProp
             <FormItem>
               <FormLabel>Country Name</FormLabel>
               <FormControl><Input placeholder="e.g., Thailand, Japan" {...field} /></FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="defaultCurrency"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Default Currency</FormLabel>
+              <Select onValueChange={field.onChange} value={field.value}>
+                <FormControl><SelectTrigger><SelectValue placeholder="Select default currency" /></SelectTrigger></FormControl>
+                <SelectContent>
+                  {CURRENCIES.map(curr => (
+                    <SelectItem key={curr} value={curr}>{curr}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               <FormMessage />
             </FormItem>
           )}
