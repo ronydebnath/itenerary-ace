@@ -1,4 +1,12 @@
-
+/**
+ * @fileoverview This file defines the data structures and Zod schemas related to travel agent profiles.
+ * It includes schemas for agent addresses and the main agent profile, which covers personal details,
+ * agency information, professional preferences, and contact methods.
+ *
+ * @bangla এই ফাইলটি ট্রাভেল এজেন্ট প্রোফাইল সম্পর্কিত ডেটা কাঠামো এবং Zod স্কিমাগুলি সংজ্ঞায়িত করে।
+ * এটিতে এজেন্টের ঠিকানা এবং মূল এজেন্ট প্রোফাইলের জন্য স্কিমা অন্তর্ভুক্ত রয়েছে, যা ব্যক্তিগত বিবরণ,
+ * এজেন্সির তথ্য, পেশাগত পছন্দ এবং যোগাযোগের পদ্ধতিগুলি কভার করে।
+ */
 import { z } from 'zod';
 import { CURRENCIES, type CurrencyCode } from '@/types/itinerary';
 

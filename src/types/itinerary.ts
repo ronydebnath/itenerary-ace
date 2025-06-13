@@ -1,4 +1,28 @@
-
+/**
+ * @fileoverview This file defines the core data structures and types used throughout the Itinerary Ace application,
+ * particularly for representing trip data, itinerary items, pricing, and related entities. It establishes
+ * the shape of data for features like itinerary planning, cost calculation, and service management.
+ *
+ * Key types include:
+ * - `TripData`: The root object for an entire itinerary.
+ * - `ItineraryItem`: A union type representing various services like transfers, activities, hotels, etc.
+ * - `ServicePriceItem`: Defines the structure for master service pricing records.
+ * - `HotelDefinition`: Defines the structure for master hotel data.
+ * - `Traveler`, `PaxDetails`, `TripSettings`: Supporting types for managing trip participants and global settings.
+ * - Various enums like `CURRENCIES`, `VEHICLE_TYPES`.
+ *
+ * @bangla এই ফাইলটি ইটিনেরারি এস অ্যাপ্লিকেশনের মূল ডেটা কাঠামো এবং টাইপগুলি সংজ্ঞায়িত করে,
+ * বিশেষত ট্রিপ ডেটা, ভ্রমণপথের আইটেম, মূল্য নির্ধারণ এবং সম্পর্কিত সত্তাগুলির উপস্থাপনার জন্য। এটি
+ * ভ্রমণপথ পরিকল্পনা, খরচ গণনা এবং পরিষেবা ব্যবস্থাপনার মতো বৈশিষ্ট্যগুলির জন্য ডেটার আকার নির্ধারণ করে।
+ *
+ * মূল টাইপগুলির মধ্যে রয়েছে:
+ * - `TripData`: সম্পূর্ণ ভ্রমণপথের জন্য রুট অবজেক্ট।
+ * - `ItineraryItem`: একটি ইউনিয়ন টাইপ যা ট্রান্সফার, কার্যকলাপ, হোটেল ইত্যাদির মতো বিভিন্ন পরিষেবা উপস্থাপন করে।
+ * - `ServicePriceItem`: মাস্টার পরিষেবা মূল্য রেকর্ডের জন্য কাঠামো সংজ্ঞায়িত করে।
+ * - `HotelDefinition`: মাস্টার হোটেল ডেটার জন্য কাঠামো সংজ্ঞায়িত করে।
+ * - `Traveler`, `PaxDetails`, `TripSettings`: ট্রিপ অংশগ্রহণকারীদের এবং গ্লোবাল সেটিংস পরিচালনার জন্য সহায়ক টাইপ।
+ * - `CURRENCIES`, `VEHICLE_TYPES` এর মতো বিভিন্ন enum।
+ */
 export interface Traveler {
   id: string; // e.g., "A1", "C1"
   label: string; // e.g., "Adult 1", "Child 1"

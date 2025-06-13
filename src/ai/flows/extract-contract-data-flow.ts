@@ -1,10 +1,30 @@
-
-'use server';
 /**
- * @fileOverview An AI flow to extract service pricing information from contract text.
+ * @fileOverview This file implements a Genkit flow named 'extractContractDataGenkitFlow'.
+ * It is designed to parse text from a service contract (e.g., for a hotel, activity, or transfer)
+ * and extract structured information like service name, category, pricing, location, and other
+ * relevant details. The flow interacts with the OpenRouter API, utilizing a specified model
+ * (e.g., "google/gemma-3n-e4b-it:free") to perform the data extraction task. It expects input
+ * as contract text and aims to return a JSON object conforming to the `AIContractDataOutputSchema`.
+ * The flow includes logic for API key management and error handling for the API requests.
  *
- * - extractContractData - A function that takes contract text and returns structured service data.
+ * It exports:
+ * - `extractContractData`: The public async function to invoke this Genkit flow.
+ * - Type definitions for input and output schemas are typically imported from ` '@/types/ai-contract-schemas'`.
+ *
+ * @bangla এই ফাইলটি 'extractContractDataGenkitFlow' নামে একটি Genkit ফ্লো প্রয়োগ করে।
+ * এটি একটি পরিষেবা চুক্তি (যেমন, হোটেল, কার্যকলাপ, বা ট্রান্সফার) থেকে টেক্সট পার্স করার জন্য
+ * এবং পরিষেবার নাম, বিভাগ, মূল্য নির্ধারণ, অবস্থান এবং অন্যান্য প্রাসঙ্গিক বিবরণের মতো
+ * কাঠামোবদ্ধ তথ্য বের করার জন্য ডিজাইন করা হয়েছে। এই ফ্লো OpenRouter API-এর সাথে ইন্টারঅ্যাক্ট করে,
+ * ডেটা নিষ্কাশন কাজটি সম্পাদন করার জন্য একটি নির্দিষ্ট মডেল (যেমন, "google/gemma-3n-e4b-it:free")
+ * ব্যবহার করে। এটি ইনপুট হিসাবে চুক্তি টেক্সট আশা করে এবং `AIContractDataOutputSchema`
+ * অনুসারে একটি JSON অবজেক্ট প্রদান করার লক্ষ্য রাখে। ফ্লোটিতে API কী পরিচালনার জন্য যুক্তি
+ * এবং API অনুরোধগুলির জন্য ত্রুটি হ্যান্ডলিং অন্তর্ভুক্ত রয়েছে।
+ *
+ * এটি এক্সপোর্ট করে:
+ * - `extractContractData`: এই Genkit ফ্লো কল করার জন্য পাবলিক অ্যাসিঙ্ক্রোনাস ফাংশন।
+ * - ইনপুট এবং আউটপুট স্কিমার জন্য টাইপ সংজ্ঞাগুলি সাধারণত ` '@/types/ai-contract-schemas'` থেকে আমদানি করা হয়।
  */
+'use server';
 
 import { ai } from '@/ai/genkit';
 import {

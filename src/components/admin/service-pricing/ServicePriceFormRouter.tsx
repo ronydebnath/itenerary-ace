@@ -1,4 +1,16 @@
-
+/**
+ * @fileoverview This component acts as a router for different service price forms.
+ * Based on the selected service category (e.g., hotel, activity, transfer), it dynamically
+ * renders the appropriate specialized form component. It also handles the overall form
+ * structure using `react-hook-form`, manages common fields, and defines the Zod schema
+ * for validating all possible service price configurations.
+ *
+ * @bangla এই কম্পোনেন্টটি বিভিন্ন পরিষেবা মূল্য ফর্মের জন্য একটি রাউটার হিসেবে কাজ করে।
+ * নির্বাচিত পরিষেবা বিভাগের (যেমন, হোটেল, কার্যকলাপ, ট্রান্সফার) উপর ভিত্তি করে, এটি গতিশীলভাবে
+ * উপযুক্ত বিশেষায়িত ফর্ম কম্পোনেন্ট রেন্ডার করে। এটি `react-hook-form` ব্যবহার করে সামগ্রিক
+ * ফর্ম কাঠামো পরিচালনা করে, সাধারণ ক্ষেত্রগুলি পরিচালনা করে এবং সমস্ত সম্ভাব্য পরিষেবা মূল্য
+ * কনফিগারেশন যাচাই করার জন্য Zod স্কিমা সংজ্ঞায়িত করে।
+ */
 "use client";
 
 import * as React from 'react';

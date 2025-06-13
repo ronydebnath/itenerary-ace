@@ -1,4 +1,14 @@
-
+/**
+ * @fileoverview This file serves as the main dashboard page for travel agents.
+ * It displays cards linking to various agent-specific functionalities like itinerary creation,
+ * requesting quotations, and managing their professional profile. It acts as the central hub
+ * for agents using the application.
+ *
+ * @bangla এই ফাইলটি ট্রাভেল এজেন্টদের জন্য প্রধান ড্যাশবোর্ড পৃষ্ঠা হিসেবে কাজ করে।
+ * এটি ভ্রমণপথ তৈরি, উদ্ধৃতি অনুরোধ করা এবং তাদের পেশাদার প্রোফাইল পরিচালনার মতো বিভিন্ন
+ * এজেন্ট-নির্দিষ্ট কার্যকারিতার সাথে লিঙ্ক করা কার্ড প্রদর্শন করে। এটি অ্যাপ্লিকেশন ব্যবহারকারী
+ * এজেন্টদের জন্য কেন্দ্রীয় হাব হিসেবে কাজ করে।
+ */
 "use client";
 
 import Link from 'next/link';
