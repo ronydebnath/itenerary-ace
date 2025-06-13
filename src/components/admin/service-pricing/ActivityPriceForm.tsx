@@ -17,13 +17,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useServicePrices } from '@/hooks/useServicePrices';
 import type { ServicePriceFormValues } from './ServicePriceFormRouter';
 import type { ActivityPackageDefinition, CurrencyCode } from '@/types/itinerary';
-import { PlusCircle, XIcon, Package as PackageIcon, Sparkles, Loader2, AlertCircle, FileText } from 'lucide-react'; // Ensured Sparkles, Loader2, AlertCircle are here
+import { PlusCircle, XIcon, Package as PackageIcon, Sparkles, Loader2, AlertCircle } from 'lucide-react';
 import { generateGUID } from '@/lib/utils';
 import { ActivityPackageScheduler } from '@/components/itinerary/items/activity-package-scheduler';
 import { useToast } from "@/hooks/use-toast";
 import { parseActivityText } from '@/ai/flows/parse-activity-text-flow';
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"; // Ensured Alert components are imported
-import { Label } from '@/components/ui/label'; // Ensured Label is imported
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Label } from '@/components/ui/label';
 
 interface ActivityPriceFormProps {
   form: ReturnType<typeof useFormContext<ServicePriceFormValues>>;
@@ -32,12 +32,12 @@ interface ActivityPriceFormProps {
 export function ActivityPriceForm({ form }: ActivityPriceFormProps) {
   const { getServicePrices, getServicePriceById, isLoading: isLoadingServices } = useServicePrices();
   const [availableActivityServices, setAvailableActivityServices] = React.useState<any[]>([]);
-  
+
   const currency = form.watch('currency') as CurrencyCode || 'THB';
   const province = form.watch('province');
   const activityNameForLegend = form.watch('name');
 
-  const { fields: activityPackageFields, append: appendActivityPackage, remove: removeActivityPackage } = useFieldArray({
+  const { fields: activityPackageFields, append: appendActivityPackage, remove: removeActivityPackage, update: updateActivityPackage } = useFieldArray({
     control: form.control, name: "activityPackages", keyName: "packageFieldId"
   });
 
@@ -55,14 +55,13 @@ export function ActivityPriceForm({ form }: ActivityPriceFormProps) {
       }
       setAvailableActivityServices(filteredServices);
     }
-  }, [isLoadingServices, getServicePrices, currency, province]);
+  }, [isLoadingServices, getServicePrices, currency, province, form]);
 
   const handlePredefinedServiceSelect = (serviceId: string) => {
-    setAiInputText(""); 
+    setAiInputText("");
     setAiParseError(null);
     if (serviceId === "none") {
       form.setValue('selectedServicePriceId', undefined);
-      // Ensure at least one package exists if clearing selection
       if (!form.getValues('activityPackages') || form.getValues('activityPackages').length === 0) {
         form.setValue('activityPackages', [{
           id: generateGUID(), name: 'Standard Package', price1: 0, price2: undefined, notes: '',
@@ -70,8 +69,6 @@ export function ActivityPriceForm({ form }: ActivityPriceFormProps) {
           validityEndDate: new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().split('T')[0],
           closedWeekdays: [], specificClosedDates: []
         }], { shouldValidate: true });
-      } else {
-        // If packages exist, maybe reset first package or leave as is? For now, leave.
       }
     } else {
       const service = getServicePriceById(serviceId);
@@ -91,7 +88,7 @@ export function ActivityPriceForm({ form }: ActivityPriceFormProps) {
       }
     }
   };
-  
+
   const selectedServicePriceId = form.watch('selectedServicePriceId');
   const selectedServiceName = selectedServicePriceId ? getServicePriceById(selectedServicePriceId)?.name : null;
 
@@ -106,39 +103,49 @@ export function ActivityPriceForm({ form }: ActivityPriceFormProps) {
       const result = await parseActivityText({ activityText: aiInputText });
 
       const currentName = form.getValues('name');
-      if (result.name && (currentName === "New activity" || !currentName || currentName.startsWith("Package "))) {
+      if (result.name && (currentName === "New activity" || !currentName || currentName.startsWith("Package ") || !form.getValues('selectedServicePriceId'))) {
         form.setValue('name', result.name, { shouldValidate: true });
       }
-      if (result.province) {
+      if (result.province && !form.getValues('province')) { // Only set if not already set
         form.setValue('province', result.province, { shouldValidate: true });
       }
-      if (result.currency) {
+      if (result.currency) { // Always update currency if AI provides it
         form.setValue('currency', result.currency, { shouldValidate: true });
       }
 
       let currentPackages = form.getValues('activityPackages') || [];
-      if (currentPackages.length === 0) {
-        currentPackages.push({
-          id: generateGUID(), name: 'Package 1', price1: 0,
-          validityStartDate: new Date().toISOString().split('T')[0],
-          validityEndDate: new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().split('T')[0],
-          closedWeekdays: [], specificClosedDates: []
-        });
+      if (!Array.isArray(currentPackages)) {
+        currentPackages = [];
       }
       
-      const firstPackage = { ...currentPackages[0] };
-      if (result.name) firstPackage.name = result.name; // Or a more specific package name if AI can extract it
-      if (typeof result.adultPrice === 'number') firstPackage.price1 = result.adultPrice;
-      if (typeof result.childPrice === 'number') firstPackage.price2 = result.childPrice;
-      else if (result.adultPrice !== undefined && result.childPrice === undefined) firstPackage.price2 = undefined; // Clear if adult price given but no child
-      if (result.notes) firstPackage.notes = (firstPackage.notes ? firstPackage.notes + "\n" : "") + result.notes;
+      if (currentPackages.length === 0) {
+         appendActivityPackage({
+            id: generateGUID(), name: result.name || 'Parsed Package 1', 
+            price1: result.adultPrice ?? 0,
+            price2: result.childPrice,
+            notes: result.notes || '',
+            validityStartDate: new Date().toISOString().split('T')[0],
+            validityEndDate: new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().split('T')[0],
+            closedWeekdays: [], specificClosedDates: []
+          }, { shouldFocus: false });
+      } else {
+        // Update the first package
+        const firstPackageOriginal = currentPackages[0];
+        const updatedFirstPackage: ActivityPackageDefinition = {
+            ...firstPackageOriginal,
+            id: firstPackageOriginal.id || generateGUID(),
+            name: result.name || firstPackageOriginal.name || 'Parsed Package 1',
+            price1: result.adultPrice ?? firstPackageOriginal.price1 ?? 0,
+            price2: result.childPrice !== undefined ? result.childPrice : firstPackageOriginal.price2,
+            notes: (result.notes ? (firstPackageOriginal.notes ? `${firstPackageOriginal.notes}\nAI: ${result.notes}` : `AI: ${result.notes}`) : firstPackageOriginal.notes) || '',
+        };
+        updateActivityPackage(0, updatedFirstPackage);
+      }
+      
+      form.setValue('selectedServicePriceId', undefined); // Clear predefined selection as we're using AI parsed data
 
-      currentPackages[0] = firstPackage;
-      form.setValue('activityPackages', currentPackages, { shouldValidate: true });
-      form.setValue('selectedServicePriceId', undefined); // Clear predefined selection
-
-      toast({ title: "AI Parsing Successful", description: "Activity form fields have been prefilled." });
-      setAiInputText(""); 
+      toast({ title: "AI Parsing Successful", description: "Activity form fields have been prefilled for the first package." });
+      setAiInputText("");
     } catch (error: any) {
       console.error("AI Parsing Error:", error);
       setAiParseError(`Failed to parse with AI: ${error.message || "Unknown error"}`);
@@ -157,11 +164,11 @@ export function ActivityPriceForm({ form }: ActivityPriceFormProps) {
         </p>
         <div className="space-y-3 pt-3">
           <div>
-            <Label htmlFor="ai-activity-text-input"> {/* Simplified ID */}
+            <Label htmlFor="ai-activity-text-input">
               Paste Activity Description
             </Label>
             <Textarea
-              id="ai-activity-text-input" {/* Simplified ID */}
+              id="ai-activity-text-input"
               value={aiInputText}
               onChange={(e) => setAiInputText(e.target.value)}
               placeholder="e.g., Bangkok City Tour, half day, 9am to 1pm. Adult 1200 THB, Child 800 THB. Includes guide and temple entries..."
@@ -242,8 +249,8 @@ export function ActivityPriceForm({ form }: ActivityPriceFormProps) {
             const currentPackageValues = form.watch(`activityPackages.${packageIndex}`);
             const packageLegend = currentPackageValues?.name || `Package ${packageIndex + 1}`;
             return (
-              <div key={packageField.id} className="border border-muted rounded-md p-4 pt-6 relative bg-card shadow-sm">
-                <p className="text-base font-medium -mt-6 ml-2 px-1 bg-card inline-block absolute left-2 top-[0.1rem] max-w-[calc(100%-3rem)] truncate"> {packageLegend} </p>
+              <div key={packageField.packageFieldId} className="border border-muted rounded-md p-4 pt-6 relative bg-card shadow-sm">
+                 <p className="text-base font-medium -mt-6 ml-2 px-1 bg-card inline-block absolute left-2 top-[0.1rem] max-w-[calc(100%-3rem)] truncate"> {packageLegend} </p>
                 <Button type="button" variant="ghost" size="icon" onClick={() => activityPackageFields.length > 1 ? removeActivityPackage(packageIndex) : null} disabled={activityPackageFields.length <= 1} className="absolute top-1 right-1 h-7 w-7 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center text-sm hover:bg-destructive/80 disabled:opacity-50">
                   <XIcon size={16} />
                 </Button>
@@ -254,21 +261,21 @@ export function ActivityPriceForm({ form }: ActivityPriceFormProps) {
                     <ShadcnFormField control={form.control} name={`activityPackages.${packageIndex}.price2`} render={({ field }) => ( <FormItem><FormLabel className="text-sm">Child Price ({currency}) (Optional)</FormLabel><FormControl><Input type="number" placeholder="0.00" {...field} value={field.value ?? ''} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)} /></FormControl><FormMessage /></FormItem> )} />
                   </div>
                   <ShadcnFormField control={form.control} name={`activityPackages.${packageIndex}.notes`} render={({ field }) => ( <FormItem><FormLabel className="text-sm">Package Notes/Details</FormLabel><FormControl><Textarea placeholder="Inclusions, duration, what to bring, etc." {...field} value={field.value || ''} rows={2} /></FormControl><FormMessage /></FormItem> )} />
-                  <Controller 
-                    control={form.control} 
-                    name={`activityPackages.${packageIndex}`} 
-                    render={({ field: { onChange, value }}) => ( 
-                      <ActivityPackageScheduler 
-                        packageId={packageField.id} 
-                        initialSchedulingData={{ 
-                          validityStartDate: value.validityStartDate, 
-                          validityEndDate: value.validityEndDate, 
-                          closedWeekdays: value.closedWeekdays, 
-                          specificClosedDates: value.specificClosedDates, 
-                        }} 
-                        onSchedulingChange={(newSchedule) => { onChange({ ...value, ...newSchedule }); }} 
-                      /> 
-                    )} 
+                  <Controller
+                    control={form.control}
+                    name={`activityPackages.${packageIndex}`}
+                    render={({ field: { onChange, value }}) => (
+                      <ActivityPackageScheduler
+                        packageId={packageField.id} // Use packageField.id which is stable
+                        initialSchedulingData={{
+                          validityStartDate: value.validityStartDate,
+                          validityEndDate: value.validityEndDate,
+                          closedWeekdays: value.closedWeekdays,
+                          specificClosedDates: value.specificClosedDates,
+                        }}
+                        onSchedulingChange={(newSchedule) => { onChange({ ...value, ...newSchedule }); }}
+                      />
+                    )}
                   />
                 </div>
               </div>
@@ -284,13 +291,10 @@ export function ActivityPriceForm({ form }: ActivityPriceFormProps) {
        {(form.formState.errors.price1 as any)?.message && (
         <div className="border border-destructive/50 bg-destructive/10 p-3 rounded-md mt-2">
           <FormMessage className="text-destructive">
-            If no packages are defined, ensure a "Default Adult Price" is provided (this is handled by Zod validation logic if `activityPackages` is empty).
-            Error: {(form.formState.errors.price1 as any).message}
+            If no packages are defined, ensure a "Default Adult Price" is provided. Error: {(form.formState.errors.price1 as any).message}
           </FormMessage>
         </div>
       )}
     </div>
   );
 }
-
-    
