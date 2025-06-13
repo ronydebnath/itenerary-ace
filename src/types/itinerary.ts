@@ -115,6 +115,7 @@ export interface HotelDefinition {
   name: string;
   countryId: string;
   province: string; // Province Name
+  starRating?: number; // Star rating from 1 to 5
   roomTypes: HotelRoomTypeDefinition[];
 }
 

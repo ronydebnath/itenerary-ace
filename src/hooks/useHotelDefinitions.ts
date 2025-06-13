@@ -58,24 +58,24 @@ const createDemoHotelDefinitions = (countries: CountryItem[]): HotelDefinition[]
 
   if (thailand) {
     demoHotels.push(
-      { id: "hotel-bkk-central-demo", name: "Bangkok Central Hotel", countryId: thailand.id, province: "Bangkok", roomTypes: [standardCityRoom, deluxeRiverRoom, familySuiteCity] },
-      { id: "hotel-phuket-paradise-demo", name: "Phuket Paradise Resort", countryId: thailand.id, province: "Phuket", roomTypes: [superiorPoolAccessRoom, beachfrontVilla, twoBedroomFamilyVilla] }
+      { id: "hotel-bkk-central-demo", name: "Bangkok Central Hotel", countryId: thailand.id, province: "Bangkok", starRating: 4, roomTypes: [standardCityRoom, deluxeRiverRoom, familySuiteCity] },
+      { id: "hotel-phuket-paradise-demo", name: "Phuket Paradise Resort", countryId: thailand.id, province: "Phuket", starRating: 5, roomTypes: [superiorPoolAccessRoom, beachfrontVilla, twoBedroomFamilyVilla] }
     );
   }
-  if (malaysia) { // Keeping Malaysia simple for this update, focus was BKK/Phuket
+  if (malaysia) { 
     demoHotels.push(
-      { id: generateGUID(), name: "Kuala Lumpur Towers Hotel", countryId: malaysia.id, province: "Kuala Lumpur", roomTypes: [standardCityRoom] },
-      { id: generateGUID(), name: "Langkawi Beachfront Villa Basic", countryId: malaysia.id, province: "Langkawi", roomTypes: [deluxeRiverRoom] }
+      { id: generateGUID(), name: "Kuala Lumpur Towers Hotel", countryId: malaysia.id, province: "Kuala Lumpur", starRating: 4, roomTypes: [standardCityRoom] },
+      { id: generateGUID(), name: "Langkawi Beachfront Villa Basic", countryId: malaysia.id, province: "Langkawi", starRating: 3, roomTypes: [deluxeRiverRoom] }
     );
   }
   if (singapore) {
     demoHotels.push(
-      { id: generateGUID(), name: "Singapore Marina View Basic", countryId: singapore.id, province: "Singapore", roomTypes: [deluxeRiverRoom] }
+      { id: generateGUID(), name: "Singapore Marina View Basic", countryId: singapore.id, province: "Singapore", starRating: 5, roomTypes: [deluxeRiverRoom] }
     );
   }
   if (vietnam) {
      demoHotels.push(
-      { id: generateGUID(), name: "Hanoi Old Quarter Inn Basic", countryId: vietnam.id, province: "Hanoi", roomTypes: [standardCityRoom] }
+      { id: generateGUID(), name: "Hanoi Old Quarter Inn Basic", countryId: vietnam.id, province: "Hanoi", starRating: 3, roomTypes: [standardCityRoom] }
     );
   }
   return demoHotels;
@@ -101,6 +101,7 @@ export function useHotelDefinitions() {
           if (Array.isArray(parsedDefinitions)) {
             const validatedDefinitions = parsedDefinitions.filter(
               h => h.id && h.name && h.countryId && h.province && Array.isArray(h.roomTypes) &&
+                   (h.starRating === undefined || (typeof h.starRating === 'number' && h.starRating >= 1 && h.starRating <= 5)) &&
                    h.roomTypes.every((rt: any) => rt.id && rt.name && Array.isArray(rt.seasonalPrices) && rt.seasonalPrices.every((sp: any) => sp.id && sp.startDate && sp.endDate && typeof sp.rate === 'number'))
             );
             definitionsToSet = validatedDefinitions;
@@ -108,15 +109,12 @@ export function useHotelDefinitions() {
             DEMO_HOTELS.forEach(demoHotel => {
               const existingDemoHotelIndex = definitionsToSet.findIndex(def => def.id === demoHotel.id);
               if (existingDemoHotelIndex !== -1) {
-                 definitionsToSet[existingDemoHotelIndex] = demoHotel; // Overwrite with latest demo structure
+                 definitionsToSet[existingDemoHotelIndex] = demoHotel; 
               } else {
                 const existingByName = definitionsToSet.find(def => def.name === demoHotel.name && def.province === demoHotel.province && def.countryId === demoHotel.countryId);
                 if (!existingByName) {
-                    definitionsToSet.push(demoHotel); // Add if truly new
+                    definitionsToSet.push(demoHotel); 
                 } else if (existingByName.id !== demoHotel.id && demoHotel.id.includes("-demo")) {
-                    // If a demo hotel with a different ID but same name/location exists, this indicates an old demo entry.
-                    // We prefer the new fixed ID for demo data consistency.
-                    // Remove old, add new.
                     definitionsToSet = definitionsToSet.filter(d => d.id !== existingByName.id);
                     definitionsToSet.push(demoHotel);
                 }

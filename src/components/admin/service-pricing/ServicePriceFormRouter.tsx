@@ -19,7 +19,7 @@ import { MealPriceForm } from './MealPriceForm';
 import { MiscellaneousPriceForm } from './MiscellaneousPriceForm';
 import { addDays, isValid, parseISO, format, areIntervalsOverlapping } from 'date-fns';
 import { useCountries } from '@/hooks/useCountries';
-import { Loader2 } from 'lucide-react'; // Added import
+import { Loader2 } from 'lucide-react'; 
 
 // --- Zod Schemas ---
 const hotelRoomSeasonalPriceSchema = z.object({
@@ -80,6 +80,7 @@ const hotelDetailsSchema = z.object({
   name: z.string().min(1, "Hotel name (within details) is required."),
   countryId: z.string().min(1, "Hotel country is required. Please select a Country at the top of the form."),
   province: z.string().min(1, "Hotel province is required. Please select a Province at the top of the form."),
+  starRating: z.coerce.number().int().min(1).max(5).optional().nullable().describe("Hotel star rating from 1 to 5."),
   roomTypes: z.array(hotelRoomTypeSchema)
     .min(1, "Hotel must have at least one room type defined."),
 });
@@ -223,7 +224,6 @@ const transformInitialDataToFormValues = (initialData?: Partial<ServicePriceItem
     selectedServicePriceId: initialData?.selectedServicePriceId || undefined,
   };
   
-  // Set countryId for new Hotels to Thailand by default if Thailand exists
   if ((!initialData || Object.keys(initialData).length === 0 || !initialData.category) && baseTransformed.category === 'hotel' && !baseTransformed.countryId) {
     const thailand = countries?.find(c => c.name === "Thailand");
     if (thailand) {
@@ -232,16 +232,15 @@ const transformInitialDataToFormValues = (initialData?: Partial<ServicePriceItem
     }
   }
 
-
   baseTransformed.surchargePeriods = initialData?.surchargePeriods?.map(sp => {
     const initialStartDate = sp.startDate && typeof sp.startDate === 'string' ? parseISO(sp.startDate) : (sp.startDate instanceof Date ? sp.startDate : today);
     const initialEndDate = sp.endDate && typeof sp.endDate === 'string' ? parseISO(sp.endDate) : (sp.endDate instanceof Date ? sp.endDate : addDays(initialStartDate, 30));
     return { ...sp, id: sp.id || generateGUID(), startDate: isValid(initialStartDate) ? initialStartDate : today, endDate: isValid(initialEndDate) ? initialEndDate : addDays(isValid(initialStartDate) ? initialStartDate : today, 30) };
   }) || [];
 
-  if (!initialData || Object.keys(initialData).length === 0) { // Default for brand new item
+  if (!initialData || Object.keys(initialData).length === 0) { 
     if (baseTransformed.category === 'hotel') {
-        baseTransformed.hotelDetails = { id: generateGUID(), name: baseTransformed.name || "New Hotel", countryId: baseTransformed.countryId || "", province: baseTransformed.province || "", roomTypes: [createDefaultRoomType()] };
+        baseTransformed.hotelDetails = { id: generateGUID(), name: baseTransformed.name || "New Hotel", countryId: baseTransformed.countryId || "", province: baseTransformed.province || "", starRating: 3, roomTypes: [createDefaultRoomType()] };
     } else if (baseTransformed.category === 'activity') {
       baseTransformed.activityPackages = [{ id: generateGUID(), name: 'Standard Package', price1: 0, validityStartDate: today.toISOString().split('T')[0], validityEndDate: addDays(today, 30).toISOString().split('T')[0], closedWeekdays: [], specificClosedDates: [] }];
     } else if (baseTransformed.category === 'transfer') {
@@ -251,8 +250,8 @@ const transformInitialDataToFormValues = (initialData?: Partial<ServicePriceItem
   }
 
   if (baseTransformed.category === 'hotel') {
-    const hotelDef = initialData.hotelDetails;
-    const transformedRoomTypes = (hotelDef?.roomTypes && hotelDef.roomTypes.length > 0 ? hotelDef.roomTypes : [createDefaultRoomType(initialData.subCategory)])
+    const hotelDefFromInitial = initialData.hotelDetails;
+    const transformedRoomTypes = (hotelDefFromInitial?.roomTypes && hotelDefFromInitial.roomTypes.length > 0 ? hotelDefFromInitial.roomTypes : [createDefaultRoomType(initialData.subCategory)])
         .map(rt => ({
             ...rt, id: rt.id || generateGUID(), name: rt.name || "Unnamed Room Type", extraBedAllowed: rt.extraBedAllowed ?? false, notes: rt.notes || "", characteristics: rt.characteristics || [],
             seasonalPrices: (Array.isArray(rt.seasonalPrices) && rt.seasonalPrices.length > 0 ? rt.seasonalPrices : [createDefaultSeasonalPrice(rt.price1 || 0)]).map(sp => { 
@@ -262,10 +261,11 @@ const transformInitialDataToFormValues = (initialData?: Partial<ServicePriceItem
             })
         }));
     baseTransformed.hotelDetails = {
-        id: hotelDef?.id || initialData.id || generateGUID(),
-        name: initialData.name || hotelDef?.name || "Hotel Name from Data",
-        countryId: initialData.countryId || hotelDef?.countryId || "",
-        province: initialData.province || hotelDef?.province || "",
+        id: hotelDefFromInitial?.id || initialData.id || generateGUID(),
+        name: initialData.name || hotelDefFromInitial?.name || "Hotel Name from Data",
+        countryId: initialData.countryId || hotelDefFromInitial?.countryId || "",
+        province: initialData.province || hotelDefFromInitial?.province || "",
+        starRating: hotelDefFromInitial?.starRating,
         roomTypes: transformedRoomTypes
     };
   } else if (baseTransformed.category === 'activity') {
@@ -325,15 +325,23 @@ export function ServicePriceFormRouter({ initialData, onSubmit, onCancel }: Serv
         const expectedHotelName = currentName || (isNewService ? "New Hotel (Default Name)" : hotelDetailsCurrent?.name);
         const expectedCountryId = currentCountryId || (hotelDetailsCurrent?.countryId || "");
         const expectedProvince = currentProvince || hotelDetailsCurrent?.province || "";
+        let updateRequired = false;
 
-        if (!hotelDetailsCurrent || (isNewService && (!hotelDetailsCurrent.id))) {
-            setFieldValue('hotelDetails', { id: generateGUID(), name: expectedHotelName, countryId: expectedCountryId, province: expectedProvince, roomTypes: [createDefaultRoomType()] });
+        if (!hotelDetailsCurrent || (isNewService && (!hotelDetailsCurrent.id || !hotelDetailsCurrent.name))) {
+            setFieldValue('hotelDetails', { 
+                id: generateGUID(), 
+                name: expectedHotelName, 
+                countryId: expectedCountryId, 
+                province: expectedProvince, 
+                starRating: hotelDetailsCurrent?.starRating ?? 3, // Default star rating
+                roomTypes: hotelDetailsCurrent?.roomTypes?.length ? hotelDetailsCurrent.roomTypes : [createDefaultRoomType()] 
+            });
         } else {
-            let updateRequired = false;
             if (hotelDetailsCurrent.name !== expectedHotelName) { hotelDetailsCurrent.name = expectedHotelName || ""; updateRequired = true; }
             if (hotelDetailsCurrent.countryId !== expectedCountryId) { hotelDetailsCurrent.countryId = expectedCountryId; updateRequired = true; }
             if (hotelDetailsCurrent.province !== expectedProvince) { hotelDetailsCurrent.province = expectedProvince; updateRequired = true; }
             if (!hotelDetailsCurrent.id) { hotelDetailsCurrent.id = generateGUID(); updateRequired = true; }
+            if (hotelDetailsCurrent.starRating === undefined) { hotelDetailsCurrent.starRating = 3; updateRequired = true;}
             if (updateRequired) setFieldValue('hotelDetails', { ...hotelDetailsCurrent });
         }
     }
@@ -346,6 +354,7 @@ export function ServicePriceFormRouter({ initialData, onSubmit, onCancel }: Serv
       dataToSubmit.hotelDetails.name = dataToSubmit.name || dataToSubmit.hotelDetails.name; 
       dataToSubmit.hotelDetails.countryId = dataToSubmit.countryId || dataToSubmit.hotelDetails.countryId;
       dataToSubmit.hotelDetails.province = dataToSubmit.province || dataToSubmit.hotelDetails.province || ""; 
+      dataToSubmit.hotelDetails.starRating = dataToSubmit.hotelDetails.starRating; // Ensure starRating is passed
       dataToSubmit.hotelDetails.roomTypes = dataToSubmit.hotelDetails.roomTypes.map((rt: any) => ({
         ...rt,
         seasonalPrices: rt.seasonalPrices.map((sp: any) => ({

@@ -17,13 +17,14 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card } from "@/components/ui/card";
-import { PlusCircle, XIcon } from 'lucide-react';
+import { PlusCircle, XIcon, Star } from 'lucide-react';
 import { Label } from "@/components/ui/label";
 import { generateGUID } from '@/lib/utils';
 import { addDays, isValid, parseISO, isWithinInterval, areIntervalsOverlapping } from 'date-fns';
 import type { ServicePriceFormValues } from './ServicePriceFormRouter';
 import type { CurrencyCode, RoomTypeSeasonalPrice } from '@/types/itinerary';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 
 function createDefaultSeasonalPriceForForm(): RoomTypeSeasonalPrice {
@@ -70,6 +71,9 @@ export function HotelPriceForm({ form }: HotelPriceFormProps) {
       const defaultRoom = createDefaultRoomTypeForForm(0);
       form.setValue('hotelDetails.roomTypes', [defaultRoom], { shouldValidate: true, shouldDirty: true });
     }
+    if (hotelDetails && hotelDetails.starRating === undefined) {
+      form.setValue('hotelDetails.starRating', 3, { shouldValidate: true }); // Default star rating if not set
+    }
   }, [form]);
 
 
@@ -77,7 +81,7 @@ export function HotelPriceForm({ form }: HotelPriceFormProps) {
     <div className="space-y-4 md:space-y-6">
       <div className="border border-border rounded-md p-3 sm:p-4 mt-4 md:mt-6 relative">
         <p className="text-xs sm:text-sm font-semibold -mt-5 sm:-mt-6 ml-2 px-1 bg-background inline-block absolute left-2 top-[-0.7rem] mb-4">
-          Room Types &amp; Rates for: {hotelNameForLegend || "New Hotel"} {hotelProvinceForLegend && `(${hotelProvinceForLegend})`}
+          Hotel Details for: {hotelNameForLegend || "New Hotel"} {hotelProvinceForLegend && `(${hotelProvinceForLegend})`}
         </p>
          {(form.formState.errors.hotelDetails?.province || (form.formState.errors.hotelDetails as any)?.root?.message || form.formState.errors.hotelDetails?.countryId) && (
             <Alert variant="destructive" className="mb-3 sm:mb-4">
@@ -87,6 +91,39 @@ export function HotelPriceForm({ form }: HotelPriceFormProps) {
                 </AlertDescription>
             </Alert>
         )}
+        <ShadcnFormField
+          control={form.control}
+          name="hotelDetails.starRating"
+          render={({ field }) => (
+            <FormItem className="mb-3 sm:mb-4">
+              <FormLabel className="text-xs sm:text-sm">Hotel Star Rating</FormLabel>
+              <Select
+                onValueChange={(value) => field.onChange(value ? parseInt(value, 10) : undefined)}
+                value={field.value ? String(field.value) : ""}
+              >
+                <FormControl>
+                  <SelectTrigger className="h-9 text-sm">
+                    <SelectValue placeholder="Select star rating (1-5)" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  <SelectItem value="">Unrated / Not Set</SelectItem>
+                  {[1, 2, 3, 4, 5].map(star => (
+                    <SelectItem key={star} value={String(star)}>
+                      <div className="flex items-center">
+                        {Array(star).fill(0).map((_, i) => <Star key={i} className="h-3 w-3 sm:h-4 sm:w-4 fill-yellow-400 text-yellow-400 mr-0.5" />)}
+                        {Array(5-star).fill(0).map((_,i) => <Star key={`empty-${i}`} className="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground/50 mr-0.5" />)}
+                        <span className="ml-1.5">({star} Star{star > 1 ? 's' : ''})</span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <p className="text-xs sm:text-sm font-semibold mb-2">Room Types &amp; Rates</p>
         <div id="roomTypesContainer" className="space-y-4 md:space-y-6 pt-2">
           {roomTypeFields.map((roomField, roomIndex) => (
             <RoomTypeCard
