@@ -127,7 +127,10 @@ export function PlannerHeader({
       <CardHeader className="bg-primary/10 p-3 sm:p-4 md:p-6">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
           <div>
-            <CardTitle className="text-xl sm:text-2xl md:text-3xl font-headline text-primary">Itinerary Ace Planner</CardTitle>
+            <CardTitle className="text-xl sm:text-2xl md:text-3xl font-headline text-primary flex items-center">
+              <Route className="mr-2 sm:mr-3 h-6 w-6 sm:h-8 sm:w-8 text-primary" />
+              Itinerary Ace Planner
+            </CardTitle>
             <CardDescription className="text-foreground/70 pt-1 text-xs sm:text-sm">
               Plan and calculate costs. Changes to core settings update the itinerary.
             </CardDescription>
