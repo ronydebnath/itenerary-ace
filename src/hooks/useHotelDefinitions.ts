@@ -7,6 +7,7 @@ import { addDays, format } from 'date-fns';
 
 const HOTEL_DEFINITIONS_STORAGE_KEY = 'itineraryAceHotelDefinitions';
 const currentYear = new Date().getFullYear();
+const nextYear = currentYear + 1;
 
 const createDemoHotelDefinitions = (countries: CountryItem[]): HotelDefinition[] => {
   const thailand = countries.find(c => c.id === DEFAULT_THAILAND_ID);
@@ -44,13 +45,13 @@ const createDemoHotelDefinitions = (countries: CountryItem[]): HotelDefinition[]
   };
 
   const superiorPoolAccessRoom: HotelRoomTypeDefinition = {
-    id: generateGUID(), name: "Superior Pool Access", extraBedAllowed: true, notes: "35sqm room with direct access to the resort's lagoon pool from your private terrace.", seasonalPrices: [deluxeLowSeason, deluxeHighSeason, {...deluxePeakSeason, rate: deluxePeakSeason.rate * 1.1}], characteristics: [{id: generateGUID(), key: "Feature", value: "Direct Pool Access"}, {id: generateGUID(), key: "Bed", value: "King"}, {id: generateGUID(), key: "Size", value: "35sqm"}]
+    id: generateGUID(), name: "Superior Pool Access", extraBedAllowed: true, notes: "35sqm room with direct access to the resort's lagoon pool from your private terrace.", seasonalPrices: [deluxeLowSeason, deluxeHighSeason, {...deluxePeakSeason, rate: deluxePeakSeason.rate * 1.1, extraBedRate: (deluxePeakSeason.extraBedRate || 1500) * 1.1 }], characteristics: [{id: generateGUID(), key: "Feature", value: "Direct Pool Access"}, {id: generateGUID(), key: "Bed", value: "King"}, {id: generateGUID(), key: "Size", value: "35sqm"}]
   };
   const beachfrontVilla: HotelRoomTypeDefinition = {
-    id: generateGUID(), name: "Beachfront Villa", extraBedAllowed: false, notes: "Luxurious 70sqm villa with private plunge pool, direct beach access, and personalized butler service.", seasonalPrices: [suiteLowSeason, suiteHighSeason, {...suitePeakSeason, rate: suitePeakSeason.rate * 1.3}].map(sp => ({...sp, rate: sp.rate * 1.5, extraBedRate: sp.extraBedRate ? sp.extraBedRate * 1.5 : undefined})), characteristics: [{id: generateGUID(), key: "Feature", value: "Private Plunge Pool, Beach Access"}, {id: generateGUID(), key: "Bed", value: "King"}, {id: generateGUID(), key: "Size", value: "70sqm"}, {id: generateGUID(), key: "Service", value: "Butler Service"}]
+    id: generateGUID(), name: "Beachfront Villa", extraBedAllowed: false, notes: "Luxurious 70sqm villa with private plunge pool, direct beach access, and personalized butler service.", seasonalPrices: [suiteLowSeason, suiteHighSeason, {...suitePeakSeason, rate: suitePeakSeason.rate * 1.3, extraBedRate: (suitePeakSeason.extraBedRate || 2500) * 1.3}].map(sp => ({...sp, rate: sp.rate * 1.5, extraBedRate: sp.extraBedRate ? sp.extraBedRate * 1.5 : undefined})), characteristics: [{id: generateGUID(), key: "Feature", value: "Private Plunge Pool, Beach Access"}, {id: generateGUID(), key: "Bed", value: "King"}, {id: generateGUID(), key: "Size", value: "70sqm"}, {id: generateGUID(), key: "Service", value: "Butler Service"}]
   };
    const twoBedroomFamilyVilla: HotelRoomTypeDefinition = {
-    id: generateGUID(), name: "Two-Bedroom Family Villa", extraBedAllowed: true, notes: "100sqm villa with two separate bedrooms, living area, kitchenette and garden.", seasonalPrices: [suiteLowSeason, suiteHighSeason, suitePeakSeason].map(sp => ({...sp, rate: sp.rate * 1.8, extraBedRate: sp.extraBedRate ? sp.extraBedRate * 1.8 : undefined})), characteristics: [{id: generateGUID(), key: "Feature", value: "Two Bedrooms, Garden"}, {id: generateGUID(), key: "Bed", value: "1 King, 2 Twin"}, {id: generateGUID(), key: "Size", value: "100sqm"}]
+    id: generateGUID(), name: "Two-Bedroom Family Villa", extraBedAllowed: true, notes: "100sqm villa with two separate bedrooms, living area, kitchenette and garden.", seasonalPrices: [suiteLowSeason, suiteHighSeason, suitePeakSeason].map(sp => ({...sp, rate: sp.rate * 1.8, extraBedRate: sp.extraBedRate ? sp.extraBedRate * 1.8 : 2000})), characteristics: [{id: generateGUID(), key: "Feature", value: "Two Bedrooms, Garden"}, {id: generateGUID(), key: "Bed", value: "1 King, 2 Twin"}, {id: generateGUID(), key: "Size", value: "100sqm"}]
   };
 
   // --- New Room Types for Bangkok Hotels ---
@@ -75,27 +76,36 @@ const createDemoHotelDefinitions = (countries: CountryItem[]): HotelDefinition[]
   };
   
   const deluxeKingBalconyGrandChaoPhraya: HotelRoomTypeDefinition = {
-    id: generateGUID(), name: "Deluxe King with Balcony", extraBedAllowed: true, notes: "Elegant 35sqm room featuring a king-size bed, private balcony with city views, premium amenities.",
+    id: "060fa81f-8c45-46bd-a4bb-7b564aaab977", // Keep existing ID if possible for stability or generate new if intended
+    name: "Deluxe King with Balcony", 
+    extraBedAllowed: true, 
+    notes: "Elegant 35sqm room featuring a king-size bed, private balcony with city views, premium amenities.",
     seasonalPrices: [
-      { ...deluxeLowSeason, id: generateGUID(), seasonName: "Grand Deluxe Balcony Low" },
-      { ...deluxeHighSeason, id: generateGUID(), seasonName: "Grand Deluxe Balcony High" },
-      { ...deluxePeakSeason, id: generateGUID(), seasonName: "Grand Deluxe Balcony Peak" }
+      { ...deluxeLowSeason, id: generateGUID(), seasonName: "Grand Deluxe Balcony Low", extraBedRate: 1200 },
+      { ...deluxeHighSeason, id: generateGUID(), seasonName: "Grand Deluxe Balcony High", extraBedRate: 1400 },
+      { ...deluxePeakSeason, id: generateGUID(), seasonName: "Grand Deluxe Balcony Peak", extraBedRate: 1600 }
     ],
     characteristics: [{id: generateGUID(), key: "Bed", value: "King"}, {id: generateGUID(), key: "Size", value: "35sqm"}, {id: generateGUID(), key: "Feature", value: "Balcony, Premium Amenities"}]
   };
 
   const executiveSuiteGrandChaoPhraya: HotelRoomTypeDefinition = {
-    id: generateGUID(), name: "Executive Suite River View", extraBedAllowed: true, notes: "Luxurious 55sqm suite with king bed, separate living area, panoramic river views, and executive club lounge access.",
+    id: generateGUID(), 
+    name: "Executive Suite River View", 
+    extraBedAllowed: true, 
+    notes: "Luxurious 55sqm suite with king bed, separate living area, panoramic river views, and executive club lounge access.",
     seasonalPrices: [
-      { ...suiteLowSeason, id: generateGUID(), seasonName: "Grand Executive Suite Low" },
-      { ...suiteHighSeason, id: generateGUID(), seasonName: "Grand Executive Suite High" },
-      { ...suitePeakSeason, id: generateGUID(), seasonName: "Grand Executive Suite Peak" }
+      { ...suiteLowSeason, id: generateGUID(), seasonName: "Grand Executive Suite Low", extraBedRate: 1800 },
+      { ...suiteHighSeason, id: generateGUID(), seasonName: "Grand Executive Suite High", extraBedRate: 2200 },
+      { ...suitePeakSeason, id: generateGUID(), seasonName: "Grand Executive Suite Peak", extraBedRate: 2800 }
     ],
     characteristics: [{id: generateGUID(), key: "Bed", value: "King"}, {id: generateGUID(), key: "Size", value: "55sqm"}, {id: generateGUID(), key: "Feature", value: "Separate Living Area, River View, Club Access"}]
   };
 
   const twoBedroomFamilyGrandChaoPhraya: HotelRoomTypeDefinition = {
-    id: generateGUID(), name: "Two-Bedroom Family Residence", extraBedAllowed: true, notes: "Spacious 80sqm two-bedroom residence with one king and two twin beds, living room, and city/river views. Ideal for families.",
+    id: generateGUID(), 
+    name: "Two-Bedroom Family Residence", 
+    extraBedAllowed: true, 
+    notes: "Spacious 80sqm two-bedroom residence with one king and two twin beds, living room, and city/river views. Ideal for families.",
     seasonalPrices: [
       { ...suiteLowSeason, rate: 10000, extraBedRate: 2000, id: generateGUID(), seasonName: "Grand Family Residence Low" },
       { ...suiteHighSeason, rate: 13000, extraBedRate: 2500, id: generateGUID(), seasonName: "Grand Family Residence High" },
