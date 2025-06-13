@@ -21,7 +21,7 @@ import type {
   CurrencyCode
 } from '@/types/itinerary';
 import { formatCurrency } from './utils';
-import { addDays, isWithinInterval, parseISO, format, isValid } from 'date-fns'; 
+import { addDays, isWithinInterval, parseISO, format, isValid, startOfDay } from 'date-fns'; 
 
 function getParticipatingTravelers(item: ItineraryItem, allTravelers: Traveler[]) {
   const participatingTravelers = allTravelers.filter(t => !item.excludedTravelerIds.includes(t.id));
@@ -74,7 +74,6 @@ function calculateTransferCost(
       vehicleTypeDisplay = selectedVehicleOption.vehicleType;
     } else if (serviceDefinition && (!serviceDefinition.vehicleOptions || serviceDefinition.vehicleOptions.length === 0)) {
       baseCostPerVehicle = serviceDefinition.price1 ?? item.costPerVehicle ?? 0;
-      // vehicleTypeDisplay remains item.vehicleType or serviceDefinition.subCategory if applicable
     }
     
     let appliedSurcharge = 0;
@@ -226,20 +225,25 @@ function calculateHotelCost(
         console.error("Error parsing tripSettings.startDate in nightly loop for hotel cost:", tripSettings.startDate, e);
         continue; 
       }
-
+      
+      const normalizedCurrentDateOfStay = startOfDay(currentDateOfStay);
       let nightlyRateForRoomType = 0;
       let foundSeasonalRate = false;
 
       for (const seasonalPrice of roomTypeDef.seasonalPrices) {
         if (seasonalPrice.startDate && seasonalPrice.endDate && typeof seasonalPrice.startDate === 'string' && typeof seasonalPrice.endDate === 'string') {
           try {
-            const seasonStartDate = parseISO(seasonalPrice.startDate);
-            const seasonEndDate = parseISO(seasonalPrice.endDate);
-            if (isValid(seasonStartDate) && isValid(seasonEndDate) && isWithinInterval(currentDateOfStay, { start: seasonStartDate, end: seasonEndDate })) {
-              nightlyRateForRoomType = seasonalPrice.rate;
-              foundSeasonalRate = true;
-              // TODO: Add extra bed cost logic if applicable
-              break; 
+            const seasonStartDate = startOfDay(parseISO(seasonalPrice.startDate));
+            const seasonEndDate = startOfDay(parseISO(seasonalPrice.endDate));
+            
+            if (isValid(seasonStartDate) && isValid(seasonEndDate)) {
+              if (isWithinInterval(normalizedCurrentDateOfStay, { start: seasonStartDate, end: seasonEndDate })) {
+                nightlyRateForRoomType = seasonalPrice.rate;
+                foundSeasonalRate = true;
+                break; 
+              }
+            } else {
+              console.warn(`Invalid parsed season dates for ${seasonalPrice.seasonName || 'Unnamed'} (Room: ${roomTypeDef.name}). Start: ${seasonalPrice.startDate}, End: ${seasonalPrice.endDate}`);
             }
           } catch (dateParseError) {
             console.warn(`Skipping seasonal rate due to invalid date format: Start='${seasonalPrice.startDate}', End='${seasonalPrice.endDate}' for room type '${roomTypeDef.name}'`, dateParseError);
@@ -250,7 +254,7 @@ function calculateHotelCost(
       }
       
       if (!foundSeasonalRate) {
-        console.warn(`No seasonal rate found for room type '${roomTypeDef.name}' on ${format(currentDateOfStay, 'yyyy-MM-dd')}. Assuming 0 rate for this night.`);
+        console.warn(`No seasonal rate found for room type '${roomTypeDef.name}' on ${format(normalizedCurrentDateOfStay, 'yyyy-MM-dd')}. Assuming 0 rate for this night.`);
         nightlyRateForRoomType = 0; 
       }
       costForThisRoomBlock += nightlyRateForRoomType * selectedRoom.numRooms;
