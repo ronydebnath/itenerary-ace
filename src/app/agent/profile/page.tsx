@@ -1,4 +1,13 @@
-
+/**
+ * @fileoverview This page allows travel agents to view and update their professional profile.
+ * It includes fields for personal information, agency details, preferred currency,
+ * specializations, experience, and a short bio. The form data is managed locally
+ * using `localStorage`.
+ *
+ * @bangla এই পৃষ্ঠাটি ট্রাভেল এজেন্টদের তাদের পেশাদার প্রোফাইল দেখতে এবং আপডেট করতে দেয়।
+ * এটিতে ব্যক্তিগত তথ্য, এজেন্সি বিবরণ, পছন্দের মুদ্রা, বিশেষত্ব, অভিজ্ঞতা এবং একটি সংক্ষিপ্ত
+ * জীবনীর জন্য ক্ষেত্র অন্তর্ভুক্ত রয়েছে। ফর্ম ডেটা স্থানীয়ভাবে `localStorage` ব্যবহার করে পরিচালিত হয়।
+ */
 "use client";
 
 import * as React from 'react';
@@ -105,3 +114,4 @@ export default function AgentProfilePage() {
     </main>
   );
 }
+

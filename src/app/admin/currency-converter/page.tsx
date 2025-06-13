@@ -1,4 +1,16 @@
-
+/**
+ * @fileoverview This page component provides a user interface for currency conversion
+ * and managing exchange rates. It allows users to convert amounts between different
+ * currencies based on stored exchange rates, set a global conversion buffer,
+ * and add, edit, or delete base exchange rates. It utilizes the `useExchangeRates`
+ * hook to manage exchange rate data and logic.
+ *
+ * @bangla এই পৃষ্ঠা কম্পোনেন্টটি মুদ্রা রূপান্তর এবং বিনিময় হার ব্যবস্থাপনার জন্য একটি
+ * ব্যবহারকারী ইন্টারফেস সরবরাহ করে। এটি ব্যবহারকারীদের সংরক্ষিত বিনিময় হারের উপর ভিত্তি করে
+ * বিভিন্ন মুদ্রার মধ্যে পরিমাণ রূপান্তর করতে, একটি গ্লোবাল রূপান্তর বাফার সেট করতে, এবং
+ * বেস বিনিময় হার যোগ, সম্পাদনা বা মুছে ফেলতে দেয়। এটি বিনিময় হারের ডেটা এবং যুক্তি
+ * পরিচালনা করার জন্য `useExchangeRates` হুক ব্যবহার করে।
+ */
 "use client";
 
 import * as React from 'react';
@@ -369,3 +381,4 @@ export default function CurrencyConverterPage() {
     </main>
   );
 }
+

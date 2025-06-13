@@ -1,4 +1,14 @@
-
+/**
+ * @fileoverview This page component allows administrators to manage saved itineraries.
+ * It displays a list of all itineraries stored in localStorage, providing options
+ * to search, view, edit (by navigating to the planner page with the specific itinerary ID),
+ * and delete them.
+ *
+ * @bangla এই পৃষ্ঠা কম্পোনেন্টটি প্রশাসকদের সংরক্ষিত ভ্রমণপথ পরিচালনা করার অনুমতি দেয়।
+ * এটি localStorage-এ সংরক্ষিত সমস্ত ভ্রমণপথের একটি তালিকা প্রদর্শন করে, যেখানে অনুসন্ধান,
+ * দেখা, সম্পাদনা (নির্দিষ্ট ভ্রমণপথ আইডি সহ পরিকল্পনাকারী পৃষ্ঠায় নেভিগেট করে) এবং
+ * মুছে ফেলার বিকল্প সরবরাহ করা হয়।
+ */
 "use client";
 
 import * as React from 'react';
@@ -169,3 +179,4 @@ export default function ManageItinerariesPage() {
     </main>
   );
 }
+

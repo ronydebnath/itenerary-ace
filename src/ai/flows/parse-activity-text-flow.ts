@@ -1,9 +1,23 @@
 
 'use server';
 /**
- * @fileOverview An AI flow to extract activity details, including multiple packages, from text.
+ * @fileOverview This file implements an AI flow to extract activity details, including multiple packages, from unstructured text.
+ * It is designed to help pre-fill activity pricing forms by parsing descriptions and identifying potential packages, names, locations, and prices.
+ * The flow interacts with the OpenRouter API using a specified model to perform this extraction.
  *
- * - parseActivityText - A function that takes activity text and returns structured data.
+ * It exports:
+ * - `parseActivityText`: The public async function to invoke this Genkit flow.
+ * - `ParseActivityTextOutput`: The Zod schema type for the structured output from the flow.
+ * - `ParseActivityTextInput`: The Zod schema type for the input to the flow.
+ *
+ * @bangla এই ফাইলটি একটি এআই ফ্লো প্রয়োগ করে যা অসংগঠিত টেক্সট থেকে কার্যকলাপের বিবরণ (একাধিক প্যাকেজ সহ) বের করে।
+ * এটি বর্ণনা পার্স করে এবং সম্ভাব্য প্যাকেজ, নাম, অবস্থান এবং মূল্য সনাক্ত করে কার্যকলাপের মূল্য নির্ধারণের ফর্মগুলি প্রি-ফিল করতে সহায়তা করার জন্য ডিজাইন করা হয়েছে।
+ * এই ফ্লো নির্দিষ্ট মডেল ব্যবহার করে OpenRouter API-এর সাথে ইন্টারঅ্যাক্ট করে এই নিষ্কাশন সম্পাদন করে।
+ *
+ * এটি এক্সপোর্ট করে:
+ * - `parseActivityText`: এই Genkit ফ্লো কল করার জন্য পাবলিক অ্যাসিঙ্ক্রোনাস ফাংশন।
+ * - `ParseActivityTextOutput`: ফ্লো থেকে স্ট্রাকচার্ড আউটপুটের জন্য Zod স্কিমা টাইপ।
+ * - `ParseActivityTextInput`: ফ্লোতে ইনপুটের জন্য Zod স্কিমা টাইপ।
  */
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
@@ -183,3 +197,4 @@ Example if only one option is found:
     }
   }
 );
+

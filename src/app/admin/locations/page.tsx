@@ -1,4 +1,13 @@
-
+/**
+ * @fileoverview This page serves as the central location for managing geographical data
+ * within the application, such as countries and provinces. It uses a tabbed interface
+ * to separate the management of countries and provinces, each handled by their respective
+ * manager components (`CountryManager` and `ProvinceManager`).
+ *
+ * @bangla এই পৃষ্ঠাটি অ্যাপ্লিকেশনের মধ্যে ভৌগোলিক ডেটা, যেমন দেশ এবং প্রদেশ, পরিচালনার
+ * কেন্দ্রীয় স্থান হিসেবে কাজ করে। এটি দেশ এবং প্রদেশ পরিচালনার জন্য একটি ট্যাবড ইন্টারফেস
+ * ব্যবহার করে, যেখানে প্রতিটি নিজ নিজ ম্যানেজার কম্পোনেন্ট (`CountryManager` এবং `ProvinceManager`) দ্বারা পরিচালিত হয়।
+ */
 "use client";
 
 import * as React from 'react';
@@ -46,3 +55,4 @@ export default function AdminLocationsPage() {
     </main>
   );
 }
+
