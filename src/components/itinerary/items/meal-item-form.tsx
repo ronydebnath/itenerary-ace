@@ -23,16 +23,17 @@ interface MealItemFormProps {
   allServicePrices: ServicePriceItem[];
 }
 
-export function MealItemForm({ item, travelers, currency, tripSettings, dayNumber, onUpdate, onDelete }: MealItemFormProps) {
-  const { allServicePrices, isLoading: isLoadingServices } = useServicePrices();
+export function MealItemForm({ item, travelers, currency, tripSettings, dayNumber, onUpdate, onDelete, allServicePrices: passedInAllServicePrices }: MealItemFormProps) {
+  const { allServicePrices: hookServicePrices, isLoading: isLoadingServices } = useServicePrices();
+  const currentAllServicePrices = passedInAllServicePrices || hookServicePrices;
   const { countries, getCountryById } = useCountries();
   const [mealServices, setMealServices] = React.useState<ServicePriceItem[]>([]);
 
   const itemCountry = React.useMemo(() => item.countryId ? getCountryById(item.countryId) : undefined, [item.countryId, getCountryById]);
 
   const getServicePriceById = React.useCallback((id: string) => {
-    return allServicePrices.find(sp => sp.id === id);
-  }, [allServicePrices]);
+    return currentAllServicePrices.find(sp => sp.id === id);
+  }, [currentAllServicePrices]);
 
   const selectedService = React.useMemo(() => {
     if (item.selectedServicePriceId) {
@@ -42,33 +43,26 @@ export function MealItemForm({ item, travelers, currency, tripSettings, dayNumbe
   }, [item.selectedServicePriceId, getServicePriceById]);
 
   React.useEffect(() => {
-    if (isLoadingServices) {
+    if (isLoadingServices && !passedInAllServicePrices) {
       setMealServices([]);
       return;
     }
-    let filteredServices = allServicePrices.filter(s => s.category === 'meal' && s.currency === currency);
+    let filteredServices = currentAllServicePrices.filter(s => s.category === 'meal' && s.currency === currency);
 
-    if (item.countryId) {
-      filteredServices = filteredServices.filter(s => s.countryId === item.countryId || !s.countryId);
+    const countryIdToFilterBy = item.countryId || (tripSettings.selectedCountries.length === 1 ? tripSettings.selectedCountries[0] : undefined);
+    const provincesToFilterBy = item.province ? [item.province] : tripSettings.selectedProvinces;
+
+    if (countryIdToFilterBy) {
+      filteredServices = filteredServices.filter(s => s.countryId === countryIdToFilterBy || !s.countryId);
     } else if (tripSettings.selectedCountries.length > 0) {
       filteredServices = filteredServices.filter(s => !s.countryId || tripSettings.selectedCountries.includes(s.countryId));
     }
 
-    if (item.province) {
-      filteredServices = filteredServices.filter(s => s.province === item.province || !s.province);
-    } else if (tripSettings.selectedProvinces.length > 0) {
-         const relevantGlobalProvinces = (tripSettings.selectedCountries.length > 0)
-            ? tripSettings.selectedProvinces.filter(provName => {
-                const provObj = allServicePrices.find(sp => sp.province === provName);
-                return provObj && provObj.countryId && tripSettings.selectedCountries.includes(provObj.countryId);
-            })
-            : tripSettings.selectedProvinces;
-        if(relevantGlobalProvinces.length > 0){
-             filteredServices = filteredServices.filter(s => !s.province || relevantGlobalProvinces.includes(s.province));
-        }
+    if (provincesToFilterBy.length > 0) {
+      filteredServices = filteredServices.filter(s => !s.province || provincesToFilterBy.includes(s.province));
     }
     setMealServices(filteredServices);
-  }, [allServicePrices, currency, item.countryId, item.province, tripSettings.selectedCountries, tripSettings.selectedProvinces, isLoadingServices]);
+  }, [currentAllServicePrices, currency, item.countryId, item.province, tripSettings.selectedCountries, tripSettings.selectedProvinces, isLoadingServices, passedInAllServicePrices]);
 
 
   const handleNumericInputChange = (field: keyof MealItemType, value: string) => {
@@ -115,18 +109,25 @@ export function MealItemForm({ item, travelers, currency, tripSettings, dayNumbe
     }
   };
 
-  const serviceDefinitionNotFound = item.selectedServicePriceId && !selectedService && !isLoadingServices;
+  const actualLoadingState = passedInAllServicePrices ? false : isLoadingServices;
+  const serviceDefinitionNotFound = item.selectedServicePriceId && !selectedService && !actualLoadingState;
   const isPriceReadOnly = !!item.selectedServicePriceId && !!selectedService;
-  const locationDisplay = item.countryName ? (item.province ? `${item.province}, ${item.countryName}` : item.countryName)
-                        : (item.province || (tripSettings.selectedProvinces.length > 0 ? tripSettings.selectedProvinces.join('/') : (tripSettings.selectedCountries.length > 0 ? (tripSettings.selectedCountries.map(cid => countries.find(c=>c.id === cid)?.name).filter(Boolean).join('/')) : 'Any Location')));
 
+  const countryCtx = item.countryId ? countries.find(c => c.id === item.countryId)?.name : (tripSettings.selectedCountries.length === 1 ? countries.find(c => c.id === tripSettings.selectedCountries[0])?.name : (tripSettings.selectedCountries.length > 1 ? "Multi" : undefined));
+  const provinceCtx = item.province || (tripSettings.selectedProvinces.length === 1 ? tripSettings.selectedProvinces[0] : (tripSettings.selectedProvinces.length > 1 ? "Multi" : undefined));
+  let locationDisplay = "Global";
+  if (countryCtx) {
+    locationDisplay = provinceCtx ? `${provinceCtx}, ${countryCtx}` : countryCtx;
+  } else if (provinceCtx) {
+    locationDisplay = provinceCtx;
+  }
 
   return (
     <BaseItemForm item={item} travelers={travelers} currency={currency} tripSettings={tripSettings} onUpdate={onUpdate} onDelete={onDelete} itemTypeLabel="Meal" dayNumber={dayNumber}>
-      {(mealServices.length > 0 || item.selectedServicePriceId || isLoadingServices) && (
+      {(mealServices.length > 0 || item.selectedServicePriceId || actualLoadingState) && (
         <div className="mb-4">
-          <FormField label={`Select Predefined Meal (${locationDisplay || 'Global'})`} id={`predefined-meal-${item.id}`}>
-            {isLoadingServices ? (
+          <FormField label={`Select Predefined Meal (${locationDisplay})`} id={`predefined-meal-${item.id}`}>
+            {actualLoadingState ? (
                  <div className="flex items-center h-10 border rounded-md px-3 bg-muted/50">
                     <Loader2 className="h-4 w-4 animate-spin mr-2 text-muted-foreground" />
                     <span className="text-sm text-muted-foreground">Loading meals...</span>
