@@ -45,6 +45,50 @@ const createDemoServicePrices = (
       { id: generateGUID(), name: "Phuket Phi Phi Island Speedboat", countryId: thailand.id, province: "Phuket", category: 'activity', price1: 1800, price2: 1200, currency: "THB", unitDescription: "per person", notes: "Includes snorkel gear and lunch." },
       { id: generateGUID(), name: "Chiang Mai Elephant Sanctuary Visit", countryId: thailand.id, province: "Chiang Mai", category: 'activity', price1: 1500, price2: 1000, currency: "THB", unitDescription: "per person", notes: "Ethical elephant interaction." },
       { id: generateGUID(), name: "BKK Airport to City Center (Sedan)", countryId: thailand.id, province: "Bangkok", category: 'transfer', transferMode: 'vehicle', currency: "THB", unitDescription: "per service", vehicleOptions: [{ id: generateGUID(), vehicleType: 'Sedan', price: 800, maxPassengers: 3, notes: "Comfortable sedan" }], surchargePeriods: [{ id: generateGUID(), name: "New Year Peak", startDate: format(new Date(currentYear, 11, 28), 'yyyy-MM-dd'), endDate: format(new Date(currentYear + 1, 0, 2), 'yyyy-MM-dd'), surchargeAmount: 200 }] },
+      { 
+        id: generateGUID(), 
+        name: "Bangkok Van/Minibus Transfers", 
+        countryId: thailand.id, 
+        province: "Bangkok", 
+        category: 'transfer', 
+        transferMode: 'vehicle', 
+        currency: "THB", 
+        unitDescription: "per service", 
+        vehicleOptions: [
+          { id: generateGUID(), vehicleType: 'Van', price: 1200, maxPassengers: 7, notes: "7-seater Van" },
+          { id: generateGUID(), vehicleType: 'Minibus', price: 1800, maxPassengers: 10, notes: "10-seater Minibus" }
+        ],
+        notes: "Airport or city transfers"
+      },
+      { 
+        id: generateGUID(), 
+        name: "Phuket Island Transfers", 
+        countryId: thailand.id, 
+        province: "Phuket", 
+        category: 'transfer', 
+        transferMode: 'vehicle', 
+        currency: "THB", 
+        unitDescription: "per service", 
+        vehicleOptions: [
+          { id: generateGUID(), vehicleType: 'Sedan', price: 600, maxPassengers: 3, notes: "Hotel to Patong area" },
+          { id: generateGUID(), vehicleType: 'SUV', price: 2000, maxPassengers: 4, notes: "Island tour (8 hours)" },
+          { id: generateGUID(), vehicleType: 'Van', price: 1500, maxPassengers: 8, notes: "Airport to hotel (larger groups)" }
+        ]
+      },
+      { 
+        id: generateGUID(), 
+        name: "Chiang Mai Local Transport", 
+        countryId: thailand.id, 
+        province: "Chiang Mai", 
+        category: 'transfer', 
+        transferMode: 'vehicle', 
+        currency: "THB", 
+        unitDescription: "per service", 
+        vehicleOptions: [
+          { id: generateGUID(), vehicleType: 'Tuk-tuk', price: 300, maxPassengers: 3, notes: "Short city trips (negotiable)" },
+          { id: generateGUID(), vehicleType: 'Minibus', price: 1200, maxPassengers: 10, notes: "Day trip to Doi Suthep (round trip)" }
+        ]
+      },
       { id: generateGUID(), name: "Ferry Ticket to Koh Samui", countryId: thailand.id, province: "Surat Thani (Samui/Phangan/Tao)", category: 'transfer', transferMode: 'ticket', price1: 600, price2: 400, currency: "THB", unitDescription: "per person", subCategory: "ticket" },
       { id: generateGUID(), name: "Thai Set Dinner at Hotel", countryId: thailand.id, province: "Bangkok", category: 'meal', price1: 750, currency: "THB", subCategory: "Set Menu", unitDescription: "per person" },
       { id: generateGUID(), name: "SIM Card (Thailand)", countryId: thailand.id, category: 'misc', price1: 300, currency: "THB", unitDescription: "per item", subCategory: "Communication" }
