@@ -120,6 +120,7 @@ export function PlannerHeader({
     return Object.fromEntries(sortedGroupEntries);
   }, [displayableProvinces, isLoadingProvinces, isLoadingCountries, availableCountries]);
 
+  const numNights = Math.max(0, tripData.settings.numDays - 1);
 
   return (
     <Card className="mb-4 md:mb-6 shadow-xl no-print">
@@ -355,7 +356,8 @@ export function PlannerHeader({
 
         <div className="mt-3 md:mt-4 p-3 bg-secondary/20 rounded-lg border border-secondary/30 text-xs text-muted-foreground">
             <div>
-              <strong className="text-foreground">Current Config:</strong> {tripData.settings.numDays} Days starting {displayStartDate}. For {tripData.pax.adults} Adult(s), {tripData.pax.children} Child(ren). Currency: {tripData.pax.currency}.
+              <span className="font-semibold text-foreground text-sm">Current Config:</span> <strong className="text-sm font-semibold text-primary">{numNights} Night(s) / {tripData.settings.numDays} Day(s)</strong> starting {displayStartDate}.
+              For {tripData.pax.adults} Adult(s), {tripData.pax.children} Child(ren). Currency: {tripData.pax.currency}.
               {tripData.settings.isTemplate ? <Badge variant="outline" className="ml-1 border-accent text-accent text-xs">TEMPLATE{tripData.settings.templateCategory ? `: ${tripData.settings.templateCategory}` : ''}</Badge> : ""}
               {selectedCountryNames.length > 0 ? ` Countries: ${selectedCountryNames.join(', ')}.` : " All countries."}
               {(tripData.settings.selectedProvinces || []).length > 0 ? ` Provinces: ${tripData.settings.selectedProvinces.join(', ')}.` : (selectedCountryNames.length > 0 ? " All provinces in selected countries." : " All provinces.")}
