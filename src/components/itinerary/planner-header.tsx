@@ -97,6 +97,29 @@ export function PlannerHeader({
       .filter(Boolean) as string[];
   }, [tripData.settings.selectedCountries, availableCountries]);
 
+  const groupedProvinces = React.useMemo(() => {
+    if (isLoadingProvinces || isLoadingCountries) return {};
+    const groups: Record<string, ProvinceItem[]> = {};
+    displayableProvinces.forEach(province => {
+      const countryKey = province.countryId || 'unknown'; // Handle provinces that might not have a countryId (should not happen with good data)
+      if (!groups[countryKey]) {
+        groups[countryKey] = [];
+      }
+      groups[countryKey].push(province);
+    });
+    // Sort provinces within each group
+    for (const countryId in groups) {
+      groups[countryId].sort((a, b) => a.name.localeCompare(b.name));
+    }
+    // Sort country groups by country name
+    const sortedGroupEntries = Object.entries(groups).sort(([countryIdA], [countryIdB]) => {
+      const countryNameA = availableCountries.find(c => c.id === countryIdA)?.name || 'Unknown Country';
+      const countryNameB = availableCountries.find(c => c.id === countryIdB)?.name || 'Unknown Country';
+      return countryNameA.localeCompare(countryNameB);
+    });
+    return Object.fromEntries(sortedGroupEntries);
+  }, [displayableProvinces, isLoadingProvinces, isLoadingCountries, availableCountries]);
+
 
   return (
     <Card className="mb-4 md:mb-6 shadow-xl no-print">
@@ -285,23 +308,37 @@ export function PlannerHeader({
                 <Loader2 className="h-5 w-5 animate-spin text-primary" />
                 <span className="ml-2 text-xs sm:text-sm text-muted-foreground">Loading provinces...</span>
               </div>
-            ) : displayableProvinces.length > 0 ? (
+            ) : Object.keys(groupedProvinces).length > 0 ? (
               <ScrollArea className="h-24 md:h-28 w-full rounded-md border p-2 sm:p-3 bg-background/70">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-3 sm:gap-x-4 gap-y-1 sm:gap-y-1.5">
-                  {displayableProvinces.map((province) => (
-                    <div key={province.id} className="flex items-center space-x-1.5 sm:space-x-2">
-                      <Checkbox
-                        id={`province-select-${province.id}`}
-                        checked={(tripData.settings.selectedProvinces || []).includes(province.name)}
-                        onCheckedChange={() => handleProvinceToggle(province.name)}
-                        className="h-3.5 w-3.5"
-                      />
-                      <Label htmlFor={`province-select-${province.id}`} className="text-xs font-normal cursor-pointer">
-                        {province.name} ({availableCountries.find(c => c.id === province.countryId)?.name || 'N/A'})
-                      </Label>
-                    </div>
-                  ))}
-                </div>
+                {Object.entries(groupedProvinces).map(([countryId, provincesInGroup]) => {
+                  const country = availableCountries.find(c => c.id === countryId);
+                  // Only render the country group if it's relevant (either no global countries selected, or this country is selected)
+                  if (!tripData.settings.selectedCountries || tripData.settings.selectedCountries.length === 0 || tripData.settings.selectedCountries.includes(countryId)) {
+                    return (
+                      <div key={countryId} className="mb-2">
+                        <h4 className="text-xs font-semibold text-muted-foreground mb-1">
+                          {country?.name || "Other Provinces"}
+                        </h4>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-3 sm:gap-x-4 gap-y-1 sm:gap-y-1.5 pl-2">
+                          {provincesInGroup.map((province) => (
+                            <div key={province.id} className="flex items-center space-x-1.5 sm:space-x-2">
+                              <Checkbox
+                                id={`province-select-${province.id}`}
+                                checked={(tripData.settings.selectedProvinces || []).includes(province.name)}
+                                onCheckedChange={() => handleProvinceToggle(province.name)}
+                                className="h-3.5 w-3.5"
+                              />
+                              <Label htmlFor={`province-select-${province.id}`} className="text-xs font-normal cursor-pointer">
+                                {province.name}
+                              </Label>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  }
+                  return null;
+                })}
               </ScrollArea>
             ) : (
                <p className="text-xs text-muted-foreground text-center py-3 border rounded-md bg-muted/50">
