@@ -6,10 +6,10 @@ import type { ItineraryItem, Traveler, CurrencyCode, TripSettings, CountryItem, 
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Trash2, ChevronDown, ChevronUp, Loader2 } from 'lucide-react';
-import { Card, CardContent } from '@/components/ui/card';
+import { Trash2, ChevronDown, ChevronUp, Loader2, Hotel, Car, Ticket, Utensils, ShoppingBag, AlertCircle } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Input } from '@/components/ui/input'; // Added for Name/Note
+import { Input } from '@/components/ui/input';
 import { useProvinces } from '@/hooks/useProvinces';
 import { useCountries } from '@/hooks/useCountries';
 import { cn } from '@/lib/utils';
@@ -34,6 +34,14 @@ export function FormField({label, id, children, className}: {label: string, id: 
     </div>
   );
 }
+
+const ITEM_TYPE_ICONS: { [key in ItineraryItem['type']]: React.ElementType } = {
+  transfer: Car,
+  hotel: Hotel,
+  activity: Ticket,
+  meal: Utensils,
+  misc: ShoppingBag,
+};
 
 export function BaseItemForm<T extends ItineraryItem>({
   item,
@@ -147,8 +155,8 @@ export function BaseItemForm<T extends ItineraryItem>({
     item.countryId,
     item.province,
     displayableCountriesForItem,
-    displayableProvincesForItem, // Added back as per last fix
-    isLoadingProvinces, // Added back as per last fix
+    displayableProvincesForItem, 
+    isLoadingProvinces, 
     tripSettings.selectedProvinces,
     tripSettings.selectedCountries,
     allAvailableProvincesForHook,
@@ -165,8 +173,22 @@ export function BaseItemForm<T extends ItineraryItem>({
     onUpdate({ ...item, excludedTravelerIds: newExcludedTravelerIds });
   };
 
+  const IconComponent = ITEM_TYPE_ICONS[item.type] || AlertCircle;
+  constitemNameDisplay = item.name || `New ${itemTypeLabel}`;
+
   return (
     <Card className="mb-4 shadow-sm border border-border hover:shadow-md transition-shadow duration-200">
+      <CardHeader className="flex flex-row justify-between items-center p-2 sm:p-3 bg-muted/30 rounded-t-md border-b">
+        <CardTitle className="text-sm sm:text-base font-medium text-primary flex items-center truncate">
+          <IconComponent className="h-4 w-4 sm:h-5 sm:w-5 mr-2 flex-shrink-0" />
+          <span className="truncate" title={`${itemTypeLabel}: ${itemNameDisplay}`}>
+            {itemTypeLabel}: {itemNameDisplay}
+          </span>
+        </CardTitle>
+        <Button variant="ghost" size="icon" onClick={onDelete} className="h-7 w-7 sm:h-8 sm:w-8 text-destructive hover:bg-destructive/10 flex-shrink-0">
+          <Trash2 className="h-4 w-4" />
+        </Button>
+      </CardHeader>
       <CardContent className="p-3 sm:p-4 space-y-3 sm:space-y-4">
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 gap-3 sm:gap-4">
           <FormField label="Country for this item (Optional)" id={`itemCountry-${item.id}`} className="md:col-span-1">
@@ -245,12 +267,6 @@ export function BaseItemForm<T extends ItineraryItem>({
               )}
             </div>
           )}
-        </div>
-
-        <div className="flex justify-end pt-2 sm:pt-3">
-          <Button variant="ghost" size="sm" onClick={onDelete} className="text-destructive hover:bg-destructive/10 hover:text-destructive text-xs sm:text-sm h-8 sm:h-9">
-            <Trash2 className="mr-1.5 h-3.5 w-3.5 sm:h-4 sm:w-4" /> Delete {itemTypeLabel}
-          </Button>
         </div>
       </CardContent>
     </Card>
