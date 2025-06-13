@@ -30,13 +30,13 @@ interface ItineraryPlannerProps {
   onManualSave: () => void;
 }
 
-export function ItineraryPlanner({ 
-  tripData, 
-  onReset, 
-  onUpdateTripData, 
+export function ItineraryPlanner({
+  tripData,
+  onReset,
+  onUpdateTripData,
   onUpdateSettings,
   onUpdatePax,
-  onManualSave 
+  onManualSave
 }: ItineraryPlannerProps) {
   const [currentDayView, setCurrentDayView] = React.useState<number>(1);
   const [costSummary, setCostSummary] = React.useState<CostSummary | null>(null);
@@ -54,7 +54,6 @@ export function ItineraryPlanner({
     }
   }, [tripData, isLoadingServices, isLoadingHotelDefinitions, allServicePrices, allHotelDefinitions]);
 
-  // Adjust currentDayView if numDays changes and currentDayView is out of bounds
   React.useEffect(() => {
     if (tripData.settings.numDays < currentDayView) {
       setCurrentDayView(Math.max(1, tripData.settings.numDays));
@@ -80,6 +79,7 @@ export function ItineraryPlanner({
       day,
       name: `New ${itemType}`,
       excludedTravelerIds: [],
+      countryId: tripData.settings.selectedCountries.length === 1 ? tripData.settings.selectedCountries[0] : undefined,
       province: tripData.settings.selectedProvinces.length === 1 ? tripData.settings.selectedProvinces[0] : undefined,
     };
 
@@ -113,7 +113,7 @@ export function ItineraryPlanner({
     const dayItems = [...(newDays[day]?.items || []), newItem];
     newDays[day] = { items: dayItems };
     onUpdateTripData({ days: newDays });
-  }, [tripData.days, tripData.settings.selectedProvinces, onUpdateTripData]);
+  }, [tripData.days, tripData.settings.selectedCountries, tripData.settings.selectedProvinces, onUpdateTripData]);
 
   const handleDeleteItem = React.useCallback((day: number, itemId: string) => {
     const newDays = { ...tripData.days };
@@ -148,7 +148,7 @@ export function ItineraryPlanner({
   const isLoadingAnything = isLoadingServices || isLoadingHotelDefinitions;
 
   return (
-    <div className="w-full max-w-[1600px] mx-auto p-4 md:p-6 lg:p-8">
+    <div className="w-full max-w-[1600px] mx-auto p-2 sm:p-4 md:p-6 lg:p-8">
       <PlannerHeader
         tripData={tripData}
         onUpdateTripData={onUpdateTripData}
@@ -166,15 +166,15 @@ export function ItineraryPlanner({
         getFormattedDateForDay={getFormattedDateForDay}
       />
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 min-h-[60vh]">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 md:gap-6 min-h-[60vh]">
         <div className="lg:col-span-8 flex flex-col">
-          {isLoadingAnything && !tripData.days[currentDayView] ? ( // More specific loading check
-            <div className="flex flex-col items-center justify-center p-10 min-h-[300px] bg-card rounded-lg shadow-sm border flex-grow">
-              <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
-              <p className="text-muted-foreground">Loading itinerary data and service definitions...</p>
+          {isLoadingAnything && !tripData.days[currentDayView] ? ( 
+            <div className="flex flex-col items-center justify-center p-6 sm:p-10 min-h-[300px] bg-card rounded-lg shadow-sm border flex-grow">
+              <Loader2 className="h-10 w-10 sm:h-12 sm:w-12 animate-spin text-primary mb-3 sm:mb-4" />
+              <p className="text-muted-foreground text-sm sm:text-base">Loading itinerary data and service definitions...</p>
             </div>
           ) : (
-            <ScrollArea className="flex-1 pr-2">
+            <ScrollArea className="flex-1 pr-0 lg:pr-2">
               {Array.from({ length: tripData.settings.numDays }, (_, i) => i + 1).map(dayNum => (
                 <div key={dayNum} style={{ display: dayNum === currentDayView ? 'block' : 'none' }}>
                   <DayView
@@ -195,7 +195,7 @@ export function ItineraryPlanner({
           )}
         </div>
 
-        <div className="lg:col-span-4 flex flex-col space-y-6 no-print">
+        <div className="lg:col-span-4 flex flex-col space-y-4 md:space-y-6 no-print">
           <AISuggestions
             tripData={tripData}
             onApplySuggestion={(modifiedTripData) => onUpdateTripData(modifiedTripData)}
@@ -203,23 +203,23 @@ export function ItineraryPlanner({
           />
           <Card className="shadow-lg flex-grow flex flex-col">
             <CardHeader>
-              <CardTitle className="text-xl text-primary">Cost Summary</CardTitle>
+              <CardTitle className="text-lg sm:text-xl text-primary">Cost Summary</CardTitle>
             </CardHeader>
             <CardContent className="flex-grow">
               {isLoadingAnything && !costSummary ? (
                 <div className="flex items-center justify-center py-6">
-                  <Loader2 className="h-6 w-6 animate-spin text-primary mr-2" />
-                  <p className="text-muted-foreground">Loading costs...</p>
+                  <Loader2 className="h-5 w-5 sm:h-6 sm:w-6 animate-spin text-primary mr-2" />
+                  <p className="text-muted-foreground text-sm">Loading costs...</p>
                 </div>
               ) : costSummary ? (
                 <>
                   <CostBreakdownTable summary={costSummary} currency={tripData.pax.currency} travelers={tripData.travelers} showCosts={showCosts} />
                   {showCosts && (
                     <>
-                      <Separator className="my-4" />
+                      <Separator className="my-3 sm:my-4" />
                       <div className="text-right">
-                        <p className="text-lg font-semibold">Grand Total:</p>
-                        <p className="text-2xl font-bold text-accent font-code">
+                        <p className="text-md sm:text-lg font-semibold">Grand Total:</p>
+                        <p className="text-xl sm:text-2xl font-bold text-accent font-code">
                           {formatCurrency(costSummary.grandTotal, tripData.pax.currency)}
                         </p>
                       </div>
@@ -229,17 +229,17 @@ export function ItineraryPlanner({
                     <p className="text-sm text-muted-foreground text-center mt-4">Cost details are hidden.</p>
                   )}
                 </>
-              ) : <p>Calculating costs...</p>}
+              ) : <p className="text-sm text-center">Calculating costs...</p>}
             </CardContent>
           </Card>
         </div>
       </div>
 
-      <Card className="mt-8 shadow-lg">
+      <Card className="mt-6 md:mt-8 shadow-lg">
         <CardHeader className="no-print">
-          <div className="flex justify-between items-center">
-            <CardTitle className="text-2xl font-headline text-primary">Full Itinerary Details</CardTitle>
-            <Button variant="outline" size="sm" onClick={() => setShowCosts(!showCosts)} className="ml-4">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+            <CardTitle className="text-xl sm:text-2xl font-headline text-primary">Full Itinerary Details</CardTitle>
+            <Button variant="outline" size="sm" onClick={() => setShowCosts(!showCosts)} className="ml-0 sm:ml-4 mt-2 sm:mt-0 self-start sm:self-center">
               {showCosts ? <EyeOff className="mr-2 h-4 w-4" /> : <Eye className="mr-2 h-4 w-4" />}
               {showCosts ? 'Hide Costs' : 'Show Costs'}
             </Button>
@@ -248,16 +248,16 @@ export function ItineraryPlanner({
         <CardContent>
           {isLoadingAnything && !costSummary ? (
             <div className="flex items-center justify-center py-10">
-              <Loader2 className="h-8 w-8 animate-spin text-primary mr-3" />
-              <p className="text-muted-foreground">Loading full details...</p>
+              <Loader2 className="h-7 w-7 sm:h-8 sm:w-8 animate-spin text-primary mr-3" />
+              <p className="text-muted-foreground text-sm sm:text-base">Loading full details...</p>
             </div>
           ) : costSummary ? (
             <DetailsSummaryTable summary={costSummary} currency={tripData.pax.currency} showCosts={showCosts} />
-          ) : <p>Loading details...</p>}
+          ) : <p className="text-sm text-center">Loading details...</p>}
         </CardContent>
       </Card>
 
-      <div className="mt-8 py-6 border-t border-border flex flex-col sm:flex-row justify-center items-center gap-4 no-print">
+      <div className="mt-6 md:mt-8 py-4 md:py-6 border-t border-border flex flex-col sm:flex-row justify-center items-center gap-3 sm:gap-4 no-print">
         <Button onClick={handlePrint} className="w-full sm:w-auto bg-accent hover:bg-accent/90 text-accent-foreground">
           <Printer className="mr-2 h-4 w-4" /> Print Itinerary
         </Button>
@@ -265,5 +265,3 @@ export function ItineraryPlanner({
     </div>
   );
 }
-
-    

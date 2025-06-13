@@ -24,6 +24,7 @@ import { useToast } from "@/hooks/use-toast";
 import { parseActivityText } from '@/ai/flows/parse-activity-text-flow';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Label } from '@/components/ui/label';
+import { useCountries } from '@/hooks/useCountries';
 
 interface ActivityPriceFormProps {
   form: ReturnType<typeof useFormContext<ServicePriceFormValues>>;
@@ -31,10 +32,12 @@ interface ActivityPriceFormProps {
 
 export function ActivityPriceForm({ form }: ActivityPriceFormProps) {
   const { getServicePrices, getServicePriceById, isLoading: isLoadingServices } = useServicePrices();
+  const { countries } = useCountries();
   const [availableActivityServices, setAvailableActivityServices] = React.useState<any[]>([]);
 
   const currency = form.watch('currency') as CurrencyCode || 'THB';
   const province = form.watch('province');
+  const countryId = form.watch('countryId');
   const activityNameForLegend = form.watch('name');
 
   const { fields: activityPackageFields, append: appendActivityPackage, remove: removeActivityPackage, replace: replaceActivityPackages } = useFieldArray({
@@ -48,21 +51,22 @@ export function ActivityPriceForm({ form }: ActivityPriceFormProps) {
 
   React.useEffect(() => {
     if (!isLoadingServices) {
-      const allCategoryServices = getServicePrices('activity').filter(s => s.currency === currency);
-      let filteredServices = allCategoryServices;
-      if (province) {
-        filteredServices = allCategoryServices.filter(s => s.province === province || !s.province);
+      let filtered = getServicePrices({ category: 'activity', currency });
+      if (countryId) {
+          filtered = filtered.filter(s => s.countryId === countryId || !s.countryId);
       }
-      setAvailableActivityServices(filteredServices);
+      if (province) {
+        filtered = filtered.filter(s => s.province === province || !s.province);
+      }
+      setAvailableActivityServices(filtered);
     }
-  }, [isLoadingServices, getServicePrices, currency, province, form]);
+  }, [isLoadingServices, getServicePrices, currency, province, countryId, form]);
 
   const handlePredefinedServiceSelect = (serviceId: string) => {
     setAiInputText("");
     setAiParseError(null);
     if (serviceId === "none") {
       form.setValue('selectedServicePriceId', undefined);
-      // Keep existing packages or add a default one if none exist
       if (!form.getValues('activityPackages') || form.getValues('activityPackages').length === 0) {
         replaceActivityPackages([{
           id: generateGUID(), name: 'Standard Package', price1: 0, price2: undefined, notes: '',
@@ -110,7 +114,7 @@ export function ActivityPriceForm({ form }: ActivityPriceFormProps) {
       if (result.province && !form.getValues('province')) {
         form.setValue('province', result.province, { shouldValidate: true });
       }
-      
+
       const aiPackages = result.parsedPackages || [];
       if (aiPackages.length > 0) {
         const newFormPackages: ActivityPackageDefinition[] = aiPackages.map((p, index) => ({
@@ -119,10 +123,10 @@ export function ActivityPriceForm({ form }: ActivityPriceFormProps) {
           price1: p.adultPrice ?? 0,
           price2: p.childPrice,
           notes: p.notes || '',
-          validityStartDate: new Date().toISOString().split('T')[0], // Default validity, can be refined later
+          validityStartDate: new Date().toISOString().split('T')[0],
           validityEndDate: new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().split('T')[0],
-          closedWeekdays: [], // AI currently doesn't parse scheduling
-          specificClosedDates: [], // AI currently doesn't parse scheduling
+          closedWeekdays: [],
+          specificClosedDates: [],
         }));
         replaceActivityPackages(newFormPackages);
         if (aiPackages[0]?.currency && aiPackages[0].currency !== form.getValues('currency')) {
@@ -132,7 +136,7 @@ export function ActivityPriceForm({ form }: ActivityPriceFormProps) {
       } else {
         toast({ title: "AI Parsing Note", description: "No distinct packages found by AI. Check the text or fill manually." });
       }
-      
+
       form.setValue('selectedServicePriceId', undefined);
       setAiInputText("");
 
@@ -146,38 +150,38 @@ export function ActivityPriceForm({ form }: ActivityPriceFormProps) {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="border border-border rounded-md p-4 relative mt-6">
-        <p className="text-sm font-semibold -mt-6 ml-2 px-1 bg-background inline-block absolute left-2 top-[-0.7rem] mb-4">
-          <Sparkles className="inline-block mr-2 h-4 w-4 text-accent" /> AI Activity Data Parser (Optional)
+    <div className="space-y-4 md:space-y-6">
+      <div className="border border-border rounded-md p-3 sm:p-4 relative mt-4 md:mt-6">
+        <p className="text-xs sm:text-sm font-semibold -mt-5 sm:-mt-6 ml-2 px-1 bg-background inline-block absolute left-2 top-[-0.7rem] mb-4 flex items-center">
+          <Sparkles className="inline-block mr-1.5 sm:mr-2 h-3.5 w-3.5 sm:h-4 sm:w-4 text-accent" /> AI Activity Parser (Optional)
         </p>
-        <div className="space-y-3 pt-3">
+        <div className="space-y-2 sm:space-y-3 pt-3">
           <div>
-            <Label htmlFor="ai-activity-text-input">
+            <Label htmlFor="ai-activity-text-input" className="text-xs sm:text-sm">
               Paste Activity Description (Can include multiple packages)
             </Label>
             <Textarea
               id="ai-activity-text-input"
               value={aiInputText}
               onChange={(e) => setAiInputText(e.target.value)}
-              placeholder="e.g., Bangkok City Tour. Option 1: Half day, 9am-1pm. Adult 1200 THB. Option 2: Full day with lunch. Adult 2000 THB, Child 1500 THB..."
-              rows={5}
-              className="mt-1"
+              placeholder="e.g., Bangkok City Tour. Option 1: Half day... Adult 1200 THB..."
+              rows={4}
+              className="mt-1 text-sm"
             />
           </div>
 
           {aiParseError && (
             <Alert variant="destructive">
               <AlertCircle className="h-4 w-4" />
-              <AlertTitle>Error</AlertTitle>
-              <AlertDescription>{aiParseError}</AlertDescription>
+              <AlertTitle className="text-sm">Error</AlertTitle>
+              <AlertDescription className="text-xs">{aiParseError}</AlertDescription>
             </Alert>
           )}
           {isParsingWithAI && (
               <Alert variant="default" className="bg-blue-50 border-blue-200">
                   <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
-                  <AlertTitle className="text-blue-700">AI Processing...</AlertTitle>
-                  <AlertDescription className="text-blue-600">Extracting activity details. This may take a moment.</AlertDescription>
+                  <AlertTitle className="text-sm text-blue-700">AI Processing...</AlertTitle>
+                  <AlertDescription className="text-xs text-blue-600">Extracting details. This may take a moment.</AlertDescription>
               </Alert>
           )}
 
@@ -185,38 +189,38 @@ export function ActivityPriceForm({ form }: ActivityPriceFormProps) {
             type="button"
             onClick={handleParseActivityTextWithAI}
             disabled={isParsingWithAI || !aiInputText.trim()}
-            className="w-full bg-accent hover:bg-accent/90 text-accent-foreground"
+            className="w-full bg-accent hover:bg-accent/90 text-accent-foreground text-xs sm:text-sm h-9 sm:h-10"
           >
             {isParsingWithAI ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              <Loader2 className="mr-1.5 sm:mr-2 h-3.5 w-3.5 sm:h-4 sm:w-4 animate-spin" />
             ) : (
-              <Sparkles className="mr-2 h-4 w-4" />
+              <Sparkles className="mr-1.5 sm:mr-2 h-3.5 w-3.5 sm:h-4 sm:w-4" />
             )}
-            Parse with AI & Prefill Packages
+            Parse with AI & Prefill
           </Button>
         </div>
       </div>
 
        {availableActivityServices.length > 0 && (
-        <div className="border border-border rounded-md p-4 relative">
-          <p className="text-sm font-semibold -mt-6 ml-2 px-1 bg-background inline-block absolute left-2 top-[-0.7rem] mb-4">Predefined Services</p>
+        <div className="border border-border rounded-md p-3 sm:p-4 relative">
+          <p className="text-xs sm:text-sm font-semibold -mt-5 sm:-mt-6 ml-2 px-1 bg-background inline-block absolute left-2 top-[-0.7rem] mb-4">Predefined Services</p>
           <ShadcnFormField
             control={form.control}
             name="selectedServicePriceId"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Select Predefined Activity ({province || 'Any Province'})</FormLabel>
+                <FormLabel className="text-xs sm:text-sm">Select Predefined Activity ({province || (countryId ? countries.find(c=>c.id===countryId)?.name : 'Any')})</FormLabel>
                 <Select
                   onValueChange={(value) => handlePredefinedServiceSelect(value)}
                   value={field.value || "none"}
                   disabled={isLoadingServices}
                 >
-                  <FormControl><SelectTrigger><SelectValue placeholder="Choose activity..." /></SelectTrigger></FormControl>
+                  <FormControl><SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Choose activity..." /></SelectTrigger></FormControl>
                   <SelectContent>
                     <SelectItem value="none">None (Custom Package/Price)</SelectItem>
                     {availableActivityServices.map(service => (
                       <SelectItem key={service.id} value={service.id}>
-                        {service.name} ({service.province || 'Generic'}) - {service.activityPackages?.length ? `${service.activityPackages.length} pkg(s)` : `${currency} ${service.price1 || 0}`}
+                        {service.name} ({service.province || (service.countryId ? countries.find(c=>c.id === service.countryId)?.name : 'Generic')}) - {service.activityPackages?.length ? `${service.activityPackages.length} pkg(s)` : `${currency} ${service.price1 || 0}`}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -228,33 +232,33 @@ export function ActivityPriceForm({ form }: ActivityPriceFormProps) {
           />
         </div>
       )}
-      <div className="border border-border rounded-md p-4 mt-6 relative">
-        <p className="text-sm font-semibold -mt-6 ml-2 px-1 bg-background inline-block absolute left-2 top-[-0.7rem] mb-4 flex items-center">
-          <PackageIcon className="h-4 w-4 mr-1 text-indigo-500" /> Activity Packages for: {activityNameForLegend || "New Activity"}
+      <div className="border border-border rounded-md p-3 sm:p-4 mt-4 md:mt-6 relative">
+        <p className="text-xs sm:text-sm font-semibold -mt-5 sm:-mt-6 ml-2 px-1 bg-background inline-block absolute left-2 top-[-0.7rem] mb-4 flex items-center">
+          <PackageIcon className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1 text-indigo-500" /> Activity Packages for: {activityNameForLegend || "New Activity"}
         </p>
-        <div id="activityPackagesContainer" className="space-y-4 pt-2">
+        <div id="activityPackagesContainer" className="space-y-3 sm:space-y-4 pt-2">
           {activityPackageFields.map((packageField, packageIndex) => {
             const currentPackageValues = form.watch(`activityPackages.${packageIndex}`);
             const packageLegend = currentPackageValues?.name || `Package ${packageIndex + 1}`;
             return (
-              <div key={packageField.packageFieldId} className="border border-muted rounded-md p-4 pt-6 relative bg-card shadow-sm">
-                 <p className="text-base font-medium -mt-6 ml-2 px-1 bg-card inline-block absolute left-2 top-[0.1rem] max-w-[calc(100%-3rem)] truncate"> {packageLegend} </p>
-                <Button type="button" variant="ghost" size="icon" onClick={() => activityPackageFields.length > 1 ? removeActivityPackage(packageIndex) : null} disabled={activityPackageFields.length <= 1} className="absolute top-1 right-1 h-7 w-7 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center text-sm hover:bg-destructive/80 disabled:opacity-50">
-                  <XIcon size={16} />
+              <div key={packageField.packageFieldId} className="border border-muted rounded-md p-3 sm:p-4 pt-5 sm:pt-6 relative bg-card shadow-sm">
+                 <p className="text-sm sm:text-base font-medium -mt-5 sm:-mt-6 ml-2 px-1 bg-card inline-block absolute left-2 top-[0.1rem] max-w-[calc(100%-2.5rem)] truncate"> {packageLegend} </p>
+                <Button type="button" variant="ghost" size="icon" onClick={() => activityPackageFields.length > 1 ? removeActivityPackage(packageIndex) : null} disabled={activityPackageFields.length <= 1} className="absolute top-1 right-1 h-6 w-6 sm:h-7 sm:w-7 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center text-xs sm:text-sm hover:bg-destructive/80 disabled:opacity-50">
+                  <XIcon size={14} className="sm:h-4 sm:w-4" />
                 </Button>
-                <div className="space-y-3 pt-2">
-                  <ShadcnFormField control={form.control} name={`activityPackages.${packageIndex}.name`} render={({ field }) => ( <FormItem><FormLabel className="text-sm">Package Name</FormLabel><FormControl><Input placeholder="e.g., Sunset Cruise, Full Day Tour" {...field} /></FormControl><FormMessage /></FormItem> )} />
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <ShadcnFormField control={form.control} name={`activityPackages.${packageIndex}.price1`} render={({ field }) => ( <FormItem><FormLabel className="text-sm">Adult Price ({currency})</FormLabel><FormControl><Input type="number" placeholder="0.00" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || 0)} /></FormControl><FormMessage /></FormItem> )} />
-                    <ShadcnFormField control={form.control} name={`activityPackages.${packageIndex}.price2`} render={({ field }) => ( <FormItem><FormLabel className="text-sm">Child Price ({currency}) (Optional)</FormLabel><FormControl><Input type="number" placeholder="0.00" {...field} value={field.value ?? ''} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)} /></FormControl><FormMessage /></FormItem> )} />
+                <div className="space-y-2 sm:space-y-3 pt-2">
+                  <ShadcnFormField control={form.control} name={`activityPackages.${packageIndex}.name`} render={({ field }) => ( <FormItem><FormLabel className="text-xs sm:text-sm">Package Name</FormLabel><FormControl><Input placeholder="e.g., Sunset Cruise" {...field} className="h-9 text-sm" /></FormControl><FormMessage /></FormItem> )} />
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
+                    <ShadcnFormField control={form.control} name={`activityPackages.${packageIndex}.price1`} render={({ field }) => ( <FormItem><FormLabel className="text-xs sm:text-sm">Adult Price ({currency})</FormLabel><FormControl><Input type="number" placeholder="0.00" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || 0)} className="h-9 text-sm" /></FormControl><FormMessage /></FormItem> )} />
+                    <ShadcnFormField control={form.control} name={`activityPackages.${packageIndex}.price2`} render={({ field }) => ( <FormItem><FormLabel className="text-xs sm:text-sm">Child Price ({currency}) (Opt)</FormLabel><FormControl><Input type="number" placeholder="0.00" {...field} value={field.value ?? ''} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)} className="h-9 text-sm" /></FormControl><FormMessage /></FormItem> )} />
                   </div>
-                  <ShadcnFormField control={form.control} name={`activityPackages.${packageIndex}.notes`} render={({ field }) => ( <FormItem><FormLabel className="text-sm">Package Notes/Details</FormLabel><FormControl><Textarea placeholder="Inclusions, duration, what to bring, etc." {...field} value={field.value || ''} rows={2} /></FormControl><FormMessage /></FormItem> )} />
+                  <ShadcnFormField control={form.control} name={`activityPackages.${packageIndex}.notes`} render={({ field }) => ( <FormItem><FormLabel className="text-xs sm:text-sm">Package Notes/Details</FormLabel><FormControl><Textarea placeholder="Inclusions, duration, etc." {...field} value={field.value || ''} rows={2} className="text-sm min-h-[2.25rem]" /></FormControl><FormMessage /></FormItem> )} />
                   <Controller
                     control={form.control}
                     name={`activityPackages.${packageIndex}`}
                     render={({ field: { onChange, value }}) => (
                       <ActivityPackageScheduler
-                        packageId={packageField.id} 
+                        packageId={packageField.id}
                         initialSchedulingData={{
                           validityStartDate: value.validityStartDate,
                           validityEndDate: value.validityEndDate,
@@ -270,15 +274,15 @@ export function ActivityPriceForm({ form }: ActivityPriceFormProps) {
             );
           })}
         </div>
-        <Button type="button" variant="outline" onClick={() => appendActivityPackage({ id: generateGUID(), name: `Package ${activityPackageFields.length + 1}`, price1: 0, price2: undefined, notes: '', validityStartDate: new Date().toISOString().split('T')[0], validityEndDate: new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().split('T')[0], closedWeekdays: [], specificClosedDates: [] }, { shouldFocus: false })} className="mt-4 border-accent text-accent hover:bg-accent/10 add-btn">
-          <PlusCircle className="mr-2 h-4 w-4" /> Add Package
+        <Button type="button" variant="outline" size="sm" onClick={() => appendActivityPackage({ id: generateGUID(), name: `Package ${activityPackageFields.length + 1}`, price1: 0, price2: undefined, notes: '', validityStartDate: new Date().toISOString().split('T')[0], validityEndDate: new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().split('T')[0], closedWeekdays: [], specificClosedDates: [] }, { shouldFocus: false })} className="mt-3 sm:mt-4 border-accent text-accent hover:bg-accent/10 add-btn text-xs sm:text-sm h-8 sm:h-9">
+          <PlusCircle className="mr-1.5 sm:mr-2 h-3.5 w-3.5 sm:h-4 sm:w-4" /> Add Package
         </Button>
-        {(form.formState.errors.activityPackages as any)?.message && ( <FormMessage className="mt-2 text-sm text-destructive">{(form.formState.errors.activityPackages as any).message}</FormMessage> )}
-        {form.formState.errors.activityPackages?.root?.message && ( <FormMessage className="mt-2 text-sm text-destructive">{form.formState.errors.activityPackages.root.message}</FormMessage> )}
+        {(form.formState.errors.activityPackages as any)?.message && ( <FormMessage className="mt-2 text-xs text-destructive">{(form.formState.errors.activityPackages as any).message}</FormMessage> )}
+        {form.formState.errors.activityPackages?.root?.message && ( <FormMessage className="mt-2 text-xs text-destructive">{form.formState.errors.activityPackages.root.message}</FormMessage> )}
       </div>
        {(form.formState.errors.price1 as any)?.message && (
-        <div className="border border-destructive/50 bg-destructive/10 p-3 rounded-md mt-2">
-          <FormMessage className="text-destructive">
+        <div className="border border-destructive/50 bg-destructive/10 p-2 sm:p-3 rounded-md mt-2">
+          <FormMessage className="text-xs text-destructive">
             If no packages are defined, ensure a "Default Adult Price" is provided. Error: {(form.formState.errors.price1 as any).message}
           </FormMessage>
         </div>

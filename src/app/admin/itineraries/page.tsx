@@ -9,8 +9,8 @@ import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import type { ItineraryMetadata } from '@/types/itinerary'; 
-import { LayoutDashboard, ListOrdered, Edit, Trash2, Search, FileText } from 'lucide-react'; // Removed Home
+import type { ItineraryMetadata } from '@/types/itinerary';
+import { LayoutDashboard, ListOrdered, Edit, Trash2, Search, FileText } from 'lucide-react';
 import { format } from 'date-fns';
 
 const ITINERARY_INDEX_KEY = 'itineraryAce_index';
@@ -65,86 +65,86 @@ export default function ManageItinerariesPage() {
   });
 
   if (isLoading) {
-    return <div className="flex justify-center items-center min-h-screen">Loading itineraries...</div>;
+    return <div className="flex justify-center items-center min-h-screen p-4">Loading itineraries...</div>;
   }
 
   return (
-    <main className="min-h-screen bg-background p-4 md:p-8">
-      <div className="container mx-auto py-8">
-        <div className="flex justify-between items-center mb-6">
+    <main className="min-h-screen bg-background p-2 sm:p-4 md:p-8">
+      <div className="container mx-auto py-4 md:py-8">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 md:mb-6 gap-3">
           <div className="flex items-center gap-2">
              <Link href="/">
-                <Button variant="outline" size="icon" className="h-10 w-10">
-                  <LayoutDashboard className="h-5 w-5" />
+                <Button variant="outline" size="icon" className="h-9 w-9 sm:h-10 sm:w-10">
+                  <LayoutDashboard className="h-4 w-4 sm:h-5 sm:w-5" />
                 </Button>
               </Link>
-            <h1 className="text-3xl font-bold text-primary flex items-center">
-              <ListOrdered className="mr-3 h-8 w-8" /> Manage Saved Itineraries
+            <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-primary flex items-center">
+              <ListOrdered className="mr-2 sm:mr-3 h-6 w-6 sm:h-8 sm:w-8" /> Manage Saved Itineraries
             </h1>
           </div>
         </div>
 
-        <div className="mb-6">
+        <div className="mb-4 md:mb-6">
             <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+            <Search className="absolute left-2 sm:left-3 top-1/2 -translate-y-1/2 h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground" />
             <Input
                 type="search"
-                placeholder="Search by ID, Itinerary Name, or Client Name..."
+                placeholder="Search by ID, Itinerary, or Client Name..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 w-full md:w-1/2 lg:w-1/3"
+                className="pl-8 sm:pl-10 w-full md:w-2/3 lg:w-1/2 text-sm sm:text-base h-9 sm:h-10"
             />
             </div>
         </div>
 
         {filteredItineraries.length === 0 ? (
-          <div className="text-center py-10 border-2 border-dashed border-muted-foreground/30 rounded-lg">
-            <FileText className="mx-auto h-12 w-12 text-muted-foreground" />
-            <p className="mt-4 text-muted-foreground text-lg">
+          <div className="text-center py-8 sm:py-10 border-2 border-dashed border-muted-foreground/30 rounded-lg">
+            <FileText className="mx-auto h-10 w-10 sm:h-12 sm:w-12 text-muted-foreground" />
+            <p className="mt-3 sm:mt-4 text-muted-foreground text-md sm:text-lg">
               {searchTerm ? "No itineraries match your search." : "No itineraries saved yet."}
             </p>
-            {!searchTerm && <p className="text-sm text-muted-foreground mt-1">Create a new itinerary from the Admin Dashboard.</p>}
+            {!searchTerm && <p className="text-xs sm:text-sm text-muted-foreground mt-1">Create a new itinerary from the Admin Dashboard.</p>}
           </div>
         ) : (
-          <div className="rounded-lg border shadow-sm overflow-hidden">
+          <div className="rounded-lg border shadow-sm overflow-x-auto">
             <Table>
               <TableHeader className="bg-muted/50">
                 <TableRow>
-                  <TableHead>ID</TableHead>
-                  <TableHead>Itinerary Name</TableHead>
-                  <TableHead>Client Name</TableHead>
-                  <TableHead>Last Updated</TableHead>
-                  <TableHead className="text-center w-[120px]">Actions</TableHead>
+                  <TableHead className="px-2 sm:px-4 py-3 text-xs sm:text-sm">ID</TableHead>
+                  <TableHead className="px-2 sm:px-4 py-3 text-xs sm:text-sm">Itinerary Name</TableHead>
+                  <TableHead className="px-2 sm:px-4 py-3 text-xs sm:text-sm hidden md:table-cell">Client Name</TableHead>
+                  <TableHead className="px-2 sm:px-4 py-3 text-xs sm:text-sm">Last Updated</TableHead>
+                  <TableHead className="text-center w-[80px] sm:w-[100px] px-2 sm:px-4 py-3 text-xs sm:text-sm">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredItineraries.map((it) => (
-                  <TableRow key={it.id}>
-                    <TableCell className="font-mono text-xs">{it.id}</TableCell>
-                    <TableCell className="font-medium">{it.itineraryName}</TableCell>
-                    <TableCell>{it.clientName || 'N/A'}</TableCell>
-                    <TableCell>{format(new Date(it.updatedAt), 'MMM d, yyyy HH:mm')}</TableCell>
-                    <TableCell className="text-center">
+                  <TableRow key={it.id} className="text-xs sm:text-sm">
+                    <TableCell className="font-mono py-2 px-2 sm:px-4 text-xs">{it.id}</TableCell>
+                    <TableCell className="font-medium py-2 px-2 sm:px-4">{it.itineraryName}</TableCell>
+                    <TableCell className="py-2 px-2 sm:px-4 hidden md:table-cell">{it.clientName || 'N/A'}</TableCell>
+                    <TableCell className="py-2 px-2 sm:px-4">{format(new Date(it.updatedAt), 'MMM d, yy HH:mm')}</TableCell>
+                    <TableCell className="text-center py-2 px-2 sm:px-4">
                       <Button
                         variant="ghost"
                         size="icon"
                         onClick={() => router.push(`/planner?itineraryId=${it.id}`)}
-                        className="mr-2 text-primary hover:bg-primary/10"
+                        className="mr-1 sm:mr-2 text-primary hover:bg-primary/10 h-7 w-7 sm:h-8 sm:w-8"
                         title="Edit Itinerary"
                       >
-                        <Edit className="h-4 w-4" />
+                        <Edit className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                       </Button>
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
-                          <Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10" title="Delete Itinerary">
-                            <Trash2 className="h-4 w-4" />
+                          <Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10 h-7 w-7 sm:h-8 sm:w-8" title="Delete Itinerary">
+                            <Trash2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                           </Button>
                         </AlertDialogTrigger>
                         <AlertDialogContent>
                           <AlertDialogHeader>
                             <AlertDialogTitle>Are you sure?</AlertDialogTitle>
                             <AlertDialogDescription>
-                              This action cannot be undone. This will permanently delete itinerary "{it.itineraryName}" ({it.id}).
+                              This action will permanently delete itinerary "{it.itineraryName}" ({it.id}).
                             </AlertDialogDescription>
                           </AlertDialogHeader>
                           <AlertDialogFooter>

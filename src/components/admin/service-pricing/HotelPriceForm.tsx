@@ -26,7 +26,6 @@ import type { CurrencyCode, RoomTypeSeasonalPrice } from '@/types/itinerary';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 
-// Helper function to create default seasonal price for the form
 function createDefaultSeasonalPriceForForm(): RoomTypeSeasonalPrice {
   const today = new Date();
   return {
@@ -39,7 +38,6 @@ function createDefaultSeasonalPriceForForm(): RoomTypeSeasonalPrice {
   };
 }
 
-// Helper function to create default room type structure for the form
 function createDefaultRoomTypeForForm(index: number) {
   return {
     id: generateGUID(),
@@ -65,7 +63,7 @@ export function HotelPriceForm({ form }: HotelPriceFormProps) {
     name: "hotelDetails.roomTypes",
     keyName: "roomTypeFieldId"
   });
-  
+
   React.useEffect(() => {
     const hotelDetails = form.getValues('hotelDetails');
     if (hotelDetails && (!hotelDetails.roomTypes || hotelDetails.roomTypes.length === 0)) {
@@ -76,20 +74,20 @@ export function HotelPriceForm({ form }: HotelPriceFormProps) {
 
 
   return (
-    <div className="space-y-6">
-      <div className="border border-border rounded-md p-4 mt-6 relative">
-        <p className="text-sm font-semibold -mt-6 ml-2 px-1 bg-background inline-block absolute left-2 top-[-0.7rem] mb-4">
-          Room Types & Nightly Rates for: {hotelNameForLegend || "New Hotel"} {hotelProvinceForLegend && `(${hotelProvinceForLegend})`}
+    <div className="space-y-4 md:space-y-6">
+      <div className="border border-border rounded-md p-3 sm:p-4 mt-4 md:mt-6 relative">
+        <p className="text-xs sm:text-sm font-semibold -mt-5 sm:-mt-6 ml-2 px-1 bg-background inline-block absolute left-2 top-[-0.7rem] mb-4">
+          Room Types &amp; Rates for: {hotelNameForLegend || "New Hotel"} {hotelProvinceForLegend && `(${hotelProvinceForLegend})`}
         </p>
-         {(form.formState.errors.hotelDetails?.province || (form.formState.errors.hotelDetails as any)?.root?.message) && (
-            <Alert variant="destructive" className="mb-4">
-                <AlertTitle>Hotel Province Required</AlertTitle>
-                <AlertDescription>
-                   {(form.formState.errors.hotelDetails?.province?.message as string) || ((form.formState.errors.hotelDetails as any)?.root?.message as string) || "Please ensure a province is selected at the top of the form for this hotel."}
+         {(form.formState.errors.hotelDetails?.province || (form.formState.errors.hotelDetails as any)?.root?.message || form.formState.errors.hotelDetails?.countryId) && (
+            <Alert variant="destructive" className="mb-3 sm:mb-4">
+                <AlertTitle>Location Required</AlertTitle>
+                <AlertDescription className="text-xs">
+                   {(form.formState.errors.hotelDetails?.countryId?.message as string) || (form.formState.errors.hotelDetails?.province?.message as string) || ((form.formState.errors.hotelDetails as any)?.root?.message as string) || "Please ensure Country and Province are selected at the top of the form for this hotel."}
                 </AlertDescription>
             </Alert>
         )}
-        <div id="roomTypesContainer" className="space-y-6 pt-2">
+        <div id="roomTypesContainer" className="space-y-4 md:space-y-6 pt-2">
           {roomTypeFields.map((roomField, roomIndex) => (
             <RoomTypeCard
               key={roomField.roomTypeFieldId}
@@ -104,13 +102,14 @@ export function HotelPriceForm({ form }: HotelPriceFormProps) {
         <Button
           type="button"
           variant="outline"
+          size="sm"
           onClick={() => appendRoomType(createDefaultRoomTypeForForm(roomTypeFields.length))}
-          className="mt-4 border-accent text-accent hover:bg-accent/10 add-btn"
+          className="mt-3 sm:mt-4 border-accent text-accent hover:bg-accent/10 add-btn text-xs sm:text-sm h-8 sm:h-9"
         >
-          <PlusCircle className="mr-2 h-4 w-4" /> Add Room Type
+          <PlusCircle className="mr-1.5 sm:mr-2 h-3.5 w-3.5 sm:h-4 sm:w-4" /> Add Room Type
         </Button>
         {(form.formState.errors.hotelDetails?.roomTypes as any)?.message && (
-          <FormMessage className="mt-2 text-sm text-destructive">
+          <FormMessage className="mt-2 text-xs text-destructive">
             {(form.formState.errors.hotelDetails?.roomTypes as any).message}
           </FormMessage>
         )}
@@ -132,9 +131,9 @@ function RoomTypeCard({ form, roomIndex, currency, removeRoomType, canRemoveRoom
   const roomLegend = roomTypeNameWatch || `Room Type ${roomIndex + 1}`;
 
   return (
-    <Card className="border-primary/30 rounded-lg p-4 pt-6 relative bg-card shadow-md">
+    <Card className="border-primary/30 rounded-lg p-3 sm:p-4 pt-5 sm:pt-6 relative bg-card shadow-md">
       <div className="flex justify-between items-center absolute left-2 top-[-0.7rem] w-[calc(100%-1rem)]">
-        <p className="text-base font-medium -mt-6 ml-2 px-1 bg-card inline-block max-w-[calc(100%-3rem)] truncate">
+        <p className="text-sm sm:text-base font-medium -mt-5 sm:-mt-6 ml-2 px-1 bg-card inline-block max-w-[calc(100%-2.5rem)] truncate">
           {roomLegend}
         </p>
         <Button
@@ -143,19 +142,19 @@ function RoomTypeCard({ form, roomIndex, currency, removeRoomType, canRemoveRoom
           size="icon"
           onClick={removeRoomType}
           disabled={!canRemoveRoomType}
-          className="h-7 w-7 text-destructive hover:bg-destructive/10 disabled:opacity-50 relative -top-2"
+          className="h-6 w-6 sm:h-7 sm:w-7 text-destructive hover:bg-destructive/10 disabled:opacity-50 relative -top-1.5 sm:-top-2"
         >
-          <XIcon size={16} />
+          <XIcon size={14} className="sm:h-4 sm:w-4" />
         </Button>
       </div>
-      <div className="space-y-3 pt-2">
+      <div className="space-y-2 sm:space-y-3 pt-2">
         <ShadcnFormField
           control={form.control}
           name={`hotelDetails.roomTypes.${roomIndex}.name`}
           render={({ field }) => (
             <FormItem>
-              <FormLabel className="text-sm">Room Type Name</FormLabel>
-              <FormControl><Input placeholder="e.g., Deluxe Pool View" {...field} /></FormControl>
+              <FormLabel className="text-xs sm:text-sm">Room Type Name</FormLabel>
+              <FormControl><Input placeholder="e.g., Deluxe Pool View" {...field} className="h-9 text-sm" /></FormControl>
               <FormMessage />
             </FormItem>
           )}
@@ -164,7 +163,7 @@ function RoomTypeCard({ form, roomIndex, currency, removeRoomType, canRemoveRoom
           control={form.control}
           name={`hotelDetails.roomTypes.${roomIndex}.extraBedAllowed`}
           render={({ field }) => (
-            <FormItem className="flex flex-row items-center space-x-2 space-y-0 pt-2">
+            <FormItem className="flex flex-row items-center space-x-2 space-y-0 pt-1 sm:pt-2">
               <FormControl>
                 <Checkbox
                   checked={field.value}
@@ -177,9 +176,10 @@ function RoomTypeCard({ form, roomIndex, currency, removeRoomType, canRemoveRoom
                       });
                     }
                   }}
+                  className="h-3.5 w-3.5 sm:h-4 sm:w-4"
                 />
               </FormControl>
-              <FormLabel className="text-sm font-normal cursor-pointer"> Extra Bed Permitted for this Room Type? </FormLabel>
+              <FormLabel className="text-xs sm:text-sm font-normal cursor-pointer"> Extra Bed Permitted? </FormLabel>
               <FormMessage />
             </FormItem>
           )}
@@ -189,8 +189,8 @@ function RoomTypeCard({ form, roomIndex, currency, removeRoomType, canRemoveRoom
           name={`hotelDetails.roomTypes.${roomIndex}.notes`}
           render={({ field }) => (
             <FormItem>
-              <FormLabel className="text-sm">Room Details (Size, Amenities, Bed Type, View, etc.)</FormLabel>
-              <FormControl><Textarea placeholder="Describe room features..." {...field} value={field.value || ''} rows={2} /></FormControl>
+              <FormLabel className="text-xs sm:text-sm">Room Details (Size, Amenities, etc.)</FormLabel>
+              <FormControl><Textarea placeholder="Describe room features..." {...field} value={field.value || ''} rows={2} className="text-sm min-h-[2.25rem]" /></FormControl>
               <FormMessage />
             </FormItem>
           )}
@@ -221,7 +221,7 @@ function SeasonalRatesTableForRoomType({ form, roomIndex, currency }: SeasonalRa
       appendSeason(createDefaultSeasonalPriceForForm(), { shouldFocus: false });
     }
   }, [seasonFields.length, appendSeason]);
-  
+
   const getDisabledDatesForStartDatePicker = (currentSeasonIndex: number) => (dateToDisable: Date): boolean => {
     const allSeasonsForThisRoom = form.getValues(`hotelDetails.roomTypes.${roomIndex}.seasonalPrices`);
     return allSeasonsForThisRoom.some((otherSeason, otherSeasonIdx) => {
@@ -239,7 +239,7 @@ function SeasonalRatesTableForRoomType({ form, roomIndex, currency }: SeasonalRa
     const allSeasonsForThisRoom = form.getValues(`hotelDetails.roomTypes.${roomIndex}.seasonalPrices`);
     const currentSeasonStartDate = allSeasonsForThisRoom[currentSeasonIndex]?.startDate;
 
-    if (!currentSeasonStartDate || !isValid(currentSeasonStartDate)) return true; // Disable if current start date is invalid
+    if (!currentSeasonStartDate || !isValid(currentSeasonStartDate)) return true;
 
     return allSeasonsForThisRoom.some((otherSeason, otherSeasonIdx) => {
       if (otherSeasonIdx === currentSeasonIndex) return false;
@@ -247,13 +247,10 @@ function SeasonalRatesTableForRoomType({ form, roomIndex, currency }: SeasonalRa
       const otherEnd = otherSeason.endDate;
 
       if (otherStart && otherEnd && isValid(otherStart) && isValid(otherEnd)) {
-        // Check if choosing 'dateToDisable' as the end date for the current season
-        // would make the current season [currentSeasonStartDate, dateToDisable]
-        // overlap with the 'otherSeason' [otherStart, otherEnd].
         return areIntervalsOverlapping(
           { start: currentSeasonStartDate, end: dateToDisable },
           { start: otherStart, end: otherEnd },
-          { inclusive: true } // Consider edges as overlapping for UI blocking
+          { inclusive: true }
         );
       }
       return false;
@@ -262,33 +259,33 @@ function SeasonalRatesTableForRoomType({ form, roomIndex, currency }: SeasonalRa
 
 
   return (
-    <div className="space-y-1 mt-4">
-      <Label className="text-sm font-medium text-muted-foreground mb-1 block">Seasonal Pricing Periods</Label>
+    <div className="space-y-1 mt-3 sm:mt-4">
+      <Label className="text-xs sm:text-sm font-medium text-muted-foreground mb-1 block">Seasonal Pricing Periods</Label>
       <div className="overflow-x-auto">
-        <Table className="mb-1 border min-w-[600px]">
+        <Table className="mb-1 border min-w-[550px] sm:min-w-[600px]">
           <TableHeader className="bg-muted/30">
             <TableRow>
-              <TableHead className="w-[150px] px-2 py-1 text-xs">Season Name</TableHead>
-              <TableHead className="w-[160px] px-2 py-1 text-xs">Start Date</TableHead>
-              <TableHead className="w-[160px] px-2 py-1 text-xs">End Date</TableHead>
-              <TableHead className="w-[120px] px-2 py-1 text-xs">Rate ({currency})</TableHead>
-              {roomExtraBedAllowed && <TableHead className="w-[130px] px-2 py-1 text-xs">Extra Bed Rate</TableHead>}
-              <TableHead className="w-[40px] px-1 py-1 text-center text-xs">Del</TableHead>
+              <TableHead className="w-[130px] sm:w-[150px] px-1.5 sm:px-2 py-1 text-xs">Season Name</TableHead>
+              <TableHead className="w-[140px] sm:w-[160px] px-1.5 sm:px-2 py-1 text-xs">Start Date</TableHead>
+              <TableHead className="w-[140px] sm:w-[160px] px-1.5 sm:px-2 py-1 text-xs">End Date</TableHead>
+              <TableHead className="w-[100px] sm:w-[120px] px-1.5 sm:px-2 py-1 text-xs">Rate ({currency})</TableHead>
+              {roomExtraBedAllowed && <TableHead className="w-[110px] sm:w-[130px] px-1.5 sm:px-2 py-1 text-xs">Extra Bed</TableHead>}
+              <TableHead className="w-[35px] sm:w-[40px] px-1 py-1 text-center text-xs">Del</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {seasonFields.map((seasonField, seasonIndex) => (
               <TableRow key={seasonField.seasonFieldId}>
-                <TableCell className="px-2 py-1">
+                <TableCell className="px-1.5 sm:px-2 py-1">
                    <ShadcnFormField
                     control={form.control}
                     name={`hotelDetails.roomTypes.${roomIndex}.seasonalPrices.${seasonIndex}.seasonName`}
                     render={({ field }) => (
-                        <FormControl><Input placeholder="e.g. High Season" {...field} value={field.value || ''} className="h-9 text-sm" /></FormControl>
+                        <FormControl><Input placeholder="e.g. Peak" {...field} value={field.value || ''} className="h-8 sm:h-9 text-xs sm:text-sm" /></FormControl>
                     )}
                     />
                 </TableCell>
-                <TableCell className="px-2 py-1">
+                <TableCell className="px-1.5 sm:px-2 py-1">
                   <Controller
                     control={form.control}
                     name={`hotelDetails.roomTypes.${roomIndex}.seasonalPrices.${seasonIndex}.startDate`}
@@ -300,7 +297,7 @@ function SeasonalRatesTableForRoomType({ form, roomIndex, currency }: SeasonalRa
                     )}
                   />
                 </TableCell>
-                <TableCell className="px-2 py-1">
+                <TableCell className="px-1.5 sm:px-2 py-1">
                   <Controller
                     control={form.control}
                     name={`hotelDetails.roomTypes.${roomIndex}.seasonalPrices.${seasonIndex}.endDate`}
@@ -315,26 +312,26 @@ function SeasonalRatesTableForRoomType({ form, roomIndex, currency }: SeasonalRa
                     )}
                   />
                 </TableCell>
-                <TableCell className="px-2 py-1">
+                <TableCell className="px-1.5 sm:px-2 py-1">
                   <ShadcnFormField
                     control={form.control}
                     name={`hotelDetails.roomTypes.${roomIndex}.seasonalPrices.${seasonIndex}.rate`}
                     render={({ field }) => (
                       <FormItem>
-                        <FormControl><Input type="number" placeholder="0.00" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || 0)} className="h-9 text-sm" /></FormControl>
+                        <FormControl><Input type="number" placeholder="0.00" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || 0)} className="h-8 sm:h-9 text-xs sm:text-sm" /></FormControl>
                         <FormMessage className="text-xs" />
                       </FormItem>
                     )}
                   />
                 </TableCell>
                 {roomExtraBedAllowed && (
-                  <TableCell className="px-2 py-1">
+                  <TableCell className="px-1.5 sm:px-2 py-1">
                     <ShadcnFormField
                       control={form.control}
                       name={`hotelDetails.roomTypes.${roomIndex}.seasonalPrices.${seasonIndex}.extraBedRate`}
                       render={({ field }) => (
                         <FormItem>
-                          <FormControl><Input type="number" placeholder="0.00" {...field} value={field.value ?? ''} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)} className="h-9 text-sm" /></FormControl>
+                          <FormControl><Input type="number" placeholder="0.00" {...field} value={field.value ?? ''} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)} className="h-8 sm:h-9 text-xs sm:text-sm" /></FormControl>
                           <FormMessage className="text-xs" />
                         </FormItem>
                       )}
@@ -350,7 +347,7 @@ function SeasonalRatesTableForRoomType({ form, roomIndex, currency }: SeasonalRa
                     disabled={seasonFields.length <= 1}
                     className="h-7 w-7 text-destructive hover:text-destructive/80 disabled:opacity-50 flex items-center justify-center"
                   >
-                    <XIcon size={18} />
+                    <XIcon size={16} className="sm:h-5 sm:w-5" />
                   </Button>
                 </TableCell>
               </TableRow>
@@ -363,9 +360,9 @@ function SeasonalRatesTableForRoomType({ form, roomIndex, currency }: SeasonalRa
         variant="outline"
         size="sm"
         onClick={() => appendSeason(createDefaultSeasonalPriceForForm(), { shouldFocus: true })}
-        className="mt-3 border-primary text-primary hover:bg-primary/10 add-btn"
+        className="mt-2 sm:mt-3 border-primary text-primary hover:bg-primary/10 add-btn text-xs sm:text-sm h-8 sm:h-9"
       >
-        <PlusCircle className="mr-2 h-4 w-4" /> Add Season
+        <PlusCircle className="mr-1.5 sm:mr-2 h-3.5 w-3.5 sm:h-4 sm:w-4" /> Add Season
       </Button>
       {(form.formState.errors.hotelDetails?.roomTypes?.[roomIndex]?.seasonalPrices as any)?.message && (
         <FormMessage className="text-xs text-destructive mt-1">

@@ -36,14 +36,14 @@ export function CommonPriceFields({ form }: CommonPriceFieldsProps) {
       setFilteredProvinces(getProvincesByCountry(selectedCountryId));
       const selectedCountryDetails = getCountryById(selectedCountryId);
       if (selectedCountryDetails && selectedCountryDetails.defaultCurrency) {
-        form.setValue('currency', selectedCountryDetails.defaultCurrency, { shouldValidate: true });
+        if (selectedCategory !== 'misc') { // Only auto-set if not misc
+            form.setValue('currency', selectedCountryDetails.defaultCurrency, { shouldValidate: true });
+        }
       }
     } else if (!selectedCountryId) {
-      setFilteredProvinces([]); // Clear provinces if no country selected
-      // Optionally, reset currency to a global default or leave as is
-      // form.setValue('currency', CURRENCIES[0] as CurrencyCode, { shouldValidate: true });
+      setFilteredProvinces([]);
     }
-    
+
     const currentProvinceName = form.getValues('province');
     if (selectedCountryId && currentProvinceName) {
         const currentCountryProvinces = getProvincesByCountry(selectedCountryId);
@@ -55,12 +55,11 @@ export function CommonPriceFields({ form }: CommonPriceFieldsProps) {
          form.setValue('province', undefined, { shouldValidate: true });
     }
 
-  }, [selectedCountryId, isLoadingProvinces, getProvincesByCountry, form, getCountryById]);
+  }, [selectedCountryId, isLoadingProvinces, getProvincesByCountry, form, getCountryById, selectedCategory]);
 
 
   React.useEffect(() => {
-    // Auto-select Thailand and its currency if category is hotel and no country is selected yet
-    if (selectedCategory === 'hotel' && !form.getValues('countryId')) {
+    if (selectedCategory === 'hotel' && !form.getValues('countryId') && !isLoadingCountries) {
       const thailand = countries.find(c => c.name === "Thailand");
       if (thailand) {
         form.setValue('countryId', thailand.id, { shouldValidate: true });
@@ -69,84 +68,86 @@ export function CommonPriceFields({ form }: CommonPriceFieldsProps) {
         }
       }
     }
-  }, [selectedCategory, form, countries]);
+  }, [selectedCategory, form, countries, isLoadingCountries]);
 
   return (
-    <div className="border border-border rounded-md p-4 relative">
-      <p className="text-sm font-semibold -mt-6 ml-2 px-1 bg-background inline-block absolute left-2 top-[-0.7rem] mb-4">Basic Service Details</p>
-      <div className="space-y-4 pt-2">
-        <FormField
-          control={form.control}
-          name="countryId"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Country {selectedCategory === 'hotel' ? '(Required for Hotels)' : '(Optional for others)'}</FormLabel>
-              <Select
-                onValueChange={(value) => {
-                  field.onChange(value === "none" ? undefined : value);
-                  form.setValue('province', undefined); 
-                }}
-                value={field.value || "none"}
-                disabled={isLoadingCountries}
-              >
-                <FormControl>
-                  <SelectTrigger>
-                    <SelectValue placeholder={isLoadingCountries ? "Loading countries..." : "Select country..."} />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  <SelectItem value="none">— Select Country —</SelectItem>
-                  {countries.map(c => (
-                    <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name="province"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Province / Location (Optional)</FormLabel>
-              <Select
-                onValueChange={(value) => field.onChange(value === "none" ? undefined : value)}
-                value={field.value || "none"}
-                disabled={isLoadingProvinces || !selectedCountryId || filteredProvinces.length === 0}
-              >
-                <FormControl>
-                  <SelectTrigger>
-                    <SelectValue placeholder={
-                      !selectedCountryId 
-                        ? "Select a country first" 
-                        : (isLoadingProvinces ? "Loading..." : (filteredProvinces.length === 0 ? "No provinces for country" : "Select province..."))
-                    } />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  <SelectItem value="none">— Select Province (Optional) —</SelectItem>
-                  {filteredProvinces.map(p => (
-                    <SelectItem key={p.id} value={p.name}>{p.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+    <div className="border border-border rounded-md p-3 sm:p-4 relative">
+      <p className="text-xs sm:text-sm font-semibold -mt-5 sm:-mt-6 ml-2 px-1 bg-background inline-block absolute left-2 top-[-0.7rem] mb-4">Basic Service Details</p>
+      <div className="space-y-3 sm:space-y-4 pt-2">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
+            <FormField
+            control={form.control}
+            name="countryId"
+            render={({ field }) => (
+                <FormItem>
+                <FormLabel className="text-xs sm:text-sm">Country {selectedCategory === 'hotel' ? '(Required)' : '(Optional)'}</FormLabel>
+                <Select
+                    onValueChange={(value) => {
+                    field.onChange(value === "none" ? undefined : value);
+                    form.setValue('province', undefined);
+                    }}
+                    value={field.value || "none"}
+                    disabled={isLoadingCountries}
+                >
+                    <FormControl>
+                    <SelectTrigger className="h-9 text-sm">
+                        <SelectValue placeholder={isLoadingCountries ? "Loading..." : "Select country..."} />
+                    </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                    <SelectItem value="none">— Select Country —</SelectItem>
+                    {countries.map(c => (
+                        <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                    ))}
+                    </SelectContent>
+                </Select>
+                <FormMessage />
+                </FormItem>
+            )}
+            />
+            <FormField
+            control={form.control}
+            name="province"
+            render={({ field }) => (
+                <FormItem>
+                <FormLabel className="text-xs sm:text-sm">Province / Location {selectedCategory === 'hotel' ? '(Required)' : '(Optional)'}</FormLabel>
+                <Select
+                    onValueChange={(value) => field.onChange(value === "none" ? undefined : value)}
+                    value={field.value || "none"}
+                    disabled={isLoadingProvinces || !selectedCountryId || filteredProvinces.length === 0}
+                >
+                    <FormControl>
+                    <SelectTrigger className="h-9 text-sm">
+                        <SelectValue placeholder={
+                        !selectedCountryId
+                            ? "Select country first"
+                            : (isLoadingProvinces ? "Loading..." : (filteredProvinces.length === 0 ? "No provinces for country" : "Select province..."))
+                        } />
+                    </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                    <SelectItem value="none">— Select Province —</SelectItem>
+                    {filteredProvinces.map(p => (
+                        <SelectItem key={p.id} value={p.name}>{p.name}</SelectItem>
+                    ))}
+                    </SelectContent>
+                </Select>
+                <FormMessage />
+                </FormItem>
+            )}
+            />
+        </div>
         <FormField
           control={form.control}
           name="category"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Category</FormLabel>
-              <Select 
-                onValueChange={field.onChange} 
+              <FormLabel className="text-xs sm:text-sm">Category</FormLabel>
+              <Select
+                onValueChange={field.onChange}
                 value={field.value}
               >
-                <FormControl><SelectTrigger><SelectValue placeholder="Select category" /></SelectTrigger></FormControl>
+                <FormControl><SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Select category" /></SelectTrigger></FormControl>
                 <SelectContent>
                   {SERVICE_CATEGORIES.map(cat => <SelectItem key={cat} value={cat}>{cat.charAt(0).toUpperCase() + cat.slice(1)}</SelectItem>)}
                 </SelectContent>
@@ -160,8 +161,8 @@ export function CommonPriceFields({ form }: CommonPriceFieldsProps) {
           name="name"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Service / Route / Hotel / Activity Name</FormLabel>
-              <FormControl><Input placeholder="e.g., City Tour, Oceanview Resort, BKK Airport to City" {...field} /></FormControl>
+              <FormLabel className="text-xs sm:text-sm">Service / Route / Hotel / Activity Name</FormLabel>
+              <FormControl><Input placeholder="e.g., City Tour, Oceanview Resort" {...field} className="h-9 text-sm" /></FormControl>
               <FormMessage />
             </FormItem>
           )}
@@ -171,10 +172,10 @@ export function CommonPriceFields({ form }: CommonPriceFieldsProps) {
           name="currency"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Currency</FormLabel>
+              <FormLabel className="text-xs sm:text-sm">Currency</FormLabel>
               <Select onValueChange={field.onChange} value={field.value} disabled={!!getCountryById(selectedCountryId)?.defaultCurrency && selectedCategory !== 'misc'}>
                 <FormControl>
-                    <SelectTrigger className={!!getCountryById(selectedCountryId)?.defaultCurrency && selectedCategory !== 'misc' ? "bg-muted/50 cursor-not-allowed" : ""}>
+                    <SelectTrigger className={`h-9 text-sm ${!!getCountryById(selectedCountryId)?.defaultCurrency && selectedCategory !== 'misc' ? "bg-muted/50 cursor-not-allowed" : ""}`}>
                         <SelectValue placeholder="Select currency" />
                     </SelectTrigger>
                 </FormControl>
@@ -182,7 +183,7 @@ export function CommonPriceFields({ form }: CommonPriceFieldsProps) {
                   {CURRENCIES.map(curr => <SelectItem key={curr} value={curr}>{curr}</SelectItem>)}
                 </SelectContent>
               </Select>
-              {!!getCountryById(selectedCountryId)?.defaultCurrency && selectedCategory !== 'misc' && <p className="text-xs text-muted-foreground mt-1">Currency auto-set based on selected country. For 'Miscellaneous' items, you can override this.</p>}
+              {!!getCountryById(selectedCountryId)?.defaultCurrency && selectedCategory !== 'misc' && <p className="text-xs text-muted-foreground mt-1">Currency auto-set by country. Editable for 'Miscellaneous' items.</p>}
               <FormMessage />
             </FormItem>
           )}
@@ -192,8 +193,8 @@ export function CommonPriceFields({ form }: CommonPriceFieldsProps) {
           name="notes"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>General Service Notes (Optional)</FormLabel>
-              <FormControl><Textarea placeholder="Overall details about the service" {...field} value={field.value || ''} rows={2} /></FormControl>
+              <FormLabel className="text-xs sm:text-sm">General Service Notes (Optional)</FormLabel>
+              <FormControl><Textarea placeholder="Overall details about the service" {...field} value={field.value || ''} rows={2} className="text-sm min-h-[2.25rem]" /></FormControl>
               <FormMessage />
             </FormItem>
           )}

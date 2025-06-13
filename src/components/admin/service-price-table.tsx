@@ -30,12 +30,10 @@ export function ServicePriceTable({ servicePrices, onEdit, onDeleteConfirmation,
   const renderAllModeRow = (service: ServicePriceItem) => {
     let displayDetail = service.subCategory || 'N/A';
     let displayPriceInfo = service.price1 !== undefined ? formatCurrency(service.price1, service.currency) : 'See Details';
-    // let displayUnit = service.unitDescription || 'N/A'; // Removed
     let rateTooltipContent: React.ReactNode = null;
 
     if (service.category === 'hotel' && service.hotelDetails && service.hotelDetails.roomTypes.length > 0) {
       displayDetail = `${service.hotelDetails.roomTypes.length} room type(s)`;
-      // displayUnit = service.unitDescription || 'per night'; // Removed
       let lowestRate: number | undefined = undefined;
       service.hotelDetails.roomTypes.forEach(rt => {
         rt.seasonalPrices.forEach(sp => {
@@ -47,17 +45,16 @@ export function ServicePriceTable({ servicePrices, onEdit, onDeleteConfirmation,
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>
-              <Badge variant="outline" className="ml-2 cursor-default border-primary/50 text-primary">
-                <CalendarClock className="h-3 w-3 mr-1" /> Seasonal/Tiered
+              <Badge variant="outline" className="ml-1 sm:ml-2 cursor-default border-primary/50 text-primary text-xs px-1.5 py-0.5 sm:px-2.5 sm:py-0.5">
+                <CalendarClock className="h-2.5 w-2.5 sm:h-3 sm:w-3 mr-1" /> Seasonal
               </Badge>
             </TooltipTrigger>
-            <TooltipContent><p>This hotel has seasonal and/or multi-room type pricing.</p></TooltipContent>
+            <TooltipContent><p>This hotel has seasonal/tiered pricing.</p></TooltipContent>
           </Tooltip>
         </TooltipProvider>
       );
     } else if (service.category === 'activity' && service.activityPackages && service.activityPackages.length > 0) {
       displayDetail = `${service.activityPackages.length} package(s)`;
-      // displayUnit = service.unitDescription || 'per person'; // Removed
       let lowestPackagePrice: number | undefined = undefined;
       service.activityPackages.forEach(pkg => {
         if (lowestPackagePrice === undefined || pkg.price1 < lowestPackagePrice) lowestPackagePrice = pkg.price1;
@@ -67,18 +64,17 @@ export function ServicePriceTable({ servicePrices, onEdit, onDeleteConfirmation,
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>
-              <Badge variant="outline" className="ml-2 cursor-default border-indigo-500/50 text-indigo-600">
-                <Package className="h-3 w-3 mr-1" /> Multi-Package
+              <Badge variant="outline" className="ml-1 sm:ml-2 cursor-default border-indigo-500/50 text-indigo-600 text-xs px-1.5 py-0.5 sm:px-2.5 sm:py-0.5">
+                <Package className="h-2.5 w-2.5 sm:h-3 sm:w-3 mr-1" /> Multi-Package
               </Badge>
             </TooltipTrigger>
-            <TooltipContent><p>This activity has multiple packages with varying prices and schedules.</p></TooltipContent>
+            <TooltipContent><p>This activity has multiple packages.</p></TooltipContent>
           </Tooltip>
         </TooltipProvider>
       );
     } else if (service.category === 'transfer') {
       if (service.transferMode === 'vehicle' && service.vehicleOptions && service.vehicleOptions.length > 0) {
         displayDetail = `${service.vehicleOptions.length} vehicle option(s)`;
-        // displayUnit = service.unitDescription || 'per service'; // Removed
         let lowestVehiclePrice: number | undefined = undefined;
         service.vehicleOptions.forEach(vo => {
             if (lowestVehiclePrice === undefined || vo.price < lowestVehiclePrice) lowestVehiclePrice = vo.price;
@@ -88,14 +84,14 @@ export function ServicePriceTable({ servicePrices, onEdit, onDeleteConfirmation,
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Badge variant="outline" className="ml-2 cursor-default border-blue-500/50 text-blue-600">
-                    <Car className="h-3 w-3 mr-1" /> Multiple Vehicles
+                  <Badge variant="outline" className="ml-1 sm:ml-2 cursor-default border-blue-500/50 text-blue-600 text-xs px-1.5 py-0.5 sm:px-2.5 sm:py-0.5">
+                    <Car className="h-2.5 w-2.5 sm:h-3 sm:w-3 mr-1" /> Vehicles
                   </Badge>
                 </TooltipTrigger>
                 <TooltipContent>
-                    <p className="font-semibold mb-1">Vehicle Options:</p>
+                    <p className="font-semibold mb-1 text-xs">Vehicle Options:</p>
                     {service.vehicleOptions.slice(0,3).map(vo => <li key={vo.id} className="text-xs">{vo.vehicleType}: {formatCurrency(vo.price, service.currency)} (Max: {vo.maxPassengers})</li>)}
-                    {service.vehicleOptions.length > 3 && <li className="text-xs italic">...and more options.</li>}
+                    {service.vehicleOptions.length > 3 && <li className="text-xs italic">...and more.</li>}
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
@@ -105,43 +101,39 @@ export function ServicePriceTable({ servicePrices, onEdit, onDeleteConfirmation,
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Badge variant="outline" className="ml-2 cursor-default border-orange-500/50 text-orange-600">
-                    <AlertTriangle className="h-3 w-3 mr-1" /> Surcharges
+                  <Badge variant="outline" className="ml-1 sm:ml-2 cursor-default border-orange-500/50 text-orange-600 text-xs px-1.5 py-0.5 sm:px-2.5 sm:py-0.5">
+                    <AlertTriangle className="h-2.5 w-2.5 sm:h-3 sm:w-3 mr-1" /> Surcharges
                   </Badge>
                 </TooltipTrigger>
-                <TooltipContent>
-                  <p>This transfer route has date-based surcharges.</p>
-                </TooltipContent>
+                <TooltipContent><p>This transfer has date-based surcharges.</p></TooltipContent>
               </Tooltip>
             </TooltipProvider>
           );
           rateTooltipContent = <>{rateTooltipContent}{surchargeBadge}</>;
         }
-      } else { // Ticket transfer
+      } else {
         displayDetail = "Ticket Basis";
-        // displayUnit = service.unitDescription || 'per person'; // Removed
         displayPriceInfo = service.price1 !== undefined ? formatCurrency(service.price1, service.currency) : "N/A";
       }
     }
 
     return (
-      <TableRow key={service.id}>
-        <TableCell className="font-medium">{service.name}</TableCell>
-        <TableCell>{service.province || 'N/A'}</TableCell>
-        <TableCell>{service.category.charAt(0).toUpperCase() + service.category.slice(1)}</TableCell>
-        <TableCell>{displayDetail}</TableCell>
-        <TableCell className="text-right">
+      <TableRow key={service.id} className="text-xs sm:text-sm">
+        <TableCell className="font-medium py-2 px-2 sm:px-4">{service.name}</TableCell>
+        <TableCell className="py-2 px-2 sm:px-4">{service.province || 'N/A'}</TableCell>
+        <TableCell className="py-2 px-2 sm:px-4">{service.category.charAt(0).toUpperCase() + service.category.slice(1)}</TableCell>
+        <TableCell className="py-2 px-2 sm:px-4">{displayDetail}</TableCell>
+        <TableCell className="text-right py-2 px-2 sm:px-4">
           <div className="flex items-center justify-end font-code">
             <span>{displayPriceInfo}</span>
             {rateTooltipContent}
           </div>
         </TableCell>
-        <TableCell>{service.currency}</TableCell>
-        {/* <TableCell>{displayUnit}</TableCell> // Removed */}
-        <TableCell className="text-xs max-w-xs truncate">{service.notes || 'N/A'}</TableCell>
-        <TableCell className="text-center">
-          <Button variant="ghost" size="icon" onClick={() => onEdit(service.id)} className="mr-2 text-primary hover:bg-primary/10">
-            <Edit className="h-4 w-4" />
+        <TableCell className="py-2 px-2 sm:px-4">{service.currency}</TableCell>
+        <TableCell className="py-2 px-2 sm:px-4 max-w-[100px] sm:max-w-xs truncate">{service.notes || 'N/A'}</TableCell>
+        <TableCell className="text-center py-2 px-2 sm:px-4">
+          <Button variant="ghost" size="icon" onClick={() => onEdit(service.id)} className="mr-1 sm:mr-2 text-primary hover:bg-primary/10 h-7 w-7 sm:h-8 sm:w-8">
+            <Edit className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
           </Button>
           {onDeleteConfirmation(service.id)}
         </TableCell>
@@ -149,178 +141,90 @@ export function ServicePriceTable({ servicePrices, onEdit, onDeleteConfirmation,
     );
   };
 
-  const renderHotelRow = (service: ServicePriceItem) => {
+  const renderHotelRow = (service: ServicePriceItem) => { /* ... similar responsive adjustments ... */
     let lowestRate: number | undefined = undefined;
-    service.hotelDetails?.roomTypes.forEach(rt => {
-        rt.seasonalPrices.forEach(sp => {
-            if (lowestRate === undefined || sp.rate < lowestRate) lowestRate = sp.rate;
-        });
-    });
+    service.hotelDetails?.roomTypes.forEach(rt => { rt.seasonalPrices.forEach(sp => { if (lowestRate === undefined || sp.rate < lowestRate) lowestRate = sp.rate; }); });
     const displayPriceInfo = lowestRate !== undefined ? `From ${formatCurrency(lowestRate, service.currency)}` : "N/A";
     const numRoomTypes = service.hotelDetails?.roomTypes.length || 0;
 
     return (
-      <TableRow key={service.id}>
-        <TableCell className="font-medium">{service.name}</TableCell>
-        <TableCell>{service.province || 'N/A'}</TableCell>
-        <TableCell className="text-center">{numRoomTypes}</TableCell>
-        <TableCell className="text-right font-code">{displayPriceInfo}</TableCell>
-        <TableCell>
-            {numRoomTypes > 0 && (
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Badge variant="outline" className="ml-2 cursor-default border-primary/50 text-primary">
-                        <CalendarClock className="h-3 w-3 mr-1" /> Seasonal/Tiered
-                      </Badge>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                        <p className="font-semibold mb-1">Room Types & Lowest Rates:</p>
-                        {service.hotelDetails?.roomTypes.slice(0,5).map(rt => {
-                            let minRtRate: number | undefined;
-                            rt.seasonalPrices.forEach(sp => {
-                                if (minRtRate === undefined || sp.rate < minRtRate) minRtRate = sp.rate;
-                            });
-                            return <p key={rt.id} className="text-xs">{rt.name}: From {minRtRate !== undefined ? formatCurrency(minRtRate, service.currency) : 'N/A'}</p>
-                        })}
-                        {numRoomTypes > 5 && <p className="text-xs italic">...and more room types.</p>}
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-            )}
+      <TableRow key={service.id} className="text-xs sm:text-sm">
+        <TableCell className="font-medium py-2 px-2 sm:px-4">{service.name}</TableCell>
+        <TableCell className="py-2 px-2 sm:px-4">{service.province || 'N/A'}</TableCell>
+        <TableCell className="text-center py-2 px-2 sm:px-4">{numRoomTypes}</TableCell>
+        <TableCell className="text-right font-code py-2 px-2 sm:px-4">{displayPriceInfo}</TableCell>
+        <TableCell className="py-2 px-2 sm:px-4">
+            {numRoomTypes > 0 && ( <TooltipProvider> <Tooltip> <TooltipTrigger asChild>
+              <Badge variant="outline" className="ml-1 sm:ml-2 cursor-default border-primary/50 text-primary text-xs px-1.5 py-0.5 sm:px-2.5 sm:py-0.5"> <CalendarClock className="h-2.5 w-2.5 sm:h-3 sm:w-3 mr-1" /> Details </Badge>
+            </TooltipTrigger> <TooltipContent> <p className="font-semibold mb-1 text-xs">Room Types & Lowest Rates:</p> {service.hotelDetails?.roomTypes.slice(0,5).map(rt => { let minRtRate: number | undefined; rt.seasonalPrices.forEach(sp => { if (minRtRate === undefined || sp.rate < minRtRate) minRtRate = sp.rate; }); return <p key={rt.id} className="text-xs">{rt.name}: From {minRtRate !== undefined ? formatCurrency(minRtRate, service.currency) : 'N/A'}</p> })} {numRoomTypes > 5 && <p className="text-xs italic">...and more.</p>} </TooltipContent> </Tooltip> </TooltipProvider> )}
         </TableCell>
-        <TableCell>{service.currency}</TableCell>
-        {/* <TableCell>{service.unitDescription || 'per night'}</TableCell> // Removed */}
-        <TableCell className="text-xs max-w-xs truncate">{service.notes || 'N/A'}</TableCell>
-        <TableCell className="text-center">
-          <Button variant="ghost" size="icon" onClick={() => onEdit(service.id)} className="mr-2 text-primary hover:bg-primary/10">
-            <Edit className="h-4 w-4" />
-          </Button>
+        <TableCell className="py-2 px-2 sm:px-4">{service.currency}</TableCell>
+        <TableCell className="py-2 px-2 sm:px-4 max-w-[100px] sm:max-w-xs truncate">{service.notes || 'N/A'}</TableCell>
+        <TableCell className="text-center py-2 px-2 sm:px-4">
+          <Button variant="ghost" size="icon" onClick={() => onEdit(service.id)} className="mr-1 sm:mr-2 text-primary hover:bg-primary/10 h-7 w-7 sm:h-8 sm:w-8"> <Edit className="h-3.5 w-3.5 sm:h-4 sm:w-4" /> </Button>
           {onDeleteConfirmation(service.id)}
         </TableCell>
       </TableRow>
     );
   };
 
-  const renderActivityRow = (service: ServicePriceItem) => {
+  const renderActivityRow = (service: ServicePriceItem) => { /* ... similar responsive adjustments ... */
     let lowestPackagePrice: number | undefined = undefined;
-    service.activityPackages?.forEach(pkg => {
-        if (lowestPackagePrice === undefined || pkg.price1 < lowestPackagePrice) lowestPackagePrice = pkg.price1;
-    });
+    service.activityPackages?.forEach(pkg => { if (lowestPackagePrice === undefined || pkg.price1 < lowestPackagePrice) lowestPackagePrice = pkg.price1; });
     const displayPriceInfo = lowestPackagePrice !== undefined ? `From ${formatCurrency(lowestPackagePrice, service.currency)}` : (service.price1 !== undefined ? formatCurrency(service.price1, service.currency) : "N/A");
     const numPackages = service.activityPackages?.length || 0;
-
     return (
-      <TableRow key={service.id}>
-        <TableCell className="font-medium">{service.name}</TableCell>
-        <TableCell>{service.province || 'N/A'}</TableCell>
-        <TableCell className="text-center">{numPackages}</TableCell>
-        <TableCell className="text-right font-code">{displayPriceInfo}</TableCell>
-        <TableCell>
-            {numPackages > 0 && (
-                 <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                        <Badge variant="outline" className="ml-2 cursor-default border-indigo-500/50 text-indigo-600">
-                            <Package className="h-3 w-3 mr-1" /> Multi-Package
-                        </Badge>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                        <p className="font-semibold mb-1">Packages & Base Prices:</p>
-                        {service.activityPackages?.slice(0,5).map(pkg => (
-                            <p key={pkg.id} className="text-xs">{pkg.name}: {formatCurrency(pkg.price1, service.currency)}</p>
-                        ))}
-                        {numPackages > 5 && <p className="text-xs italic">...and more packages.</p>}
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-            )}
+      <TableRow key={service.id} className="text-xs sm:text-sm">
+        <TableCell className="font-medium py-2 px-2 sm:px-4">{service.name}</TableCell>
+        <TableCell className="py-2 px-2 sm:px-4">{service.province || 'N/A'}</TableCell>
+        <TableCell className="text-center py-2 px-2 sm:px-4">{numPackages}</TableCell>
+        <TableCell className="text-right font-code py-2 px-2 sm:px-4">{displayPriceInfo}</TableCell>
+        <TableCell className="py-2 px-2 sm:px-4">
+            {numPackages > 0 && ( <TooltipProvider> <Tooltip> <TooltipTrigger asChild>
+                <Badge variant="outline" className="ml-1 sm:ml-2 cursor-default border-indigo-500/50 text-indigo-600 text-xs px-1.5 py-0.5 sm:px-2.5 sm:py-0.5"> <Package className="h-2.5 w-2.5 sm:h-3 sm:w-3 mr-1" /> Packages </Badge>
+            </TooltipTrigger> <TooltipContent> <p className="font-semibold mb-1 text-xs">Packages & Base Prices:</p> {service.activityPackages?.slice(0,5).map(pkg => ( <p key={pkg.id} className="text-xs">{pkg.name}: {formatCurrency(pkg.price1, service.currency)}</p> ))} {numPackages > 5 && <p className="text-xs italic">...and more.</p>} </TooltipContent> </Tooltip> </TooltipProvider> )}
         </TableCell>
-        <TableCell>{service.currency}</TableCell>
-        {/* <TableCell>{service.unitDescription || 'per person'}</TableCell> // Removed */}
-        <TableCell className="text-xs max-w-xs truncate">{service.notes || 'N/A'}</TableCell>
-        <TableCell className="text-center">
-          <Button variant="ghost" size="icon" onClick={() => onEdit(service.id)} className="mr-2 text-primary hover:bg-primary/10">
-            <Edit className="h-4 w-4" />
-          </Button>
+        <TableCell className="py-2 px-2 sm:px-4">{service.currency}</TableCell>
+        <TableCell className="py-2 px-2 sm:px-4 max-w-[100px] sm:max-w-xs truncate">{service.notes || 'N/A'}</TableCell>
+        <TableCell className="text-center py-2 px-2 sm:px-4">
+          <Button variant="ghost" size="icon" onClick={() => onEdit(service.id)} className="mr-1 sm:mr-2 text-primary hover:bg-primary/10 h-7 w-7 sm:h-8 sm:w-8"> <Edit className="h-3.5 w-3.5 sm:h-4 sm:w-4" /> </Button>
           {onDeleteConfirmation(service.id)}
         </TableCell>
       </TableRow>
     );
   };
 
-  const renderTransferRow = (service: ServicePriceItem) => {
+  const renderTransferRow = (service: ServicePriceItem) => { /* ... similar responsive adjustments ... */
      const isVehicle = service.transferMode === 'vehicle';
      let displayDetail = "Ticket Basis";
      let baseRate = service.price1 !== undefined ? formatCurrency(service.price1, service.currency) : 'N/A';
      let optionsIndicator: React.ReactNode = null;
-
      if (isVehicle && service.vehicleOptions && service.vehicleOptions.length > 0) {
         displayDetail = `${service.vehicleOptions.length} vehicle option(s)`;
-        let lowestPrice: number | undefined;
-        service.vehicleOptions.forEach(vo => {
-            if (lowestPrice === undefined || vo.price < lowestPrice) lowestPrice = vo.price;
-        });
+        let lowestPrice: number | undefined; service.vehicleOptions.forEach(vo => { if (lowestPrice === undefined || vo.price < lowestPrice) lowestPrice = vo.price; });
         baseRate = lowestPrice !== undefined ? `From ${formatCurrency(lowestPrice, service.currency)}` : "See Options";
-        optionsIndicator = (
-            <TooltipProvider>
-                <Tooltip>
-                <TooltipTrigger asChild>
-                    <Badge variant="outline" className="ml-2 cursor-default border-blue-500/50 text-blue-600">
-                        <Car className="h-3 w-3 mr-1" /> Options
-                    </Badge>
-                </TooltipTrigger>
-                <TooltipContent>
-                    <p className="font-semibold mb-1">Vehicle Options:</p>
-                    <ul className="list-none pl-1 text-xs">
-                    {service.vehicleOptions.slice(0,5).map(vo => <li key={vo.id}>{vo.vehicleType}: {formatCurrency(vo.price, service.currency)} (Max: {vo.maxPassengers})</li>)}
-                    {service.vehicleOptions.length > 5 && <li className="italic">...and more options.</li>}
-                    </ul>
-                </TooltipContent>
-                </Tooltip>
-            </TooltipProvider>
-        );
-     } else if (isVehicle) { // Vehicle mode but no options defined (should not happen with validation)
-        displayDetail = "Vehicle (No Options)";
-        baseRate = "N/A";
-     }
-
+        optionsIndicator = ( <TooltipProvider> <Tooltip> <TooltipTrigger asChild>
+            <Badge variant="outline" className="ml-1 sm:ml-2 cursor-default border-blue-500/50 text-blue-600 text-xs px-1.5 py-0.5 sm:px-2.5 sm:py-0.5"> <Car className="h-2.5 w-2.5 sm:h-3 sm:w-3 mr-1" /> Options </Badge>
+        </TooltipTrigger> <TooltipContent> <p className="font-semibold mb-1 text-xs">Vehicle Options:</p> <ul className="list-none pl-1 text-xs"> {service.vehicleOptions.slice(0,5).map(vo => <li key={vo.id}>{vo.vehicleType}: {formatCurrency(vo.price, service.currency)} (Max: {vo.maxPassengers})</li>)} {service.vehicleOptions.length > 5 && <li className="italic">...and more.</li>} </ul> </TooltipContent> </Tooltip> </TooltipProvider> );
+     } else if (isVehicle) { displayDetail = "Vehicle (No Options)"; baseRate = "N/A"; }
 
     return (
-      <TableRow key={service.id}>
-        <TableCell className="font-medium">{service.name}</TableCell>
-        <TableCell>{service.province || 'N/A'}</TableCell>
-        <TableCell>{service.transferMode === 'vehicle' ? 'Vehicle' : 'Ticket'}</TableCell>
-        <TableCell>{displayDetail}</TableCell>
-        <TableCell className="text-right font-code">{baseRate}</TableCell>
-        <TableCell>
+      <TableRow key={service.id} className="text-xs sm:text-sm">
+        <TableCell className="font-medium py-2 px-2 sm:px-4">{service.name}</TableCell>
+        <TableCell className="py-2 px-2 sm:px-4">{service.province || 'N/A'}</TableCell>
+        <TableCell className="py-2 px-2 sm:px-4">{service.transferMode === 'vehicle' ? 'Vehicle' : 'Ticket'}</TableCell>
+        <TableCell className="py-2 px-2 sm:px-4">{displayDetail}</TableCell>
+        <TableCell className="text-right font-code py-2 px-2 sm:px-4">{baseRate}</TableCell>
+        <TableCell className="py-2 px-2 sm:px-4">
             {optionsIndicator}
-            {isVehicle && service.surchargePeriods && service.surchargePeriods.length > 0 && (
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Badge variant="outline" className="ml-2 cursor-default border-orange-500/50 text-orange-600">
-                        <AlertTriangle className="h-3 w-3 mr-1" /> Surcharges
-                      </Badge>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p className="font-semibold mb-1">Surcharges Apply:</p>
-                       <ul className="list-disc pl-4 mt-1 text-xs">
-                        {service.surchargePeriods.slice(0,3).map(sp => <li key={sp.id}>{sp.name}: +{formatCurrency(sp.surchargeAmount, service.currency)} ({format(new Date(sp.startDate), 'dd MMM')} - {format(new Date(sp.endDate), 'dd MMM')})</li>)}
-                        {service.surchargePeriods.length > 3 && <li>...and more</li>}
-                      </ul>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-            )}
+            {isVehicle && service.surchargePeriods && service.surchargePeriods.length > 0 && ( <TooltipProvider> <Tooltip> <TooltipTrigger asChild>
+              <Badge variant="outline" className="ml-1 sm:ml-2 cursor-default border-orange-500/50 text-orange-600 text-xs px-1.5 py-0.5 sm:px-2.5 sm:py-0.5"> <AlertTriangle className="h-2.5 w-2.5 sm:h-3 sm:w-3 mr-1" /> Surcharges </Badge>
+            </TooltipTrigger> <TooltipContent> <p className="font-semibold mb-1 text-xs">Surcharges Apply:</p> <ul className="list-disc pl-4 mt-1 text-xs"> {service.surchargePeriods.slice(0,3).map(sp => <li key={sp.id}>{sp.name}: +{formatCurrency(sp.surchargeAmount, service.currency)} ({format(new Date(sp.startDate), 'dd MMM')} - {format(new Date(sp.endDate), 'dd MMM')})</li>)} {service.surchargePeriods.length > 3 && <li>...and more</li>} </ul> </TooltipContent> </Tooltip> </TooltipProvider> )}
         </TableCell>
-        <TableCell>{service.currency}</TableCell>
-        {/* <TableCell>{service.unitDescription || (isVehicle ? 'per service' : 'per person')}</TableCell> // Removed */}
-        <TableCell className="text-xs max-w-xs truncate">{service.notes || 'N/A'}</TableCell>
-        <TableCell className="text-center">
-          <Button variant="ghost" size="icon" onClick={() => onEdit(service.id)} className="mr-2 text-primary hover:bg-primary/10">
-            <Edit className="h-4 w-4" />
-          </Button>
+        <TableCell className="py-2 px-2 sm:px-4">{service.currency}</TableCell>
+        <TableCell className="py-2 px-2 sm:px-4 max-w-[100px] sm:max-w-xs truncate">{service.notes || 'N/A'}</TableCell>
+        <TableCell className="text-center py-2 px-2 sm:px-4">
+          <Button variant="ghost" size="icon" onClick={() => onEdit(service.id)} className="mr-1 sm:mr-2 text-primary hover:bg-primary/10 h-7 w-7 sm:h-8 sm:w-8"> <Edit className="h-3.5 w-3.5 sm:h-4 sm:w-4" /> </Button>
           {onDeleteConfirmation(service.id)}
         </TableCell>
       </TableRow>
@@ -328,19 +232,16 @@ export function ServicePriceTable({ servicePrices, onEdit, onDeleteConfirmation,
   };
 
   const renderSimpleRow = (service: ServicePriceItem, typeLabel: string) => (
-      <TableRow key={service.id}>
-        <TableCell className="font-medium">{service.name}</TableCell>
-        <TableCell>{service.province || 'N/A'}</TableCell>
-        <TableCell>{service.subCategory || 'N/A'}</TableCell>
-        <TableCell className="text-right font-code">{service.price1 !== undefined ? formatCurrency(service.price1, service.currency) : 'N/A'}</TableCell>
-        <TableCell className="text-right font-code">{service.price2 !== undefined ? formatCurrency(service.price2, service.currency) : 'N/A'}</TableCell>
-        <TableCell>{service.currency}</TableCell>
-        {/* <TableCell>{service.unitDescription || 'per item'}</TableCell> // Removed */}
-        <TableCell className="text-xs max-w-xs truncate">{service.notes || 'N/A'}</TableCell>
-        <TableCell className="text-center">
-          <Button variant="ghost" size="icon" onClick={() => onEdit(service.id)} className="mr-2 text-primary hover:bg-primary/10">
-            <Edit className="h-4 w-4" />
-          </Button>
+      <TableRow key={service.id} className="text-xs sm:text-sm">
+        <TableCell className="font-medium py-2 px-2 sm:px-4">{service.name}</TableCell>
+        <TableCell className="py-2 px-2 sm:px-4">{service.province || 'N/A'}</TableCell>
+        <TableCell className="py-2 px-2 sm:px-4">{service.subCategory || 'N/A'}</TableCell>
+        <TableCell className="text-right font-code py-2 px-2 sm:px-4">{service.price1 !== undefined ? formatCurrency(service.price1, service.currency) : 'N/A'}</TableCell>
+        <TableCell className="text-right font-code py-2 px-2 sm:px-4">{service.price2 !== undefined ? formatCurrency(service.price2, service.currency) : 'N/A'}</TableCell>
+        <TableCell className="py-2 px-2 sm:px-4">{service.currency}</TableCell>
+        <TableCell className="py-2 px-2 sm:px-4 max-w-[100px] sm:max-w-xs truncate">{service.notes || 'N/A'}</TableCell>
+        <TableCell className="text-center py-2 px-2 sm:px-4">
+          <Button variant="ghost" size="icon" onClick={() => onEdit(service.id)} className="mr-1 sm:mr-2 text-primary hover:bg-primary/10 h-7 w-7 sm:h-8 sm:w-8"> <Edit className="h-3.5 w-3.5 sm:h-4 sm:w-4" /> </Button>
           {onDeleteConfirmation(service.id)}
         </TableCell>
       </TableRow>
@@ -352,109 +253,36 @@ export function ServicePriceTable({ servicePrices, onEdit, onDeleteConfirmation,
 
   switch (displayMode) {
     case 'hotel':
-      headers = (
-        <TableRow>
-          <TableHead>Hotel Name</TableHead>
-          <TableHead>Province</TableHead>
-          <TableHead className="text-center">Room Types (#)</TableHead>
-          <TableHead className="text-right">Base Rate (From)</TableHead>
-          <TableHead>Pricing Model</TableHead>
-          <TableHead>Currency</TableHead>
-          {/* <TableHead>Unit</TableHead> // Removed */}
-          <TableHead>Notes</TableHead>
-          <TableHead className="text-center">Actions</TableHead>
-        </TableRow>
-      );
+      headers = ( <TableRow> <TableHead className="px-2 sm:px-4 py-3">Hotel Name</TableHead> <TableHead className="px-2 sm:px-4 py-3">Province</TableHead> <TableHead className="text-center px-2 sm:px-4 py-3">Room Types</TableHead> <TableHead className="text-right px-2 sm:px-4 py-3">Base Rate</TableHead> <TableHead className="px-2 sm:px-4 py-3">Pricing</TableHead> <TableHead className="px-2 sm:px-4 py-3">Currency</TableHead> <TableHead className="px-2 sm:px-4 py-3">Notes</TableHead> <TableHead className="text-center px-2 sm:px-4 py-3">Actions</TableHead> </TableRow> );
       rows = servicePrices.map(renderHotelRow);
       break;
     case 'activity':
-      headers = (
-        <TableRow>
-          <TableHead>Activity Name</TableHead>
-          <TableHead>Province</TableHead>
-          <TableHead className="text-center">Packages (#)</TableHead>
-          <TableHead className="text-right">Base Price (From)</TableHead>
-          <TableHead>Pricing Model</TableHead>
-          <TableHead>Currency</TableHead>
-          {/* <TableHead>Unit</TableHead> // Removed */}
-          <TableHead>Notes</TableHead>
-          <TableHead className="text-center">Actions</TableHead>
-        </TableRow>
-      );
+      headers = ( <TableRow> <TableHead className="px-2 sm:px-4 py-3">Activity Name</TableHead> <TableHead className="px-2 sm:px-4 py-3">Province</TableHead> <TableHead className="text-center px-2 sm:px-4 py-3">Packages</TableHead> <TableHead className="text-right px-2 sm:px-4 py-3">Base Price</TableHead> <TableHead className="px-2 sm:px-4 py-3">Pricing</TableHead> <TableHead className="px-2 sm:px-4 py-3">Currency</TableHead> <TableHead className="px-2 sm:px-4 py-3">Notes</TableHead> <TableHead className="text-center px-2 sm:px-4 py-3">Actions</TableHead> </TableRow> );
       rows = servicePrices.map(renderActivityRow);
       break;
     case 'transfer':
-      headers = (
-        <TableRow>
-          <TableHead>Route Name</TableHead>
-          <TableHead>Province</TableHead>
-          <TableHead>Mode</TableHead>
-          <TableHead>Details</TableHead>
-          <TableHead className="text-right">Base Rate (From)</TableHead>
-          <TableHead>Info / Surcharges</TableHead>
-          <TableHead>Currency</TableHead>
-          {/* <TableHead>Unit</TableHead> // Removed */}
-          <TableHead>Notes</TableHead>
-          <TableHead className="text-center">Actions</TableHead>
-        </TableRow>
-      );
+      headers = ( <TableRow> <TableHead className="px-2 sm:px-4 py-3">Route Name</TableHead> <TableHead className="px-2 sm:px-4 py-3">Province</TableHead> <TableHead className="px-2 sm:px-4 py-3">Mode</TableHead> <TableHead className="px-2 sm:px-4 py-3">Details</TableHead> <TableHead className="text-right px-2 sm:px-4 py-3">Base Rate</TableHead> <TableHead className="px-2 sm:px-4 py-3">Info</TableHead> <TableHead className="px-2 sm:px-4 py-3">Currency</TableHead> <TableHead className="px-2 sm:px-4 py-3">Notes</TableHead> <TableHead className="text-center px-2 sm:px-4 py-3">Actions</TableHead> </TableRow> );
       rows = servicePrices.map(renderTransferRow);
       break;
     case 'meal':
-      headers = (
-        <TableRow>
-          <TableHead>Meal Name</TableHead>
-          <TableHead>Province</TableHead>
-          <TableHead>Type/Sub-Category</TableHead>
-          <TableHead className="text-right">Adult Price</TableHead>
-          <TableHead className="text-right">Child Price</TableHead>
-          <TableHead>Currency</TableHead>
-          {/* <TableHead>Unit</TableHead> // Removed */}
-          <TableHead>Notes</TableHead>
-          <TableHead className="text-center">Actions</TableHead>
-        </TableRow>
-      );
+      headers = ( <TableRow> <TableHead className="px-2 sm:px-4 py-3">Meal Name</TableHead> <TableHead className="px-2 sm:px-4 py-3">Province</TableHead> <TableHead className="px-2 sm:px-4 py-3">Type</TableHead> <TableHead className="text-right px-2 sm:px-4 py-3">Adult Price</TableHead> <TableHead className="text-right px-2 sm:px-4 py-3">Child Price</TableHead> <TableHead className="px-2 sm:px-4 py-3">Currency</TableHead> <TableHead className="px-2 sm:px-4 py-3">Notes</TableHead> <TableHead className="text-center px-2 sm:px-4 py-3">Actions</TableHead> </TableRow> );
       rows = servicePrices.map(service => renderSimpleRow(service, "Meal"));
       break;
     case 'misc':
-      headers = (
-        <TableRow>
-          <TableHead>Item Name</TableHead>
-          <TableHead>Province</TableHead>
-          <TableHead>Type/Sub-Category</TableHead>
-          <TableHead className="text-right">Unit Cost</TableHead>
-          <TableHead className="text-right">Secondary Cost</TableHead>
-          <TableHead>Currency</TableHead>
-          {/* <TableHead>Unit</TableHead> // Removed */}
-          <TableHead>Notes</TableHead>
-          <TableHead className="text-center">Actions</TableHead>
-        </TableRow>
-      );
+      headers = ( <TableRow> <TableHead className="px-2 sm:px-4 py-3">Item Name</TableHead> <TableHead className="px-2 sm:px-4 py-3">Province</TableHead> <TableHead className="px-2 sm:px-4 py-3">Type</TableHead> <TableHead className="text-right px-2 sm:px-4 py-3">Unit Cost</TableHead> <TableHead className="text-right px-2 sm:px-4 py-3">Secondary Cost</TableHead> <TableHead className="px-2 sm:px-4 py-3">Currency</TableHead> <TableHead className="px-2 sm:px-4 py-3">Notes</TableHead> <TableHead className="text-center px-2 sm:px-4 py-3">Actions</TableHead> </TableRow> );
       rows = servicePrices.map(service => renderSimpleRow(service, "Misc"));
       break;
     case 'all':
     default:
-      headers = (
-        <TableRow>
-          <TableHead className="w-[200px] min-w-[150px]">Name</TableHead>
-          <TableHead>Province</TableHead>
-          <TableHead>Category</TableHead>
-          <TableHead className="min-w-[150px]">Details / Packages</TableHead>
-          <TableHead className="text-right min-w-[150px]">Base Rate / Info</TableHead>
-          <TableHead>Currency</TableHead>
-          {/* <TableHead>Unit</TableHead> // Removed */}
-          <TableHead className="min-w-[150px]">Notes</TableHead>
-          <TableHead className="text-center w-[120px]">Actions</TableHead>
-        </TableRow>
-      );
+      headers = ( <TableRow> <TableHead className="w-[150px] min-w-[120px] sm:w-[200px] sm:min-w-[150px] px-2 sm:px-4 py-3">Name</TableHead> <TableHead className="px-2 sm:px-4 py-3">Province</TableHead> <TableHead className="px-2 sm:px-4 py-3">Category</TableHead> <TableHead className="min-w-[120px] sm:min-w-[150px] px-2 sm:px-4 py-3">Details</TableHead> <TableHead className="text-right min-w-[120px] sm:min-w-[150px] px-2 sm:px-4 py-3">Base Rate / Info</TableHead> <TableHead className="px-2 sm:px-4 py-3">Currency</TableHead> <TableHead className="min-w-[100px] sm:min-w-[150px] px-2 sm:px-4 py-3">Notes</TableHead> <TableHead className="text-center w-[100px] sm:w-[120px] px-2 sm:px-4 py-3">Actions</TableHead> </TableRow> );
       rows = servicePrices.map(renderAllModeRow);
       break;
   }
-  const colSpan = displayMode === 'all' ? 9 : (displayMode === 'transfer' ? 10 : 9) -1; // Adjusted colSpan due to removed unit column
+  const colSpan = displayMode === 'all' ? 8 : (displayMode === 'transfer' ? 9 : 8);
 
 
   return (
-    <div className="rounded-lg border shadow-sm overflow-hidden">
+    <div className="rounded-lg border shadow-sm overflow-x-auto">
       <Table>
         <TableHeader className="bg-muted/50">
           {headers}
@@ -462,7 +290,7 @@ export function ServicePriceTable({ servicePrices, onEdit, onDeleteConfirmation,
         <TableBody>
           {servicePrices.length > 0 ? rows : (
             <TableRow>
-                <TableCell colSpan={colSpan} className="text-center h-24 text-muted-foreground">
+                <TableCell colSpan={colSpan} className="text-center h-24 text-muted-foreground text-sm sm:text-base">
                     No services to display for this category.
                 </TableCell>
             </TableRow>
