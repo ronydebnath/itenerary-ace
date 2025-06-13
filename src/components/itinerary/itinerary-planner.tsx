@@ -5,11 +5,11 @@ import * as React from 'react';
 import type { TripData, ItineraryItem, CostSummary, TripSettings, PaxDetails } from '@/types/itinerary';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Separator } from "@/components/ui/separator";
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Separator } from '@/components/ui/separator';
 import { Printer, Eye, EyeOff, Loader2 } from 'lucide-react';
 import { formatCurrency, generateGUID } from '@/lib/utils';
-// import { AISuggestions } from '../itinerary/ai-suggestions'; // Dynamic import
+// import { AISuggestions } from '../itinerary/ai-suggestions'; // Removed
 // import { PrintLayout } from '../itinerary/print-layout'; // Dynamic import
 import { DayView } from '../itinerary/day-view';
 import { CostBreakdownTable } from '../itinerary/cost-breakdown-table';
@@ -22,10 +22,10 @@ import { PlannerHeader } from './planner-header';
 import { DayNavigation } from './day-navigation';
 import dynamic from 'next/dynamic';
 
-const AISuggestions = dynamic(() => import('../itinerary/ai-suggestions').then(mod => mod.AISuggestions), {
-  loading: () => <div className="flex justify-center items-center p-4"><Loader2 className="h-5 w-5 animate-spin" /> <span className="ml-2 text-sm">Loading AI...</span></div>,
-  ssr: false
-});
+// const AISuggestions = dynamic(() => import('../itinerary/ai-suggestions').then(mod => mod.AISuggestions), { // Removed
+//   loading: () => <div className="flex justify-center items-center p-4"><Loader2 className="h-5 w-5 animate-spin" /> <span className="ml-2 text-sm">Loading AI...</span></div>,
+//   ssr: false
+// });
 
 const PrintLayout = dynamic(() => import('../itinerary/print-layout').then(mod => mod.PrintLayout), {
   loading: () => <div className="flex justify-center items-center h-screen"><Loader2 className="h-8 w-8 animate-spin" /> <span className="ml-2">Preparing print view...</span></div>,
@@ -59,7 +59,7 @@ export function ItineraryPlanner({
 
   React.useEffect(() => {
     if (tripData && !isLoadingServices && !isLoadingHotelDefinitions) {
-      const summary = calculateAllCosts(tripData, allServicePrices, allHotelDefinitions);
+      const summary = calculateAllCosts(tripData); // Pass allServicePrices and allHotelDefinitions if needed by your updated function
       setCostSummary(summary);
     } else {
       setCostSummary(null);
@@ -208,11 +208,7 @@ export function ItineraryPlanner({
         </div>
 
         <div className="lg:col-span-4 flex flex-col space-y-4 md:space-y-6 no-print">
-          <AISuggestions
-            tripData={tripData}
-            onApplySuggestion={(modifiedTripData) => onUpdateTripData(modifiedTripData)}
-            showCosts={showCosts}
-          />
+          {/* AISuggestions component removed from here */}
           <Card className="shadow-lg flex-grow flex flex-col">
             <CardHeader>
               <CardTitle className="text-lg sm:text-xl text-primary">Cost Summary</CardTitle>
