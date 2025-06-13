@@ -8,20 +8,19 @@ export const BUDGET_RANGES = ["Economy/Budget", "Mid-Range/Comfort", "Luxury/Pre
 export const HOTEL_STAR_RATINGS = ["Any", "2 Stars", "3 Stars", "4 Stars", "5 Stars", "Boutique/Unrated"] as const;
 
 export const QuotationRequestClientInfoSchema = z.object({
-  name: z.string().min(1, "Client name is required."),
-  email: z.string().email("Invalid email address."),
-  phone: z.string().optional(),
+  clientReference: z.string().optional().describe("Agent's internal reference for the client"),
   adults: z.coerce.number().int().min(1, "At least one adult is required."),
   children: z.coerce.number().int().min(0, "Number of children must be 0 or more.").default(0),
   childAges: z.string().optional().describe("Comma-separated ages, e.g., 5, 8, 12. Required if children > 0."),
   groupOrFamilyName: z.string().optional(),
 }).refine(data => !(data.children > 0 && (!data.childAges || data.childAges.trim() === "")), {
-  message: "Please provide ages for children.",
+  message: "Please provide ages for children if number of children is greater than 0.",
   path: ["childAges"],
 });
 
 export const QuotationRequestTripDetailsSchema = z.object({
-  destinations: z.string().min(3, "Please specify at least one destination.").describe("Countries, cities, regions"),
+  preferredCountryIds: z.array(z.string()).min(1, "At least one country must be selected."),
+  preferredProvinceNames: z.array(z.string()).optional().describe("Specific provinces of interest within selected countries."),
   preferredStartDate: z.string().refine(val => val ? isValid(parseISO(val)) : true, { message: "Invalid start date."}).optional(),
   preferredEndDate: z.string().refine(val => val ? isValid(parseISO(val)) : true, { message: "Invalid end date."}).optional(),
   approximateDatesOrSeason: z.string().optional().describe("e.g., Mid-June, Christmas, Around 2 weeks in August"),

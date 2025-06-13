@@ -29,9 +29,11 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { CURRENCIES, type CurrencyCode } from '@/types/itinerary';
+import { CURRENCIES, type CurrencyCode, type CountryItem, type ProvinceItem } from '@/types/itinerary';
 import { parseISO, format, differenceInDays, isValid } from 'date-fns';
-import { Loader2 } from 'lucide-react';
+import { Loader2, MapPin, Globe } from 'lucide-react';
+import { useCountries } from '@/hooks/useCountries';
+import { useProvinces } from '@/hooks/useProvinces';
 
 interface QuotationRequestFormProps {
   onSubmit: (data: QuotationRequest) => void;
@@ -40,12 +42,15 @@ interface QuotationRequestFormProps {
 }
 
 export function QuotationRequestForm({ onSubmit, onCancel, defaultAgentId }: QuotationRequestFormProps) {
+  const { countries, isLoading: isLoadingCountries } = useCountries();
+  const { provinces: allProvinces, isLoading: isLoadingProvinces, getProvincesByCountry } = useProvinces();
+
   const form = useForm<QuotationRequest>({
     resolver: zodResolver(QuotationRequestSchema),
     defaultValues: {
       agentId: defaultAgentId,
-      clientInfo: { adults: 1, children: 0 },
-      tripDetails: { budgetCurrency: 'USD' },
+      clientInfo: { adults: 1, children: 0, clientReference: "" },
+      tripDetails: { budgetCurrency: 'USD', preferredCountryIds: [], preferredProvinceNames: [] },
       flightPrefs: { includeFlights: "To be discussed", airportTransfersRequired: false },
       status: "Pending",
       requestDate: new Date().toISOString(),
@@ -56,6 +61,7 @@ export function QuotationRequestForm({ onSubmit, onCancel, defaultAgentId }: Quo
   const watchEndDate = form.watch("tripDetails.preferredEndDate");
   const watchChildren = form.watch("clientInfo.children");
   const watchBudgetRange = form.watch("tripDetails.budgetRange");
+  const watchSelectedCountryIds = form.watch("tripDetails.preferredCountryIds");
 
   React.useEffect(() => {
     if (watchStartDate && watchEndDate) {
@@ -78,6 +84,26 @@ export function QuotationRequestForm({ onSubmit, onCancel, defaultAgentId }: Quo
     }
   }, [watchStartDate, watchEndDate, form]);
 
+  const displayableProvinces = React.useMemo(() => {
+    if (isLoadingProvinces) return [];
+    if (!watchSelectedCountryIds || watchSelectedCountryIds.length === 0) {
+      return allProvinces.sort((a,b) => a.name.localeCompare(b.name));
+    }
+    let provincesFromSelectedCountries: ProvinceItem[] = [];
+    watchSelectedCountryIds.forEach(countryId => {
+      provincesFromSelectedCountries = provincesFromSelectedCountries.concat(getProvincesByCountry(countryId));
+    });
+    return provincesFromSelectedCountries.sort((a,b) => a.name.localeCompare(b.name));
+  }, [isLoadingProvinces, watchSelectedCountryIds, allProvinces, getProvincesByCountry]);
+
+
+  const selectedCountryNames = React.useMemo(() => {
+    return (watchSelectedCountryIds || [])
+      .map(id => countries.find(c => c.id === id)?.name)
+      .filter(Boolean) as string[];
+  }, [watchSelectedCountryIds, countries]);
+
+
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
@@ -86,27 +112,136 @@ export function QuotationRequestForm({ onSubmit, onCancel, defaultAgentId }: Quo
             <Card>
               <CardHeader>
                 <CardTitle>Client Information</CardTitle>
-                <CardDescription>Details about the person or group requesting the quotation.</CardDescription>
+                <CardDescription>Details about the group requesting the quotation.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <FormField control={form.control} name="clientInfo.name" render={({ field }) => (<FormItem><FormLabel>Client Full Name *</FormLabel><FormControl><Input placeholder="e.g., John Doe" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <FormField control={form.control} name="clientInfo.email" render={({ field }) => (<FormItem><FormLabel>Client Email *</FormLabel><FormControl><Input type="email" placeholder="client@example.com" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                  <FormField control={form.control} name="clientInfo.phone" render={({ field }) => (<FormItem><FormLabel>Client Phone (Optional)</FormLabel><FormControl><Input type="tel" placeholder="+1 555 123 4567" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                </div>
+                 <FormField control={form.control} name="clientInfo.clientReference" render={({ field }) => (<FormItem><FormLabel>Client Reference (For your records - Optional)</FormLabel><FormControl><Input placeholder="e.g., Smith Family Summer Trip, Mr. J Q1" {...field} /></FormControl><FormMessage /></FormItem>)} />
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <FormField control={form.control} name="clientInfo.adults" render={({ field }) => (<FormItem><FormLabel>Adults *</FormLabel><FormControl><Input type="number" min="1" {...field} /></FormControl><FormMessage /></FormItem>)} />
                   <FormField control={form.control} name="clientInfo.children" render={({ field }) => (<FormItem><FormLabel>Children</FormLabel><FormControl><Input type="number" min="0" {...field} /></FormControl><FormMessage /></FormItem>)} />
                    <FormField control={form.control} name="clientInfo.childAges" render={({ field }) => (<FormItem><FormLabel>Child Ages {watchChildren > 0 && "*"}</FormLabel><FormControl><Input placeholder="e.g., 5, 8, 12" {...field} disabled={!(watchChildren > 0)} /></FormControl><FormDescription className="text-xs">Comma-separated if multiple.</FormDescription><FormMessage /></FormItem>)} />
                 </div>
-                <FormField control={form.control} name="clientInfo.groupOrFamilyName" render={({ field }) => (<FormItem><FormLabel>Group/Family Name (Optional)</FormLabel><FormControl><Input placeholder="e.g., The Smith Family" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                <FormField control={form.control} name="clientInfo.groupOrFamilyName" render={({ field }) => (<FormItem><FormLabel>Group/Family Name (Optional)</FormLabel><FormControl><Input placeholder="e.g., The Adventure Seekers" {...field} /></FormControl><FormMessage /></FormItem>)} />
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader><CardTitle>Trip Details</CardTitle></CardHeader>
               <CardContent className="space-y-4">
-                <FormField control={form.control} name="tripDetails.destinations" render={({ field }) => (<FormItem><FormLabel>Destination(s) *</FormLabel><FormControl><Textarea placeholder="e.g., Paris, France; Bangkok & Phuket, Thailand; Italy (Rome, Florence, Venice)" {...field} rows={3} /></FormControl><FormMessage /></FormItem>)} />
+                <div>
+                  <FormField
+                    control={form.control}
+                    name="tripDetails.preferredCountryIds"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-foreground/80 flex items-center mb-1"><Globe className="h-4 w-4 mr-2 text-primary"/>Preferred Countries *</FormLabel>
+                        {isLoadingCountries ? (
+                          <div className="flex items-center justify-center h-24 border rounded-md bg-muted/50">
+                            <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                            <span className="ml-2 text-xs sm:text-sm text-muted-foreground">Loading countries...</span>
+                          </div>
+                        ) : countries.length > 0 ? (
+                          <ScrollArea className="h-28 w-full rounded-md border p-3 bg-background">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-1.5">
+                              {countries.map((country) => (
+                                <FormField
+                                  key={country.id}
+                                  control={form.control}
+                                  name="tripDetails.preferredCountryIds"
+                                  render={({ field: countryField }) => (
+                                    <FormItem className="flex flex-row items-start space-x-2 space-y-0">
+                                      <FormControl>
+                                        <Checkbox
+                                          checked={countryField.value?.includes(country.id)}
+                                          onCheckedChange={(checked) => {
+                                            const newValue = checked
+                                              ? [...(countryField.value || []), country.id]
+                                              : (countryField.value || []).filter((id) => id !== country.id);
+                                            countryField.onChange(newValue);
+                                            // Clear provinces if no countries are selected or if the provinces are not in the newly selected countries
+                                            const currentProvinces = form.getValues("tripDetails.preferredProvinceNames") || [];
+                                            const validProvincesForNewCountries = currentProvinces.filter(provName => 
+                                                allProvinces.find(p => p.name === provName && newValue.includes(p.countryId))
+                                            );
+                                            form.setValue("tripDetails.preferredProvinceNames", validProvincesForNewCountries);
+                                          }}
+                                        />
+                                      </FormControl>
+                                      <FormLabel className="font-normal cursor-pointer">{country.name}</FormLabel>
+                                    </FormItem>
+                                  )}
+                                />
+                              ))}
+                            </div>
+                          </ScrollArea>
+                        ) : (
+                           <p className="text-sm text-muted-foreground text-center py-4 border rounded-md bg-muted/50">No countries available for selection.</p>
+                        )}
+                        {selectedCountryNames.length > 0 && (<div className="pt-1 text-xs text-muted-foreground">Selected Countries: {selectedCountryNames.join(', ')}</div>)}
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <div>
+                 <FormField
+                    control={form.control}
+                    name="tripDetails.preferredProvinceNames"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-foreground/80 flex items-center mb-1"><MapPin className="h-4 w-4 mr-2 text-primary"/>Preferred Provinces (Optional)</FormLabel>
+                         <FormDescription className="text-xs mb-1">
+                           {(!watchSelectedCountryIds || watchSelectedCountryIds.length === 0) ? "Select countries first to see relevant provinces, or choose from all." : "Provinces within selected countries."}
+                         </FormDescription>
+                        {isLoadingProvinces ? (
+                          <div className="flex items-center justify-center h-24 border rounded-md bg-muted/50">
+                            <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                            <span className="ml-2 text-xs sm:text-sm text-muted-foreground">Loading provinces...</span>
+                          </div>
+                        ) : displayableProvinces.length > 0 ? (
+                          <ScrollArea className="h-28 w-full rounded-md border p-3 bg-background">
+                             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-1.5">
+                              {displayableProvinces.map((province) => (
+                                <FormField
+                                  key={province.id}
+                                  control={form.control}
+                                  name="tripDetails.preferredProvinceNames"
+                                  render={({ field: provinceField }) => (
+                                    <FormItem className="flex flex-row items-start space-x-2 space-y-0">
+                                      <FormControl>
+                                        <Checkbox
+                                          checked={provinceField.value?.includes(province.name)}
+                                          onCheckedChange={(checked) => {
+                                            return checked
+                                              ? provinceField.onChange([...(provinceField.value || []), province.name])
+                                              : provinceField.onChange(
+                                                (provinceField.value || []).filter(
+                                                    (value) => value !== province.name
+                                                  )
+                                                )
+                                          }}
+                                        />
+                                      </FormControl>
+                                      <FormLabel className="font-normal cursor-pointer">{province.name} <span className="text-muted-foreground/70 text-xs">({countries.find(c=>c.id===province.countryId)?.name || 'N/A'})</span></FormLabel>
+                                    </FormItem>
+                                  )}
+                                />
+                              ))}
+                            </div>
+                          </ScrollArea>
+                        ) : (
+                           <p className="text-sm text-muted-foreground text-center py-4 border rounded-md bg-muted/50">
+                            {(!watchSelectedCountryIds || watchSelectedCountryIds.length === 0) ? "No provinces available (select countries or add provinces in admin)." : "No provinces in selected countries."}
+                           </p>
+                        )}
+                        {(form.getValues("tripDetails.preferredProvinceNames") || []).length > 0 && (<div className="pt-1 text-xs text-muted-foreground">Selected Provinces: {form.getValues("tripDetails.preferredProvinceNames")!.join(', ')}</div>)}
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <FormField control={form.control} name="tripDetails.preferredStartDate" render={({ field }) => (<FormItem className="flex flex-col"><FormLabel>Preferred Start Date</FormLabel><Controller control={form.control} name="tripDetails.preferredStartDate" render={({ field: { onChange, value } }) => <DatePicker date={value ? parseISO(value) : undefined} onDateChange={(date) => onChange(date ? format(date, 'yyyy-MM-dd') : undefined)} placeholder="Select start date"/>} /><FormMessage /></FormItem>)} />
                   <FormField control={form.control} name="tripDetails.preferredEndDate" render={({ field }) => (<FormItem className="flex flex-col"><FormLabel>Preferred End Date</FormLabel><Controller control={form.control} name="tripDetails.preferredEndDate" render={({ field: { onChange, value } }) => <DatePicker date={value ? parseISO(value) : undefined} onDateChange={(date) => onChange(date ? format(date, 'yyyy-MM-dd') : undefined)} placeholder="Select end date" minDate={watchStartDate ? parseISO(watchStartDate) : undefined} />} /><FormMessage /></FormItem>)} />
@@ -170,8 +305,8 @@ export function QuotationRequestForm({ onSubmit, onCancel, defaultAgentId }: Quo
         <Separator className="my-6" />
         <div className="flex justify-end space-x-3">
           <Button type="button" variant="outline" onClick={onCancel} disabled={form.formState.isSubmitting}>Cancel</Button>
-          <Button type="submit" className="bg-primary hover:bg-primary/90 text-primary-foreground" disabled={form.formState.isSubmitting}>
-            {form.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+          <Button type="submit" className="bg-primary hover:bg-primary/90 text-primary-foreground" disabled={form.formState.isSubmitting || isLoadingCountries || isLoadingProvinces}>
+            {(form.formState.isSubmitting || isLoadingCountries || isLoadingProvinces) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Submit Quotation Request
           </Button>
         </div>
@@ -179,4 +314,3 @@ export function QuotationRequestForm({ onSubmit, onCancel, defaultAgentId }: Quo
     </Form>
   );
 }
-

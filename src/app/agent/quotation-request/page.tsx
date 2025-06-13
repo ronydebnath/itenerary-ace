@@ -11,15 +11,11 @@ import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { ArrowLeft, FilePlus, LayoutDashboard } from 'lucide-react';
 
-// For now, we'll manage submitted requests in localStorage for the agent to see.
-// In a real app, this would go to a backend.
 const AGENT_QUOTATION_REQUESTS_KEY = 'itineraryAce_agentQuotationRequests';
 
 export default function AgentQuotationRequestPage() {
   const router = useRouter();
   const { toast } = useToast();
-  // In a real app with agent auth, you'd get the agentId from the session.
-  // For now, using a placeholder or assuming a single agent context.
   const placeholderAgentId = "agent_default_user"; 
 
   const handleFormSubmit = (data: QuotationRequest) => {
@@ -27,7 +23,6 @@ export default function AgentQuotationRequestPage() {
     console.log("New Quotation Request Submitted:", newRequest);
 
     try {
-      // Simulate storing the request
       const storedRequestsString = localStorage.getItem(AGENT_QUOTATION_REQUESTS_KEY);
       const existingRequests: QuotationRequest[] = storedRequestsString ? JSON.parse(storedRequestsString) : [];
       existingRequests.push(newRequest);
@@ -38,7 +33,7 @@ export default function AgentQuotationRequestPage() {
         description: "Your quotation request has been sent. Admin will be notified and will prepare a proposal.",
         variant: "default",
       });
-      router.push('/agent'); // Navigate back to agent dashboard
+      router.push('/agent'); 
     } catch (error) {
       console.error("Error saving quotation request:", error);
       toast({
