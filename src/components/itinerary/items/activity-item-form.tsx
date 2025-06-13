@@ -5,7 +5,7 @@ import * as React from 'react';
 import type { ActivityItem as ActivityItemType, Traveler, CurrencyCode, TripSettings, ServicePriceItem, CountryItem } from '@/types/itinerary';
 import { BaseItemForm, FormField } from './base-item-form';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label'; // Added import
+import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from '@/components/ui/badge';
 import { format, parseISO, isValid } from 'date-fns';
@@ -183,7 +183,6 @@ export function ActivityItemForm({ item, travelers, currency, dayNumber, tripSet
 
   return (
     <BaseItemForm item={item} travelers={travelers} currency={currency} tripSettings={tripSettings} onUpdate={onUpdate} onDelete={onDelete} itemTypeLabel="Activity" dayNumber={dayNumber}>
-      {(activityServices.length > 0 || item.selectedServicePriceId || actualLoadingState) && (
         <div className="mb-4">
           <FormField label={`Select Predefined Activity (${locationContext})`} id={`predefined-activity-${item.id}`}>
             {actualLoadingState ? (
@@ -215,32 +214,31 @@ export function ActivityItemForm({ item, travelers, currency, dayNumber, tripSet
             )}
           </FormField>
           {selectedActivityService && <p className="text-xs text-muted-foreground pt-1">Using: {selectedActivityService.name}</p>}
-
-          {selectedActivityService && selectedActivityService.activityPackages && selectedActivityService.activityPackages.length > 0 && (
-            <div className="mt-3">
-              <FormField label="Select Package" id={`activity-package-${item.id}`}>
-                <Select
-                  value={item.selectedPackageId || "none"}
-                  onValueChange={handlePackageSelect}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Choose a package..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">None (Use Activity Base Price or Custom)</SelectItem>
-                    {selectedActivityService.activityPackages.map(pkg => (
-                      <SelectItem key={pkg.id} value={pkg.id}>
-                        {pkg.name} - {currency} {pkg.price1}
-                        {pkg.price2 !== undefined ? ` / Ch: ${pkg.price2}` : ''}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </FormField>
-            </div>
-          )}
         </div>
-      )}
+
+        {selectedActivityService && selectedActivityService.activityPackages && selectedActivityService.activityPackages.length > 0 && (
+        <div className="mb-4">
+            <FormField label="Select Package" id={`activity-package-${item.id}`}>
+            <Select
+                value={item.selectedPackageId || "none"}
+                onValueChange={handlePackageSelect}
+            >
+                <SelectTrigger>
+                <SelectValue placeholder="Choose a package..." />
+                </SelectTrigger>
+                <SelectContent>
+                <SelectItem value="none">None (Use Activity Base Price or Custom)</SelectItem>
+                {selectedActivityService.activityPackages.map(pkg => (
+                    <SelectItem key={pkg.id} value={pkg.id}>
+                    {pkg.name} - {currency} {pkg.price1}
+                    {pkg.price2 !== undefined ? ` / Ch: ${pkg.price2}` : ''}
+                    </SelectItem>
+                ))}
+                </SelectContent>
+            </Select>
+            </FormField>
+        </div>
+        )}
 
       {serviceDefinitionNotFound && (
         <Alert variant="destructive" className="my-4">
