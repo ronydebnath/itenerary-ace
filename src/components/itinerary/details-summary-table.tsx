@@ -97,9 +97,9 @@ function DetailsSummaryTableComponent({ summary, currency, showCosts }: DetailsS
             <TableHead className="min-w-[200px]">Name/Description</TableHead>
             <TableHead className="min-w-[150px]">Note</TableHead>
             <TableHead className="min-w-[250px]">Configuration Details</TableHead>
-            {!isPrintView && <TableHead className="w-[120px]">Excluded Travelers</TableHead>}
-            {showCosts && !isPrintView && <TableHead className="text-right w-[100px]">Adult Cost</TableHead>}
-            {showCosts && !isPrintView && <TableHead className="text-right w-[100px]">Child Cost</TableHead>}
+            <TableHead className="w-[120px]">Excluded Travelers</TableHead>
+            {showCosts && <TableHead className="text-right w-[100px]">Adult Cost</TableHead>}
+            {showCosts && <TableHead className="text-right w-[100px]">Child Cost</TableHead>}
             {showCosts && <TableHead className="text-right w-[120px]">Total Cost</TableHead>}
           </TableRow>
         </TableHeader>
