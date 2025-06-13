@@ -19,7 +19,6 @@ if (process.env.NODE_ENV === 'development') {
 }
 
 const nextConfig: NextConfig = {
-  /* config options here */
   typescript: {
     ignoreBuildErrors: true,
   },
@@ -34,6 +33,14 @@ const nextConfig: NextConfig = {
         port: '',
         pathname: '/**',
       },
+    ],
+  },
+  devIndicators: {
+    allowedDevOrigins: [
+      'https://9000-firebase-studio-1749328696453.cluster-fdkw7vjj7bgguspe3fbbc25tra.cloudworkstations.dev',
+      // You might want to add your local machine's preview URL if you use one, e.g., http://localhost:3000 (if different from the dev server port)
+      // or a more generic pattern if the cloud workstation URL changes but maintains a common domain:
+      // 'https://*.cloudworkstations.dev' 
     ],
   },
 };
