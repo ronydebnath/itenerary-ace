@@ -17,46 +17,65 @@ const createDemoHotelDefinitions = (countries: CountryItem[]): HotelDefinition[]
   const today = new Date();
   const nextMonth = addDays(today, 30);
   const monthAfterNext = addDays(today, 60);
+  const threeMonthsLater = addDays(today, 90);
 
-  const defaultSeasonalPrices: RoomTypeSeasonalPrice[] = [
-    { id: generateGUID(), seasonName: "Low Season", startDate: format(today, 'yyyy-MM-dd'), endDate: format(addDays(nextMonth, -1), 'yyyy-MM-dd'), rate: 100, extraBedRate: 20 },
-    { id: generateGUID(), seasonName: "High Season", startDate: format(nextMonth, 'yyyy-MM-dd'), endDate: format(monthAfterNext, 'yyyy-MM-dd'), rate: 150, extraBedRate: 30 },
-  ];
+  // --- Shared Seasonal Price Sets ---
+  const standardLowSeason: RoomTypeSeasonalPrice = { id: generateGUID(), seasonName: "Green Season Special", startDate: format(today, 'yyyy-MM-dd'), endDate: format(addDays(nextMonth, -1), 'yyyy-MM-dd'), rate: 2800, extraBedRate: 700 };
+  const standardHighSeason: RoomTypeSeasonalPrice = { id: generateGUID(), seasonName: "High Season Rate", startDate: format(nextMonth, 'yyyy-MM-dd'), endDate: format(monthAfterNext, 'yyyy-MM-dd'), rate: 3500, extraBedRate: 900 };
+  const standardPeakSeason: RoomTypeSeasonalPrice = { id: generateGUID(), seasonName: "Peak Holiday Rate", startDate: format(addDays(monthAfterNext,1), 'yyyy-MM-dd'), endDate: format(threeMonthsLater, 'yyyy-MM-dd'), rate: 4200, extraBedRate: 1000 };
 
-  const deluxeSeasonalPrices: RoomTypeSeasonalPrice[] = [
-    { id: generateGUID(), seasonName: "Low Season", startDate: format(today, 'yyyy-MM-dd'), endDate: format(addDays(nextMonth, -1), 'yyyy-MM-dd'), rate: 180, extraBedRate: 35 },
-    { id: generateGUID(), seasonName: "High Season", startDate: format(nextMonth, 'yyyy-MM-dd'), endDate: format(monthAfterNext, 'yyyy-MM-dd'), rate: 250, extraBedRate: 50 },
-  ];
-  
-  const standardRoom: HotelRoomTypeDefinition = {
-    id: generateGUID(), name: "Standard Room", extraBedAllowed: true, notes: "Comfortable standard room with city or garden view.", seasonalPrices: defaultSeasonalPrices, characteristics: [{id: generateGUID(), key: "View", value: "City/Garden"}, {id: generateGUID(), key: "Bed", value: "King or Twin"}]
+  const deluxeLowSeason: RoomTypeSeasonalPrice = { id: generateGUID(), seasonName: "Deluxe Off-Peak", startDate: format(today, 'yyyy-MM-dd'), endDate: format(addDays(nextMonth, -1), 'yyyy-MM-dd'), rate: 4500, extraBedRate: 1000 };
+  const deluxeHighSeason: RoomTypeSeasonalPrice = { id: generateGUID(), seasonName: "Deluxe High Season", startDate: format(nextMonth, 'yyyy-MM-dd'), endDate: format(monthAfterNext, 'yyyy-MM-dd'), rate: 5800, extraBedRate: 1200 };
+  const deluxePeakSeason: RoomTypeSeasonalPrice = { id: generateGUID(), seasonName: "Deluxe Peak Holiday", startDate: format(addDays(monthAfterNext,1), 'yyyy-MM-dd'), endDate: format(threeMonthsLater, 'yyyy-MM-dd'), rate: 6500, extraBedRate: 1500 };
+
+  const suiteLowSeason: RoomTypeSeasonalPrice = { id: generateGUID(), seasonName: "Suite Saver", startDate: format(today, 'yyyy-MM-dd'), endDate: format(addDays(nextMonth, -1), 'yyyy-MM-dd'), rate: 7000, extraBedRate: 1500 };
+  const suiteHighSeason: RoomTypeSeasonalPrice = { id: generateGUID(), seasonName: "Suite High Season", startDate: format(nextMonth, 'yyyy-MM-dd'), endDate: format(monthAfterNext, 'yyyy-MM-dd'), rate: 9000, extraBedRate: 2000 };
+  const suitePeakSeason: RoomTypeSeasonalPrice = { id: generateGUID(), seasonName: "Suite Peak Holiday", startDate: format(addDays(monthAfterNext,1), 'yyyy-MM-dd'), endDate: format(threeMonthsLater, 'yyyy-MM-dd'), rate: 12000, extraBedRate: 2500 };
+
+  // --- Shared Room Type Definitions ---
+  const standardCityRoom: HotelRoomTypeDefinition = {
+    id: generateGUID(), name: "Standard City View", extraBedAllowed: true, notes: "Comfortable 30sqm room with city view, en-suite bathroom, Wi-Fi, and mini-bar.", seasonalPrices: [standardLowSeason, standardHighSeason, standardPeakSeason], characteristics: [{id: generateGUID(), key: "View", value: "City"}, {id: generateGUID(), key: "Bed", value: "King or Twin"}, {id: generateGUID(), key: "Size", value: "30sqm"}]
   };
-  const deluxeRoom: HotelRoomTypeDefinition = {
-    id: generateGUID(), name: "Deluxe Room", extraBedAllowed: true, notes: "Spacious deluxe room with premium amenities.", seasonalPrices: deluxeSeasonalPrices, characteristics: [{id: generateGUID(), key: "View", value: "Pool/Sea"}, {id: generateGUID(), key: "Size", value: "40sqm"}]
+  const deluxeRiverRoom: HotelRoomTypeDefinition = {
+    id: generateGUID(), name: "Deluxe River View", extraBedAllowed: true, notes: "Spacious 40sqm room with stunning river views, balcony, premium amenities, and bathtub.", seasonalPrices: [deluxeLowSeason, deluxeHighSeason, deluxePeakSeason], characteristics: [{id: generateGUID(), key: "View", value: "River"}, {id: generateGUID(), key: "Bed", value: "King"}, {id: generateGUID(), key: "Size", value: "40sqm"}, {id: generateGUID(), key: "Features", value: "Balcony, Bathtub"}]
   };
+   const familySuiteCity: HotelRoomTypeDefinition = {
+    id: generateGUID(), name: "Family Suite City View", extraBedAllowed: true, notes: "60sqm two-bedroom suite ideal for families, kitchenette, living area.", seasonalPrices: [suiteLowSeason, suiteHighSeason, suitePeakSeason], characteristics: [{id: generateGUID(), key: "View", value: "City"}, {id: generateGUID(), key: "Bed", value: "1 King, 2 Twin"}, {id: generateGUID(), key: "Size", value: "60sqm"}, {id: generateGUID(), key: "Features", value: "Two Bedrooms, Kitchenette"}]
+  };
+
+  const superiorPoolAccessRoom: HotelRoomTypeDefinition = {
+    id: generateGUID(), name: "Superior Pool Access", extraBedAllowed: true, notes: "35sqm room with direct access to the resort's lagoon pool from your private terrace.", seasonalPrices: [deluxeLowSeason, deluxeHighSeason, {...deluxePeakSeason, rate: deluxePeakSeason.rate * 1.1}], characteristics: [{id: generateGUID(), key: "Feature", value: "Direct Pool Access"}, {id: generateGUID(), key: "Bed", value: "King"}, {id: generateGUID(), key: "Size", value: "35sqm"}]
+  };
+  const beachfrontVilla: HotelRoomTypeDefinition = {
+    id: generateGUID(), name: "Beachfront Villa", extraBedAllowed: false, notes: "Luxurious 70sqm villa with private plunge pool, direct beach access, and personalized butler service.", seasonalPrices: [suiteLowSeason, suiteHighSeason, {...suitePeakSeason, rate: suitePeakSeason.rate * 1.3}].map(sp => ({...sp, rate: sp.rate * 1.5, extraBedRate: sp.extraBedRate ? sp.extraBedRate * 1.5 : undefined})), characteristics: [{id: generateGUID(), key: "Feature", value: "Private Plunge Pool, Beach Access"}, {id: generateGUID(), key: "Bed", value: "King"}, {id: generateGUID(), key: "Size", value: "70sqm"}, {id: generateGUID(), key: "Service", value: "Butler Service"}]
+  };
+   const twoBedroomFamilyVilla: HotelRoomTypeDefinition = {
+    id: generateGUID(), name: "Two-Bedroom Family Villa", extraBedAllowed: true, notes: "100sqm villa with two separate bedrooms, living area, kitchenette and garden.", seasonalPrices: [suiteLowSeason, suiteHighSeason, suitePeakSeason].map(sp => ({...sp, rate: sp.rate * 1.8, extraBedRate: sp.extraBedRate ? sp.extraBedRate * 1.8 : undefined})), characteristics: [{id: generateGUID(), key: "Feature", value: "Two Bedrooms, Garden"}, {id: generateGUID(), key: "Bed", value: "1 King, 2 Twin"}, {id: generateGUID(), key: "Size", value: "100sqm"}]
+  };
+
 
   const demoHotels: HotelDefinition[] = [];
 
   if (thailand) {
     demoHotels.push(
-      { id: generateGUID(), name: "Bangkok Central Hotel", countryId: thailand.id, province: "Bangkok", roomTypes: [standardRoom, deluxeRoom] },
-      { id: generateGUID(), name: "Phuket Paradise Resort", countryId: thailand.id, province: "Phuket", roomTypes: [{...deluxeRoom, seasonalPrices: deluxeSeasonalPrices.map(p=>({...p, rate: p.rate * 1.2})) }] } // Slightly different prices
+      { id: "hotel-bkk-central-demo", name: "Bangkok Central Hotel", countryId: thailand.id, province: "Bangkok", roomTypes: [standardCityRoom, deluxeRiverRoom, familySuiteCity] },
+      { id: "hotel-phuket-paradise-demo", name: "Phuket Paradise Resort", countryId: thailand.id, province: "Phuket", roomTypes: [superiorPoolAccessRoom, beachfrontVilla, twoBedroomFamilyVilla] }
     );
   }
-  if (malaysia) {
+  if (malaysia) { // Keeping Malaysia simple for this update, focus was BKK/Phuket
     demoHotels.push(
-      { id: generateGUID(), name: "Kuala Lumpur Towers Hotel", countryId: malaysia.id, province: "Kuala Lumpur", roomTypes: [standardRoom, {...deluxeRoom, seasonalPrices: deluxeSeasonalPrices.map(p=>({...p, rate: p.rate * 0.9}))}] },
-      { id: generateGUID(), name: "Langkawi Beachfront Villa", countryId: malaysia.id, province: "Langkawi", roomTypes: [deluxeRoom] }
+      { id: generateGUID(), name: "Kuala Lumpur Towers Hotel", countryId: malaysia.id, province: "Kuala Lumpur", roomTypes: [standardCityRoom] },
+      { id: generateGUID(), name: "Langkawi Beachfront Villa Basic", countryId: malaysia.id, province: "Langkawi", roomTypes: [deluxeRiverRoom] }
     );
   }
   if (singapore) {
     demoHotels.push(
-      { id: generateGUID(), name: "Singapore Marina Sands View", countryId: singapore.id, province: "Singapore", roomTypes: [{...deluxeRoom, seasonalPrices: deluxeSeasonalPrices.map(p=>({...p, rate: p.rate * 1.5}))}] }
+      { id: generateGUID(), name: "Singapore Marina View Basic", countryId: singapore.id, province: "Singapore", roomTypes: [deluxeRiverRoom] }
     );
   }
   if (vietnam) {
      demoHotels.push(
-      { id: generateGUID(), name: "Hanoi Old Quarter Inn", countryId: vietnam.id, province: "Hanoi", roomTypes: [standardRoom] }
+      { id: generateGUID(), name: "Hanoi Old Quarter Inn Basic", countryId: vietnam.id, province: "Hanoi", roomTypes: [standardCityRoom] }
     );
   }
   return demoHotels;
@@ -85,32 +104,38 @@ export function useHotelDefinitions() {
                    h.roomTypes.every((rt: any) => rt.id && rt.name && Array.isArray(rt.seasonalPrices) && rt.seasonalPrices.every((sp: any) => sp.id && sp.startDate && sp.endDate && typeof sp.rate === 'number'))
             );
             definitionsToSet = validatedDefinitions;
-            // Ensure demo hotels are present if user has existing data
+            
             DEMO_HOTELS.forEach(demoHotel => {
-              if (!definitionsToSet.find(def => def.name === demoHotel.name && def.province === demoHotel.province)) {
-                definitionsToSet.push(demoHotel);
+              const existingDemoHotelIndex = definitionsToSet.findIndex(def => def.id === demoHotel.id);
+              if (existingDemoHotelIndex !== -1) {
+                 definitionsToSet[existingDemoHotelIndex] = demoHotel; // Overwrite with latest demo structure
+              } else {
+                const existingByName = definitionsToSet.find(def => def.name === demoHotel.name && def.province === demoHotel.province && def.countryId === demoHotel.countryId);
+                if (!existingByName) {
+                    definitionsToSet.push(demoHotel); // Add if truly new
+                } else if (existingByName.id !== demoHotel.id && demoHotel.id.includes("-demo")) {
+                    // If a demo hotel with a different ID but same name/location exists, this indicates an old demo entry.
+                    // We prefer the new fixed ID for demo data consistency.
+                    // Remove old, add new.
+                    definitionsToSet = definitionsToSet.filter(d => d.id !== existingByName.id);
+                    definitionsToSet.push(demoHotel);
+                }
               }
             });
           } else {
             definitionsToSet = DEMO_HOTELS;
-            localStorage.setItem(HOTEL_DEFINITIONS_STORAGE_KEY, JSON.stringify(definitionsToSet));
           }
         } catch (parseError) {
           console.warn("Error parsing hotel definitions from localStorage, seeding defaults:", parseError);
-          localStorage.removeItem(HOTEL_DEFINITIONS_STORAGE_KEY);
           definitionsToSet = DEMO_HOTELS;
-          localStorage.setItem(HOTEL_DEFINITIONS_STORAGE_KEY, JSON.stringify(definitionsToSet));
         }
       } else {
         definitionsToSet = DEMO_HOTELS;
-        localStorage.setItem(HOTEL_DEFINITIONS_STORAGE_KEY, JSON.stringify(definitionsToSet));
       }
+      localStorage.setItem(HOTEL_DEFINITIONS_STORAGE_KEY, JSON.stringify(definitionsToSet));
     } catch (error) {
       console.error("Failed to load or initialize hotel definitions:", error);
-      definitionsToSet = DEMO_HOTELS; // Fallback to demo on significant error
-      if (localStorage.getItem(HOTEL_DEFINITIONS_STORAGE_KEY)) { // Attempt to clear if problematic
-          localStorage.removeItem(HOTEL_DEFINITIONS_STORAGE_KEY);
-      }
+      definitionsToSet = DEMO_HOTELS; 
     }
     setAllHotelDefinitions(definitionsToSet.sort((a,b) => a.name.localeCompare(b.name)));
     setIsLoading(false);
