@@ -125,11 +125,10 @@ export function MiscItemForm({ item, travelers, currency, tripSettings, dayNumbe
   const locationDisplay = item.countryName ? (item.province ? `${item.province}, ${item.countryName}` : item.countryName)
                         : (item.province || (tripSettings.selectedProvinces.length > 0 ? tripSettings.selectedProvinces.join('/') : (tripSettings.selectedCountries.length > 0 ? (tripSettings.selectedCountries.map(cid => countries.find(c=>c.id === cid)?.name).filter(Boolean).join('/')) : 'Any Location')));
 
-
   return (
     <BaseItemForm item={item} travelers={travelers} currency={currency} tripSettings={tripSettings} onUpdate={onUpdate} onDelete={onDelete} itemTypeLabel="Miscellaneous Item" dayNumber={dayNumber}>
        {(miscServices.length > 0 || item.selectedServicePriceId || isLoadingServices) && (
-        <div className="mt-4 pt-4 border-t">
+        <div className="mb-4">
           <FormField label={`Select Predefined Item (${locationDisplay || 'Global'})`} id={`predefined-misc-${item.id}`}>
              {isLoadingServices ? (
                  <div className="flex items-center h-10 border rounded-md px-3 bg-muted/50">
@@ -162,7 +161,7 @@ export function MiscItemForm({ item, travelers, currency, tripSettings, dayNumbe
       )}
 
       {serviceDefinitionNotFound && (
-        <Alert variant="destructive" className="mt-4">
+        <Alert variant="destructive" className="my-4">
           <AlertCircle className="h-4 w-4" />
           <AlertTitle>Service Not Found</AlertTitle>
           <AlertDescription>
@@ -170,6 +169,27 @@ export function MiscItemForm({ item, travelers, currency, tripSettings, dayNumbe
           </AlertDescription>
         </Alert>
       )}
+      
+      <div className="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-1 gap-3 sm:gap-4 mb-4">
+        <FormField label={`${itemTypeLabel} Name / Description`} id={`itemName-${item.id}`} className="md:col-span-1">
+            <Input
+            id={`itemName-${item.id}`}
+            value={item.name}
+            onChange={(e) => onUpdate({ ...item, name: e.target.value })}
+            placeholder={`e.g., Visa Fee, Souvenir`}
+            className="h-9 text-sm"
+            />
+        </FormField>
+        <FormField label="Note (Optional)" id={`itemNote-${item.id}`} className="md:col-span-1">
+            <Input
+            id={`itemNote-${item.id}`}
+            value={item.note || ''}
+            onChange={(e) => onUpdate({ ...item, note: e.target.value })}
+            placeholder={`e.g., Details about the item`}
+            className="h-9 text-sm"
+            />
+        </FormField>
+      </div>
 
       <Separator className="my-4" />
       <div className="space-y-1 mb-2">
@@ -215,6 +235,5 @@ export function MiscItemForm({ item, travelers, currency, tripSettings, dayNumbe
     </BaseItemForm>
   );
 }
-
 
     

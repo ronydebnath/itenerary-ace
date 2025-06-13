@@ -25,12 +25,12 @@ interface HotelItemFormProps {
   tripSettings: TripSettings;
   onUpdate: (item: HotelItemType) => void;
   onDelete: () => void;
-  allHotelDefinitions: HotelDefinition[];
-  allServicePrices: ServicePriceItem[];
+  allHotelDefinitions: HotelDefinition[]; // Passed directly now
+  allServicePrices: ServicePriceItem[]; // Passed directly now
 }
 
-export function HotelItemForm({ item, travelers, currency, dayNumber, tripSettings, onUpdate, onDelete }: HotelItemFormProps) {
-  const { allHotelDefinitions: hookHotelDefinitions, isLoading: isLoadingHotelDefs } = useHotelDefinitions();
+export function HotelItemForm({ item, travelers, currency, dayNumber, tripSettings, onUpdate, onDelete, allHotelDefinitions: hookHotelDefinitions, allServicePrices }: HotelItemFormProps) {
+  const { isLoading: isLoadingHotelDefs } = useHotelDefinitions(); // Still use hook for loading state logic, but data from props
   const { countries, getCountryById } = useCountries();
   const [availableHotels, setAvailableHotels] = React.useState<HotelDefinition[]>([]);
   const [selectedHotelDef, setSelectedHotelDef] = React.useState<HotelDefinition | undefined>(undefined);
@@ -91,7 +91,7 @@ export function HotelItemForm({ item, travelers, currency, dayNumber, tripSettin
         note: undefined,
         province: newHotelDef.province || item.province,
         countryId: newHotelDef.countryId || item.countryId,
-        countryName: newHotelDef.countryId ? countries.find(c=>c.id === newHotelDef.countryId)?.name : item.countryName,
+        countryName: newHotelDef.countryId ? countries.find(c => c.id === newHotelDef.countryId)?.name : item.countryName,
       });
     } else {
        onUpdate({
@@ -185,10 +185,9 @@ export function HotelItemForm({ item, travelers, currency, dayNumber, tripSettin
   const locationDisplay = item.countryName ? (item.province ? `${item.province}, ${item.countryName}` : item.countryName)
                         : (item.province || (tripSettings.selectedProvinces.length > 0 ? tripSettings.selectedProvinces.join('/') : (tripSettings.selectedCountries.length > 0 ? (tripSettings.selectedCountries.map(cid => countries.find(c=>c.id === cid)?.name).filter(Boolean).join('/')) : 'Any Location')));
 
-
   return (
     <BaseItemForm item={item} travelers={travelers} currency={currency} tripSettings={tripSettings} onUpdate={onUpdate} onDelete={onDelete} itemTypeLabel="Hotel Stay" dayNumber={dayNumber}>
-      <div className="mt-4 pt-4 border-t">
+      <div className="mb-4">
         <FormField label={`Select Hotel (${locationDisplay || 'Global'})`} id={`hotel-def-${item.id}`}>
           {isLoadingHotelDefs ? (
              <div className="flex items-center h-10 border rounded-md px-3 bg-muted/50">
@@ -223,10 +222,37 @@ export function HotelItemForm({ item, travelers, currency, dayNumber, tripSettin
              <Card className="text-xs bg-muted/30 p-2 mt-2 border-dashed">
                <p><strong>Selected Hotel:</strong> {selectedHotelDef.name}</p>
                <p><strong>Location:</strong> {selectedHotelDef.province || "N/A"}, {countries.find(c => c.id === selectedHotelDef.countryId)?.name || "N/A"}</p>
-               {item.note && <p className="mt-1 italic"><strong>Notes:</strong> {item.note}</p>}
              </Card>
          )}
       </div>
+      
+      <div className="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-1 gap-3 sm:gap-4 mb-4">
+        <FormField label={`${itemTypeLabel} Name / Reference`} id={`itemName-${item.id}`} className="md:col-span-1">
+            <Input
+            id={`itemName-${item.id}`}
+            value={item.name}
+            onChange={(e) => onUpdate({ ...item, name: e.target.value })}
+            placeholder={`e.g., City Center Stay, Beach Resort`}
+            className="h-9 text-sm"
+            />
+        </FormField>
+        <FormField label="Note (Optional)" id={`itemNote-${item.id}`} className="md:col-span-1">
+            <Input
+            id={`itemNote-${item.id}`}
+            value={item.note || ''}
+            onChange={(e) => onUpdate({ ...item, note: e.target.value })}
+            placeholder={`e.g., Late check-in, specific room request`}
+            className="h-9 text-sm"
+            />
+        </FormField>
+      </div>
+      
+      {item.hotelDefinitionId && selectedHotelDef && item.note && (
+        <div className="mb-4 p-2 border rounded-md bg-blue-50 border-blue-200 text-xs text-blue-700">
+            <strong>Booking Note for {selectedHotelDef.name}:</strong> {item.note}
+        </div>
+      )}
+
 
       <Separator className="my-4" />
       <div className="space-y-1 mb-2">
@@ -398,6 +424,5 @@ export function HotelItemForm({ item, travelers, currency, dayNumber, tripSettin
     </BaseItemForm>
   );
 }
-
 
     

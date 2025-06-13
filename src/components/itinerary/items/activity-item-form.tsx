@@ -173,11 +173,10 @@ export function ActivityItemForm({ item, travelers, currency, dayNumber, tripSet
   const locationDisplay = item.countryName ? (item.province ? `${item.province}, ${item.countryName}` : item.countryName)
                         : (item.province || (tripSettings.selectedProvinces.length > 0 ? tripSettings.selectedProvinces.join('/') : (tripSettings.selectedCountries.length > 0 ? (tripSettings.selectedCountries.map(cid => countries.find(c=>c.id === cid)?.name).filter(Boolean).join('/')) : 'Any Location')));
 
-
   return (
     <BaseItemForm item={item} travelers={travelers} currency={currency} tripSettings={tripSettings} onUpdate={onUpdate} onDelete={onDelete} itemTypeLabel="Activity" dayNumber={dayNumber}>
       {(activityServices.length > 0 || item.selectedServicePriceId || isLoadingServices) && (
-        <div className="mt-4 pt-4 border-t">
+        <div className="mb-4">
           <FormField label={`Select Predefined Activity (${locationDisplay || 'Global'})`} id={`predefined-activity-${item.id}`}>
             {isLoadingServices ? (
                  <div className="flex items-center h-10 border rounded-md px-3 bg-muted/50">
@@ -236,7 +235,7 @@ export function ActivityItemForm({ item, travelers, currency, dayNumber, tripSet
       )}
 
       {serviceDefinitionNotFound && (
-        <Alert variant="destructive" className="mt-4">
+        <Alert variant="destructive" className="my-4">
           <AlertCircle className="h-4 w-4" />
           <AlertTitle>Service Not Found</AlertTitle>
           <AlertDescription>
@@ -245,8 +244,29 @@ export function ActivityItemForm({ item, travelers, currency, dayNumber, tripSet
         </Alert>
       )}
 
+      <div className="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-1 gap-3 sm:gap-4 mb-4">
+        <FormField label={`${itemTypeLabel} Name / Description`} id={`itemName-${item.id}`} className="md:col-span-1">
+            <Input
+            id={`itemName-${item.id}`}
+            value={item.name}
+            onChange={(e) => onUpdate({ ...item, name: e.target.value })}
+            placeholder={`e.g., City Tour, Snorkeling Trip`}
+            className="h-9 text-sm"
+            />
+        </FormField>
+        <FormField label="Note (Optional)" id={`itemNote-${item.id}`} className="md:col-span-1">
+            <Input
+            id={`itemNote-${item.id}`}
+            value={item.note || ''}
+            onChange={(e) => onUpdate({ ...item, note: e.target.value })}
+            placeholder={`e.g., Meet at lobby, bring swimwear`}
+            className="h-9 text-sm"
+            />
+        </FormField>
+      </div>
+      
       {selectedPackage && selectedActivityService && (
-        <div className="mt-3 p-3 border rounded-md bg-muted/30 space-y-2 text-sm">
+        <div className="mb-4 p-3 border rounded-md bg-muted/30 space-y-2 text-sm">
           <div className="flex items-center font-medium text-primary">
             <Tag className="h-4 w-4 mr-2"/> Package: {selectedPackage.name}
           </div>
@@ -274,6 +294,7 @@ export function ActivityItemForm({ item, travelers, currency, dayNumber, tripSet
           )}
         </div>
       )}
+
 
       <Separator className="my-4" />
       <div className="space-y-1 mb-2">
@@ -335,6 +356,5 @@ export function ActivityItemForm({ item, travelers, currency, dayNumber, tripSet
     </BaseItemForm>
   );
 }
-
 
     

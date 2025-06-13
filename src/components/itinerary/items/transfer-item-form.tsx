@@ -150,15 +150,11 @@ export function TransferItemForm({ item, travelers, currency, tripSettings, dayN
           updatedItemPartial.adultTicketPrice = undefined;
           updatedItemPartial.childTicketPrice = undefined;
           if (service.vehicleOptions && service.vehicleOptions.length > 0) {
-            updatedItemPartial.costPerVehicle = undefined; // Will be set by option or default to first option
-            updatedItemPartial.vehicleType = undefined; // Will be set by option
-            // Set to first vehicle option by default if available
             const firstOption = service.vehicleOptions[0];
             updatedItemPartial.selectedVehicleOptionId = firstOption.id;
             updatedItemPartial.costPerVehicle = firstOption.price;
             updatedItemPartial.vehicleType = firstOption.vehicleType;
             updatedItemPartial.note = firstOption.notes || service.notes || undefined;
-
           } else {
             updatedItemPartial.costPerVehicle = service.price1 ?? 0;
             updatedItemPartial.vehicleType = (service.subCategory && VEHICLE_TYPES.includes(service.subCategory as VehicleType))
@@ -195,12 +191,12 @@ export function TransferItemForm({ item, travelers, currency, tripSettings, dayN
         vehicleType: option.vehicleType,
         note: option.notes || selectedService.notes || undefined,
       });
-    } else { // "none" selected or option not found
+    } else { 
       const baseCost = (selectedService.vehicleOptions && selectedService.vehicleOptions.length > 0)
-                       ? undefined // No specific option chosen, but options exist implies custom pricing or user needs to pick
-                       : selectedService.price1 ?? 0; // No options defined, use service base price
+                       ? undefined 
+                       : selectedService.price1 ?? 0; 
       const baseType = (selectedService.vehicleOptions && selectedService.vehicleOptions.length > 0)
-                       ? undefined // Let user choose or define
+                       ? undefined 
                        : (selectedService.subCategory && VEHICLE_TYPES.includes(selectedService.subCategory as VehicleType))
                          ? selectedService.subCategory as VehicleType
                          : VEHICLE_TYPES[0];
@@ -219,16 +215,12 @@ export function TransferItemForm({ item, travelers, currency, tripSettings, dayN
   let isVehicleCostTypeReadOnly = false;
   if (item.mode === 'vehicle' && selectedService) {
     if (selectedService.vehicleOptions && selectedService.vehicleOptions.length > 0) {
-      // If options exist, cost/type are derived from selection, so inputs are read-only/disabled
       isVehicleCostTypeReadOnly = true; 
     } else {
-      // No options, so cost/type come from the main service definition
       isVehicleCostTypeReadOnly = true; 
     }
   }
-  // Allow direct editing only if no service/option is selected that dictates these values
   const allowDirectVehicleEdit = item.mode === 'vehicle' && (!selectedService || (!selectedService.vehicleOptions || selectedService.vehicleOptions.length === 0) && !item.selectedVehicleOptionId);
-
 
   const displayedVehicleType = item.mode === 'vehicle'
     ? (item.selectedVehicleOptionId && selectedService?.vehicleOptions?.find(vo => vo.id === item.selectedVehicleOptionId)?.vehicleType) ||
@@ -244,18 +236,11 @@ export function TransferItemForm({ item, travelers, currency, tripSettings, dayN
   const locationDisplay = item.countryName ? (item.province ? `${item.province}, ${item.countryName}` : item.countryName)
                         : (item.province || (tripSettings.selectedProvinces.length > 0 ? tripSettings.selectedProvinces.join('/') : (tripSettings.selectedCountries.length > 0 ? (tripSettings.selectedCountries.map(cid => countries.find(c=>c.id === cid)?.name).filter(Boolean).join('/')) : 'Any Location')));
 
-
   return (
     <BaseItemForm item={item} travelers={travelers} currency={currency} tripSettings={tripSettings} onUpdate={onUpdate} onDelete={onDelete} itemTypeLabel="Transfer" dayNumber={dayNumber}>
       <div className="pt-2">
-        <FormField
-          label="Mode"
-          id={`transferMode-${item.id}`}
-        >
-          <Select
-            value={item.mode}
-            onValueChange={(value: 'ticket' | 'vehicle') => handleInputChange('mode', value)}
-          >
+        <FormField label="Mode" id={`transferMode-${item.id}`}>
+          <Select value={item.mode} onValueChange={(value: 'ticket' | 'vehicle') => handleInputChange('mode', value)}>
             <SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="ticket">Ticket Basis</SelectItem>
@@ -332,8 +317,28 @@ export function TransferItemForm({ item, travelers, currency, tripSettings, dayN
         </Alert>
       )}
 
-      <Separator className="my-4" />
+      <div className="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-1 gap-3 sm:gap-4 mt-4">
+        <FormField label={`${itemTypeLabel} Name / Route Description`} id={`itemName-${item.id}`} className="md:col-span-1">
+            <Input
+            id={`itemName-${item.id}`}
+            value={item.name}
+            onChange={(e) => handleInputChange('name', e.target.value)}
+            placeholder={`e.g., Airport to Hotel`}
+            className="h-9 text-sm"
+            />
+        </FormField>
+        <FormField label="Note (Optional)" id={`itemNote-${item.id}`} className="md:col-span-1">
+            <Input
+            id={`itemNote-${item.id}`}
+            value={item.note || ''}
+            onChange={(e) => handleInputChange('note', e.target.value)}
+            placeholder={`e.g., Flight details, specific instructions`}
+            className="h-9 text-sm"
+            />
+        </FormField>
+      </div>
 
+      <Separator className="my-4" />
       <div className="space-y-1 mb-2">
           <p className="text-sm font-medium text-muted-foreground">Configuration Details</p>
       </div>
@@ -424,6 +429,5 @@ export function TransferItemForm({ item, travelers, currency, tripSettings, dayN
     </BaseItemForm>
   );
 }
-
 
     
