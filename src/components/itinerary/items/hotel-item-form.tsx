@@ -189,18 +189,18 @@ function HotelItemFormComponent({
   const locationDisplay = item.countryName ? (item.province ? `${item.province}, ${item.countryName}` : item.countryName)
                         : (item.province || (tripSettings.selectedProvinces.length > 0 ? tripSettings.selectedProvinces.join('/') : (tripSettings.selectedCountries.length > 0 ? (tripSettings.selectedCountries.map(cid => countries.find(c=>c.id === cid)?.name).filter(Boolean).join('/')) : 'Any Location')));
 
-  const getFormattedDate = (dayOffset: number) => {
-    if (!tripSettings.startDate) return `Day ${dayNumber + dayOffset}`;
+  const getFormattedDate = (dayNumForDate: number) => {
+    if (!tripSettings.startDate) return `Day ${dayNumForDate}`;
     try {
-      const date = addDays(parseISO(tripSettings.startDate), dayNumber + dayOffset - 1);
+      const date = addDays(parseISO(tripSettings.startDate), dayNumForDate - 1);
       return format(date, "MMM d, yyyy");
     } catch (e) {
-      return `Day ${dayNumber + dayOffset}`;
+      return `Day ${dayNumForDate}`;
     }
   };
 
-  const checkInDateDisplay = getFormattedDate(0);
-  const checkOutDateDisplay = item.checkoutDay ? getFormattedDate(item.checkoutDay - dayNumber) : getFormattedDate(1);
+  const checkInDateDisplay = getFormattedDate(dayNumber);
+  const checkOutDateDisplay = item.checkoutDay ? getFormattedDate(item.checkoutDay) : getFormattedDate(dayNumber + 1);
 
 
   return (
@@ -240,7 +240,7 @@ function HotelItemFormComponent({
           <p className="font-code text-sm p-2.5 bg-muted rounded-md h-10 flex items-center">{checkInDateDisplay}</p>
         </FormField>
         <FormField label="Checkout Day (Day Number)" id={`checkoutDay-${item.id}`}>
-          <Input type="number" id={`checkoutDay-${item.id}`} value={item.checkoutDay ?? ''} onChange={(e) => handleCheckoutDayChange(e.target.value)} min={dayNumber + 1} max={tripSettings.numDays + 1} placeholder={`Day ${dayNumber + 1}`} className="h-9 text-sm"/>
+          <Input type="number" id={`checkoutDay-${item.id}`} value={item.checkoutDay ?? ''} onChange={(e) => handleCheckoutDayChange(e.target.value)} min={dayNumber + 1} max={tripSettings.numDays} placeholder={`Day ${dayNumber + 1}`} className="h-9 text-sm"/>
         </FormField>
         <FormField label="Total Nights" id={`totalNights-${item.id}`}>
             <div className={`font-code text-sm p-2.5 rounded-md h-10 flex flex-col justify-center ${calculatedNights <=0 && item.checkoutDay ? 'text-destructive bg-destructive/10 border border-destructive' : 'bg-muted'}`}>
@@ -334,3 +334,6 @@ function HotelItemFormComponent({
   );
 }
 export const HotelItemForm = React.memo(HotelItemFormComponent);
+
+
+    
