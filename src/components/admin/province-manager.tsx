@@ -5,65 +5,31 @@ import * as React from 'react';
 import Link from 'next/link';
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { PlusCircle, MapPinned, Trash2, LayoutDashboard, ListPlus } from 'lucide-react'; // Removed Home
+import { PlusCircle, MapPinned, Trash2, LayoutDashboard, ListPlus, Globe } from 'lucide-react';
 import type { ProvinceItem } from '@/types/itinerary';
 import { ProvinceForm } from './province-form';
-import { ProvinceTable } from './province-table';
-import { generateGUID } from '@/lib/utils';
+import { ProvinceTable } from './province-table'; // Assuming ProvinceTable is updated to show country
 import { useToast } from "@/hooks/use-toast";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-
-const PROVINCES_STORAGE_KEY = 'itineraryAceProvinces';
+import { useProvinces } from '@/hooks/useProvinces';
+import { useCountries } from '@/hooks/useCountries'; // Import useCountries
 
 export function ProvinceManager() {
-  const [provinces, setProvinces] = React.useState<ProvinceItem[]>([]);
+  const { provinces, addProvince, updateProvince, deleteProvince, isLoading: isLoadingProvinces } = useProvinces();
+  const { countries, isLoading: isLoadingCountries } = useCountries(); // Get countries for display
+
   const [isFormOpen, setIsFormOpen] = React.useState(false);
   const [editingProvince, setEditingProvince] = React.useState<ProvinceItem | undefined>(undefined);
   const { toast } = useToast();
 
-  React.useEffect(() => {
-    try {
-      const storedProvinces = localStorage.getItem(PROVINCES_STORAGE_KEY);
-      if (storedProvinces) {
-        const parsedData = JSON.parse(storedProvinces);
-        if (Array.isArray(parsedData)) {
-          setProvinces(parsedData.map(p => ({
-            id: p.id || generateGUID(),
-            name: p.name || "Unnamed Province",
-          } as ProvinceItem)));
-        } else {
-          localStorage.removeItem(PROVINCES_STORAGE_KEY);
-          setProvinces([]);
-        }
-      }
-    } catch (error) {
-      console.error("Failed to load provinces from localStorage:", error);
-      localStorage.removeItem(PROVINCES_STORAGE_KEY);
-      setProvinces([]);
-    }
-  }, []);
-
-  const saveProvincesToLocalStorage = (currentProvinces: ProvinceItem[]) => {
-    try {
-      localStorage.setItem(PROVINCES_STORAGE_KEY, JSON.stringify(currentProvinces));
-    } catch (error) {
-      console.error("Failed to save provinces to localStorage:", error);
-      toast({ title: "Error", description: "Could not save provinces.", variant: "destructive" });
-    }
-  };
-
   const handleFormSubmit = (data: Omit<ProvinceItem, 'id'>) => {
-    let updatedProvinces;
     if (editingProvince) {
-      updatedProvinces = provinces.map(p => p.id === editingProvince.id ? { ...editingProvince, ...data } : p);
+      updateProvince({ ...editingProvince, ...data });
       toast({ title: "Success", description: `Province "${data.name}" updated.` });
     } else {
-      const newProvince: ProvinceItem = { ...data, id: generateGUID() };
-      updatedProvinces = [...provinces, newProvince];
+      addProvince(data);
       toast({ title: "Success", description: `Province "${data.name}" added.` });
     }
-    setProvinces(updatedProvinces);
-    saveProvincesToLocalStorage(updatedProvinces);
     setIsFormOpen(false);
     setEditingProvince(undefined);
   };
@@ -75,11 +41,11 @@ export function ProvinceManager() {
 
   const handleDelete = (provinceId: string) => {
     const provinceToDelete = provinces.find(p => p.id === provinceId);
-    const updatedProvinces = provinces.filter(p => p.id !== provinceId);
-    setProvinces(updatedProvinces);
-    saveProvincesToLocalStorage(updatedProvinces);
+    deleteProvince(provinceId);
     toast({ title: "Success", description: `Province "${provinceToDelete?.name || 'Item'}" deleted.` });
   };
+
+  const isLoading = isLoadingProvinces || isLoadingCountries;
 
   return (
     <div className="container mx-auto py-8">
@@ -88,7 +54,6 @@ export function ProvinceManager() {
           <Link href="/">
             <Button variant="outline" size="icon" className="h-10 w-10">
               <LayoutDashboard className="h-5 w-5" />
-              <span className="sr-only">Go to Admin Dashboard</span>
             </Button>
           </Link>
           <h1 className="text-3xl font-bold text-primary flex items-center">
@@ -104,7 +69,7 @@ export function ProvinceManager() {
               <PlusCircle className="mr-2 h-5 w-5" /> Add New Province
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-md"> 
+          <DialogContent className="sm:max-w-md">
             <DialogHeader>
               <DialogTitle>{editingProvince ? 'Edit' : 'Add'} Province</DialogTitle>
             </DialogHeader>
@@ -120,7 +85,12 @@ export function ProvinceManager() {
           </DialogContent>
         </Dialog>
       </div>
-      <div className="mb-6">
+      <div className="mb-6 flex gap-4">
+        <Link href="/admin/countries">
+          <Button variant="link" className="text-primary flex items-center">
+             <Globe className="mr-2 h-5 w-5" /> Manage Countries
+          </Button>
+        </Link>
         <Link href="/admin/pricing">
           <Button variant="link" className="text-primary flex items-center">
              <ListPlus className="mr-2 h-5 w-5" /> Manage Service Prices
@@ -128,11 +98,14 @@ export function ProvinceManager() {
         </Link>
       </div>
 
-      {provinces.length > 0 ? (
+      {isLoading ? (
+        <p>Loading provinces and countries...</p>
+      ) : provinces.length > 0 ? (
         <ProvinceTable
           provinces={provinces}
+          countries={countries} // Pass countries to the table for lookup
           onEdit={handleEdit}
-          onDeleteConfirmation={(provinceId) => ( 
+          onDeleteConfirmation={(provinceId) => (
             <AlertDialog>
               <AlertDialogTrigger asChild>
                 <Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10">
@@ -159,7 +132,7 @@ export function ProvinceManager() {
       ) : (
         <div className="text-center py-10 border-2 border-dashed border-muted-foreground/30 rounded-lg">
           <p className="text-muted-foreground text-lg">No provinces defined yet.</p>
-          <p className="text-sm text-muted-foreground mt-2">Famous Thai provinces will be added automatically. You can also click "Add New Province" to get started.</p>
+          <p className="text-sm text-muted-foreground mt-2">Ensure countries are defined first. Default Thai provinces will be added if "Thailand" exists.</p>
         </div>
       )}
     </div>

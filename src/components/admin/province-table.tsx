@@ -11,21 +11,27 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Edit } from 'lucide-react';
-import type { ProvinceItem } from '@/types/itinerary';
+import type { ProvinceItem, CountryItem } from '@/types/itinerary';
 
 interface ProvinceTableProps {
   provinces: ProvinceItem[];
+  countries: CountryItem[]; // Add countries prop
   onEdit: (province: ProvinceItem) => void;
   onDeleteConfirmation: (provinceId: string) => React.ReactNode;
 }
 
-export function ProvinceTable({ provinces, onEdit, onDeleteConfirmation }: ProvinceTableProps) {
+export function ProvinceTable({ provinces, countries, onEdit, onDeleteConfirmation }: ProvinceTableProps) {
+  const getCountryName = (countryId: string) => {
+    return countries.find(c => c.id === countryId)?.name || 'N/A';
+  };
+
   return (
     <div className="rounded-lg border shadow-sm overflow-hidden">
       <Table>
         <TableHeader className="bg-muted/50">
           <TableRow>
             <TableHead>Province Name</TableHead>
+            <TableHead>Country</TableHead>
             <TableHead className="text-center w-[120px]">Actions</TableHead>
           </TableRow>
         </TableHeader>
@@ -33,6 +39,7 @@ export function ProvinceTable({ provinces, onEdit, onDeleteConfirmation }: Provi
           {provinces.map((province) => (
             <TableRow key={province.id}>
               <TableCell className="font-medium">{province.name}</TableCell>
+              <TableCell>{getCountryName(province.countryId)}</TableCell>
               <TableCell className="text-center">
                 <Button variant="ghost" size="icon" onClick={() => onEdit(province)} className="mr-2 text-primary hover:bg-primary/10">
                   <Edit className="h-4 w-4" />

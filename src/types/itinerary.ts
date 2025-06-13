@@ -18,7 +18,10 @@ export interface TripSettings {
   numDays: number;
   startDate: string; // ISO date string, now mandatory
   budget?: number;
-  selectedProvinces: string[];
+  selectedProvinces: string[]; // Stores province names for filtering
+  selectedCountries: string[]; // Stores country names for filtering
+  isTemplate?: boolean;
+  templateCategory?: string;
 }
 
 export const VEHICLE_TYPES = [
@@ -37,7 +40,8 @@ export interface BaseItem {
   selectedServicePriceId?: string;
   aiSuggested?: boolean;
   originalCost?: number;
-  province?: string;
+  countryName?: string; // Added
+  province?: string; // This will store province name, countryName provides context
 }
 
 export interface VehicleOption {
@@ -106,7 +110,8 @@ export interface HotelRoomTypeDefinition {
 export interface HotelDefinition {
   id: string;
   name: string;
-  province: string;
+  countryId: string; // Added
+  province: string; // Province Name
   roomTypes: HotelRoomTypeDefinition[];
 }
 
@@ -121,7 +126,7 @@ export interface SelectedHotelRoomConfiguration {
 export interface HotelItem extends BaseItem {
   type: 'hotel';
   checkoutDay: number;
-  hotelDefinitionId: string;
+  hotelDefinitionId: string; // Refers to HotelDefinition.id
   selectedRooms: SelectedHotelRoomConfiguration[];
 }
 
@@ -146,7 +151,6 @@ export interface DayItinerary {
   items: ItineraryItem[];
 }
 
-// Metadata for each itinerary stored in the index
 export interface ItineraryMetadata {
   id: string;
   itineraryName: string;
@@ -179,6 +183,7 @@ export interface DetailedSummaryItem {
   day?: number;
   name: string;
   note?: string;
+  countryName?: string; // Added
   province?: string;
   configurationDetails: string;
   excludedTravelers: string;
@@ -216,7 +221,8 @@ export interface SurchargePeriod {
 export interface ServicePriceItem {
   id: string;
   name: string;
-  province?: string;
+  countryId?: string; // Added
+  province?: string; // Name of the province
   category: ItineraryItemType;
   price1?: number;
   price2?: number;
@@ -227,15 +233,21 @@ export interface ServicePriceItem {
   currency: CurrencyCode;
   unitDescription?: string;
   notes?: string;
-  hotelDetails?: HotelDefinition;
+  hotelDetails?: HotelDefinition; // This will store the full HotelDefinition now
   activityPackages?: ActivityPackageDefinition[];
   surchargePeriods?: SurchargePeriod[];
-  selectedServicePriceId?: string;
+  selectedServicePriceId?: string; // Used in forms, not for final storage of this item
+}
+
+export interface CountryItem {
+  id: string;
+  name: string;
 }
 
 export interface ProvinceItem {
   id: string;
   name: string;
+  countryId: string; // ID of the parent country
 }
 
 export type SchedulingData = Pick<ActivityPackageDefinition, 'validityStartDate' | 'validityEndDate' | 'closedWeekdays' | 'specificClosedDates'>;

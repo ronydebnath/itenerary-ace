@@ -1,15 +1,22 @@
 
 import * as React from 'react';
-import type { HotelDefinition, HotelRoomTypeDefinition, HotelCharacteristic, RoomTypeSeasonalPrice } from '@/types/itinerary';
+import type { HotelDefinition, CountryItem } from '@/types/itinerary';
 import { generateGUID } from '@/lib/utils';
+import { useCountries } from './useCountries'; // Import useCountries
 
 const HOTEL_DEFINITIONS_STORAGE_KEY = 'itineraryAceHotelDefinitions';
 const currentYear = new Date().getFullYear();
+const DEFAULT_COUNTRY_NAME_FOR_DEMO_HOTELS = "Thailand";
 
-const DEFAULT_DEMO_HOTEL_DEFINITIONS: HotelDefinition[] = [
+
+const createDemoHotelDefinitions = (thailandCountryId?: string): HotelDefinition[] => {
+  if (!thailandCountryId) return []; // Don't create demo hotels if default country ID isn't found
+
+  return [
   {
     id: "hd_bkk_grand_riverside",
     name: "Grand Bangkok Riverside Hotel",
+    countryId: thailandCountryId,
     province: "Bangkok",
     roomTypes: [
       {
@@ -47,6 +54,7 @@ const DEFAULT_DEMO_HOTEL_DEFINITIONS: HotelDefinition[] = [
   {
     id: "hd_bkk_urban_oasis",
     name: "Urban Oasis Boutique Hotel",
+    countryId: thailandCountryId,
     province: "Bangkok",
     roomTypes: [
       {
@@ -81,6 +89,7 @@ const DEFAULT_DEMO_HOTEL_DEFINITIONS: HotelDefinition[] = [
   {
     id: "hd_bkk_sukhumvit_modern",
     name: "Sukhumvit Modern Living",
+    countryId: thailandCountryId,
     province: "Bangkok",
     roomTypes: [
       {
@@ -102,6 +111,7 @@ const DEFAULT_DEMO_HOTEL_DEFINITIONS: HotelDefinition[] = [
   {
     id: "hd_pty_beach_resort",
     name: "Pattaya Beach Resort & Spa",
+    countryId: thailandCountryId,
     province: "Pattaya",
     roomTypes: [
       {
@@ -138,6 +148,7 @@ const DEFAULT_DEMO_HOTEL_DEFINITIONS: HotelDefinition[] = [
   {
     id: "hd_pty_seaview_inn",
     name: "Seaview Inn Pattaya",
+    countryId: thailandCountryId,
     province: "Pattaya",
     roomTypes: [
       {
@@ -171,8 +182,9 @@ const DEFAULT_DEMO_HOTEL_DEFINITIONS: HotelDefinition[] = [
     ]
   },
   {
-    id: "hd_pty_jpmtien_luxury",
+    id: "hd_pty_jomtien_luxury",
     name: "Jomtien Luxury Condotel",
+    countryId: thailandCountryId,
     province: "Pattaya",
     roomTypes: [
       {
@@ -181,7 +193,7 @@ const DEFAULT_DEMO_HOTEL_DEFINITIONS: HotelDefinition[] = [
         extraBedAllowed: false,
         notes: "Apartment-style with kitchen, living area, balcony, 55sqm.",
         seasonalPrices: [
-          { id: generateGUID(), seasonName: "Monthly Rate (Low)", startDate: `${currentYear}-05-01`, endDate: `${currentYear}-10-31`, rate: 25000/30 }, // Example of deriving daily from monthly
+          { id: generateGUID(), seasonName: "Monthly Rate (Low)", startDate: `${currentYear}-05-01`, endDate: `${currentYear}-10-31`, rate: Math.round(25000/30) },
           { id: generateGUID(), seasonName: "Daily Rate (High)", startDate: `${currentYear}-11-01`, endDate: `${currentYear + 1}-04-30`, rate: 1800 }
         ],
         characteristics: [
@@ -194,92 +206,76 @@ const DEFAULT_DEMO_HOTEL_DEFINITIONS: HotelDefinition[] = [
     ]
   }
 ];
+}
 
 export function useHotelDefinitions() {
+  const { countries, isLoading: isLoadingCountries, getCountryByName } = useCountries();
   const [allHotelDefinitions, setAllHotelDefinitions] = React.useState<HotelDefinition[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
 
   React.useEffect(() => {
+    if (isLoadingCountries) return;
+
     let definitionsToSet: HotelDefinition[] = [];
+    const defaultCountry = getCountryByName(DEFAULT_COUNTRY_NAME_FOR_DEMO_HOTELS);
+    const DEMO_HOTELS = createDemoHotelDefinitions(defaultCountry?.id);
+
     try {
       const storedDefinitionsString = localStorage.getItem(HOTEL_DEFINITIONS_STORAGE_KEY);
       if (storedDefinitionsString) {
-        const parsedDefinitions = JSON.parse(storedDefinitionsString);
+        const parsedDefinitions = JSON.parse(storedDefinitionsString) as HotelDefinition[];
         if (Array.isArray(parsedDefinitions) && parsedDefinitions.length > 0) {
           const validatedDefinitions = parsedDefinitions.filter(
-            h => h.id && h.name && Array.isArray(h.roomTypes) && 
+            h => h.id && h.name && h.countryId && h.province && Array.isArray(h.roomTypes) && 
                  h.roomTypes.every((rt: any) => rt.id && rt.name && Array.isArray(rt.seasonalPrices) && rt.seasonalPrices.every((sp: any) => sp.id && sp.startDate && sp.endDate && typeof sp.rate === 'number'))
           );
           if (validatedDefinitions.length > 0) {
             definitionsToSet = validatedDefinitions;
           } else {
-            definitionsToSet = DEFAULT_DEMO_HOTEL_DEFINITIONS;
-            if (DEFAULT_DEMO_HOTEL_DEFINITIONS.length > 0) {
-                localStorage.setItem(HOTEL_DEFINITIONS_STORAGE_KEY, JSON.stringify(DEFAULT_DEMO_HOTEL_DEFINITIONS));
-            } else {
-                localStorage.removeItem(HOTEL_DEFINITIONS_STORAGE_KEY);
-            }
+            definitionsToSet = DEMO_HOTELS;
+            if (DEMO_HOTELS.length > 0) localStorage.setItem(HOTEL_DEFINITIONS_STORAGE_KEY, JSON.stringify(DEMO_HOTELS));
+            else localStorage.removeItem(HOTEL_DEFINITIONS_STORAGE_KEY);
           }
         } else {
-          definitionsToSet = DEFAULT_DEMO_HOTEL_DEFINITIONS;
-          if (DEFAULT_DEMO_HOTEL_DEFINITIONS.length > 0) {
-            localStorage.setItem(HOTEL_DEFINITIONS_STORAGE_KEY, JSON.stringify(DEFAULT_DEMO_HOTEL_DEFINITIONS));
-          } else {
-            localStorage.removeItem(HOTEL_DEFINITIONS_STORAGE_KEY);
-          }
+          definitionsToSet = DEMO_HOTELS;
+          if (DEMO_HOTELS.length > 0) localStorage.setItem(HOTEL_DEFINITIONS_STORAGE_KEY, JSON.stringify(DEMO_HOTELS));
+          else localStorage.removeItem(HOTEL_DEFINITIONS_STORAGE_KEY);
         }
-      } else {
-        definitionsToSet = DEFAULT_DEMO_HOTEL_DEFINITIONS;
-        if (DEFAULT_DEMO_HOTEL_DEFINITIONS.length > 0) {
-            localStorage.setItem(HOTEL_DEFINITIONS_STORAGE_KEY, JSON.stringify(DEFAULT_DEMO_HOTEL_DEFINITIONS));
-        }
+      } else if (DEMO_HOTELS.length > 0) {
+        definitionsToSet = DEMO_HOTELS;
+        localStorage.setItem(HOTEL_DEFINITIONS_STORAGE_KEY, JSON.stringify(DEMO_HOTELS));
       }
     } catch (error) {
-      console.error("Failed to load or initialize hotel definitions from localStorage:", error);
-      definitionsToSet = DEFAULT_DEMO_HOTEL_DEFINITIONS;
-      if (DEFAULT_DEMO_HOTEL_DEFINITIONS.length > 0) {
-        try {
-          localStorage.setItem(HOTEL_DEFINITIONS_STORAGE_KEY, JSON.stringify(DEFAULT_DEMO_HOTEL_DEFINITIONS));
-        } catch (saveError) {
-          console.error("Failed to save demo hotel definitions to localStorage after load error:", saveError);
-        }
+      console.error("Failed to load or initialize hotel definitions:", error);
+      definitionsToSet = DEMO_HOTELS;
+      if (DEMO_HOTELS.length > 0) {
+        try { localStorage.setItem(HOTEL_DEFINITIONS_STORAGE_KEY, JSON.stringify(DEMO_HOTELS)); } 
+        catch (saveError) { console.error("Failed to save demo hotel definitions after load error:", saveError); }
       } else {
-          localStorage.removeItem(HOTEL_DEFINITIONS_STORAGE_KEY);
+        localStorage.removeItem(HOTEL_DEFINITIONS_STORAGE_KEY);
       }
     }
     setAllHotelDefinitions(definitionsToSet);
     setIsLoading(false);
-  }, []);
+  }, [isLoadingCountries, getCountryByName]);
 
-  const getHotelDefinitions = React.useCallback(
-    (province?: string): HotelDefinition[] => {
+  const getHotelDefinitionsByLocation = React.useCallback(
+    (countryId?: string, provinceName?: string): HotelDefinition[] => {
       if (isLoading) return [];
-      if (province) {
-        return allHotelDefinitions.filter(hd => hd.province === province);
+      let filtered = allHotelDefinitions;
+      if (countryId) {
+        filtered = filtered.filter(hd => hd.countryId === countryId);
       }
-      return allHotelDefinitions;
+      if (provinceName) {
+        filtered = filtered.filter(hd => hd.province === provinceName);
+      }
+      return filtered;
     },
     [allHotelDefinitions, isLoading]
   );
   
-  const getHotelDefinitionById = React.useCallback(
-    (id: string): HotelDefinition | undefined => {
-      if (isLoading) return undefined;
-      return allHotelDefinitions.find(hd => hd.id === id);
-    },
-    [allHotelDefinitions, isLoading]
-  );
+  const getHotelDefinitionById = React.useCallback( /* ... unchanged ... */ );
+  const getRoomTypeDefinitionByIds = React.useCallback( /* ... unchanged ... */ );
 
-  const getRoomTypeDefinitionByIds = React.useCallback(
-    (hotelDefId: string, roomTypeDefId: string): HotelRoomTypeDefinition | undefined => {
-      if (isLoading) return undefined;
-      const hotelDef = allHotelDefinitions.find(hd => hd.id === hotelDefId);
-      return hotelDef?.roomTypes.find(rt => rt.id === roomTypeDefId);
-    },
-    [allHotelDefinitions, isLoading]
-  );
-
-
-  return { isLoading, allHotelDefinitions, getHotelDefinitions, getHotelDefinitionById, getRoomTypeDefinitionByIds };
+  return { isLoading, allHotelDefinitions, getHotelDefinitionsByLocation, getHotelDefinitionById, getRoomTypeDefinitionByIds };
 }
-

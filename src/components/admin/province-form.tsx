@@ -15,10 +15,13 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import type { ProvinceItem } from '@/types/itinerary';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import type { ProvinceItem, CountryItem } from '@/types/itinerary';
+import { useCountries } from '@/hooks/useCountries'; // Import useCountries
 
 const provinceSchema = z.object({
   name: z.string().min(1, "Province name is required"),
+  countryId: z.string().min(1, "Country is required"),
 });
 
 type ProvinceFormValues = z.infer<typeof provinceSchema>;
@@ -30,12 +33,25 @@ interface ProvinceFormProps {
 }
 
 export function ProvinceForm({ initialData, onSubmit, onCancel }: ProvinceFormProps) {
+  const { countries, isLoading: isLoadingCountries } = useCountries(); // Use the hook
+
   const form = useForm<ProvinceFormValues>({
     resolver: zodResolver(provinceSchema),
     defaultValues: {
       name: initialData?.name || "",
+      countryId: initialData?.countryId || (countries.find(c => c.name === "Thailand")?.id || ""), // Default to Thailand if available
     },
   });
+  
+  React.useEffect(() => {
+    if (!initialData?.countryId && countries.length > 0) {
+      const defaultCountry = countries.find(c => c.name === "Thailand") || countries[0];
+      if (defaultCountry) {
+        form.setValue('countryId', defaultCountry.id);
+      }
+    }
+  }, [countries, initialData, form]);
+
 
   const handleActualSubmit = (values: ProvinceFormValues) => {
     onSubmit(values);
@@ -44,6 +60,38 @@ export function ProvinceForm({ initialData, onSubmit, onCancel }: ProvinceFormPr
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(handleActualSubmit)} className="space-y-6">
+        <FormField
+          control={form.control}
+          name="countryId"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Country</FormLabel>
+              <Select
+                onValueChange={field.onChange}
+                value={field.value}
+                disabled={isLoadingCountries}
+              >
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select country" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  {isLoadingCountries ? (
+                    <SelectItem value="" disabled>Loading countries...</SelectItem>
+                  ) : (
+                    countries.map(country => (
+                      <SelectItem key={country.id} value={country.id}>
+                        {country.name}
+                      </SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
         <FormField
           control={form.control}
           name="name"

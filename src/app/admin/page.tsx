@@ -4,8 +4,8 @@
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
-import { Cog, MapPinned, ListPlus, LayoutDashboard, ListOrdered, DollarSign, Users, BarChart3, Wand2, Route } from 'lucide-react';
-import { cn } from '@/lib/utils'; // <<< Added this import
+import { Cog, MapPinned, ListPlus, LayoutDashboard, ListOrdered, DollarSign, Users, BarChart3, Wand2, Route, Globe } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface DashboardCardProps {
   title: string;
@@ -78,9 +78,17 @@ export default function AdminDashboardPage() {
             buttonText="Update Prices"
             className="lg:col-span-1"
           />
+          <DashboardCard
+            title="Manage Countries"
+            description="Define and manage countries for multi-destination tour operations."
+            href="/admin/countries"
+            icon={Globe}
+            buttonText="Edit Countries"
+            className="lg:col-span-1"
+          />
            <DashboardCard
             title="Manage Provinces"
-            description="Define and update geographical locations (provinces or cities) used for pricing and filtering."
+            description="Define and update geographical locations (provinces or cities) used for pricing and filtering, linked to countries."
             href="/admin/provinces"
             icon={MapPinned}
             buttonText="Edit Provinces"
@@ -94,26 +102,6 @@ export default function AdminDashboardPage() {
             buttonText="Describe Image"
             className="lg:col-span-1"
           />
-
-          {/* Example of a potential future card - you can uncomment and implement */}
-          {/*
-          <DashboardCard
-            title="User Management"
-            description="Administer user accounts, roles, and permissions for your team."
-            href="/admin/users" // Hypothetical link
-            icon={Users}
-            buttonText="Manage Users"
-            className="border-dashed border-muted-foreground/50"
-          />
-          <DashboardCard
-            title="Analytics & Reports"
-            description="View key metrics, popular destinations, and cost trends for your itineraries."
-            href="/admin/reports" // Hypothetical link
-            icon={BarChart3}
-            buttonText="View Reports"
-            className="border-dashed border-muted-foreground/50"
-          />
-          */}
         </div>
       </div>
     </main>
