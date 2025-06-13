@@ -6,14 +6,7 @@ import { generateGUID } from '@/lib/utils';
 
 const COUNTRIES_STORAGE_KEY = 'itineraryAceCountries';
 
-// Define default countries with fixed IDs for consistent province linking
-const DEFAULT_COUNTRIES_INFO: CountryItem[] = [
-  { id: "f47ac10b-58cc-4372-a567-0e02b2c3d479", name: "Thailand", defaultCurrency: "THB" },
-  { id: "986a76d0-9490-4e0f-806a-1a3e9728a708", name: "Malaysia", defaultCurrency: "MYR" },
-  { id: "69a1a2b4-4c7d-4b2f-b8a9-9e76c5d4e3f2", name: "Singapore", defaultCurrency: "USD" },
-  { id: "0e6f0a8b-8b1e-4b2f-8d3a-1a2b3c4d5e6f", name: "Vietnam", defaultCurrency: "USD" },
-];
-
+// DEFAULT_COUNTRIES_INFO has been removed
 
 export function useCountries() {
   const [countries, setCountries] = React.useState<CountryItem[]>([]);
@@ -27,28 +20,26 @@ export function useCountries() {
       const storedCountries = localStorage.getItem(COUNTRIES_STORAGE_KEY);
       let countriesToSet: CountryItem[] = [];
       if (storedCountries) {
-        countriesToSet = JSON.parse(storedCountries);
+        try {
+          countriesToSet = JSON.parse(storedCountries);
+        } catch (parseError) {
+          console.error("Error parsing countries from localStorage, starting fresh:", parseError);
+          localStorage.removeItem(COUNTRIES_STORAGE_KEY); // Clear corrupted data
+        }
       }
       
-      if (countriesToSet.length === 0) {
-        console.log("No countries found in localStorage, seeding default countries...");
-        countriesToSet = [...DEFAULT_COUNTRIES_INFO]; // Use a copy
-        localStorage.setItem(COUNTRIES_STORAGE_KEY, JSON.stringify(countriesToSet));
+      // No longer seeding default countries if localStorage is empty.
+      // It will just start with an empty array.
+      if (!Array.isArray(countriesToSet)) {
+          countriesToSet = [];
       }
-      
+
       countriesToSet.sort((a, b) => a.name.localeCompare(b.name));
       setCountries(countriesToSet);
     } catch (e: any) {
       console.error("Error initializing countries from localStorage:", e);
-      setError("Failed to load countries from local storage. Using defaults.");
-      // Fallback to defaults if parsing fails or any other error
-      const defaultData = [...DEFAULT_COUNTRIES_INFO].sort((a, b) => a.name.localeCompare(b.name));
-      setCountries(defaultData);
-      try {
-        localStorage.setItem(COUNTRIES_STORAGE_KEY, JSON.stringify(defaultData));
-      } catch (saveError) {
-        console.error("Failed to save default countries to localStorage after error:", saveError);
-      }
+      setError("Failed to load countries from local storage.");
+      setCountries([]); // Fallback to empty array
     }
     setIsLoading(false);
   }, []);

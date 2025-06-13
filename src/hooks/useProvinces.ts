@@ -6,17 +6,7 @@ import { useCountries } from './useCountries';
 
 const PROVINCES_STORAGE_KEY = 'itineraryAceProvinces';
 
-const FAMOUS_THAI_PROVINCES_FOR_DEFAULT_COUNTRY: string[] = [
-    "Bangkok", "Pattaya", "Phuket", "Chiang Mai", "Krabi", "Surat Thani"
-];
-// This ID must match the ID in DEFAULT_COUNTRIES_INFO in useCountries.ts
-const DEFAULT_THAI_COUNTRY_ID = "f47ac10b-58cc-4372-a567-0e02b2c3d479"; 
-
-const FAMOUS_MALAYSIAN_LOCATIONS: string[] = [
-    "Kuala Lumpur", "Penang", "Langkawi", "Malacca", "Sabah (Kota Kinabalu)", "Sarawak (Kuching)", "Johor Bahru"
-];
-// This ID must match the ID in DEFAULT_COUNTRIES_INFO in useCountries.ts
-const DEFAULT_MALAYSIAN_COUNTRY_ID = "986a76d0-9490-4e0f-806a-1a3e9728a708";
+// Default province lists and country IDs have been removed
 
 export function useProvinces() {
   const { countries, isLoading: isLoadingCountries, getCountryById } = useCountries();
@@ -37,36 +27,15 @@ export function useProvinces() {
         try {
           provincesToSet = JSON.parse(storedProvinces);
         } catch (parseError) {
-          console.error("Error parsing provinces from localStorage, resetting:", parseError);
+          console.error("Error parsing provinces from localStorage, starting fresh:", parseError);
           localStorage.removeItem(PROVINCES_STORAGE_KEY); // Clear corrupted data
         }
       }
-
-      let provincesWereSeeded = false;
-      if (provincesToSet.length === 0) {
-        console.log("No provinces found in localStorage, attempting to seed default provinces...");
-        let defaultProvincesToSeed: ProvinceItem[] = [];
-        
-        const thaiCountry = getCountryById(DEFAULT_THAI_COUNTRY_ID);
-        if (thaiCountry) {
-          FAMOUS_THAI_PROVINCES_FOR_DEFAULT_COUNTRY.forEach(name => {
-            defaultProvincesToSeed.push({ id: generateGUID(), name, countryId: thaiCountry.id });
-          });
-        }
-        
-        const malaysianCountry = getCountryById(DEFAULT_MALAYSIAN_COUNTRY_ID);
-        if (malaysianCountry) {
-          FAMOUS_MALAYSIAN_LOCATIONS.forEach(name => {
-            defaultProvincesToSeed.push({ id: generateGUID(), name, countryId: malaysianCountry.id });
-          });
-        }
-
-        if (defaultProvincesToSeed.length > 0) {
-            provincesToSet = defaultProvincesToSeed;
-            localStorage.setItem(PROVINCES_STORAGE_KEY, JSON.stringify(provincesToSet));
-            provincesWereSeeded = true;
-            console.log("Default provinces seeded to localStorage.");
-        }
+      
+      // No longer seeding default provinces if localStorage is empty.
+      // It will just start with an empty array.
+      if (!Array.isArray(provincesToSet)) {
+          provincesToSet = [];
       }
       
       provincesToSet.sort((a, b) => {
@@ -85,7 +54,7 @@ export function useProvinces() {
       setProvinces([]); // Fallback to empty if error
     }
     setIsLoading(false);
-  }, [isLoadingCountries, getCountryById, countries]); // Added countries dependency
+  }, [isLoadingCountries, getCountryById, countries]);
 
   React.useEffect(() => {
     fetchAndSeedProvinces();
@@ -97,7 +66,7 @@ export function useProvinces() {
       const newProvinceWithId: ProvinceItem = { ...provinceData, id: generateGUID() };
       const currentProvinces = provinces ? [...provinces] : [];
       currentProvinces.push(newProvinceWithId);
-      currentProvinces.sort((a, b) => { /* same sort as fetch */ 
+      currentProvinces.sort((a, b) => { 
         const countryAName = getCountryById(a.countryId)?.name || '';
         const countryBName = getCountryById(b.countryId)?.name || '';
         if (countryAName.localeCompare(countryBName) !== 0) return countryAName.localeCompare(countryBName);
@@ -117,7 +86,7 @@ export function useProvinces() {
     setIsLoading(true);
     try {
       const currentProvinces = provinces ? provinces.map(p => p.id === updatedProvince.id ? updatedProvince : p) : [updatedProvince];
-      currentProvinces.sort((a, b) => { /* same sort as fetch */
+      currentProvinces.sort((a, b) => {
         const countryAName = getCountryById(a.countryId)?.name || '';
         const countryBName = getCountryById(b.countryId)?.name || '';
         if (countryAName.localeCompare(countryBName) !== 0) return countryAName.localeCompare(countryBName);
