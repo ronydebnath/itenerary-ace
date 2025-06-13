@@ -58,49 +58,43 @@ export function BaseItemForm<T extends ItineraryItem>({
     return allAvailableCountries;
   }, [isLoadingCountries, tripSettings.selectedCountries, allAvailableCountries]);
 
-  const displayableProvincesForItem = React.useMemo(() => {
+  const displayProvincesForItem = React.useMemo(() => {
     if (isLoadingProvinces) return [];
 
     const globallySelectedCountries = tripSettings.selectedCountries || [];
     const globallySelectedProvincesFromSettings = tripSettings.selectedProvinces || [];
     let provincesToDisplay: ProvinceItem[] = [];
 
-    if (item.countryId) { // Item has a specific country
-      provincesToDisplay = getProvincesByCountry(item.countryId);
+    if (item.countryId) {
+      let provincesWithinItemCountry = getProvincesByCountry(item.countryId);
       if (globallySelectedProvincesFromSettings.length > 0) {
-        // Filter these by global province selection if any
-        provincesToDisplay = provincesToDisplay.filter(p => 
+        provincesWithinItemCountry = provincesWithinItemCountry.filter(p => 
           globallySelectedProvincesFromSettings.includes(p.name)
         );
       }
-    } else { // Item does NOT have a specific country (relies on global settings)
+      return provincesWithinItemCountry.sort((a,b) => a.name.localeCompare(b.name));
+    } else { 
       if (globallySelectedProvincesFromSettings.length > 0) {
-        // If global provinces are selected, use them directly.
         provincesToDisplay = allAvailableProvincesForHook.filter(p => 
           globallySelectedProvincesFromSettings.includes(p.name)
         );
-         // If global countries are also selected, ensure these provinces belong to one of them.
         if (globallySelectedCountries.length > 0) {
             provincesToDisplay = provincesToDisplay.filter(p => 
             globallySelectedCountries.includes(p.countryId)
             );
         }
-
       } else if (globallySelectedCountries.length > 0) {
-        // No global provinces selected, but global countries are. Show all provinces from global countries.
         globallySelectedCountries.forEach(countryId => {
           provincesToDisplay = provincesToDisplay.concat(getProvincesByCountry(countryId));
         });
-        // Remove duplicates if a province is in multiple selected countries (though unlikely with current data model)
         provincesToDisplay = provincesToDisplay.filter((province, index, self) =>
           index === self.findIndex((p) => p.id === province.id)
         );
       } else {
-        // No item-specific country, no global provinces, no global countries. Show all available.
         provincesToDisplay = [...allAvailableProvincesForHook];
       }
     }
-    return provincesToDisplay.sort((a, b) => a.name.localeCompare(b.name));
+    return provincesToDisplay.sort((a,b) => a.name.localeCompare(b.name));
   }, [
     item.countryId, 
     tripSettings.selectedCountries, 
@@ -115,7 +109,7 @@ export function BaseItemForm<T extends ItineraryItem>({
     const updatedItem: Partial<ItineraryItem> = {
       countryId: selectedCountry?.id,
       countryName: selectedCountry?.name,
-      province: undefined, // Reset province when country changes
+      province: undefined,
       selectedServicePriceId: undefined,
       selectedPackageId: undefined,
       selectedVehicleOptionId: undefined,
@@ -145,9 +139,7 @@ export function BaseItemForm<T extends ItineraryItem>({
       countryReset = true;
     }
 
-    // This check needs to happen after displayableProvincesForItem is guaranteed to be an array
     if (!isLoadingProvinces && !countryReset) {
-      // Ensure displayableProvincesForItem is an array before calling .some on it
       const provincesList = Array.isArray(displayableProvincesForItem) ? displayableProvincesForItem : [];
       const currentItemProvinceIsValid = !item.province || provincesList.some(p => p.name === item.province);
       if (!currentItemProvinceIsValid && item.province) {
@@ -157,15 +149,16 @@ export function BaseItemForm<T extends ItineraryItem>({
   }, [
     item.countryId,
     item.province,
-    displayableCountriesForItem, // This should be an array
-    displayableProvincesForItem, // Added back: This must be an array.
+    displayableCountriesForItem,
+    displayableProvincesForItem, // Added back as per last fix
+    isLoadingProvinces, // Added back as per last fix
     tripSettings.selectedProvinces,
     tripSettings.selectedCountries,
-    allAvailableProvincesForHook, // This is a dependency of displayableProvincesForItem
-    isLoadingProvinces, // Added to ensure effect runs when loading state changes
+    allAvailableProvincesForHook,
     handleItemCountryChange,
     handleItemProvinceChange
   ]);
+
 
   const handleInputChange = (field: keyof T, value: any) => {
     onUpdate({ ...item, [field]: value });
@@ -189,16 +182,7 @@ export function BaseItemForm<T extends ItineraryItem>({
   return (
     <Card className="mb-4 shadow-sm border border-border hover:shadow-md transition-shadow duration-200">
       <CardContent className="p-3 sm:p-4 space-y-3 sm:space-y-4">
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
-          <FormField label={`${itemTypeLabel} Name`} id={`itemName-${item.id}`} className="md:col-span-1">
-            <Input
-              id={`itemName-${item.id}`}
-              value={item.name}
-              onChange={(e) => handleInputChange('name', e.target.value)}
-              placeholder={`e.g., ${itemTypeLabel} Details`}
-              className="h-9 text-sm"
-            />
-          </FormField>
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 gap-3 sm:gap-4"> {/* Changed md:grid-cols-3 to md:grid-cols-2 for location fields */}
           <FormField label="Country for this item (Optional)" id={`itemCountry-${item.id}`} className="md:col-span-1">
             <Select
               value={item.countryId || "none"}
@@ -240,18 +224,31 @@ export function BaseItemForm<T extends ItineraryItem>({
               </SelectContent>
             </Select>
           </FormField>
-          <FormField label="Note (Optional)" id={`itemNote-${item.id}`} className="sm:col-span-2 md:col-span-3">
-            <Input
-              id={`itemNote-${item.id}`}
-              value={item.note || ''}
-              onChange={(e) => handleInputChange('note', e.target.value)}
-              placeholder="e.g., Specific details or reminders"
-              className="h-9 text-sm"
-            />
-          </FormField>
         </div>
 
-        {children}
+        {children} 
+        
+        <div className="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-1 gap-3 sm:gap-4"> {/* Name and Note now in their own row */}
+            <FormField label={`${itemTypeLabel} Name`} id={`itemName-${item.id}`} className="md:col-span-1">
+                <Input
+                id={`itemName-${item.id}`}
+                value={item.name}
+                onChange={(e) => handleInputChange('name', e.target.value)}
+                placeholder={`e.g., ${itemTypeLabel} Details`}
+                className="h-9 text-sm"
+                />
+            </FormField>
+            <FormField label="Note (Optional)" id={`itemNote-${item.id}`} className="md:col-span-1">
+                <Input
+                id={`itemNote-${item.id}`}
+                value={item.note || ''}
+                onChange={(e) => handleInputChange('note', e.target.value)}
+                placeholder="e.g., Specific details or reminders"
+                className="h-9 text-sm"
+                />
+            </FormField>
+        </div>
+
 
         <div className="pt-1 sm:pt-2">
           <button
@@ -293,4 +290,6 @@ export function BaseItemForm<T extends ItineraryItem>({
     </Card>
   );
 }
+    
+
     

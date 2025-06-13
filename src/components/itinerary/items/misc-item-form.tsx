@@ -10,14 +10,14 @@ import { AlertCircle, Loader2 } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
 import { useServicePrices } from '@/hooks/useServicePrices';
-import { useCountries } from '@/hooks/useCountries'; // Added
+import { useCountries } from '@/hooks/useCountries';
 
 interface MiscItemFormProps {
   item: MiscItemType;
   travelers: Traveler[];
   currency: CurrencyCode;
   tripSettings: TripSettings;
-  dayNumber: number; // Added
+  dayNumber: number;
   onUpdate: (item: MiscItemType) => void;
   onDelete: () => void;
   allServicePrices: ServicePriceItem[];
@@ -25,7 +25,7 @@ interface MiscItemFormProps {
 
 export function MiscItemForm({ item, travelers, currency, tripSettings, dayNumber, onUpdate, onDelete }: MiscItemFormProps) {
   const { allServicePrices, isLoading: isLoadingServices } = useServicePrices();
-  const { countries, getCountryById } = useCountries(); // Added
+  const { countries, getCountryById } = useCountries();
   const [miscServices, setMiscServices] = React.useState<ServicePriceItem[]>([]);
 
   const itemCountry = React.useMemo(() => item.countryId ? getCountryById(item.countryId) : undefined, [item.countryId, getCountryById]);
@@ -215,3 +215,6 @@ export function MiscItemForm({ item, travelers, currency, tripSettings, dayNumbe
     </BaseItemForm>
   );
 }
+
+
+    

@@ -15,7 +15,7 @@ import { generateGUID } from '@/lib/utils';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
 import { useHotelDefinitions } from '@/hooks/useHotelDefinitions';
-import { useCountries } from '@/hooks/useCountries'; // Added
+import { useCountries } from '@/hooks/useCountries';
 
 interface HotelItemFormProps {
   item: HotelItemType;
@@ -31,7 +31,7 @@ interface HotelItemFormProps {
 
 export function HotelItemForm({ item, travelers, currency, dayNumber, tripSettings, onUpdate, onDelete }: HotelItemFormProps) {
   const { allHotelDefinitions: hookHotelDefinitions, isLoading: isLoadingHotelDefs } = useHotelDefinitions();
-  const { countries, getCountryById } = useCountries(); // Added
+  const { countries, getCountryById } = useCountries();
   const [availableHotels, setAvailableHotels] = React.useState<HotelDefinition[]>([]);
   const [selectedHotelDef, setSelectedHotelDef] = React.useState<HotelDefinition | undefined>(undefined);
 
@@ -45,19 +45,16 @@ export function HotelItemForm({ item, travelers, currency, dayNumber, tripSettin
     }
     let filteredDefs = hookHotelDefinitions;
 
-    // Filter by item's specific country if set
     if (item.countryId) {
       filteredDefs = filteredDefs.filter(hd => hd.countryId === item.countryId);
-    } else if (tripSettings.selectedCountries.length > 0) { // Else, filter by global countries
+    } else if (tripSettings.selectedCountries.length > 0) {
       filteredDefs = filteredDefs.filter(hd => tripSettings.selectedCountries.includes(hd.countryId));
     }
 
-    // Then filter by item's specific province if set
     if (item.province) {
       filteredDefs = filteredDefs.filter(hd => hd.province === item.province);
-    } else if (tripSettings.selectedProvinces.length > 0) { // Else, filter by global provinces (within already country-filtered list)
-         // Ensure global provinces are within selected countries if countries are also selected
-        const relevantGlobalProvinces = (tripSettings.selectedCountries.length > 0)
+    } else if (tripSettings.selectedProvinces.length > 0) {
+         const relevantGlobalProvinces = (tripSettings.selectedCountries.length > 0)
             ? tripSettings.selectedProvinces.filter(provName => {
                 const provDef = hookHotelDefinitions.find(hd => hd.province === provName);
                 return provDef && provDef.countryId && tripSettings.selectedCountries.includes(provDef.countryId);
@@ -92,8 +89,8 @@ export function HotelItemForm({ item, travelers, currency, dayNumber, tripSettin
         name: item.name === 'New hotel' || !item.name || !item.hotelDefinitionId ? newHotelDef.name : item.name,
         selectedRooms: [],
         note: undefined,
-        province: newHotelDef.province || item.province, // Prioritize hotel's own province
-        countryId: newHotelDef.countryId || item.countryId, // Prioritize hotel's own country
+        province: newHotelDef.province || item.province,
+        countryId: newHotelDef.countryId || item.countryId,
         countryName: newHotelDef.countryId ? countries.find(c=>c.id === newHotelDef.countryId)?.name : item.countryName,
       });
     } else {
@@ -191,7 +188,7 @@ export function HotelItemForm({ item, travelers, currency, dayNumber, tripSettin
 
   return (
     <BaseItemForm item={item} travelers={travelers} currency={currency} tripSettings={tripSettings} onUpdate={onUpdate} onDelete={onDelete} itemTypeLabel="Hotel Stay" dayNumber={dayNumber}>
-      <div className="pt-2">
+      <div className="mt-4 pt-4 border-t">
         <FormField label={`Select Hotel (${locationDisplay || 'Global'})`} id={`hotel-def-${item.id}`}>
           {isLoadingHotelDefs ? (
              <div className="flex items-center h-10 border rounded-md px-3 bg-muted/50">
@@ -215,7 +212,7 @@ export function HotelItemForm({ item, travelers, currency, dayNumber, tripSettin
                 <SelectItem value="none">None (Clear Selection)</SelectItem>
                 {availableHotels.map(hotelDef => (
                     <SelectItem key={hotelDef.id} value={hotelDef.id}>
-                    {hotelDef.name} ({hotelDef.province || (hotelDef.countryId ? countries.find(c=>c.id === hotelDef.countryId)?.name : 'Generic')})
+                    {hotelDef.name} ({hotelDef.province || (hotelDef.countryId ? countries.find(c => c.id === hotelDef.countryId)?.name : 'Generic')})
                     </SelectItem>
                 ))}
                 </SelectContent>
@@ -247,7 +244,7 @@ export function HotelItemForm({ item, travelers, currency, dayNumber, tripSettin
             value={item.checkoutDay ?? ''}
             onChange={(e) => handleCheckoutDayChange(e.target.value)}
             min={dayNumber + 1}
-            max={tripSettings.numDays + 1} // Allow checkout day after last itinerary day
+            max={tripSettings.numDays + 1}
             placeholder={`Day ${dayNumber + 1}`}
           />
         </FormField>
@@ -401,3 +398,6 @@ export function HotelItemForm({ item, travelers, currency, dayNumber, tripSettin
     </BaseItemForm>
   );
 }
+
+
+    

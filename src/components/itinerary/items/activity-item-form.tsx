@@ -13,7 +13,7 @@ import { CalendarDays, Info, Tag, AlertCircle, Loader2 } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
 import { useServicePrices } from '@/hooks/useServicePrices';
-import { useCountries } from '@/hooks/useCountries'; // Added
+import { useCountries } from '@/hooks/useCountries';
 
 interface ActivityItemFormProps {
   item: ActivityItemType;
@@ -30,7 +30,7 @@ const WEEKDAYS_MAP = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 export function ActivityItemForm({ item, travelers, currency, dayNumber, tripSettings, onUpdate, onDelete }: ActivityItemFormProps) {
   const { allServicePrices, isLoading: isLoadingServices } = useServicePrices();
-  const { countries, getCountryById } = useCountries(); // Added
+  const { countries, getCountryById } = useCountries();
   const [activityServices, setActivityServices] = React.useState<ServicePriceItem[]>([]);
 
   const itemCountry = React.useMemo(() => item.countryId ? getCountryById(item.countryId) : undefined, [item.countryId, getCountryById]);
@@ -60,25 +60,22 @@ export function ActivityItemForm({ item, travelers, currency, dayNumber, tripSet
     }
     let filteredServices = allServicePrices.filter(s => s.category === 'activity' && s.currency === currency);
 
-    // Filter by item's specific country if set
     if (item.countryId) {
-      filteredServices = filteredServices.filter(s => s.countryId === item.countryId || !s.countryId); // Allow generic services too
-    } else if (tripSettings.selectedCountries.length > 0) { // Else, filter by global countries
+      filteredServices = filteredServices.filter(s => s.countryId === item.countryId || !s.countryId);
+    } else if (tripSettings.selectedCountries.length > 0) {
       filteredServices = filteredServices.filter(s => !s.countryId || tripSettings.selectedCountries.includes(s.countryId));
     }
 
-    // Then filter by item's specific province if set
     if (item.province) {
-      filteredServices = filteredServices.filter(s => s.province === item.province || !s.province); // Allow generic services too
-    } else if (tripSettings.selectedProvinces.length > 0) { // Else, filter by global provinces
-        // Ensure global provinces are within selected countries if countries are also selected
-        const relevantGlobalProvinces = (tripSettings.selectedCountries.length > 0)
+      filteredServices = filteredServices.filter(s => s.province === item.province || !s.province);
+    } else if (tripSettings.selectedProvinces.length > 0) {
+         const relevantGlobalProvinces = (tripSettings.selectedCountries.length > 0)
             ? tripSettings.selectedProvinces.filter(provName => {
-                const provObj = allServicePrices.find(sp => sp.province === provName); // This is a bit indirect; better to use useProvinces hook
+                const provObj = allServicePrices.find(sp => sp.province === provName);
                 return provObj && provObj.countryId && tripSettings.selectedCountries.includes(provObj.countryId);
             })
             : tripSettings.selectedProvinces;
-        if(relevantGlobalProvinces.length > 0) {
+        if(relevantGlobalProvinces.length > 0){
              filteredServices = filteredServices.filter(s => !s.province || relevantGlobalProvinces.includes(s.province));
         }
     }
@@ -338,3 +335,6 @@ export function ActivityItemForm({ item, travelers, currency, dayNumber, tripSet
     </BaseItemForm>
   );
 }
+
+
+    
