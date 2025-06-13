@@ -2,9 +2,9 @@
 "use client";
 
 import * as React from 'react';
-import type { ItineraryItem, Traveler, CurrencyCode, TripSettings, HotelDefinition, ServicePriceItem } from '@/types/itinerary';
+import type { ItineraryItem, Traveler, CurrencyCode, TripSettings, HotelDefinition, ServicePriceItem, TransferItem, HotelItem, ActivityItem, MealItem, MiscItem } from '@/types/itinerary';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { PlusCircle, Hotel, Utensils, Car, Ticket, ShoppingBag, PackagePlus } from 'lucide-react';
 import { TransferItemForm } from './items/transfer-item-form';
 import { ActivityItemForm } from './items/activity-item-form';
@@ -12,6 +12,8 @@ import { HotelItemForm } from './items/hotel-item-form';
 import { MealItemForm } from './items/meal-item-form';
 import { MiscItemForm } from './items/misc-item-form';
 import { Separator } from '@/components/ui/separator';
+import { formatCurrency } from '@/lib/utils';
+import { addDays, format, parseISO } from 'date-fns';
 
 interface DayViewProps {
   dayNumber: number;
@@ -39,9 +41,55 @@ function DayViewComponent({
   onAddItem, onUpdateItem, onDeleteItem, allHotelDefinitions, allServicePrices
 }: DayViewProps) {
 
+  const [expandedItemId, setExpandedItemId] = React.useState<string | null>(null);
+  const prevItemsRef = React.useRef<ItineraryItem[]>(items);
+
+  React.useEffect(() => {
+    if (items.length > prevItemsRef.current.length) {
+      const newItem = items.find(item => !prevItemsRef.current.some(prevItem => prevItem.id === item.id));
+      if (newItem) {
+        setExpandedItemId(newItem.id);
+      }
+    }
+    prevItemsRef.current = items;
+  }, [items]);
+
+  const handleToggleExpand = (itemId: string) => {
+    setExpandedItemId(prevId => (prevId === itemId ? null : itemId));
+  };
+
+  const getItemSummaryLine = (item: ItineraryItem): React.ReactNode => {
+    switch (item.type) {
+      case 'transfer':
+        const transfer = item as TransferItem;
+        if (transfer.mode === 'ticket') {
+          return `Ticket: ${formatCurrency(transfer.adultTicketPrice || 0, currency)}`;
+        } else {
+          return `Vehicle: ${transfer.vehicleType || 'N/A'}, Cost: ${formatCurrency(transfer.costPerVehicle || 0, currency)}`;
+        }
+      case 'hotel':
+        const hotel = item as HotelItem;
+        const nights = Math.max(0, (hotel.checkoutDay || (dayNumber + 1)) - dayNumber);
+        return `${nights} night(s)${hotel.selectedRooms && hotel.selectedRooms.length > 0 ? `, ${hotel.selectedRooms.length} room block(s)` : ''}`;
+      case 'activity':
+        const activity = item as ActivityItem;
+        const duration = Math.max(1, (activity.endDay || dayNumber) - dayNumber + 1);
+        return `Price: ${formatCurrency(activity.adultPrice || 0, currency)}${duration > 1 ? `, ${duration} days` : ''}`;
+      case 'meal':
+        const meal = item as MealItem;
+        return `Price: ${formatCurrency(meal.adultMealPrice || 0, currency)}, ${meal.totalMeals} meal(s)`;
+      case 'misc':
+        const misc = item as MiscItem;
+        return `Cost: ${formatCurrency(misc.unitCost || 0, currency)} x ${misc.quantity}`;
+      default:
+        return null;
+    }
+  };
+
+
   const renderItemForm = (item: ItineraryItem) => {
     const itemKey = item.id;
-    const specificItem = item as any; // Cast to any to satisfy individual form props
+    const specificItem = item as any;
 
     const propsToSpread = {
       item: specificItem,
@@ -49,9 +97,12 @@ function DayViewComponent({
       currency: currency,
       dayNumber: dayNumber,
       tripSettings: tripSettings,
-      onUpdate: (updatedItem: ItineraryItem) => onUpdateItem(dayNumber, updatedItem), // Ensure dayNumber is passed correctly
-      onDelete: () => onDeleteItem(dayNumber, item.id), // Ensure dayNumber and itemId are passed
+      onUpdate: (updatedItem: ItineraryItem) => onUpdateItem(dayNumber, updatedItem),
+      onDelete: () => onDeleteItem(dayNumber, item.id),
       allServicePrices: allServicePrices,
+      itemSummaryLine: getItemSummaryLine(item),
+      isCurrentlyExpanded: item.id === expandedItemId,
+      onToggleExpand: () => handleToggleExpand(item.id),
     };
 
     switch (item.type) {
@@ -72,9 +123,6 @@ function DayViewComponent({
 
   return (
     <Card className="mb-6 shadow-md border-primary/20 w-full">
-      <CardHeader className="pb-0 pt-4 px-4 md:px-6">
-        {/* Day Number/Date is now handled by DayNavigation in ItineraryPlanner */}
-      </CardHeader>
       <CardContent className="px-2 py-2 md:px-4 md:py-4">
         <div className="space-y-4">
           {items.length > 0 ? (
@@ -114,4 +162,3 @@ function DayViewComponent({
   );
 }
 export const DayView = React.memo(DayViewComponent);
-
