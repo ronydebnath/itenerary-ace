@@ -6,6 +6,7 @@ import type { TransferItem as TransferItemType, Traveler, CurrencyCode, ServiceP
 import { VEHICLE_TYPES } from '@/types/itinerary';
 import { BaseItemForm, FormField } from './base-item-form';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AlertCircle, Loader2 } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -150,7 +151,8 @@ export function TransferItemForm({ item, travelers, currency, tripSettings, dayN
             updatedItemPartial.selectedVehicleOptionId = firstOption.id;
             updatedItemPartial.costPerVehicle = firstOption.price;
             updatedItemPartial.vehicleType = firstOption.vehicleType;
-            updatedItemPartial.note = firstOption.notes || service.notes || undefined;
+            // Preserve user's note if service note is empty
+            updatedItemPartial.note = firstOption.notes || service.notes || item.note || undefined;
           } else {
             updatedItemPartial.costPerVehicle = service.price1 ?? 0;
             updatedItemPartial.vehicleType = (service.subCategory && VEHICLE_TYPES.includes(service.subCategory as VehicleType))
@@ -186,11 +188,12 @@ export function TransferItemForm({ item, travelers, currency, tripSettings, dayN
         selectedVehicleOptionId: option.id,
         costPerVehicle: option.price,
         vehicleType: option.vehicleType,
-        note: option.notes || selectedService.notes || undefined,
+        note: option.notes || selectedService.notes || item.note || undefined, // Prioritize option note, then service note, then existing item note
       });
     } else {
+      // Fallback if "none" or invalid option is selected, try to use base service price if no options were defined on service
       const baseCost = (selectedService.vehicleOptions && selectedService.vehicleOptions.length > 0)
-                       ? undefined
+                       ? undefined // If options exist, choosing "none" shouldn't set a price from base service.price1
                        : selectedService.price1 ?? 0;
       const baseType = (selectedService.vehicleOptions && selectedService.vehicleOptions.length > 0)
                        ? undefined
@@ -202,7 +205,7 @@ export function TransferItemForm({ item, travelers, currency, tripSettings, dayN
         selectedVehicleOptionId: undefined,
         costPerVehicle: baseCost,
         vehicleType: baseType,
-        note: selectedService.notes || undefined,
+        note: selectedService.notes || item.note || undefined,
       });
     }
   };
@@ -211,10 +214,9 @@ export function TransferItemForm({ item, travelers, currency, tripSettings, dayN
   const serviceDefinitionNotFound = item.selectedServicePriceId && !selectedService && !actualLoadingState;
 
   let isVehicleCostTypeReadOnly = false;
-  if (item.mode === 'vehicle' && selectedService) {
+  if (item.mode === 'vehicle' && selectedService && (selectedService.vehicleOptions && selectedService.vehicleOptions.length > 0 || item.selectedVehicleOptionId)) {
     isVehicleCostTypeReadOnly = true;
   }
-  const allowDirectVehicleEdit = item.mode === 'vehicle' && (!selectedService || (!selectedService.vehicleOptions || selectedService.vehicleOptions.length === 0) && !item.selectedVehicleOptionId);
 
   const displayedVehicleType = item.mode === 'vehicle'
     ? (item.selectedVehicleOptionId && selectedService?.vehicleOptions?.find(vo => vo.id === item.selectedVehicleOptionId)?.vehicleType) ||
@@ -254,22 +256,24 @@ export function TransferItemForm({ item, travelers, currency, tripSettings, dayN
         </FormField>
       </div>
 
-      {(transferServices.length > 0 || item.selectedServicePriceId || actualLoadingState) && (
+      {item.mode && (
         <div className="mt-4">
-          <FormField label={`Select Predefined Service (${locationContext})`} id={`predefined-transfer-${item.id}`}>
-              {actualLoadingState ? (
+          <FormField label={`Select Predefined Route (${locationContext})`} id={`predefined-transfer-${item.id}`}>
+              {actualLoadingState && (!item.selectedServicePriceId && transferServices.length === 0) ? (
                  <div className="flex items-center h-10 border rounded-md px-3 bg-muted/50">
                     <Loader2 className="h-4 w-4 animate-spin mr-2 text-muted-foreground" />
-                    <span className="text-sm text-muted-foreground">Loading transfers...</span>
+                    <span className="text-sm text-muted-foreground">Loading routes...</span>
                 </div>
               ) : (
                 <Select
                     value={item.selectedServicePriceId || "none"}
                     onValueChange={handlePredefinedServiceSelect}
-                    disabled={transferServices.length === 0 && !item.selectedServicePriceId}
+                    disabled={!item.selectedServicePriceId && transferServices.length === 0 && !actualLoadingState}
                 >
                     <SelectTrigger>
-                        <SelectValue placeholder={transferServices.length === 0 && !item.selectedServicePriceId ? "No transfers match criteria" : `Choose ${item.mode} service...`} />
+                        <SelectValue placeholder={
+                            actualLoadingState && transferServices.length === 0 ? "Loading routes..." :
+                            (transferServices.length === 0 && !item.selectedServicePriceId ? "No routes match criteria" : `Choose ${item.mode} service...`)} />
                     </SelectTrigger>
                     <SelectContent>
                         <SelectItem value="none">None (Custom Price/Options)</SelectItem>
@@ -312,7 +316,7 @@ export function TransferItemForm({ item, travelers, currency, tripSettings, dayN
       )}
 
       {serviceDefinitionNotFound && (
-        <Alert variant="destructive" className="mt-4">
+        <Alert variant="destructive" className="my-4">
           <AlertCircle className="h-4 w-4" />
           <AlertTitle>Service Not Found</AlertTitle>
           <AlertDescription>
@@ -344,7 +348,7 @@ export function TransferItemForm({ item, travelers, currency, tripSettings, dayN
 
       <Separator className="my-4" />
       <div className="space-y-1 mb-2">
-          <p className="text-sm font-medium text-muted-foreground">Configuration Details</p>
+          <Label className="text-sm font-medium text-muted-foreground">Configuration Details</Label>
       </div>
 
       {item.mode === 'ticket' && (
@@ -442,5 +446,3 @@ export function TransferItemForm({ item, travelers, currency, tripSettings, dayN
     </BaseItemForm>
   );
 }
-
-    
