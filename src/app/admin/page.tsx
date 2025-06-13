@@ -4,7 +4,7 @@
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
-import { Cog, MapPinned, ListPlus, LayoutDashboard, ListOrdered, DollarSign, Users, BarChart3, Wand2, Route, Globe } from 'lucide-react';
+import { Cog, MapPinned, ListPlus, LayoutDashboard, ListOrdered, DollarSign, Users, BarChart3, Wand2, Route, Globe, Repeat } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface DashboardCardProps {
@@ -100,6 +100,14 @@ export default function AdminDashboardPage() {
             href="/image-describer"
             icon={Wand2}
             buttonText="Describe Image"
+            className="lg:col-span-1"
+          />
+          <DashboardCard
+            title="Currency Converter"
+            description="Convert amounts between currencies using manually defined exchange rates."
+            href="/admin/currency-converter"
+            icon={Repeat}
+            buttonText="Use Converter"
             className="lg:col-span-1"
           />
         </div>

@@ -270,3 +270,11 @@ export interface ProvinceItem {
 }
 
 export type SchedulingData = Pick<ActivityPackageDefinition, 'validityStartDate' | 'validityEndDate' | 'closedWeekdays' | 'specificClosedDates'>;
+
+export interface ExchangeRate {
+  id: string;
+  fromCurrency: CurrencyCode;
+  toCurrency: CurrencyCode;
+  rate: number;
+  updatedAt: string; // ISO Date string
+}
