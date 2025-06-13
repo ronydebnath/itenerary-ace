@@ -9,7 +9,6 @@ if (!supabaseUrl || !supabaseAnonKey) {
   );
 }
 
-// Memoize the client so it's created only once.
 let client: SupabaseClient | undefined;
 
 export function getSupabaseClient(): SupabaseClient {
@@ -17,19 +16,21 @@ export function getSupabaseClient(): SupabaseClient {
     return client;
   }
   if (!supabaseUrl || !supabaseAnonKey) {
-    // Return a mock client or throw an error if not configured,
-    // to prevent app crash during build or if env vars are missing.
-    // This mock won't work for actual operations but prevents errors on access.
     console.warn("Supabase client is not configured. Returning a non-functional mock. Ensure .env.local is set up.");
     return {
         from: (table: string) => ({
-            select: async () => ({ data: [], error: { message: `Supabase not configured for table ${table}` } }),
-            insert: async () => ({ data: [], error: { message: `Supabase not configured for table ${table}` } }),
-            update: async () => ({ data: [], error: { message: `Supabase not configured for table ${table}` } }),
-            delete: async () => ({ data: [], error: { message: `Supabase not configured for table ${table}` } }),
+            select: async (columns?: string, options?: any) => ({ data: [], error: { message: `Supabase not configured for table ${table} select` } }),
+            insert: async (data: any, options?: any) => ({ data: [], error: { message: `Supabase not configured for table ${table} insert` } }),
+            update: async (data: any, options?: any) => ({ data: [], error: { message: `Supabase not configured for table ${table} update` } }),
+            delete: async (options?: any) => ({ data: [], error: { message: `Supabase not configured for table ${table} delete` } }),
+            // Add other methods as needed by your application for the mock
+            // For example, eq, single, etc., if used directly or chained.
+            // This simple mock is primarily for basic CRUD and select.
+            eq: () => ({ /* return 'this' or a new mock object for chaining */ }),
+            single: async () => ({ data: null, error: { message: `Supabase not configured for table ${table} single` } }),
         }),
-        // Add other Supabase client methods if needed by your app, mocking them similarly
-    } as any; // Cast to any to satisfy SupabaseClient type for mock
+        // Add other Supabase client top-level methods if needed by your app
+    } as any; 
   }
   client = createClient(supabaseUrl, supabaseAnonKey);
   return client;

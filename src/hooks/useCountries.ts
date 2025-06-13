@@ -6,15 +6,16 @@ import { generateGUID } from '@/lib/utils';
 import { getSupabaseClient } from '@/lib/supabaseClient';
 
 interface DefaultCountryInfo {
+  id: string;
   name: string;
   defaultCurrency: CurrencyCode;
 }
 
 const DEFAULT_COUNTRIES_INFO: DefaultCountryInfo[] = [
-  { name: "Thailand", defaultCurrency: "THB" },
-  { name: "Malaysia", defaultCurrency: "MYR" },
-  { name: "Singapore", defaultCurrency: "USD" },
-  { name: "Vietnam", defaultCurrency: "USD" },
+  { id: "f47ac10b-58cc-4372-a567-0e02b2c3d479", name: "Thailand", defaultCurrency: "THB" },
+  { id: "986a76d0-9490-4e0f-806a-1a3e9728a708", name: "Malaysia", defaultCurrency: "MYR" },
+  { id: "69a1a2b4-4c7d-4b2f-b8a9-9e76c5d4e3f2", name: "Singapore", defaultCurrency: "USD" },
+  { id: "0e6f0a8b-8b1e-4b2f-8d3a-1a2b3c4d5e6f", name: "Vietnam", defaultCurrency: "USD" },
 ];
 
 export function useCountries() {
@@ -27,16 +28,16 @@ export function useCountries() {
     setError(null);
     const supabase = getSupabaseClient();
     if (!supabase || typeof supabase.from !== 'function') {
-        console.error("Supabase client is not available or not configured.");
+        console.error("Supabase client is not available or not configured in useCountries.");
         setError("Database connection failed. Please check configuration.");
         setIsLoading(false);
-        setCountries([]); // Ensure countries is an empty array on error
+        setCountries([]);
         return;
     }
 
     const { data: existingCountries, error: fetchError } = await supabase
       .from('countries')
-      .select('id, name, defaultCurrency');
+      .select('id, name, "defaultCurrency"'); // Ensure column name matches DB
 
     if (fetchError) {
       console.error("Error fetching countries:", fetchError);
@@ -45,13 +46,19 @@ export function useCountries() {
       setIsLoading(false);
       return;
     }
+    
+    let countriesToSet: CountryItem[] = (existingCountries || []).map(c => ({
+        id: c.id,
+        name: c.name,
+        defaultCurrency: c.defaultCurrency as CurrencyCode // Explicit cast
+    }));
 
-    let countriesToSet: CountryItem[] = existingCountries || [];
 
     if (countriesToSet.length === 0 && DEFAULT_COUNTRIES_INFO.length > 0) {
       console.log("No countries found in database, attempting to seed default countries...");
+      
       const defaultCountriesToSeed = DEFAULT_COUNTRIES_INFO.map(dc => ({
-        id: generateGUID(), // Generate new UUID for Supabase
+        id: dc.id, // Use pre-defined IDs from the CSV/constants
         name: dc.name,
         defaultCurrency: dc.defaultCurrency,
       }));
@@ -59,20 +66,23 @@ export function useCountries() {
       const { data: seededCountries, error: seedError } = await supabase
         .from('countries')
         .insert(defaultCountriesToSeed)
-        .select();
+        .select('id, name, "defaultCurrency"');
 
       if (seedError) {
         console.error("Error seeding default countries:", seedError);
         setError(`Failed to seed default countries: ${seedError.message}`);
-        // Continue with an empty list or existing (which is empty)
       } else {
         console.log("Default countries seeded successfully.");
-        countriesToSet = seededCountries || [];
+        countriesToSet = (seededCountries || []).map(c => ({
+            id: c.id,
+            name: c.name,
+            defaultCurrency: c.defaultCurrency as CurrencyCode
+        }));
       }
     }
     
     countriesToSet.sort((a,b) => a.name.localeCompare(b.name));
-    setCountries(countriesToSet as CountryItem[]);
+    setCountries(countriesToSet);
     setIsLoading(false);
   }, []);
 
@@ -88,18 +98,23 @@ export function useCountries() {
         setIsLoading(false);
         return;
     }
-    const newCountryWithId = { ...countryData, id: generateGUID() }; // Ensure ID is generated client-side if table doesn't auto-generate or if needed for optimistic update
+    const newCountryWithId: CountryItem = { ...countryData, id: generateGUID() };
     const { data, error: insertError } = await supabase
       .from('countries')
-      .insert(newCountryWithId)
-      .select()
+      .insert({
+          id: newCountryWithId.id,
+          name: newCountryWithId.name,
+          defaultCurrency: newCountryWithId.defaultCurrency
+      })
+      .select('id, name, "defaultCurrency"')
       .single();
 
     if (insertError) {
       console.error("Error adding country:", insertError);
       setError(`Failed to add country: ${insertError.message}`);
     } else if (data) {
-      setCountries(prev => [...prev, data as CountryItem].sort((a,b) => a.name.localeCompare(b.name)));
+      const addedCountry = { id: data.id, name: data.name, defaultCurrency: data.defaultCurrency as CurrencyCode };
+      setCountries(prev => [...prev, addedCountry].sort((a,b) => a.name.localeCompare(b.name)));
       setError(null);
     }
     setIsLoading(false);
@@ -117,14 +132,15 @@ export function useCountries() {
       .from('countries')
       .update({ name: updatedCountry.name, defaultCurrency: updatedCountry.defaultCurrency })
       .eq('id', updatedCountry.id)
-      .select()
+      .select('id, name, "defaultCurrency"')
       .single();
 
     if (updateError) {
       console.error("Error updating country:", updateError);
       setError(`Failed to update country: ${updateError.message}`);
     } else if (data) {
-      setCountries(prev => prev.map(c => c.id === data.id ? data as CountryItem : c).sort((a,b) => a.name.localeCompare(b.name)));
+      const modifiedCountry = { id: data.id, name: data.name, defaultCurrency: data.defaultCurrency as CurrencyCode };
+      setCountries(prev => prev.map(c => c.id === data.id ? modifiedCountry : c).sort((a,b) => a.name.localeCompare(b.name)));
       setError(null);
     }
     setIsLoading(false);
