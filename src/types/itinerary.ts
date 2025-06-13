@@ -18,8 +18,8 @@ export interface TripSettings {
   numDays: number;
   startDate: string; // ISO date string, now mandatory
   budget?: number;
+  selectedCountries: string[]; // Array of selected country IDs
   selectedProvinces: string[]; // Stores province names for filtering
-  selectedCountries: string[]; // Stores country names for filtering
   isTemplate?: boolean;
   templateCategory?: string;
 }
@@ -40,8 +40,9 @@ export interface BaseItem {
   selectedServicePriceId?: string;
   aiSuggested?: boolean;
   originalCost?: number;
-  countryName?: string; // Added
-  province?: string; // This will store province name, countryName provides context
+  countryId?: string; // ID of the country for this item
+  countryName?: string; // Name of the country for this item
+  province?: string; // Province name
 }
 
 export interface VehicleOption {
@@ -110,7 +111,7 @@ export interface HotelRoomTypeDefinition {
 export interface HotelDefinition {
   id: string;
   name: string;
-  countryId: string; // Added
+  countryId: string;
   province: string; // Province Name
   roomTypes: HotelRoomTypeDefinition[];
 }
@@ -183,7 +184,7 @@ export interface DetailedSummaryItem {
   day?: number;
   name: string;
   note?: string;
-  countryName?: string; // Added
+  countryName?: string;
   province?: string;
   configurationDetails: string;
   excludedTravelers: string;
@@ -221,7 +222,7 @@ export interface SurchargePeriod {
 export interface ServicePriceItem {
   id: string;
   name: string;
-  countryId?: string; // Added
+  countryId?: string;
   province?: string; // Name of the province
   category: ItineraryItemType;
   price1?: number;
@@ -233,10 +234,10 @@ export interface ServicePriceItem {
   currency: CurrencyCode;
   unitDescription?: string;
   notes?: string;
-  hotelDetails?: HotelDefinition; // This will store the full HotelDefinition now
+  hotelDetails?: HotelDefinition;
   activityPackages?: ActivityPackageDefinition[];
   surchargePeriods?: SurchargePeriod[];
-  selectedServicePriceId?: string; // Used in forms, not for final storage of this item
+  selectedServicePriceId?: string;
 }
 
 export interface CountryItem {

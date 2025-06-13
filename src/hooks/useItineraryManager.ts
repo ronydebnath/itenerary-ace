@@ -33,16 +33,17 @@ const createDefaultTravelers = (adults: number, children: number): Traveler[] =>
 const createDefaultTripData = (): TripData => {
   const newId = generateItineraryId();
   const now = new Date().toISOString();
-  const startDate = new Date(); 
-  startDate.setHours(0, 0, 0, 0); 
+  const startDate = new Date();
+  startDate.setHours(0, 0, 0, 0);
 
   const settings: TripSettings = {
     numDays: 1,
     startDate: startDate.toISOString().split('T')[0],
+    selectedCountries: [], // Initialize selectedCountries
     selectedProvinces: [],
     budget: undefined,
   };
-  const pax: PaxDetails = { adults: 2, children: 0, currency: 'THB' }; // Default currency changed to THB
+  const pax: PaxDetails = { adults: 2, children: 0, currency: 'THB' };
   const travelers = createDefaultTravelers(pax.adults, pax.children);
   const days: { [dayNumber: number]: { items: [] } } = { 1: { items: [] } };
 
@@ -83,12 +84,12 @@ export function useItineraryManager() {
         }
       } catch (e) { console.error("Error reading lastActiveItineraryId:", e); }
     }
-    
+
     if (idToLoad && currentItineraryId === idToLoad && pageStatus === 'planner' && tripData) {
       if (itineraryIdFromUrl !== currentItineraryId) {
         router.replace(`/planner?itineraryId=${currentItineraryId}`, { shallow: true });
       }
-      return; 
+      return;
     }
 
     setPageStatus('loading');
@@ -98,18 +99,23 @@ export function useItineraryManager() {
         const savedData = localStorage.getItem(`${ITINERARY_DATA_PREFIX}${idToLoad}`);
         if (savedData) {
           const parsedData = JSON.parse(savedData) as Partial<TripData>;
+          const defaultSettings = createDefaultTripData().settings;
           const dataToSet: TripData = {
             id: parsedData.id || idToLoad,
             itineraryName: parsedData.itineraryName || `Itinerary ${idToLoad.slice(-6)}`,
             clientName: parsedData.clientName || undefined,
             createdAt: parsedData.createdAt || new Date().toISOString(),
             updatedAt: parsedData.updatedAt || new Date().toISOString(),
-            settings: parsedData.settings || { numDays: 1, startDate: new Date().toISOString().split('T')[0], selectedProvinces: [] },
-            pax: parsedData.pax || { adults: 1, children: 0, currency: 'THB' }, // Default to THB if missing
+            settings: {
+              ...defaultSettings,
+              ...parsedData.settings,
+              selectedCountries: parsedData.settings?.selectedCountries || [],
+              selectedProvinces: parsedData.settings?.selectedProvinces || [],
+            },
+            pax: parsedData.pax || { adults: 1, children: 0, currency: 'THB' },
             travelers: parsedData.travelers && parsedData.travelers.length > 0 ? parsedData.travelers : createDefaultTravelers(parsedData.pax?.adults || 1, parsedData.pax?.children || 0),
             days: parsedData.days || { 1: { items: [] } },
           };
-          dataToSet.settings.selectedProvinces = dataToSet.settings.selectedProvinces || [];
 
           setTripData(dataToSet);
           setCurrentItineraryId(dataToSet.id);
@@ -140,7 +146,7 @@ export function useItineraryManager() {
         localStorage.setItem('lastActiveItineraryId', newDefaultTripData.id);
         router.replace(`/planner?itineraryId=${newDefaultTripData.id}`, { shallow: true });
       }
-    } else { 
+    } else {
         const newDefaultTripData = createDefaultTripData();
         setTripData(newDefaultTripData);
         setCurrentItineraryId(newDefaultTripData.id);
@@ -148,7 +154,7 @@ export function useItineraryManager() {
         localStorage.setItem('lastActiveItineraryId', newDefaultTripData.id);
         router.replace(`/planner?itineraryId=${newDefaultTripData.id}`, { shallow: true });
     }
-  }, [searchParams]); 
+  }, [searchParams, currentItineraryId, pageStatus, router, tripData]);
 
   const handleStartNewItinerary = React.useCallback(() => {
     setPageStatus('loading');
@@ -158,7 +164,7 @@ export function useItineraryManager() {
     localStorage.setItem('lastActiveItineraryId', newDefaultTripData.id);
     router.replace(`/planner?itineraryId=${newDefaultTripData.id}`, { shallow: true });
     toast({ title: "New Itinerary Started", description: "A fresh itinerary has been created with default settings." });
-  }, [router, toast, setPageStatus, setCurrentItineraryId, setTripData]);
+  }, [router, toast]);
 
   const handleUpdateTripData = React.useCallback((updatedTripDataFromPlanner: Partial<TripData>) => {
     setTripData(prevTripData => {
@@ -167,11 +173,11 @@ export function useItineraryManager() {
           toast({ title: "Error", description: "No active itinerary to update.", variant: "destructive" });
           return null;
       }
-      const baseData = prevTripData || createDefaultTripData(); 
+      const baseData = prevTripData || createDefaultTripData();
       const dataToSet: TripData = {
         ...baseData,
         ...updatedTripDataFromPlanner,
-        id: baseData.id || currentItineraryId!, 
+        id: baseData.id || currentItineraryId!,
       };
       return dataToSet;
     });
@@ -180,7 +186,20 @@ export function useItineraryManager() {
   const handleUpdateSettings = React.useCallback((newSettingsPartial: Partial<TripSettings>) => {
     setTripData(prevTripData => {
       if (!prevTripData) return null;
-      const updatedSettings = { ...prevTripData.settings, ...newSettingsPartial };
+      
+      let updatedSelectedProvinces = prevTripData.settings.selectedProvinces;
+      // If selectedCountries change, reset selectedProvinces
+      if (newSettingsPartial.selectedCountries && 
+          JSON.stringify(newSettingsPartial.selectedCountries) !== JSON.stringify(prevTripData.settings.selectedCountries)) {
+        updatedSelectedProvinces = [];
+      }
+      
+      const updatedSettings = { 
+        ...prevTripData.settings, 
+        ...newSettingsPartial,
+        selectedProvinces: updatedSelectedProvinces // Apply potentially reset provinces
+      };
+      
       const newDaysData = { ...prevTripData.days };
 
       if (newSettingsPartial.numDays !== undefined && newSettingsPartial.numDays !== prevTripData.settings.numDays) {
@@ -227,7 +246,7 @@ export function useItineraryManager() {
         ...tripData,
         updatedAt: new Date().toISOString(),
       };
-      setTripData(dataToSave); 
+      setTripData(dataToSave);
 
       localStorage.setItem(`${ITINERARY_DATA_PREFIX}${currentItineraryId}`, JSON.stringify(dataToSave));
 
@@ -261,12 +280,10 @@ export function useItineraryManager() {
     tripData,
     currentItineraryId,
     pageStatus,
-    handleStartNewItinerary, 
+    handleStartNewItinerary,
     handleUpdateTripData,
     handleUpdateSettings,
     handleUpdatePax,
     handleManualSave,
   };
 }
-
-    

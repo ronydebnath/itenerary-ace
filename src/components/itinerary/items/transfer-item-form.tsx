@@ -2,7 +2,7 @@
 "use client";
 
 import * as React from 'react';
-import type { TransferItem as TransferItemType, Traveler, CurrencyCode, ServicePriceItem, VehicleType, TripSettings } from '@/types/itinerary';
+import type { TransferItem as TransferItemType, Traveler, CurrencyCode, ServicePriceItem, VehicleType, TripSettings, CountryItem } from '@/types/itinerary';
 import { VEHICLE_TYPES } from '@/types/itinerary';
 import { BaseItemForm, FormField } from './base-item-form';
 import { Input } from '@/components/ui/input';
@@ -11,24 +11,27 @@ import { AlertCircle, Loader2 } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { format, parseISO } from 'date-fns';
 import { formatCurrency } from '@/lib/utils';
-import { Separator } from '@/components/ui/separator'; 
+import { Separator } from '@/components/ui/separator';
 import { useServicePrices } from '@/hooks/useServicePrices';
+import { useCountries } from '@/hooks/useCountries'; // Added
 
 interface TransferItemFormProps {
   item: TransferItemType;
   travelers: Traveler[];
   currency: CurrencyCode;
   tripSettings: TripSettings;
+  dayNumber: number; // Added
   onUpdate: (item: TransferItemType) => void;
   onDelete: () => void;
-  allServicePrices: ServicePriceItem[]; // Keep for consistency, use hook primarily
+  allServicePrices: ServicePriceItem[];
 }
 
-export function TransferItemForm({ item, travelers, currency, tripSettings, onUpdate, onDelete }: TransferItemFormProps) {
+export function TransferItemForm({ item, travelers, currency, tripSettings, dayNumber, onUpdate, onDelete }: TransferItemFormProps) {
   const { allServicePrices, isLoading: isLoadingServices } = useServicePrices();
+  const { countries, getCountryById } = useCountries(); // Added
   const [transferServices, setTransferServices] = React.useState<ServicePriceItem[]>([]);
 
-  const globallySelectedProvinces = tripSettings.selectedProvinces || [];
+  const itemCountry = React.useMemo(() => item.countryId ? getCountryById(item.countryId) : undefined, [item.countryId, getCountryById]);
 
   const getServicePriceById = React.useCallback((id: string) => {
     return allServicePrices.find(sp => sp.id === id);
@@ -46,58 +49,72 @@ export function TransferItemForm({ item, travelers, currency, tripSettings, onUp
       setTransferServices([]);
       return;
     }
-    const allCategoryServices = allServicePrices.filter(s => s.category === 'transfer' && s.currency === currency);
-    let modeFilteredServices = allCategoryServices.filter(s => {
-      if (item.mode === 'ticket') return s.subCategory === 'ticket' || s.transferMode === 'ticket';
-      if (item.mode === 'vehicle') return s.transferMode === 'vehicle';
-      return false;
+    let filteredServices = allServicePrices.filter(s => s.category === 'transfer' && s.currency === currency);
+
+    // Filter by mode
+    filteredServices = filteredServices.filter(s => {
+        if (item.mode === 'ticket') return s.subCategory === 'ticket' || s.transferMode === 'ticket';
+        if (item.mode === 'vehicle') return s.transferMode === 'vehicle';
+        return false;
     });
-    
-    let provinceFilteredServices = modeFilteredServices;
-    if (globallySelectedProvinces.length > 0) {
-      provinceFilteredServices = provinceFilteredServices.filter(s => !s.province || globallySelectedProvinces.includes(s.province));
+
+    // Filter by item's specific country if set
+    if (item.countryId) {
+      filteredServices = filteredServices.filter(s => s.countryId === item.countryId || !s.countryId);
+    } else if (tripSettings.selectedCountries.length > 0) { // Else, filter by global countries
+      filteredServices = filteredServices.filter(s => !s.countryId || tripSettings.selectedCountries.includes(s.countryId));
     }
 
-    if (item.province && globallySelectedProvinces.length === 0) {
-        provinceFilteredServices = provinceFilteredServices.filter(s => s.province === item.province || !s.province);
-    } else if (item.province && globallySelectedProvinces.includes(item.province)) {
-        provinceFilteredServices = provinceFilteredServices.filter(s => s.province === item.province || !s.province);
+    // Then filter by item's specific province if set
+    if (item.province) {
+      filteredServices = filteredServices.filter(s => s.province === item.province || !s.province);
+    } else if (tripSettings.selectedProvinces.length > 0) { // Else, filter by global provinces
+         const relevantGlobalProvinces = (tripSettings.selectedCountries.length > 0)
+            ? tripSettings.selectedProvinces.filter(provName => {
+                const provObj = allServicePrices.find(sp => sp.province === provName);
+                return provObj && provObj.countryId && tripSettings.selectedCountries.includes(provObj.countryId);
+            })
+            : tripSettings.selectedProvinces;
+        if(relevantGlobalProvinces.length > 0){
+             filteredServices = filteredServices.filter(s => !s.province || relevantGlobalProvinces.includes(s.province));
+        }
     }
-    
-    setTransferServices(provinceFilteredServices);
-  }, [allServicePrices, currency, item.mode, item.province, isLoadingServices, globallySelectedProvinces]);
+
+    setTransferServices(filteredServices);
+  }, [allServicePrices, currency, item.mode, item.countryId, item.province, tripSettings.selectedCountries, tripSettings.selectedProvinces, isLoadingServices]);
+
 
   const handleInputChange = (field: keyof TransferItemType, value: any) => {
     if (field === 'mode') {
-        onUpdate({ 
-            ...item, 
-            [field]: value, 
-            selectedServicePriceId: undefined, 
-            adultTicketPrice: value === 'ticket' ? (item.adultTicketPrice ?? 0) : undefined, 
-            childTicketPrice: value === 'ticket' ? item.childTicketPrice : undefined, 
-            costPerVehicle: value === 'vehicle' ? (item.costPerVehicle ?? 0) : undefined, 
-            vehicles: value === 'vehicle' ? (item.vehicles || 1) : undefined, 
+        onUpdate({
+            ...item,
+            [field]: value,
+            selectedServicePriceId: undefined,
+            adultTicketPrice: value === 'ticket' ? (item.adultTicketPrice ?? 0) : undefined,
+            childTicketPrice: value === 'ticket' ? item.childTicketPrice : undefined,
+            costPerVehicle: value === 'vehicle' ? (item.costPerVehicle ?? 0) : undefined,
+            vehicles: value === 'vehicle' ? (item.vehicles || 1) : undefined,
             vehicleType: value === 'vehicle' ? (item.vehicleType || VEHICLE_TYPES[0]) : undefined,
-            selectedVehicleOptionId: undefined, 
-            note: undefined, 
+            selectedVehicleOptionId: undefined,
+            note: undefined,
         });
     } else {
-        onUpdate({ 
-          ...item, 
-          [field]: value, 
+        onUpdate({
+          ...item,
+          [field]: value,
           selectedServicePriceId: (field === 'vehicleType') ? undefined : item.selectedServicePriceId,
           selectedVehicleOptionId: (field === 'vehicleType') ? undefined : item.selectedVehicleOptionId,
         });
     }
   };
-  
+
   const handleNumericInputChange = (field: keyof TransferItemType, value: string) => {
     const numValue = value === '' ? undefined : parseFloat(value);
-    onUpdate({ 
-      ...item, 
-      [field]: numValue, 
-      selectedServicePriceId: undefined, 
-      selectedVehicleOptionId: undefined 
+    onUpdate({
+      ...item,
+      [field]: numValue,
+      selectedServicePriceId: undefined,
+      selectedVehicleOptionId: undefined
     });
   };
 
@@ -112,7 +129,7 @@ export function TransferItemForm({ item, travelers, currency, tripSettings, onUp
         costPerVehicle: item.mode === 'vehicle' ? 0 : undefined,
         vehicleType: item.mode === 'vehicle' ? (item.vehicleType || VEHICLE_TYPES[0]) : undefined,
         vehicles: item.mode === 'vehicle' ? (item.vehicles || 1) : undefined,
-        note: undefined, 
+        note: undefined,
       });
     } else {
       const service = getServicePriceById(selectedValue);
@@ -120,9 +137,11 @@ export function TransferItemForm({ item, travelers, currency, tripSettings, onUp
         const updatedItemPartial: Partial<TransferItemType> = {
           name: (item.name === `New transfer` || !item.name || !item.selectedServicePriceId) ? service.name : item.name,
           selectedServicePriceId: service.id,
-          selectedVehicleOptionId: undefined, 
+          selectedVehicleOptionId: undefined,
           note: service.notes || undefined,
           province: service.province || item.province,
+          countryId: service.countryId || item.countryId,
+          countryName: service.countryId ? countries.find(c => c.id === service.countryId)?.name : item.countryName,
         };
         if (item.mode === 'ticket') {
           updatedItemPartial.adultTicketPrice = service.price1 ?? 0;
@@ -134,29 +153,28 @@ export function TransferItemForm({ item, travelers, currency, tripSettings, onUp
           updatedItemPartial.adultTicketPrice = undefined;
           updatedItemPartial.childTicketPrice = undefined;
           if (service.vehicleOptions && service.vehicleOptions.length > 0) {
-            // If options exist, don't set cost/type directly; user must pick an option
-            updatedItemPartial.costPerVehicle = undefined; 
-            updatedItemPartial.vehicleType = undefined;   
-          } else { // If no options, use service's base price1 as costPerVehicle
+            updatedItemPartial.costPerVehicle = undefined;
+            updatedItemPartial.vehicleType = undefined;
+          } else {
             updatedItemPartial.costPerVehicle = service.price1 ?? 0;
-            updatedItemPartial.vehicleType = (service.subCategory && VEHICLE_TYPES.includes(service.subCategory as VehicleType)) 
-                                             ? service.subCategory as VehicleType 
+            updatedItemPartial.vehicleType = (service.subCategory && VEHICLE_TYPES.includes(service.subCategory as VehicleType))
+                                             ? service.subCategory as VehicleType
                                              : VEHICLE_TYPES[0];
           }
           updatedItemPartial.vehicles = item.vehicles || 1;
         }
         onUpdate({ ...item, ...updatedItemPartial });
-      } else { 
-         onUpdate({ 
+      } else {
+         onUpdate({
           ...item,
-          selectedServicePriceId: selectedValue, 
+          selectedServicePriceId: selectedValue,
           selectedVehicleOptionId: undefined,
           adultTicketPrice: item.mode === 'ticket' ? 0 : undefined,
           childTicketPrice: undefined,
           costPerVehicle: item.mode === 'vehicle' ? 0 : undefined,
           vehicleType: item.mode === 'vehicle' ? (item.vehicleType || VEHICLE_TYPES[0]) : undefined,
           vehicles: item.mode === 'vehicle' ? (item.vehicles || 1) : undefined,
-          note: undefined, 
+          note: undefined,
         });
       }
     }
@@ -169,18 +187,18 @@ export function TransferItemForm({ item, travelers, currency, tripSettings, onUp
       onUpdate({
         ...item,
         selectedVehicleOptionId: option.id,
-        costPerVehicle: option.price, 
-        vehicleType: option.vehicleType,   
-        note: option.notes || selectedService.notes || undefined, 
+        costPerVehicle: option.price,
+        vehicleType: option.vehicleType,
+        note: option.notes || selectedService.notes || undefined,
       });
-    } else { 
-      const baseCost = (selectedService.vehicleOptions && selectedService.vehicleOptions.length > 0) 
-                       ? 0 // Force re-selection or imply error state if no options
+    } else {
+      const baseCost = (selectedService.vehicleOptions && selectedService.vehicleOptions.length > 0)
+                       ? 0
                        : selectedService.price1 ?? 0;
       const baseType = (selectedService.vehicleOptions && selectedService.vehicleOptions.length > 0)
-                       ? VEHICLE_TYPES[0] // Default if options exist but "none" selected
-                       : (selectedService.subCategory && VEHICLE_TYPES.includes(selectedService.subCategory as VehicleType)) 
-                         ? selectedService.subCategory as VehicleType 
+                       ? VEHICLE_TYPES[0]
+                       : (selectedService.subCategory && VEHICLE_TYPES.includes(selectedService.subCategory as VehicleType))
+                         ? selectedService.subCategory as VehicleType
                          : VEHICLE_TYPES[0];
       onUpdate({
         ...item,
@@ -191,23 +209,20 @@ export function TransferItemForm({ item, travelers, currency, tripSettings, onUp
       });
     }
   };
-  
+
   const serviceDefinitionNotFound = item.selectedServicePriceId && !selectedService && !isLoadingServices;
 
   let isVehicleCostTypeReadOnly = false;
   if (item.mode === 'vehicle' && selectedService) {
     if (selectedService.vehicleOptions && selectedService.vehicleOptions.length > 0) {
-      // Read-only if an option is selected, as price/type come from the option
-      // OR if there are options but none are selected (encourages picking one)
-      isVehicleCostTypeReadOnly = !!item.selectedVehicleOptionId || selectedService.vehicleOptions.length > 0; 
+      isVehicleCostTypeReadOnly = !!item.selectedVehicleOptionId || selectedService.vehicleOptions.length > 0;
     } else {
-      // If there are no vehicleOptions defined on the service, cost/type are from service itself
-      isVehicleCostTypeReadOnly = true; 
+      isVehicleCostTypeReadOnly = true;
     }
   }
 
-  const displayedVehicleType = item.mode === 'vehicle' 
-    ? (item.selectedVehicleOptionId && selectedService?.vehicleOptions?.find(vo => vo.id === item.selectedVehicleOptionId)?.vehicleType) || 
+  const displayedVehicleType = item.mode === 'vehicle'
+    ? (item.selectedVehicleOptionId && selectedService?.vehicleOptions?.find(vo => vo.id === item.selectedVehicleOptionId)?.vehicleType) ||
       (!item.selectedVehicleOptionId && selectedService && (!selectedService.vehicleOptions || selectedService.vehicleOptions.length === 0) && (VEHICLE_TYPES.includes(selectedService.subCategory as VehicleType) ? selectedService.subCategory as VehicleType : (selectedService as any).vehicleType || item.vehicleType)) ||
       item.vehicleType || VEHICLE_TYPES[0]
     : undefined;
@@ -217,12 +232,15 @@ export function TransferItemForm({ item, travelers, currency, tripSettings, onUp
       (!item.selectedVehicleOptionId && selectedService && (!selectedService.vehicleOptions || selectedService.vehicleOptions.length === 0) ? selectedService.price1 : item.costPerVehicle) ?? 0
     : undefined;
 
+  const locationDisplay = item.countryName ? (item.province ? `${item.province}, ${item.countryName}` : item.countryName)
+                        : (item.province || (tripSettings.selectedProvinces.length > 0 ? tripSettings.selectedProvinces.join('/') : (tripSettings.selectedCountries.length > 0 ? (tripSettings.selectedCountries.map(cid => countries.find(c=>c.id === cid)?.name).filter(Boolean).join('/')) : 'Any Location')));
+
 
   return (
-    <BaseItemForm item={item} travelers={travelers} currency={currency} tripSettings={tripSettings} onUpdate={onUpdate} onDelete={onDelete} itemTypeLabel="Transfer">
+    <BaseItemForm item={item} travelers={travelers} currency={currency} tripSettings={tripSettings} onUpdate={onUpdate} onDelete={onDelete} itemTypeLabel="Transfer" dayNumber={dayNumber}>
       <div className="pt-2">
-        <FormField 
-          label="Mode" 
+        <FormField
+          label="Mode"
           id={`transferMode-${item.id}`}
         >
           <Select
@@ -240,10 +258,10 @@ export function TransferItemForm({ item, travelers, currency, tripSettings, onUp
 
       {(transferServices.length > 0 || item.selectedServicePriceId || isLoadingServices) && (
         <div className="mt-4 pt-4 border-t">
-          <FormField label={`Select Predefined Service ${item.province ? `(${item.province})` : globallySelectedProvinces.length > 0 ? `(${globallySelectedProvinces.join('/')})` : '(Any Province)'}`} id={`predefined-transfer-${item.id}`}>
+          <FormField label={`Select Predefined Service (${locationDisplay || 'Global'})`} id={`predefined-transfer-${item.id}`}>
               {isLoadingServices ? (
                  <div className="flex items-center h-10 border rounded-md px-3 bg-muted/50">
-                    <Loader2 className="h-4 w-4 animate-spin mr-2 text-muted-foreground" /> 
+                    <Loader2 className="h-4 w-4 animate-spin mr-2 text-muted-foreground" />
                     <span className="text-sm text-muted-foreground">Loading transfers...</span>
                 </div>
               ) : (
@@ -259,7 +277,7 @@ export function TransferItemForm({ item, travelers, currency, tripSettings, onUp
                         <SelectItem value="none">None (Custom Price/Options)</SelectItem>
                         {transferServices.map(service => (
                         <SelectItem key={service.id} value={service.id}>
-                            {service.name} ({service.province || 'Generic'})
+                            {service.name} ({service.province || (service.countryId ? countries.find(c=>c.id === service.countryId)?.name : 'Generic')})
                             {service.vehicleOptions && service.vehicleOptions.length > 0 ? ` - ${service.vehicleOptions.length} options` : (service.price1 !== undefined ? ` - ${currency} ${service.price1}`: '')}
                         </SelectItem>
                         ))}
@@ -306,7 +324,7 @@ export function TransferItemForm({ item, travelers, currency, tripSettings, onUp
       )}
 
       <Separator className="my-4" />
-      
+
       <div className="space-y-1 mb-2">
           <p className="text-sm font-medium text-muted-foreground">Configuration Details</p>
       </div>
@@ -321,7 +339,7 @@ export function TransferItemForm({ item, travelers, currency, tripSettings, onUp
               onChange={(e) => handleNumericInputChange('adultTicketPrice', e.target.value)}
               min="0"
               placeholder="0.00"
-              readOnly={!!selectedService} 
+              readOnly={!!selectedService}
               className={!!selectedService ? "bg-muted/50 cursor-not-allowed" : ""}
             />
           </FormField>
@@ -333,7 +351,7 @@ export function TransferItemForm({ item, travelers, currency, tripSettings, onUp
               onChange={(e) => handleNumericInputChange('childTicketPrice', e.target.value)}
               min="0"
               placeholder="Defaults to adult price"
-              readOnly={!!selectedService} 
+              readOnly={!!selectedService}
               className={!!selectedService ? "bg-muted/50 cursor-not-allowed" : ""}
             />
           </FormField>
@@ -345,9 +363,9 @@ export function TransferItemForm({ item, travelers, currency, tripSettings, onUp
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <FormField label="Vehicle Type" id={`vehicleType-${item.id}`}>
               <Select
-                value={displayedVehicleType} 
+                value={displayedVehicleType}
                 onValueChange={(value: VehicleType) => handleInputChange('vehicleType', value)}
-                disabled={isVehicleCostTypeReadOnly} 
+                disabled={isVehicleCostTypeReadOnly}
               >
                 <SelectTrigger className={isVehicleCostTypeReadOnly ? "bg-muted/50 cursor-not-allowed" : ""}>
                   <SelectValue />
@@ -397,4 +415,3 @@ export function TransferItemForm({ item, travelers, currency, tripSettings, onUp
     </BaseItemForm>
   );
 }
-    

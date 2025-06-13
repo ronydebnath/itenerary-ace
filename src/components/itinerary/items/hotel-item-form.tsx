@@ -2,7 +2,7 @@
 "use client";
 
 import * as React from 'react';
-import type { HotelItem as HotelItemType, SelectedHotelRoomConfiguration, Traveler, CurrencyCode, TripSettings, HotelDefinition, HotelRoomTypeDefinition, ServicePriceItem } from '@/types/itinerary';
+import type { HotelItem as HotelItemType, SelectedHotelRoomConfiguration, Traveler, CurrencyCode, TripSettings, HotelDefinition, HotelRoomTypeDefinition, ServicePriceItem, CountryItem } from '@/types/itinerary';
 import { BaseItemForm, FormField } from './base-item-form';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -13,8 +13,9 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { PlusCircle, Trash2, ChevronDown, ChevronUp, Users, BedDouble, Info, AlertCircle, Loader2 } from 'lucide-react';
 import { generateGUID } from '@/lib/utils';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Separator } from '@/components/ui/separator'; 
+import { Separator } from '@/components/ui/separator';
 import { useHotelDefinitions } from '@/hooks/useHotelDefinitions';
+import { useCountries } from '@/hooks/useCountries'; // Added
 
 interface HotelItemFormProps {
   item: HotelItemType;
@@ -24,17 +25,17 @@ interface HotelItemFormProps {
   tripSettings: TripSettings;
   onUpdate: (item: HotelItemType) => void;
   onDelete: () => void;
-  allHotelDefinitions: HotelDefinition[]; // Keep this prop, but primarily use the hook
-  allServicePrices: ServicePriceItem[]; 
+  allHotelDefinitions: HotelDefinition[];
+  allServicePrices: ServicePriceItem[];
 }
 
 export function HotelItemForm({ item, travelers, currency, dayNumber, tripSettings, onUpdate, onDelete }: HotelItemFormProps) {
   const { allHotelDefinitions: hookHotelDefinitions, isLoading: isLoadingHotelDefs } = useHotelDefinitions();
+  const { countries, getCountryById } = useCountries(); // Added
   const [availableHotels, setAvailableHotels] = React.useState<HotelDefinition[]>([]);
   const [selectedHotelDef, setSelectedHotelDef] = React.useState<HotelDefinition | undefined>(undefined);
-  
-  const globallySelectedProvinces = tripSettings.selectedProvinces || [];
 
+  const itemCountry = React.useMemo(() => item.countryId ? getCountryById(item.countryId) : undefined, [item.countryId, getCountryById]);
   const [openTravelerAssignments, setOpenTravelerAssignments] = React.useState<{[key: string]: boolean}>({});
 
   React.useEffect(() => {
@@ -43,16 +44,33 @@ export function HotelItemForm({ item, travelers, currency, dayNumber, tripSettin
       return;
     }
     let filteredDefs = hookHotelDefinitions;
-    if (globallySelectedProvinces.length > 0) {
-      filteredDefs = filteredDefs.filter(hd => !hd.province || globallySelectedProvinces.includes(hd.province));
+
+    // Filter by item's specific country if set
+    if (item.countryId) {
+      filteredDefs = filteredDefs.filter(hd => hd.countryId === item.countryId);
+    } else if (tripSettings.selectedCountries.length > 0) { // Else, filter by global countries
+      filteredDefs = filteredDefs.filter(hd => tripSettings.selectedCountries.includes(hd.countryId));
     }
-    if (item.province && globallySelectedProvinces.length === 0) { // Only filter by item.province if no global selection
-        filteredDefs = filteredDefs.filter(hd => hd.province === item.province || !hd.province);
-    } else if (item.province && globallySelectedProvinces.includes(item.province)) { // If global selection exists and item.province is part of it
-        filteredDefs = filteredDefs.filter(hd => hd.province === item.province || !hd.province);
+
+    // Then filter by item's specific province if set
+    if (item.province) {
+      filteredDefs = filteredDefs.filter(hd => hd.province === item.province);
+    } else if (tripSettings.selectedProvinces.length > 0) { // Else, filter by global provinces (within already country-filtered list)
+         // Ensure global provinces are within selected countries if countries are also selected
+        const relevantGlobalProvinces = (tripSettings.selectedCountries.length > 0)
+            ? tripSettings.selectedProvinces.filter(provName => {
+                const provDef = hookHotelDefinitions.find(hd => hd.province === provName);
+                return provDef && provDef.countryId && tripSettings.selectedCountries.includes(provDef.countryId);
+            })
+            : tripSettings.selectedProvinces;
+
+        if(relevantGlobalProvinces.length > 0){
+            filteredDefs = filteredDefs.filter(hd => relevantGlobalProvinces.includes(hd.province));
+        }
     }
     setAvailableHotels(filteredDefs);
-  }, [item.province, hookHotelDefinitions, isLoadingHotelDefs, globallySelectedProvinces]);
+  }, [item.countryId, item.province, hookHotelDefinitions, isLoadingHotelDefs, tripSettings.selectedCountries, tripSettings.selectedProvinces]);
+
 
   React.useEffect(() => {
     if (item.hotelDefinitionId && !isLoadingHotelDefs) {
@@ -66,23 +84,23 @@ export function HotelItemForm({ item, travelers, currency, dayNumber, tripSettin
 
   const handleHotelDefinitionChange = (hotelDefId: string) => {
     const newHotelDef = hookHotelDefinitions.find(hd => hd.id === hotelDefId);
-        
+
     if (newHotelDef) {
       onUpdate({
         ...item,
         hotelDefinitionId: hotelDefId,
-        selectedServicePriceId: undefined, // Hotel definition implies the pricing structure
         name: item.name === 'New hotel' || !item.name || !item.hotelDefinitionId ? newHotelDef.name : item.name,
-        selectedRooms: [], // Reset rooms when hotel changes
-        note: undefined, // Reset notes, can be derived from service price or def later if needed
-        province: newHotelDef.province || item.province,
+        selectedRooms: [],
+        note: undefined,
+        province: newHotelDef.province || item.province, // Prioritize hotel's own province
+        countryId: newHotelDef.countryId || item.countryId, // Prioritize hotel's own country
+        countryName: newHotelDef.countryId ? countries.find(c=>c.id === newHotelDef.countryId)?.name : item.countryName,
       });
     } else {
        onUpdate({
         ...item,
         hotelDefinitionId: '',
-        selectedServicePriceId: undefined,
-        name: 'New hotel', 
+        name: 'New hotel',
         selectedRooms: [],
         note: undefined,
       });
@@ -91,8 +109,6 @@ export function HotelItemForm({ item, travelers, currency, dayNumber, tripSettin
 
   const handleCheckoutDayChange = (value: string) => {
     const numValue = value === '' ? undefined : parseInt(value, 10);
-    if (numValue !== undefined && (numValue <= dayNumber || numValue > tripSettings.numDays + 1)) {
-    }
     onUpdate({ ...item, checkoutDay: numValue || (dayNumber + 1) });
   };
 
@@ -103,7 +119,7 @@ export function HotelItemForm({ item, travelers, currency, dayNumber, tripSettin
     const newRoomBooking: SelectedHotelRoomConfiguration = {
       id: generateGUID(),
       roomTypeDefinitionId: defaultRoomType.id,
-      roomTypeNameCache: defaultRoomType.name, 
+      roomTypeNameCache: defaultRoomType.name,
       numRooms: 1,
       assignedTravelerIds: [],
     };
@@ -126,7 +142,7 @@ export function HotelItemForm({ item, travelers, currency, dayNumber, tripSettin
             handleUpdateRoomBooking({
                 ...updatedBooking,
                 roomTypeDefinitionId,
-                roomTypeNameCache: roomTypeDef.name 
+                roomTypeNameCache: roomTypeDef.name
             });
         }
     }
@@ -169,14 +185,17 @@ export function HotelItemForm({ item, travelers, currency, dayNumber, tripSettin
   const currentSelectedRoomsForRender = item.selectedRooms || [];
   const hotelDefinitionNotFound = item.hotelDefinitionId && !selectedHotelDef && !isLoadingHotelDefs;
 
+  const locationDisplay = item.countryName ? (item.province ? `${item.province}, ${item.countryName}` : item.countryName)
+                        : (item.province || (tripSettings.selectedProvinces.length > 0 ? tripSettings.selectedProvinces.join('/') : (tripSettings.selectedCountries.length > 0 ? (tripSettings.selectedCountries.map(cid => countries.find(c=>c.id === cid)?.name).filter(Boolean).join('/')) : 'Any Location')));
+
 
   return (
-    <BaseItemForm item={item} travelers={travelers} currency={currency} tripSettings={tripSettings} onUpdate={onUpdate} onDelete={onDelete} itemTypeLabel="Hotel Stay">
+    <BaseItemForm item={item} travelers={travelers} currency={currency} tripSettings={tripSettings} onUpdate={onUpdate} onDelete={onDelete} itemTypeLabel="Hotel Stay" dayNumber={dayNumber}>
       <div className="pt-2">
-        <FormField label="Select Hotel" id={`hotel-def-${item.id}`}>
+        <FormField label={`Select Hotel (${locationDisplay || 'Global'})`} id={`hotel-def-${item.id}`}>
           {isLoadingHotelDefs ? (
              <div className="flex items-center h-10 border rounded-md px-3 bg-muted/50">
-                <Loader2 className="h-4 w-4 animate-spin mr-2 text-muted-foreground" /> 
+                <Loader2 className="h-4 w-4 animate-spin mr-2 text-muted-foreground" />
                 <span className="text-sm text-muted-foreground">Loading hotels...</span>
             </div>
           ) : (
@@ -196,7 +215,7 @@ export function HotelItemForm({ item, travelers, currency, dayNumber, tripSettin
                 <SelectItem value="none">None (Clear Selection)</SelectItem>
                 {availableHotels.map(hotelDef => (
                     <SelectItem key={hotelDef.id} value={hotelDef.id}>
-                    {hotelDef.name} ({hotelDef.province || 'Generic'})
+                    {hotelDef.name} ({hotelDef.province || (hotelDef.countryId ? countries.find(c=>c.id === hotelDef.countryId)?.name : 'Generic')})
                     </SelectItem>
                 ))}
                 </SelectContent>
@@ -206,12 +225,12 @@ export function HotelItemForm({ item, travelers, currency, dayNumber, tripSettin
          {selectedHotelDef && (
              <Card className="text-xs bg-muted/30 p-2 mt-2 border-dashed">
                <p><strong>Selected Hotel:</strong> {selectedHotelDef.name}</p>
-               <p><strong>Province:</strong> {selectedHotelDef.province || "N/A"}</p>
+               <p><strong>Location:</strong> {selectedHotelDef.province || "N/A"}, {countries.find(c => c.id === selectedHotelDef.countryId)?.name || "N/A"}</p>
                {item.note && <p className="mt-1 italic"><strong>Notes:</strong> {item.note}</p>}
              </Card>
          )}
       </div>
-      
+
       <Separator className="my-4" />
       <div className="space-y-1 mb-2">
           <p className="text-sm font-medium text-muted-foreground">Stay Details</p>
@@ -228,7 +247,7 @@ export function HotelItemForm({ item, travelers, currency, dayNumber, tripSettin
             value={item.checkoutDay ?? ''}
             onChange={(e) => handleCheckoutDayChange(e.target.value)}
             min={dayNumber + 1}
-            max={tripSettings.numDays + 1}
+            max={tripSettings.numDays + 1} // Allow checkout day after last itinerary day
             placeholder={`Day ${dayNumber + 1}`}
           />
         </FormField>
@@ -254,7 +273,7 @@ export function HotelItemForm({ item, travelers, currency, dayNumber, tripSettin
           <AlertCircle className="h-4 w-4" />
           <AlertTitle>Hotel Definition Error</AlertTitle>
           <AlertDescription>
-            The selected hotel definition (ID: {item.hotelDefinitionId}) could not be found in the current list. It might have been removed or is from a different province set. Please re-select a hotel.
+            The selected hotel definition (ID: {item.hotelDefinitionId}) could not be found. Please re-select a hotel.
           </AlertDescription>
         </Alert>
       )}

@@ -2,7 +2,7 @@
 "use client";
 
 import * as React from 'react';
-import type { TripData, TripSettings, PaxDetails, ProvinceItem, CurrencyCode } from '@/types/itinerary';
+import type { TripData, TripSettings, PaxDetails, ProvinceItem, CurrencyCode, CountryItem } from '@/types/itinerary';
 import { CURRENCIES } from '@/types/itinerary';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -17,14 +17,15 @@ import { formatCurrency } from '@/lib/utils';
 import { format, parseISO, isValid } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
 import { useProvinces } from '@/hooks/useProvinces';
+import { useCountries } from '@/hooks/useCountries'; // Added
 
 interface PlannerHeaderProps {
   tripData: TripData;
-  onUpdateTripData: (updatedTripData: Partial<TripData>) => void; // For itineraryName, clientName
+  onUpdateTripData: (updatedTripData: Partial<TripData>) => void;
   onUpdateSettings: (updatedSettings: Partial<TripSettings>) => void;
   onUpdatePax: (updatedPax: Partial<PaxDetails>) => void;
   onManualSave: () => void;
-  onReset: () => void; // This is for "Start New Itinerary"
+  onReset: () => void;
   showCosts: boolean;
 }
 
@@ -37,7 +38,8 @@ export function PlannerHeader({
   onReset,
   showCosts
 }: PlannerHeaderProps) {
-  const { provinces: availableProvinces, isLoading: isLoadingProvinces } = useProvinces();
+  const { countries: availableCountries, isLoading: isLoadingCountries } = useCountries(); // Added
+  const { provinces: allAvailableProvinces, isLoading: isLoadingProvinces, getProvincesByCountry } = useProvinces();
 
   const handleSettingsChange = <K extends keyof TripSettings>(key: K, value: TripSettings[K]) => {
     onUpdateSettings({ [key]: value });
@@ -47,12 +49,21 @@ export function PlannerHeader({
     onUpdatePax({ [key]: value });
   };
 
+  const handleCountryToggle = (countryId: string) => { // Added
+    const currentSelectedCountries = tripData.settings.selectedCountries || [];
+    const newSelectedCountries = currentSelectedCountries.includes(countryId)
+      ? currentSelectedCountries.filter(id => id !== countryId)
+      : [...currentSelectedCountries, countryId];
+    // When countries change, selectedProvinces should be reset
+    onUpdateSettings({ selectedCountries: newSelectedCountries, selectedProvinces: [] });
+  };
+
   const handleProvinceToggle = (provinceName: string) => {
-    const currentSelected = tripData.settings.selectedProvinces || [];
-    const newSelected = currentSelected.includes(provinceName)
-      ? currentSelected.filter(p => p !== provinceName)
-      : [...currentSelected, provinceName];
-    onUpdateSettings({ selectedProvinces: newSelected });
+    const currentSelectedProvinces = tripData.settings.selectedProvinces || [];
+    const newSelectedProvinces = currentSelectedProvinces.includes(provinceName)
+      ? currentSelectedProvinces.filter(p => p !== provinceName)
+      : [...currentSelectedProvinces, provinceName];
+    onUpdateSettings({ selectedProvinces: newSelectedProvinces });
   };
 
   const startDateForPicker = React.useMemo(() => {
@@ -62,10 +73,29 @@ export function PlannerHeader({
       return new Date();
     }
   }, [tripData.settings.startDate]);
-  
+
   const displayStartDate = React.useMemo(() => {
     return tripData.settings.startDate && isValid(parseISO(tripData.settings.startDate)) ? format(parseISO(tripData.settings.startDate), "MMMM d, yyyy") : 'N/A';
   }, [tripData.settings.startDate]);
+
+  const displayableProvinces = React.useMemo(() => { // Updated logic
+    if (isLoadingProvinces) return [];
+    const globallySelectedCountries = tripData.settings.selectedCountries || [];
+    if (globallySelectedCountries.length > 0) {
+      let provincesFromSelectedCountries: ProvinceItem[] = [];
+      globallySelectedCountries.forEach(countryId => {
+        provincesFromSelectedCountries = provincesFromSelectedCountries.concat(getProvincesByCountry(countryId));
+      });
+      return provincesFromSelectedCountries.sort((a,b) => a.name.localeCompare(b.name));
+    }
+    return allAvailableProvinces.sort((a,b) => a.name.localeCompare(b.name)); // Show all if no countries selected
+  }, [isLoadingProvinces, tripData.settings.selectedCountries, allAvailableProvinces, getProvincesByCountry]);
+
+  const selectedCountryNames = React.useMemo(() => {
+    return (tripData.settings.selectedCountries || [])
+      .map(id => availableCountries.find(c => c.id === id)?.name)
+      .filter(Boolean) as string[];
+  }, [tripData.settings.selectedCountries, availableCountries]);
 
 
   return (
@@ -85,7 +115,7 @@ export function PlannerHeader({
           </div>
         </div>
         <CardDescription className="text-foreground/70 pt-2">
-          Dynamically plan and calculate costs. Changes to core settings (dates, pax, provinces) will update the itinerary.
+          Dynamically plan and calculate costs. Changes to core settings (dates, pax, locations) will update the itinerary.
         </CardDescription>
       </CardHeader>
       <CardContent className="pt-6 space-y-6">
@@ -118,7 +148,7 @@ export function PlannerHeader({
             />
           </div>
         </div>
-        
+
         <div className="border-t pt-4 mt-4">
             <div className="flex items-center space-x-2">
                 <Checkbox
@@ -126,9 +156,9 @@ export function PlannerHeader({
                 checked={tripData.settings.isTemplate || false}
                 onCheckedChange={(checked) => {
                     const isNowTemplate = !!checked;
-                    onUpdateSettings({ 
+                    onUpdateSettings({
                         isTemplate: isNowTemplate,
-                        templateCategory: isNowTemplate ? tripData.settings.templateCategory : undefined 
+                        templateCategory: isNowTemplate ? tripData.settings.templateCategory : undefined
                     });
                 }}
                 />
@@ -173,7 +203,7 @@ export function PlannerHeader({
             <Input id="globalChildren" type="number" value={tripData.pax.children} onChange={(e) => handlePaxChange('children', parseInt(e.target.value, 10) || 0)} min="0" className="text-base h-9 mt-1"/>
           </div>
         </div>
-        
+
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 items-end">
             <div>
                 <Label htmlFor="currency" className="text-xs font-medium text-muted-foreground flex items-center"><Globe className="h-3 w-3 mr-1"/>Currency</Label>
@@ -194,49 +224,92 @@ export function PlannerHeader({
             </div>
         </div>
 
-        <div>
-          <Label className="text-xs font-medium text-muted-foreground flex items-center"><MapPin className="h-3 w-3 mr-1"/>Selected Provinces (Optional)</Label>
-          <p className="text-xs text-muted-foreground/80 mb-1">
-            Filters available services. If none selected, all services are considered.
-          </p>
-          {isLoadingProvinces ? (
-            <div className="flex items-center justify-center h-24 border rounded-md bg-muted/50">
-              <Loader2 className="h-5 w-5 animate-spin text-primary" />
-              <span className="ml-2 text-sm text-muted-foreground">Loading provinces...</span>
-            </div>
-          ) : availableProvinces.length > 0 ? (
-            <ScrollArea className="h-28 w-full rounded-md border p-3 bg-background/70">
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-x-4 gap-y-1.5">
-                {availableProvinces.map((province) => (
-                  <div key={province.id} className="flex items-center space-x-2">
-                    <Checkbox
-                      id={`province-select-${province.id}`}
-                      checked={(tripData.settings.selectedProvinces || []).includes(province.name)}
-                      onCheckedChange={() => handleProvinceToggle(province.name)}
-                      className="h-3.5 w-3.5"
-                    />
-                    <Label htmlFor={`province-select-${province.id}`} className="text-xs font-normal cursor-pointer">
-                      {province.name}
-                    </Label>
-                  </div>
-                ))}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 border-t pt-4 mt-4">
+          <div>
+            <Label className="text-xs font-medium text-muted-foreground flex items-center"><Globe className="h-3 w-3 mr-1"/>Selected Countries (Optional)</Label>
+            <p className="text-xs text-muted-foreground/80 mb-1">
+              Filters available provinces and services. If none, all locations are considered.
+            </p>
+            {isLoadingCountries ? (
+              <div className="flex items-center justify-center h-24 border rounded-md bg-muted/50">
+                <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                <span className="ml-2 text-sm text-muted-foreground">Loading countries...</span>
               </div>
-            </ScrollArea>
-          ) : (
-             <p className="text-xs text-muted-foreground text-center py-3 border rounded-md bg-muted/50">No provinces available.</p>
-          )}
-           {(tripData.settings.selectedProvinces || []).length > 0 && (
-              <div className="pt-1 text-xs text-muted-foreground">
-                Selected: {tripData.settings.selectedProvinces.join(', ')}
-              </div>
+            ) : availableCountries.length > 0 ? (
+              <ScrollArea className="h-28 w-full rounded-md border p-3 bg-background/70">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1.5">
+                  {availableCountries.map((country) => (
+                    <div key={country.id} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`country-select-${country.id}`}
+                        checked={(tripData.settings.selectedCountries || []).includes(country.id)}
+                        onCheckedChange={() => handleCountryToggle(country.id)}
+                        className="h-3.5 w-3.5"
+                      />
+                      <Label htmlFor={`country-select-${country.id}`} className="text-xs font-normal cursor-pointer">
+                        {country.name}
+                      </Label>
+                    </div>
+                  ))}
+                </div>
+              </ScrollArea>
+            ) : (
+               <p className="text-xs text-muted-foreground text-center py-3 border rounded-md bg-muted/50">No countries available.</p>
             )}
+             {selectedCountryNames.length > 0 && (
+                <div className="pt-1 text-xs text-muted-foreground">
+                  Selected: {selectedCountryNames.join(', ')}
+                </div>
+              )}
+          </div>
+
+          <div>
+            <Label className="text-xs font-medium text-muted-foreground flex items-center"><MapPin className="h-3 w-3 mr-1"/>Selected Provinces (Optional)</Label>
+            <p className="text-xs text-muted-foreground/80 mb-1">
+              Filters services within selected countries (if any), or all provinces.
+            </p>
+            {isLoadingProvinces ? (
+              <div className="flex items-center justify-center h-24 border rounded-md bg-muted/50">
+                <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                <span className="ml-2 text-sm text-muted-foreground">Loading provinces...</span>
+              </div>
+            ) : displayableProvinces.length > 0 ? (
+              <ScrollArea className="h-28 w-full rounded-md border p-3 bg-background/70">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1.5">
+                  {displayableProvinces.map((province) => (
+                    <div key={province.id} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`province-select-${province.id}`}
+                        checked={(tripData.settings.selectedProvinces || []).includes(province.name)}
+                        onCheckedChange={() => handleProvinceToggle(province.name)}
+                        className="h-3.5 w-3.5"
+                      />
+                      <Label htmlFor={`province-select-${province.id}`} className="text-xs font-normal cursor-pointer">
+                        {province.name} ({availableCountries.find(c => c.id === province.countryId)?.name || 'N/A'})
+                      </Label>
+                    </div>
+                  ))}
+                </div>
+              </ScrollArea>
+            ) : (
+               <p className="text-xs text-muted-foreground text-center py-3 border rounded-md bg-muted/50">
+                 { (tripData.settings.selectedCountries || []).length > 0 ? "No provinces for selected countries." : "No provinces available."}
+               </p>
+            )}
+            {(tripData.settings.selectedProvinces || []).length > 0 && (
+                <div className="pt-1 text-xs text-muted-foreground">
+                  Selected: {tripData.settings.selectedProvinces.join(', ')}
+                </div>
+              )}
+          </div>
         </div>
-        
+
         <div className="mt-4 p-3 bg-secondary/20 rounded-lg border border-secondary/30 text-xs text-muted-foreground">
-            <div> {/* Changed from <p> to <div> */}
+            <div>
               <strong className="text-foreground">Current Config:</strong> {tripData.settings.numDays} Days starting {displayStartDate}. For {tripData.pax.adults} Adult(s), {tripData.pax.children} Child(ren). Currency: {tripData.pax.currency}.
               {tripData.settings.isTemplate ? <Badge variant="outline" className="ml-1 border-accent text-accent">TEMPLATE{tripData.settings.templateCategory ? `: ${tripData.settings.templateCategory}` : ''}</Badge> : ""}
-              {tripData.settings.selectedProvinces.length > 0 ? ` Provinces: ${tripData.settings.selectedProvinces.join(', ')}.` : " All provinces."}
+              {selectedCountryNames.length > 0 ? ` Countries: ${selectedCountryNames.join(', ')}.` : " All countries."}
+              {(tripData.settings.selectedProvinces || []).length > 0 ? ` Provinces: ${tripData.settings.selectedProvinces.join(', ')}.` : (selectedCountryNames.length > 0 ? " All provinces in selected countries." : " All provinces.")}
               {showCosts && tripData.settings.budget ? ` Budget: ${formatCurrency(tripData.settings.budget, tripData.pax.currency)}.` : ""}
             </div>
         </div>
@@ -245,4 +318,3 @@ export function PlannerHeader({
     </Card>
   );
 }
-

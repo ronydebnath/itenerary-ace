@@ -2,7 +2,7 @@
 "use client";
 
 import * as React from 'react';
-import type { ActivityItem as ActivityItemType, Traveler, CurrencyCode, TripSettings, ServicePriceItem, ActivityPackageDefinition } from '@/types/itinerary';
+import type { ActivityItem as ActivityItemType, Traveler, CurrencyCode, TripSettings, ServicePriceItem, ActivityPackageDefinition, CountryItem } from '@/types/itinerary';
 import { BaseItemForm, FormField } from './base-item-form';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -11,8 +11,9 @@ import { Badge } from '@/components/ui/badge';
 import { format, parseISO, isValid } from 'date-fns';
 import { CalendarDays, Info, Tag, AlertCircle, Loader2 } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Separator } from '@/components/ui/separator'; 
+import { Separator } from '@/components/ui/separator';
 import { useServicePrices } from '@/hooks/useServicePrices';
+import { useCountries } from '@/hooks/useCountries'; // Added
 
 interface ActivityItemFormProps {
   item: ActivityItemType;
@@ -22,16 +23,17 @@ interface ActivityItemFormProps {
   tripSettings: TripSettings;
   onUpdate: (item: ActivityItemType) => void;
   onDelete: () => void;
-  allServicePrices: ServicePriceItem[]; // Keep this for direct access if needed, but primarily use hook
+  allServicePrices: ServicePriceItem[];
 }
 
 const WEEKDAYS_MAP = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 export function ActivityItemForm({ item, travelers, currency, dayNumber, tripSettings, onUpdate, onDelete }: ActivityItemFormProps) {
   const { allServicePrices, isLoading: isLoadingServices } = useServicePrices();
+  const { countries, getCountryById } = useCountries(); // Added
   const [activityServices, setActivityServices] = React.useState<ServicePriceItem[]>([]);
-  
-  const globallySelectedProvinces = tripSettings.selectedProvinces || [];
+
+  const itemCountry = React.useMemo(() => item.countryId ? getCountryById(item.countryId) : undefined, [item.countryId, getCountryById]);
 
   const getServicePriceById = React.useCallback((id: string) => {
     return allServicePrices.find(sp => sp.id === id);
@@ -50,43 +52,52 @@ export function ActivityItemForm({ item, travelers, currency, dayNumber, tripSet
     }
     return undefined;
   }, [selectedActivityService, item.selectedPackageId]);
-  
+
   React.useEffect(() => {
     if (isLoadingServices) {
       setActivityServices([]);
       return;
     }
-    const allCategoryServices = allServicePrices.filter(s => s.category === 'activity' && s.currency === currency);
-    let filteredServices = allCategoryServices;
+    let filteredServices = allServicePrices.filter(s => s.category === 'activity' && s.currency === currency);
 
-    if (globallySelectedProvinces.length > 0) {
-      filteredServices = filteredServices.filter(s => !s.province || globallySelectedProvinces.includes(s.province));
-    }
-    
-    if (item.province && globallySelectedProvinces.length === 0) { // Only filter by item.province if no global selection
-        filteredServices = filteredServices.filter(s => s.province === item.province || !s.province);
-    } else if (item.province && globallySelectedProvinces.includes(item.province)) { // If global selection exists and item.province is part of it
-        filteredServices = filteredServices.filter(s => s.province === item.province || !s.province);
+    // Filter by item's specific country if set
+    if (item.countryId) {
+      filteredServices = filteredServices.filter(s => s.countryId === item.countryId || !s.countryId); // Allow generic services too
+    } else if (tripSettings.selectedCountries.length > 0) { // Else, filter by global countries
+      filteredServices = filteredServices.filter(s => !s.countryId || tripSettings.selectedCountries.includes(s.countryId));
     }
 
+    // Then filter by item's specific province if set
+    if (item.province) {
+      filteredServices = filteredServices.filter(s => s.province === item.province || !s.province); // Allow generic services too
+    } else if (tripSettings.selectedProvinces.length > 0) { // Else, filter by global provinces
+        // Ensure global provinces are within selected countries if countries are also selected
+        const relevantGlobalProvinces = (tripSettings.selectedCountries.length > 0)
+            ? tripSettings.selectedProvinces.filter(provName => {
+                const provObj = allServicePrices.find(sp => sp.province === provName); // This is a bit indirect; better to use useProvinces hook
+                return provObj && provObj.countryId && tripSettings.selectedCountries.includes(provObj.countryId);
+            })
+            : tripSettings.selectedProvinces;
+        if(relevantGlobalProvinces.length > 0) {
+             filteredServices = filteredServices.filter(s => !s.province || relevantGlobalProvinces.includes(s.province));
+        }
+    }
     setActivityServices(filteredServices);
-  }, [allServicePrices, currency, item.province, isLoadingServices, globallySelectedProvinces]);
+  }, [allServicePrices, currency, item.countryId, item.province, tripSettings.selectedCountries, tripSettings.selectedProvinces, isLoadingServices]);
+
 
   const handleNumericInputChange = (field: keyof ActivityItemType, value: string) => {
     const numValue = value === '' ? undefined : parseFloat(value);
-    onUpdate({ 
-        ...item, 
-        [field]: numValue, 
-        selectedServicePriceId: field === 'adultPrice' || field === 'childPrice' ? undefined : item.selectedServicePriceId, 
+    onUpdate({
+        ...item,
+        [field]: numValue,
+        selectedServicePriceId: field === 'adultPrice' || field === 'childPrice' ? undefined : item.selectedServicePriceId,
         selectedPackageId: field === 'adultPrice' || field === 'childPrice' ? undefined : item.selectedPackageId,
     });
   };
 
   const handleEndDayChange = (value: string) => {
     const numValue = value === '' ? undefined : parseInt(value, 10);
-    if (numValue !== undefined && (numValue < dayNumber || numValue > tripSettings.numDays)) {
-      // Potentially add validation message here if needed, or clamp
-    }
     onUpdate({ ...item, endDay: numValue });
   };
 
@@ -96,7 +107,7 @@ export function ActivityItemForm({ item, travelers, currency, dayNumber, tripSet
         ...item,
         selectedServicePriceId: undefined,
         selectedPackageId: undefined,
-        adultPrice: 0, 
+        adultPrice: 0,
         childPrice: undefined,
         note: undefined,
       });
@@ -111,13 +122,15 @@ export function ActivityItemForm({ item, travelers, currency, dayNumber, tripSet
           selectedPackageId: defaultPackage?.id,
           adultPrice: defaultPackage?.price1 ?? service.price1 ?? 0,
           childPrice: defaultPackage?.price2 ?? service.price2 ?? undefined,
-          note: defaultPackage?.notes || service.notes || undefined, // Prioritize package notes
-          province: service.province || item.province, // Keep item's province if service is generic
+          note: defaultPackage?.notes || service.notes || undefined,
+          province: service.province || item.province,
+          countryId: service.countryId || item.countryId,
+          countryName: service.countryId ? countries.find(c => c.id === service.countryId)?.name : item.countryName,
         });
       } else {
         onUpdate({
           ...item,
-          selectedServicePriceId: selectedValue, 
+          selectedServicePriceId: selectedValue,
           selectedPackageId: undefined,
           adultPrice: 0,
           childPrice: undefined,
@@ -128,7 +141,7 @@ export function ActivityItemForm({ item, travelers, currency, dayNumber, tripSet
   };
 
   const handlePackageSelect = (packageId: string) => {
-    if (!selectedActivityService) return; 
+    if (!selectedActivityService) return;
 
     if (packageId === "none" || !selectedActivityService.activityPackages) {
       onUpdate({
@@ -151,23 +164,27 @@ export function ActivityItemForm({ item, travelers, currency, dayNumber, tripSet
       }
     }
   };
-  
+
   const calculatedEndDay = item.endDay || dayNumber;
   const duration = Math.max(1, calculatedEndDay - dayNumber + 1);
 
-  const isPriceReadOnly = !!(item.selectedPackageId && selectedActivityService?.activityPackages?.length && selectedPackage) || 
+  const isPriceReadOnly = !!(item.selectedPackageId && selectedActivityService?.activityPackages?.length && selectedPackage) ||
                          !!(item.selectedServicePriceId && selectedActivityService && (!selectedActivityService.activityPackages || selectedActivityService.activityPackages.length === 0));
 
   const serviceDefinitionNotFound = item.selectedServicePriceId && !selectedActivityService && !isLoadingServices;
+  
+  const locationDisplay = item.countryName ? (item.province ? `${item.province}, ${item.countryName}` : item.countryName)
+                        : (item.province || (tripSettings.selectedProvinces.length > 0 ? tripSettings.selectedProvinces.join('/') : (tripSettings.selectedCountries.length > 0 ? (tripSettings.selectedCountries.map(cid => countries.find(c=>c.id === cid)?.name).filter(Boolean).join('/')) : 'Any Location')));
+
 
   return (
-    <BaseItemForm item={item} travelers={travelers} currency={currency} tripSettings={tripSettings} onUpdate={onUpdate} onDelete={onDelete} itemTypeLabel="Activity">
+    <BaseItemForm item={item} travelers={travelers} currency={currency} tripSettings={tripSettings} onUpdate={onUpdate} onDelete={onDelete} itemTypeLabel="Activity" dayNumber={dayNumber}>
       {(activityServices.length > 0 || item.selectedServicePriceId || isLoadingServices) && (
         <div className="mt-4 pt-4 border-t">
-          <FormField label={`Select Predefined Activity ${item.province ? `(${item.province})` : globallySelectedProvinces.length > 0 ? `(${globallySelectedProvinces.join('/')})` : '(Any Province)'}`} id={`predefined-activity-${item.id}`}>
+          <FormField label={`Select Predefined Activity (${locationDisplay || 'Global'})`} id={`predefined-activity-${item.id}`}>
             {isLoadingServices ? (
                  <div className="flex items-center h-10 border rounded-md px-3 bg-muted/50">
-                    <Loader2 className="h-4 w-4 animate-spin mr-2 text-muted-foreground" /> 
+                    <Loader2 className="h-4 w-4 animate-spin mr-2 text-muted-foreground" />
                     <span className="text-sm text-muted-foreground">Loading activities...</span>
                 </div>
             ) : (
@@ -183,9 +200,9 @@ export function ActivityItemForm({ item, travelers, currency, dayNumber, tripSet
                     <SelectItem value="none">None (Custom Price)</SelectItem>
                     {activityServices.map(service => (
                     <SelectItem key={service.id} value={service.id}>
-                        {service.name} ({service.province || 'Generic'})
-                        {service.activityPackages && service.activityPackages.length > 0 
-                        ? ` - ${service.activityPackages.length} pkg(s)` 
+                        {service.name} ({service.province || (service.countryId ? countries.find(c=>c.id === service.countryId)?.name : 'Generic')})
+                        {service.activityPackages && service.activityPackages.length > 0
+                        ? ` - ${service.activityPackages.length} pkg(s)`
                         : service.price1 !== undefined ? ` - ${currency} ${service.price1}` : ''}
                     </SelectItem>
                     ))}
@@ -220,7 +237,7 @@ export function ActivityItemForm({ item, travelers, currency, dayNumber, tripSet
           )}
         </div>
       )}
-      
+
       {serviceDefinitionNotFound && (
         <Alert variant="destructive" className="mt-4">
           <AlertCircle className="h-4 w-4" />
@@ -231,7 +248,7 @@ export function ActivityItemForm({ item, travelers, currency, dayNumber, tripSet
         </Alert>
       )}
 
-      {selectedPackage && selectedActivityService && ( 
+      {selectedPackage && selectedActivityService && (
         <div className="mt-3 p-3 border rounded-md bg-muted/30 space-y-2 text-sm">
           <div className="flex items-center font-medium text-primary">
             <Tag className="h-4 w-4 mr-2"/> Package: {selectedPackage.name}
@@ -321,4 +338,3 @@ export function ActivityItemForm({ item, travelers, currency, dayNumber, tripSet
     </BaseItemForm>
   );
 }
-    

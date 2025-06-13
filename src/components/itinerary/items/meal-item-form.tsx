@@ -2,35 +2,38 @@
 "use client";
 
 import * as React from 'react';
-import type { MealItem as MealItemType, Traveler, CurrencyCode, ServicePriceItem, TripSettings } from '@/types/itinerary';
+import type { MealItem as MealItemType, Traveler, CurrencyCode, ServicePriceItem, TripSettings, CountryItem } from '@/types/itinerary';
 import { BaseItemForm, FormField } from './base-item-form';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AlertCircle, Loader2 } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Separator } from '@/components/ui/separator'; 
+import { Separator } from '@/components/ui/separator';
 import { useServicePrices } from '@/hooks/useServicePrices';
+import { useCountries } from '@/hooks/useCountries'; // Added
 
 interface MealItemFormProps {
   item: MealItemType;
   travelers: Traveler[];
   currency: CurrencyCode;
   tripSettings: TripSettings;
+  dayNumber: number; // Added
   onUpdate: (item: MealItemType) => void;
   onDelete: () => void;
-  allServicePrices: ServicePriceItem[]; // Keep for consistency, use hook primarily
+  allServicePrices: ServicePriceItem[];
 }
 
-export function MealItemForm({ item, travelers, currency, tripSettings, onUpdate, onDelete }: MealItemFormProps) {
+export function MealItemForm({ item, travelers, currency, tripSettings, dayNumber, onUpdate, onDelete }: MealItemFormProps) {
   const { allServicePrices, isLoading: isLoadingServices } = useServicePrices();
+  const { countries, getCountryById } = useCountries(); // Added
   const [mealServices, setMealServices] = React.useState<ServicePriceItem[]>([]);
 
-  const globallySelectedProvinces = tripSettings.selectedProvinces || [];
+  const itemCountry = React.useMemo(() => item.countryId ? getCountryById(item.countryId) : undefined, [item.countryId, getCountryById]);
 
   const getServicePriceById = React.useCallback((id: string) => {
     return allServicePrices.find(sp => sp.id === id);
   }, [allServicePrices]);
-  
+
   const selectedService = React.useMemo(() => {
     if (item.selectedServicePriceId) {
       return getServicePriceById(item.selectedServicePriceId);
@@ -43,27 +46,36 @@ export function MealItemForm({ item, travelers, currency, tripSettings, onUpdate
       setMealServices([]);
       return;
     }
-    const allCategoryServices = allServicePrices.filter(s => s.category === 'meal' && s.currency === currency);
-    let filteredServices = allCategoryServices;
+    let filteredServices = allServicePrices.filter(s => s.category === 'meal' && s.currency === currency);
 
-    if (globallySelectedProvinces.length > 0) {
-      filteredServices = filteredServices.filter(s => !s.province || globallySelectedProvinces.includes(s.province));
+    if (item.countryId) {
+      filteredServices = filteredServices.filter(s => s.countryId === item.countryId || !s.countryId);
+    } else if (tripSettings.selectedCountries.length > 0) {
+      filteredServices = filteredServices.filter(s => !s.countryId || tripSettings.selectedCountries.includes(s.countryId));
     }
-    
-    if (item.province && globallySelectedProvinces.length === 0) {
-        filteredServices = filteredServices.filter(s => s.province === item.province || !s.province);
-    } else if (item.province && globallySelectedProvinces.includes(item.province)) {
-        filteredServices = filteredServices.filter(s => s.province === item.province || !s.province);
+
+    if (item.province) {
+      filteredServices = filteredServices.filter(s => s.province === item.province || !s.province);
+    } else if (tripSettings.selectedProvinces.length > 0) {
+         const relevantGlobalProvinces = (tripSettings.selectedCountries.length > 0)
+            ? tripSettings.selectedProvinces.filter(provName => {
+                const provObj = allServicePrices.find(sp => sp.province === provName);
+                return provObj && provObj.countryId && tripSettings.selectedCountries.includes(provObj.countryId);
+            })
+            : tripSettings.selectedProvinces;
+        if(relevantGlobalProvinces.length > 0){
+             filteredServices = filteredServices.filter(s => !s.province || relevantGlobalProvinces.includes(s.province));
+        }
     }
-    
     setMealServices(filteredServices);
-  }, [allServicePrices, currency, item.province, isLoadingServices, globallySelectedProvinces]);
+  }, [allServicePrices, currency, item.countryId, item.province, tripSettings.selectedCountries, tripSettings.selectedProvinces, isLoadingServices]);
+
 
   const handleNumericInputChange = (field: keyof MealItemType, value: string) => {
     const numValue = value === '' ? undefined : parseFloat(value);
-    onUpdate({ 
-      ...item, 
-      [field]: numValue, 
+    onUpdate({
+      ...item,
+      [field]: numValue,
       selectedServicePriceId: (field === 'adultMealPrice' || field === 'childMealPrice') ? undefined : item.selectedServicePriceId,
     });
   };
@@ -73,7 +85,7 @@ export function MealItemForm({ item, travelers, currency, tripSettings, onUpdate
       onUpdate({
         ...item,
         selectedServicePriceId: undefined,
-        adultMealPrice: 0, 
+        adultMealPrice: 0,
         childMealPrice: undefined,
         note: undefined,
       });
@@ -88,31 +100,35 @@ export function MealItemForm({ item, travelers, currency, tripSettings, onUpdate
           selectedServicePriceId: service.id,
           note: service.notes || undefined,
           province: service.province || item.province,
+          countryId: service.countryId || item.countryId,
+          countryName: service.countryId ? countries.find(c => c.id === service.countryId)?.name : item.countryName,
         });
       } else {
-         onUpdate({ 
+         onUpdate({
           ...item,
-          selectedServicePriceId: selectedValue, 
-          adultMealPrice: 0, 
+          selectedServicePriceId: selectedValue,
+          adultMealPrice: 0,
           childMealPrice: undefined,
           note: undefined,
         });
       }
     }
   };
-  
+
   const serviceDefinitionNotFound = item.selectedServicePriceId && !selectedService && !isLoadingServices;
   const isPriceReadOnly = !!item.selectedServicePriceId && !!selectedService;
+  const locationDisplay = item.countryName ? (item.province ? `${item.province}, ${item.countryName}` : item.countryName)
+                        : (item.province || (tripSettings.selectedProvinces.length > 0 ? tripSettings.selectedProvinces.join('/') : (tripSettings.selectedCountries.length > 0 ? (tripSettings.selectedCountries.map(cid => countries.find(c=>c.id === cid)?.name).filter(Boolean).join('/')) : 'Any Location')));
 
 
   return (
-    <BaseItemForm item={item} travelers={travelers} currency={currency} tripSettings={tripSettings} onUpdate={onUpdate} onDelete={onDelete} itemTypeLabel="Meal">
+    <BaseItemForm item={item} travelers={travelers} currency={currency} tripSettings={tripSettings} onUpdate={onUpdate} onDelete={onDelete} itemTypeLabel="Meal" dayNumber={dayNumber}>
       {(mealServices.length > 0 || item.selectedServicePriceId || isLoadingServices) && (
         <div className="mt-4 pt-4 border-t">
-          <FormField label={`Select Predefined Meal ${item.province ? `(${item.province})` : globallySelectedProvinces.length > 0 ? `(${globallySelectedProvinces.join('/')})` : '(Any Province)'}`} id={`predefined-meal-${item.id}`}>
+          <FormField label={`Select Predefined Meal (${locationDisplay || 'Global'})`} id={`predefined-meal-${item.id}`}>
             {isLoadingServices ? (
                  <div className="flex items-center h-10 border rounded-md px-3 bg-muted/50">
-                    <Loader2 className="h-4 w-4 animate-spin mr-2 text-muted-foreground" /> 
+                    <Loader2 className="h-4 w-4 animate-spin mr-2 text-muted-foreground" />
                     <span className="text-sm text-muted-foreground">Loading meals...</span>
                 </div>
             ) : (
@@ -128,7 +144,7 @@ export function MealItemForm({ item, travelers, currency, tripSettings, onUpdate
                     <SelectItem value="none">None (Custom Price)</SelectItem>
                     {mealServices.map(service => (
                     <SelectItem key={service.id} value={service.id}>
-                        {service.name} ({service.province || 'Generic'}) - {currency} {service.price1}
+                        {service.name} ({service.province || (service.countryId ? countries.find(c=>c.id === service.countryId)?.name : 'Generic')}) - {currency} {service.price1}
                         {service.price2 !== undefined ? ` / Ch: ${service.price2}` : ''}
                         {service.subCategory ? ` (${service.subCategory})` : ''}
                     </SelectItem>
