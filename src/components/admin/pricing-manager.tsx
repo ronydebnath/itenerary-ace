@@ -1,4 +1,13 @@
-
+/**
+ * @fileoverview This component serves as the main interface for managing service prices.
+ * It allows users to view, filter (by category), add, edit, and delete service prices.
+ * It also includes an AI-powered feature to parse contract text and prefill a new service price form.
+ *
+ * @bangla এই কম্পোনেন্টটি পরিষেবা মূল্য পরিচালনার প্রধান ইন্টারফেস হিসেবে কাজ করে।
+ * এটি ব্যবহারকারীদের পরিষেবা মূল্যগুলি দেখতে, ফিল্টার করতে (বিভাগ অনুযায়ী), যোগ করতে,
+ * সম্পাদনা করতে এবং মুছতে দেয়। এটিতে চুক্তি টেক্সট পার্স করে নতুন পরিষেবা মূল্য ফর্ম
+ * প্রিফিল করার জন্য একটি এআই-চালিত বৈশিষ্ট্যও অন্তর্ভুক্ত রয়েছে।
+ */
 "use client";
 
 import * as React from 'react';

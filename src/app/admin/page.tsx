@@ -1,4 +1,14 @@
-
+/**
+ * @fileoverview This file serves as the main admin dashboard page for the application.
+ * It displays various cards linking to different management sections like itinerary creation,
+ * service pricing, location management, and AI tools. It functions as the primary entry
+ * point for administrative tasks.
+ *
+ * @bangla এই ফাইলটি অ্যাপ্লিকেশনের প্রধান অ্যাডমিন ড্যাশবোর্ড পৃষ্ঠা হিসেবে কাজ করে।
+ * এটি ভ্রমণপথ তৈরি, পরিষেবা মূল্য নির্ধারণ, অবস্থান পরিচালনা এবং এআই সরঞ্জামগুলির মতো
+ * বিভিন্ন পরিচালনা বিভাগে লিঙ্ক করা বিভিন্ন কার্ড প্রদর্শন করে। এটি প্রশাসনিক কাজগুলির
+ * জন্য প্রাথমিক প্রবেশদ্বার হিসেবে কাজ করে।
+ */
 "use client";
 
 import Link from 'next/link';

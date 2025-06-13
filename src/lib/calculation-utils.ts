@@ -1,4 +1,18 @@
-
+/**
+ * @fileoverview This file houses the core logic for calculating costs related to itinerary items.
+ * It includes functions to determine costs for transfers, activities, hotel stays, meals, and
+ * miscellaneous items. It considers factors like participating travelers, pricing modes (ticket vs. vehicle),
+ * seasonal rates for hotels, and different cost assignment methods. The main exported function,
+ * `calculateAllCosts`, aggregates these individual calculations to provide a comprehensive
+ * cost summary for the entire trip, including per-person totals and detailed item breakdowns.
+ *
+ * @bangla এই ফাইলটিতে ভ্রমণপথের আইটেমগুলির সাথে সম্পর্কিত খরচ গণনার মূল যুক্তি রয়েছে।
+ * এটিতে ট্রান্সফার, কার্যকলাপ, হোটেল থাকা, খাবার এবং বিভিন্ন আইটেমের খরচ নির্ধারণ করার
+ * ফাংশন অন্তর্ভুক্ত রয়েছে। এটি অংশগ্রহণকারী ভ্রমণকারী, মূল্যের ধরণ (টিকিট বনাম যান),
+ * হোটেলের জন্য মরশুমি হার এবং বিভিন্ন খরচ নির্ধারণ পদ্ধতি বিবেচনা করে। প্রধান এক্সপোর্ট করা ফাংশন,
+ * `calculateAllCosts`, এই পৃথক গণনাগুলিকে একত্রিত করে পুরো ভ্রমণের জন্য একটি ব্যাপক
+ * খরচ সারাংশ প্রদান করে, যার মধ্যে প্রতি-ব্যক্তি মোট এবং বিস্তারিত আইটেম ব্রেকডাউন অন্তর্ভুক্ত।
+ */
 import type {
   TripData,
   ItineraryItem,
@@ -457,4 +471,3 @@ export function calculateAllCosts(
 
   return { grandTotal, perPersonTotals, detailedItems };
 }
-
