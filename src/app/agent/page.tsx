@@ -4,7 +4,7 @@
 import Link from 'next/link';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
-import { Briefcase, Route, Users, ListOrdered, LayoutDashboard, UserCog } from 'lucide-react';
+import { Briefcase, Route, Users, ListOrdered, LayoutDashboard, UserCog, FilePlus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface AgentDashboardCardProps {
@@ -62,6 +62,14 @@ export default function AgentDashboardPage() {
             icon={Route}
             buttonText="Launch Planner"
             className="lg:col-span-1 bg-accent/5 border-accent/30"
+          />
+          <AgentDashboardCard
+            title="Request New Quotation"
+            description="Fill out a detailed form to request a new travel quotation from the admin team."
+            href="/agent/quotation-request"
+            icon={FilePlus}
+            buttonText="Request Quote"
+            className="lg:col-span-1"
           />
           <AgentDashboardCard
             title="My Agent Profile"
