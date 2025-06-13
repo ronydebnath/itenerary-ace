@@ -354,7 +354,7 @@ export function PlannerHeader({
           </div>
         </div>
 
-        <div className="mt-3 md:mt-4 p-3 bg-secondary/20 rounded-lg border border-secondary/30 text-xs text-muted-foreground">
+        <div className="mt-3 md:mt-4 p-3 bg-secondary/20 rounded-lg border border-secondary/30 text-sm text-muted-foreground">
             <div>
               <span className="font-semibold text-foreground text-sm">Current Config:</span> <strong className="text-sm font-semibold text-primary">{numNights} Night(s) / {tripData.settings.numDays} Day(s)</strong> starting {displayStartDate}.
               For {tripData.pax.adults} Adult(s), {tripData.pax.children} Child(ren). Currency: {tripData.pax.currency}.
