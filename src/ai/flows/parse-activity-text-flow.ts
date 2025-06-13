@@ -14,7 +14,6 @@ const ActivityPackageAISchema = z.object({
   packageName: z.string().optional().describe("The name of this specific package or option within the activity."),
   adultPrice: z.number().optional().describe("The adult price for this specific package."),
   childPrice: z.number().optional().describe("The child price for this specific package (if different from adult)."),
-  // currency is likely global, but can be per package if text suggests
   currency: z.custom<CurrencyCode>((val) => CURRENCIES.includes(val as CurrencyCode)).optional().describe('The currency code for this package (e.g., THB, USD).'),
   notes: z.string().optional().describe("Specific notes for this package (e.g., duration, inclusions, exclusions, times).")
 });
@@ -22,8 +21,6 @@ const ActivityPackageAISchema = z.object({
 const ParseActivityTextOutputSchema = z.object({
   activityName: z.string().optional().describe('The overall name of the activity or tour service.'),
   province: z.string().optional().describe('The province or city where the activity is located (if explicitly mentioned).'),
-  // Consider a global currency if most packages share it, otherwise, AI can put it per package.
-  // For simplicity now, let's encourage per-package currency if it varies, or a single currency if consistent.
   parsedPackages: z.array(ActivityPackageAISchema).optional().describe("An array of distinct packages or pricing options found for the activity. If only one price set is found, it should still be in this array as a single package.")
 });
 export type ParseActivityTextOutput = z.infer<typeof ParseActivityTextOutputSchema>;
@@ -85,9 +82,9 @@ Extract the following information and provide it in JSON format.
 
 Guidelines:
 -   If a field is not mentioned or cannot be reliably determined for a package, omit it from that package's object.
--   If no packages or pricing details can be found, `parsedPackages` can be an empty array or omitted.
+-   If no packages or pricing details can be found, \`parsedPackages\` can be an empty array or omitted.
 -   Prioritize accuracy. Prices should be numerical.
--   The top-level `activityName` should be the general name, not a package name unless it's the only one.
+-   The top-level \`activityName\` should be the general name, not a package name unless it's the only one.
 
 Return ONLY the JSON object.
 Example of expected structure if multiple packages are found:
@@ -146,6 +143,7 @@ Example if only one option is found:
 
       if (data.choices && data.choices.length > 0 && data.choices[0].message && data.choices[0].message.content) {
         let content = data.choices[0].message.content;
+        // Remove potential markdown ```json ... ``` wrapper
         if (content.startsWith("```json")) {
           content = content.substring(7);
           if (content.endsWith("```")) {
@@ -154,13 +152,18 @@ Example if only one option is found:
         }
         try {
           const parsedJson = JSON.parse(content);
+          // Validate against the Zod schema
           const validationResult = ParseActivityTextOutputSchema.safeParse(parsedJson);
           if (validationResult.success) {
             return validationResult.data;
           } else {
             console.error('OpenRouter response for multi-package activity parsing does not match schema:', validationResult.error.errors);
             console.error('Received JSON for multi-package activity parsing:', content);
-            return parsedJson as ParseActivityTextOutput; // Return partially valid data for debugging
+            // Return the potentially partially valid data for debugging or partial prefill
+            // This might be risky if the structure is too different.
+            // For now, let's return it and let the consuming form handle it,
+            // or throw an error if stricter handling is needed.
+            return parsedJson as ParseActivityTextOutput; // Cast, but be aware of potential issues
           }
         } catch (jsonError: any) {
           console.error('Error parsing JSON from OpenRouter for multi-package activity data:', jsonError);
