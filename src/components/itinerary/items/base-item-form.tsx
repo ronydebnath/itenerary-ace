@@ -1,4 +1,16 @@
-
+/**
+ * @fileoverview This component serves as a foundational building block for all specific
+ * itinerary item forms (e.g., Transfer, Activity, Hotel). It provides a common structure
+ * including a collapsible header with item type, name, and action buttons (expand/collapse, delete).
+ * It also includes a section for excluding specific travelers and handles the rendering of
+ * item-specific fields passed as children.
+ *
+ * @bangla এই কম্পোনেন্টটি সমস্ত নির্দিষ্ট ভ্রমণপথের আইটেম ফর্মগুলির (যেমন, ট্রান্সফার,
+ * কার্যকলাপ, হোটেল) জন্য একটি ভিত্তি হিসেবে কাজ করে। এটি একটি সাধারণ কাঠামো সরবরাহ করে,
+ * যার মধ্যে আইটেমের প্রকার, নাম এবং অ্যাকশন বোতাম (প্রসারণ/সংকোচন, মুছে ফেলা) সহ একটি
+ * সংকোচনযোগ্য হেডার রয়েছে। এটি নির্দিষ্ট ভ্রমণকারীদের বাদ দেওয়ার জন্য একটি বিভাগও অন্তর্ভুক্ত
+ * করে এবং চিলড্রেন হিসেবে পাস করা আইটেম-নির্দিষ্ট ক্ষেত্রগুলির রেন্ডারিং পরিচালনা করে।
+ */
 "use client";
 
 import * as React from 'react';
@@ -316,3 +328,4 @@ function BaseItemFormComponent<T extends ItineraryItem>({
 }
 
 export const BaseItemForm = React.memo(BaseItemFormComponent) as typeof BaseItemFormComponent;
+

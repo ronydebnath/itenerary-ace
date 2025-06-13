@@ -1,4 +1,15 @@
-
+/**
+ * @fileoverview This component renders the view for a single day in the itinerary.
+ * It displays all the itinerary items (transfers, activities, hotels, etc.) planned
+ * for that specific day and provides controls to add new items or modify existing ones.
+ * It utilizes various specific item form components to handle the details of each service type.
+ *
+ * @bangla এই কম্পোনেন্টটি ভ্রমণপথের একটি নির্দিষ্ট দিনের ভিউ রেন্ডার করে।
+ * এটি সেই নির্দিষ্ট দিনের জন্য পরিকল্পিত সমস্ত ভ্রমণপথের আইটেমগুলি (ট্রান্সফার, কার্যকলাপ,
+ * হোটেল ইত্যাদি) প্রদর্শন করে এবং নতুন আইটেম যুক্ত করতে বা বিদ্যমান আইটেমগুলি সংশোধন
+ * করার জন্য নিয়ন্ত্রণ সরবরাহ করে। এটি প্রতিটি পরিষেবা প্রকারের বিবরণ পরিচালনা করার
+ * জন্য বিভিন্ন নির্দিষ্ট আইটেম ফর্ম কম্পোনেন্ট ব্যবহার করে।
+ */
 "use client";
 
 import * as React from 'react';
@@ -123,7 +134,7 @@ function DayViewComponent({
 
   return (
     <Card className="mb-6 shadow-md border-primary/20 w-full">
-      <CardContent className="px-1 py-2 sm:px-2 md:px-4 md:py-4">
+      <CardContent className="px-1 sm:px-2 md:px-4 py-2 md:py-4">
         <div className="space-y-4">
           {items.length > 0 ? (
             items.map(item => renderItemForm(item))
@@ -162,3 +173,4 @@ function DayViewComponent({
   );
 }
 export const DayView = React.memo(DayViewComponent);
+

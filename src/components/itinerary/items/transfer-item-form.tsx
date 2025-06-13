@@ -1,4 +1,16 @@
-
+/**
+ * @fileoverview This component provides a form for adding or editing transfer items
+ * within an itinerary. It handles different transfer modes (ticket vs. vehicle),
+ * allows selection of predefined transfer services, and manages vehicle-specific
+ * options like type and cost. It uses the `BaseItemForm` for common structure
+ * and traveler exclusion logic.
+ *
+ * @bangla এই কম্পোনেন্টটি একটি ভ্রমণপথের মধ্যে ট্রান্সফার আইটেম যোগ বা সম্পাদনা করার
+ * জন্য একটি ফর্ম সরবরাহ করে। এটি বিভিন্ন ট্রান্সফার মোড (টিকিট বনাম যান) পরিচালনা করে,
+ * পূর্বনির্ধারিত ট্রান্সফার পরিষেবা নির্বাচনের অনুমতি দেয় এবং গাড়ির নির্দিষ্ট বিকল্পগুলি
+ * যেমন প্রকার এবং খরচ পরিচালনা করে। এটি সাধারণ কাঠামো এবং ভ্রমণকারী বাদ দেওয়ার যুক্তির
+ * জন্য `BaseItemForm` ব্যবহার করে।
+ */
 "use client";
 
 import * as React from 'react';
@@ -304,7 +316,7 @@ function TransferItemFormComponent({
                         <SelectItem value="none">None (Custom Price/Options)</SelectItem>
                         {transferServices.map(service => (
                         <SelectItem key={service.id} value={service.id}>
-                            {service.name} ({service.province || (service.countryId ? countries.find(c=>c.id === service.countryId)?.name : 'Generic')})
+                            {service.name} ({service.province || (service.countryId ? countries.find(c => c.id === service.countryId)?.name : 'Generic')})
                             {service.vehicleOptions && service.vehicleOptions.length > 0 ? ` - ${service.vehicleOptions.length} options` : (service.price1 !== undefined ? ` - ${currency} ${service.price1}`: '')}
                         </SelectItem>
                         ))}
@@ -472,5 +484,6 @@ function TransferItemFormComponent({
   );
 }
 export const TransferItemForm = React.memo(TransferItemFormComponent);
+
 
 

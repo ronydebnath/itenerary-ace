@@ -1,4 +1,14 @@
-
+/**
+ * @fileoverview This component provides a form for adding or editing activity items
+ * within an itinerary. It allows selection of predefined activity services, management
+ * of activity packages (if applicable), and setting prices. It utilizes the
+ * `BaseItemForm` for common structure and traveler exclusion logic.
+ *
+ * @bangla এই কম্পোনেন্টটি একটি ভ্রমণপথের মধ্যে কার্যকলাপ আইটেম যোগ বা সম্পাদনা করার
+ * জন্য একটি ফর্ম সরবরাহ করে। এটি পূর্বনির্ধারিত কার্যকলাপ পরিষেবা নির্বাচন, কার্যকলাপ
+ * প্যাকেজ পরিচালনা (যদি প্রযোজ্য হয়) এবং মূল্য নির্ধারণের অনুমতি দেয়। এটি সাধারণ
+ * কাঠামো এবং ভ্রমণকারী বাদ দেওয়ার যুক্তির জন্য `BaseItemForm` ব্যবহার করে।
+ */
 "use client";
 
 import * as React from 'react';

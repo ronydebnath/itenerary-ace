@@ -1,4 +1,16 @@
-
+/**
+ * @fileoverview This component provides a form for adding or editing hotel stay items
+ * within an itinerary. It allows selection of predefined hotel definitions,
+ * configuration of multiple room bookings (each with its own type, number of rooms,
+ * and traveler assignments), and setting check-in/checkout days. It uses the
+ * `BaseItemForm` for common structure and traveler exclusion logic.
+ *
+ * @bangla এই কম্পোনেন্টটি একটি ভ্রমণপথের মধ্যে হোটেল থাকার আইটেম যোগ বা সম্পাদনা করার
+ * জন্য একটি ফর্ম সরবরাহ করে। এটি পূর্বনির্ধারিত হোটেল সংজ্ঞা নির্বাচন, একাধিক রুম বুকিং
+ * (প্রতিটির নিজস্ব প্রকার, রুমের সংখ্যা এবং ভ্রমণকারী বরাদ্দ সহ) কনফিগারেশন এবং
+ * চেক-ইন/চেকআউট দিন নির্ধারণের অনুমতি দেয়। এটি সাধারণ কাঠামো এবং ভ্রমণকারী বাদ
+ * দেওয়ার যুক্তির জন্য `BaseItemForm` ব্যবহার করে।
+ */
 "use client";
 
 import * as React from 'react';
