@@ -4,7 +4,7 @@
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
-import { LayoutDashboard, Route, ListOrdered, DollarSign, MapPinned, Wand2, Globe, Repeat } from 'lucide-react';
+import { LayoutDashboard, Route, ListOrdered, DollarSign, MapPinned, Wand2, Globe, Repeat, Briefcase } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface DashboardCardProps {
@@ -110,26 +110,14 @@ export default function AdminDashboardPage() {
             buttonText="Use Converter"
             className="lg:col-span-1"
           />
-          
-          {/* Example of a potential future card - you can uncomment and implement */}
-          {/*
           <DashboardCard
-            title="User Management"
-            description="Administer user accounts, roles, and permissions for your team."
-            href="/admin/users" // Hypothetical link
-            icon={Users}
-            buttonText="Manage Users"
-            className="border-dashed border-muted-foreground/50"
+            title="Agent Dashboard"
+            description="Access the dashboard designed for travel agents to manage their specific tasks and clients."
+            href="/agent"
+            icon={Briefcase} 
+            buttonText="Go to Agent View"
+            className="lg:col-span-1 border-secondary"
           />
-          <DashboardCard
-            title="Analytics & Reports"
-            description="View key metrics, popular destinations, and cost trends for your itineraries."
-            href="/admin/reports" // Hypothetical link
-            icon={BarChart3}
-            buttonText="View Reports"
-            className="border-dashed border-muted-foreground/50"
-          />
-          */}
         </div>
       </div>
     </main>
