@@ -1,4 +1,16 @@
-
+/**
+ * @fileoverview This component provides a user interface for configuring the scheduling
+ * details of an activity package. It includes date pickers for setting validity periods
+ * (start and end dates), checkboxes for recurring weekday closures, and an input for
+ * adding specific one-off closed dates. It also features an optional calendar view to
+ * visualize the package's availability based on the configured schedule.
+ *
+ * @bangla এই কম্পোনেন্টটি একটি কার্যকলাপ প্যাকেজের সময়সূচী বিবরণ কনফিগার করার জন্য
+ * একটি ব্যবহারকারী ইন্টারফেস সরবরাহ করে। এটিতে বৈধতার সময়কাল (শুরু এবং শেষের তারিখ)
+ * নির্ধারণের জন্য ডেট পিকার, পুনরাবৃত্ত সাপ্তাহিক বন্ধের জন্য চেকবক্স এবং নির্দিষ্ট
+ * এককালীন বন্ধ তারিখ যুক্ত করার জন্য একটি ইনপুট অন্তর্ভুক্ত রয়েছে। কনফিগার করা সময়সূচীর
+ * উপর ভিত্তি করে প্যাকেজের উপলব্ধতা কল্পনা করার জন্য এটিতে একটি ঐচ্ছিক ক্যালেন্ডার ভিউও রয়েছে।
+ */
 "use client";
 
 import * as React from 'react';

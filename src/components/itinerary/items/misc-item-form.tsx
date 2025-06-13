@@ -1,4 +1,16 @@
-
+/**
+ * @fileoverview This component provides a form for adding or editing miscellaneous items
+ * within an itinerary, such as visa fees, souvenirs, or guide fees. It allows selection
+ * of predefined miscellaneous services, setting a unit cost and quantity, and defining
+ * how the cost should be assigned (per person or total). It utilizes the `BaseItemForm`
+ * for common structure and traveler exclusion capabilities.
+ *
+ * @bangla এই কম্পোনেন্টটি একটি ভ্রমণপথের মধ্যে বিবিধ আইটেম (যেমন ভিসা ফি, স্যুভেনিয়ার,
+ * বা গাইড ফি) যোগ বা সম্পাদনা করার জন্য একটি ফর্ম সরবরাহ করে। এটি পূর্বনির্ধারিত বিবিধ
+ * পরিষেবা নির্বাচন, ইউনিট খরচ এবং পরিমাণ নির্ধারণ এবং খরচ কীভাবে বরাদ্দ করা হবে (প্রতি
+ * ব্যক্তি বা মোট) তা নির্ধারণের অনুমতি দেয়। এটি সাধারণ কাঠামো এবং ভ্রমণকারী বাদ
+ * দেওয়ার ক্ষমতার জন্য `BaseItemForm` ব্যবহার করে।
+ */
 "use client";
 
 import * as React from 'react';
@@ -273,4 +285,3 @@ function MiscItemFormComponent({
 }
 export const MiscItemForm = React.memo(MiscItemFormComponent);
     
-

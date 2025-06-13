@@ -1,4 +1,14 @@
-
+/**
+ * @fileoverview This component provides a form for adding or editing meal items
+ * within an itinerary. It allows selection of predefined meal services and setting
+ * prices for adult and child meals, along with the total number of meals.
+ * It uses the `BaseItemForm` for common structure and traveler exclusion.
+ *
+ * @bangla এই কম্পোনেন্টটি একটি ভ্রমণপথের মধ্যে খাবার আইটেম যোগ বা সম্পাদনা করার জন্য
+ * একটি ফর্ম সরবরাহ করে। এটি পূর্বনির্ধারিত খাবার পরিষেবা নির্বাচন এবং প্রাপ্তবয়স্ক ও
+ * শিশুদের খাবারের জন্য মূল্য নির্ধারণের পাশাপাশি মোট খাবারের সংখ্যা নির্দিষ্ট করার অনুমতি দেয়।
+ * এটি সাধারণ কাঠামো এবং ভ্রমণকারী বাদ দেওয়ার জন্য `BaseItemForm` ব্যবহার করে।
+ */
 "use client";
 
 import * as React from 'react';
@@ -270,4 +280,3 @@ function MealItemFormComponent({
 
 export const MealItemForm = React.memo(MealItemFormComponent);
     
-

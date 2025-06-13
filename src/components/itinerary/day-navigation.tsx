@@ -1,4 +1,14 @@
-
+/**
+ * @fileoverview This component renders the day navigation controls for the itinerary planner.
+ * It allows users to switch between different days of the itinerary using previous/next buttons
+ * (on larger screens) or a select dropdown (on smaller screens). It dynamically displays
+ * the formatted date for the currently viewed day.
+ *
+ * @bangla এই কম্পোনেন্টটি ভ্রমণপথ পরিকল্পনাকারীর জন্য দিন নেভিগেশন নিয়ন্ত্রণগুলি রেন্ডার করে।
+ * এটি ব্যবহারকারীদের ভ্রমণপথের বিভিন্ন দিনের মধ্যে স্যুইচ করার অনুমতি দেয় পূর্ববর্তী/পরবর্তী
+ * বোতাম ব্যবহার করে (বড় স্ক্রিনে) অথবা একটি সিলেক্ট ড্রপডাউন (ছোট স্ক্রিনে)। এটি গতিশীলভাবে
+ * বর্তমানে দেখা দিনের জন্য ফরম্যাট করা তারিখ প্রদর্শন করে।
+ */
 "use client";
 
 import * as React from 'react';

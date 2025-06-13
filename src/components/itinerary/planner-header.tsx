@@ -1,4 +1,15 @@
-
+/**
+ * @fileoverview This component renders the header section of the itinerary planner.
+ * It includes fields for setting the itinerary name, client name, start date, number of days,
+ * number of adults/children, preferred currency, global budget, and selection of
+ * countries/provinces to focus the itinerary on. It also provides buttons for saving
+ * and resetting the itinerary.
+ *
+ * @bangla এই কম্পোনেন্টটি ভ্রমণপথ পরিকল্পনাকারীর হেডার অংশ রেন্ডার করে।
+ * এটিতে ভ্রমণপথের নাম, ক্লায়েন্টের নাম, শুরুর তারিখ, দিনের সংখ্যা, প্রাপ্তবয়স্ক/শিশুর
+ * সংখ্যা, পছন্দের মুদ্রা, গ্লোবাল বাজেট এবং ভ্রমণপথকে কেন্দ্র করে দেশ/প্রদেশ নির্বাচনের
+ * জন্য ক্ষেত্র অন্তর্ভুক্ত রয়েছে। এটি ভ্রমণপথ সংরক্ষণ এবং রিসেট করার জন্য বোতামও সরবরাহ করে।
+ */
 "use client";
 
 import * as React from 'react';
