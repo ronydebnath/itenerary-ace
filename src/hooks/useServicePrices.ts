@@ -1,4 +1,15 @@
 
+/**
+ * @fileoverview This custom React hook is responsible for managing service price data.
+ * It loads service prices from localStorage, seeds default prices if none exist (including
+ * prices derived from hotel definitions), and provides functions to retrieve all prices
+ * or filter them by category, location, or currency.
+ *
+ * @bangla এই কাস্টম রিঅ্যাক্ট হুকটি পরিষেবা মূল্য ডেটা পরিচালনার জন্য দায়ী।
+ * এটি localStorage থেকে পরিষেবা মূল্য লোড করে, কোনোটি না থাকলে ডিফল্ট মূল্য (হোটেল
+ * সংজ্ঞা থেকে প্রাপ্ত মূল্য সহ) বীজ করে এবং সমস্ত মূল্য পুনরুদ্ধার বা বিভাগ, অবস্থান,
+ * বা মুদ্রা দ্বারা ফিল্টার করার জন্য ফাংশন সরবরাহ করে।
+ */
 import * as React from 'react';
 import type { ServicePriceItem, ItineraryItemType, HotelDefinition, CountryItem, ActivityPackageDefinition, VehicleOption, SurchargePeriod } from '@/types/itinerary';
 import { generateGUID } from '@/lib/utils';
@@ -174,7 +185,7 @@ export function useServicePrices() {
                 } else {
                   // If a demo item might have been updated (e.g. new fields added to schema), overwrite with latest.
                   // This is specifically for demo items that might have fixed IDs.
-                  if (demoPrice.id.includes("-demo")) { 
+                  if (demoPrice.id && demoPrice.id.includes("-demo")) { 
                     const existingIndex = pricesToSet.findIndex(p => p.id === demoPrice.id);
                     if (existingIndex !== -1) {
                       pricesToSet[existingIndex] = demoPrice;
@@ -182,7 +193,7 @@ export function useServicePrices() {
                        const oldDemoByName = pricesToSet.findIndex(p => 
                             p.name === demoPrice.name && p.province === demoPrice.province && 
                             p.category === demoPrice.category && p.countryId === demoPrice.countryId &&
-                            !p.id.includes("-demo") // Avoid re-adding if a user created a custom one with same name
+                            p.id && !p.id.includes("-demo") // Avoid re-adding if a user created a custom one with same name
                         );
                         if(oldDemoByName === -1) pricesToSet.push(demoPrice); // Add if new demo structure for an old demo name
                     }

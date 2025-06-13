@@ -1,4 +1,13 @@
 
+/**
+ * @fileoverview This page component allows users to upload an image, which is then sent
+ * to an AI model (via the `describeImage` flow) to generate a textual description of the image's content.
+ * It handles file selection, preview, loading states, error display, and shows the AI-generated description.
+ *
+ * @bangla এই পৃষ্ঠা কম্পোনেন্টটি ব্যবহারকারীদের একটি ছবি আপলোড করার অনুমতি দেয়, যা পরে
+ * ছবির বিষয়বস্তুর একটি পাঠ্য বিবরণ তৈরি করার জন্য একটি এআই মডেলের কাছে ( `describeImage` ফ্লোর মাধ্যমে) পাঠানো হয়।
+ * এটি ফাইল নির্বাচন, প্রিভিউ, লোডিং অবস্থা, ত্রুটি প্রদর্শন এবং এআই-উত্পন্ন বিবরণ প্রদর্শন পরিচালনা করে।
+ */
 "use client";
 
 import * as React from 'react';

@@ -1,4 +1,15 @@
 
+/**
+ * @fileoverview This custom React hook manages master hotel definitions.
+ * It loads hotel data from localStorage, seeds default/demo hotel definitions if none exist,
+ * and provides functions to retrieve hotel definitions, potentially filtered by location.
+ * This data is used to populate hotel selection options in the itinerary planner and pricing forms.
+ *
+ * @bangla এই কাস্টম রিঅ্যাক্ট হুক মাস্টার হোটেল সংজ্ঞা পরিচালনা করে।
+ * এটি localStorage থেকে হোটেল ডেটা লোড করে, কোনোটি না থাকলে ডিফল্ট/ডেমো হোটেল সংজ্ঞা বীজ করে
+ * এবং হোটেলের সংজ্ঞা পুনরুদ্ধার করার জন্য ফাংশন সরবরাহ করে, যা অবস্থান অনুসারে ফিল্টার করা যেতে পারে।
+ * এই ডেটা ভ্রমণপথ পরিকল্পনাকারী এবং মূল্য নির্ধারণ ফর্মগুলিতে হোটেল নির্বাচন বিকল্পগুলি পূরণ করতে ব্যবহৃত হয়।
+ */
 import * as React from 'react';
 import type { HotelDefinition, CountryItem, HotelRoomTypeDefinition, RoomTypeSeasonalPrice } from '@/types/itinerary';
 import { generateGUID } from '@/lib/utils';
@@ -161,7 +172,7 @@ export function useHotelDefinitions() {
                 const existingByName = definitionsToSet.find(def => def.name === demoHotel.name && def.province === demoHotel.province && def.countryId === demoHotel.countryId);
                 if (!existingByName) {
                     definitionsToSet.push(demoHotel); 
-                } else if (existingByName.id !== demoHotel.id && demoHotel.id.includes("-demo")) {
+                } else if (existingByName.id !== demoHotel.id && demoHotel.id && demoHotel.id.includes("-demo")) {
                     definitionsToSet = definitionsToSet.filter(d => d.id !== existingByName.id);
                     definitionsToSet.push(demoHotel);
                 }

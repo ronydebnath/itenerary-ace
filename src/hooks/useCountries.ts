@@ -1,4 +1,15 @@
 
+/**
+ * @fileoverview This custom React hook manages country data for the application.
+ * It loads country information from localStorage, seeds default country data if none exists,
+ * and provides functions to add, update, delete, and retrieve country items.
+ * This hook is crucial for location-based filtering and data entry across the app.
+ *
+ * @bangla এই কাস্টম রিঅ্যাক্ট হুক অ্যাপ্লিকেশনের জন্য দেশ সম্পর্কিত ডেটা পরিচালনা করে।
+ * এটি localStorage থেকে দেশের তথ্য লোড করে, কোনোটি না থাকলে ডিফল্ট দেশের ডেটা বীজ করে,
+ * এবং দেশ আইটেম যোগ, আপডেট, মুছে ফেলা এবং পুনরুদ্ধার করার জন্য ফাংশন সরবরাহ করে।
+ * এই হুকটি অ্যাপ জুড়ে অবস্থান-ভিত্তিক ফিল্টারিং এবং ডেটা এন্ট্রির জন্য অত্যন্ত গুরুত্বপূর্ণ।
+ */
 import * as React from 'react';
 import type { CountryItem, CurrencyCode } from '@/types/itinerary';
 import { CURRENCIES } from '@/types/itinerary';

@@ -1,4 +1,15 @@
 
+/**
+ * @fileoverview This custom React hook is responsible for managing province data.
+ * It loads province information from localStorage, seeds default province data (linked to
+ * default countries from `useCountries`) if none exists, and provides functions to add,
+ * update, delete, and retrieve provinces, often filtered by country.
+ *
+ * @bangla এই কাস্টম রিঅ্যাক্ট হুক প্রদেশ সম্পর্কিত ডেটা পরিচালনার জন্য দায়ী।
+ * এটি localStorage থেকে প্রদেশের তথ্য লোড করে, কোনোটি না থাকলে ডিফল্ট প্রদেশের ডেটা
+ * (`useCountries` থেকে ডিফল্ট দেশগুলির সাথে লিঙ্ক করা) বীজ করে, এবং প্রদেশ যোগ, আপডেট,
+ * মুছে ফেলা এবং পুনরুদ্ধার করার জন্য ফাংশন সরবরাহ করে, যা প্রায়শই দেশ অনুসারে ফিল্টার করা হয়।
+ */
 import * as React from 'react';
 import type { ProvinceItem, CountryItem } from '@/types/itinerary';
 import { generateGUID } from '@/lib/utils';
