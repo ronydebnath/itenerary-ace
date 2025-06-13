@@ -174,7 +174,7 @@ export function BaseItemForm<T extends ItineraryItem>({
   };
 
   const IconComponent = ITEM_TYPE_ICONS[item.type] || AlertCircle;
-  constitemNameDisplay = item.name || `New ${itemTypeLabel}`;
+  const itemNameDisplay = item.name || `New ${itemTypeLabel}`;
 
   return (
     <Card className="mb-4 shadow-sm border border-border hover:shadow-md transition-shadow duration-200">
