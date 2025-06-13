@@ -53,13 +53,67 @@ const createDemoHotelDefinitions = (countries: CountryItem[]): HotelDefinition[]
     id: generateGUID(), name: "Two-Bedroom Family Villa", extraBedAllowed: true, notes: "100sqm villa with two separate bedrooms, living area, kitchenette and garden.", seasonalPrices: [suiteLowSeason, suiteHighSeason, suitePeakSeason].map(sp => ({...sp, rate: sp.rate * 1.8, extraBedRate: sp.extraBedRate ? sp.extraBedRate * 1.8 : undefined})), characteristics: [{id: generateGUID(), key: "Feature", value: "Two Bedrooms, Garden"}, {id: generateGUID(), key: "Bed", value: "1 King, 2 Twin"}, {id: generateGUID(), key: "Size", value: "100sqm"}]
   };
 
+  // --- New Room Types for Bangkok Hotels ---
+  const superiorQueenBKK: HotelRoomTypeDefinition = {
+    id: generateGUID(), name: "Superior Queen", extraBedAllowed: true, notes: "Modern 25sqm room with a comfortable queen bed and city outlook.",
+    seasonalPrices: [
+      { ...standardLowSeason, rate: 1800, extraBedRate: 500, id: generateGUID(), seasonName: "BKK Superior Low" },
+      { ...standardHighSeason, rate: 2200, extraBedRate: 600, id: generateGUID(), seasonName: "BKK Superior High" },
+      { ...standardPeakSeason, rate: 2800, extraBedRate: 700, id: generateGUID(), seasonName: "BKK Superior Peak" }
+    ],
+    characteristics: [{id: generateGUID(), key: "Bed", value: "Queen"}, {id: generateGUID(), key: "Size", value: "25sqm"}]
+  };
+
+  const deluxeKingBalconyBKK: HotelRoomTypeDefinition = {
+    id: generateGUID(), name: "Deluxe King with Balcony", extraBedAllowed: true, notes: "Elegant 35sqm room featuring a king-size bed, private balcony with city views.",
+    seasonalPrices: [
+      { ...standardLowSeason, rate: 2500, extraBedRate: 600, id: generateGUID(), seasonName: "BKK Deluxe Balcony Low" },
+      { ...standardHighSeason, rate: 3000, extraBedRate: 700, id: generateGUID(), seasonName: "BKK Deluxe Balcony High" },
+      { ...standardPeakSeason, rate: 3800, extraBedRate: 800, id: generateGUID(), seasonName: "BKK Deluxe Balcony Peak" }
+    ],
+    characteristics: [{id: generateGUID(), key: "Bed", value: "King"}, {id: generateGUID(), key: "Size", value: "35sqm"}, {id: generateGUID(), key: "Feature", value: "Balcony"}]
+  };
+  
+  const deluxeKingBalconyGrandChaoPhraya: HotelRoomTypeDefinition = {
+    id: generateGUID(), name: "Deluxe King with Balcony", extraBedAllowed: true, notes: "Elegant 35sqm room featuring a king-size bed, private balcony with city views, premium amenities.",
+    seasonalPrices: [
+      { ...deluxeLowSeason, id: generateGUID(), seasonName: "Grand Deluxe Balcony Low" },
+      { ...deluxeHighSeason, id: generateGUID(), seasonName: "Grand Deluxe Balcony High" },
+      { ...deluxePeakSeason, id: generateGUID(), seasonName: "Grand Deluxe Balcony Peak" }
+    ],
+    characteristics: [{id: generateGUID(), key: "Bed", value: "King"}, {id: generateGUID(), key: "Size", value: "35sqm"}, {id: generateGUID(), key: "Feature", value: "Balcony, Premium Amenities"}]
+  };
+
+  const executiveSuiteGrandChaoPhraya: HotelRoomTypeDefinition = {
+    id: generateGUID(), name: "Executive Suite River View", extraBedAllowed: true, notes: "Luxurious 55sqm suite with king bed, separate living area, panoramic river views, and executive club lounge access.",
+    seasonalPrices: [
+      { ...suiteLowSeason, id: generateGUID(), seasonName: "Grand Executive Suite Low" },
+      { ...suiteHighSeason, id: generateGUID(), seasonName: "Grand Executive Suite High" },
+      { ...suitePeakSeason, id: generateGUID(), seasonName: "Grand Executive Suite Peak" }
+    ],
+    characteristics: [{id: generateGUID(), key: "Bed", value: "King"}, {id: generateGUID(), key: "Size", value: "55sqm"}, {id: generateGUID(), key: "Feature", value: "Separate Living Area, River View, Club Access"}]
+  };
+
+  const twoBedroomFamilyGrandChaoPhraya: HotelRoomTypeDefinition = {
+    id: generateGUID(), name: "Two-Bedroom Family Residence", extraBedAllowed: true, notes: "Spacious 80sqm two-bedroom residence with one king and two twin beds, living room, and city/river views. Ideal for families.",
+    seasonalPrices: [
+      { ...suiteLowSeason, rate: 10000, extraBedRate: 2000, id: generateGUID(), seasonName: "Grand Family Residence Low" },
+      { ...suiteHighSeason, rate: 13000, extraBedRate: 2500, id: generateGUID(), seasonName: "Grand Family Residence High" },
+      { ...suitePeakSeason, rate: 16000, extraBedRate: 3000, id: generateGUID(), seasonName: "Grand Family Residence Peak" }
+    ],
+    characteristics: [{id: generateGUID(), key: "Bed", value: "1 King, 2 Twin"}, {id: generateGUID(), key: "Size", value: "80sqm"}, {id: generateGUID(), key: "Feature", value: "Two Bedrooms, Living Room"}]
+  };
+
 
   const demoHotels: HotelDefinition[] = [];
 
   if (thailand) {
     demoHotels.push(
       { id: "hotel-bkk-central-demo", name: "Bangkok Central Hotel", countryId: thailand.id, province: "Bangkok", starRating: 4, roomTypes: [standardCityRoom, deluxeRiverRoom, familySuiteCity] },
-      { id: "hotel-phuket-paradise-demo", name: "Phuket Paradise Resort", countryId: thailand.id, province: "Phuket", starRating: 5, roomTypes: [superiorPoolAccessRoom, beachfrontVilla, twoBedroomFamilyVilla] }
+      { id: "hotel-phuket-paradise-demo", name: "Phuket Paradise Resort", countryId: thailand.id, province: "Phuket", starRating: 5, roomTypes: [superiorPoolAccessRoom, beachfrontVilla, twoBedroomFamilyVilla] },
+      // New Bangkok Hotels
+      { id: "hotel-bkk-cityhub-3star-demo", name: "Bangkok City Hub Hotel", countryId: thailand.id, province: "Bangkok", starRating: 3, roomTypes: [superiorQueenBKK, deluxeKingBalconyBKK] },
+      { id: "hotel-bkk-grandchao-5star-demo", name: "The Grand Chao Phraya Residence", countryId: thailand.id, province: "Bangkok", starRating: 5, roomTypes: [deluxeKingBalconyGrandChaoPhraya, executiveSuiteGrandChaoPhraya, twoBedroomFamilyGrandChaoPhraya] }
     );
   }
   if (malaysia) { 
@@ -101,7 +155,7 @@ export function useHotelDefinitions() {
           if (Array.isArray(parsedDefinitions)) {
             const validatedDefinitions = parsedDefinitions.filter(
               h => h.id && h.name && h.countryId && h.province && Array.isArray(h.roomTypes) &&
-                   (h.starRating === undefined || (typeof h.starRating === 'number' && h.starRating >= 1 && h.starRating <= 5)) &&
+                   (h.starRating === undefined || h.starRating === null || (typeof h.starRating === 'number' && h.starRating >= 1 && h.starRating <= 5)) &&
                    h.roomTypes.every((rt: any) => rt.id && rt.name && Array.isArray(rt.seasonalPrices) && rt.seasonalPrices.every((sp: any) => sp.id && sp.startDate && sp.endDate && typeof sp.rate === 'number'))
             );
             definitionsToSet = validatedDefinitions;
@@ -115,6 +169,8 @@ export function useHotelDefinitions() {
                 if (!existingByName) {
                     definitionsToSet.push(demoHotel); 
                 } else if (existingByName.id !== demoHotel.id && demoHotel.id.includes("-demo")) {
+                    // If a demo hotel (with -demo in ID) exists by name/location but with a different (likely older user-generated) ID,
+                    // replace the old one with the new demo structure to ensure demo data consistency.
                     definitionsToSet = definitionsToSet.filter(d => d.id !== existingByName.id);
                     definitionsToSet.push(demoHotel);
                 }
@@ -169,3 +225,4 @@ export function useHotelDefinitions() {
 
   return { isLoading, allHotelDefinitions, getHotelDefinitionsByLocation, getHotelDefinitionById, getRoomTypeDefinitionByIds };
 }
+
