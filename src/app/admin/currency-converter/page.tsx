@@ -14,12 +14,11 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from "@/components/ui/dialog";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { LayoutDashboard, Repeat, PlusCircle, Edit, Trash2, AlertCircle, Loader2 } from 'lucide-react';
+import { LayoutDashboard, Repeat, PlusCircle, Edit, Trash2, AlertCircle, Loader2, Settings, Percent } from 'lucide-react';
 import { useExchangeRates } from '@/hooks/useExchangeRates';
 import type { CurrencyCode, ExchangeRate } from '@/types/itinerary';
 import { CURRENCIES } from '@/types/itinerary';
 import { formatCurrency } from '@/lib/utils';
-import { format } from 'date-fns';
 
 const conversionSchema = z.object({
   amount: z.coerce.number().positive("Amount must be positive"),
@@ -38,9 +37,25 @@ const rateSchema = z.object({
 });
 type RateFormValues = z.infer<typeof rateSchema>;
 
+const bufferSchema = z.object({
+  buffer: z.coerce.number().min(0, "Buffer must be non-negative").max(50, "Buffer cannot exceed 50%"),
+});
+type BufferFormValues = z.infer<typeof bufferSchema>;
 
 export default function CurrencyConverterPage() {
-  const { exchangeRates, isLoading, error, addRate, updateRate, deleteRate, getRate, refreshRates } = useExchangeRates();
+  const { 
+    exchangeRates, 
+    isLoading, 
+    error, 
+    addRate, 
+    updateRate, 
+    deleteRate, 
+    getRate, 
+    refreshRates,
+    bufferPercentage,
+    setGlobalBuffer
+  } = useExchangeRates();
+
   const [convertedAmount, setConvertedAmount] = React.useState<number | null>(null);
   const [conversionError, setConversionError] = React.useState<string | null>(null);
   
@@ -56,6 +71,15 @@ export default function CurrencyConverterPage() {
     resolver: zodResolver(rateSchema),
     defaultValues: { fromCurrency: "USD", toCurrency: "EUR", rate: 0.90 },
   });
+
+  const bufferForm = useForm<BufferFormValues>({
+    resolver: zodResolver(bufferSchema),
+    defaultValues: { buffer: bufferPercentage },
+  });
+
+  React.useEffect(() => {
+    bufferForm.reset({ buffer: bufferPercentage });
+  }, [bufferPercentage, bufferForm]);
 
   React.useEffect(() => {
     if (editingRate) {
@@ -74,7 +98,7 @@ export default function CurrencyConverterPage() {
     setConvertedAmount(null);
     const rate = getRate(data.fromCurrency, data.toCurrency);
     if (rate === null) {
-      setConversionError(`Exchange rate from ${data.fromCurrency} to ${data.toCurrency} is not defined.`);
+      setConversionError(`Exchange rate from ${data.fromCurrency} to ${data.toCurrency} is not defined or calculable.`);
       return;
     }
     setConvertedAmount(data.amount * rate);
@@ -91,8 +115,12 @@ export default function CurrencyConverterPage() {
     rateForm.reset({ fromCurrency: "USD", toCurrency: "EUR", rate: 0.90 });
   };
 
-  const openEditRateDialog = (rate: ExchangeRate) => {
-    setEditingRate(rate);
+  const handleBufferFormSubmit = (data: BufferFormValues) => {
+    setGlobalBuffer(data.buffer);
+  };
+
+  const openEditRateDialog = (rateToEdit: ExchangeRate) => {
+    setEditingRate(rateToEdit);
     setIsRateFormOpen(true);
   };
   
@@ -118,11 +146,39 @@ export default function CurrencyConverterPage() {
           </div>
         </div>
 
+        {/* Conversion Settings Section */}
+        <Card className="mb-8 shadow-lg">
+          <CardHeader>
+            <CardTitle className="text-xl flex items-center"><Settings className="mr-2 h-5 w-5"/>Conversion Settings</CardTitle>
+            <CardDescription>Set a global buffer for conversions. Currently applied buffer: <strong>{bufferPercentage}%</strong></CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={bufferForm.handleSubmit(handleBufferFormSubmit)} className="flex items-end gap-3">
+              <div className="flex-grow">
+                <Label htmlFor="buffer">Buffer Percentage (%)</Label>
+                <Input 
+                  id="buffer" 
+                  type="number" 
+                  step="0.01" 
+                  {...bufferForm.register("buffer")} 
+                  className="mt-1"
+                  placeholder="e.g., 0.5 for 0.5%"
+                />
+                {bufferForm.formState.errors.buffer && <p className="text-xs text-destructive mt-1">{bufferForm.formState.errors.buffer.message}</p>}
+              </div>
+              <Button type="submit" className="bg-accent hover:bg-accent/90 text-accent-foreground" size="sm">Set Buffer</Button>
+            </form>
+            <p className="text-xs text-muted-foreground mt-2">
+              This buffer is applied to make the target currency amount slightly less favorable. For example, with a 1% buffer, 1 USD might convert to 36.135 THB instead of 36.50 THB.
+            </p>
+          </CardContent>
+        </Card>
+
         {/* Conversion Section */}
         <Card className="mb-8 shadow-lg">
           <CardHeader>
             <CardTitle className="text-xl">Convert Currency</CardTitle>
-            <CardDescription>Enter amount and select currencies to convert.</CardDescription>
+            <CardDescription>Enter amount and select currencies to convert. Buffer of <strong>{bufferPercentage}%</strong> will be applied.</CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={conversionForm.handleSubmit(handleConversionSubmit)} className="space-y-4">
@@ -161,7 +217,7 @@ export default function CurrencyConverterPage() {
                    {conversionForm.formState.errors.toCurrency && <p className="text-xs text-destructive mt-1">{conversionForm.formState.errors.toCurrency.message}</p>}
                 </div>
               </div>
-              <Button type="submit" className="bg-accent hover:bg-accent/90 text-accent-foreground w-full sm:w-auto">Convert</Button>
+              <Button type="submit" className="bg-primary hover:bg-primary/90 text-primary-foreground w-full sm:w-auto">Convert</Button>
             </form>
             {conversionError && (
               <Alert variant="destructive" className="mt-4">
@@ -172,7 +228,7 @@ export default function CurrencyConverterPage() {
             )}
             {convertedAmount !== null && (
               <div className="mt-6 p-4 bg-green-50 border border-green-200 rounded-md text-center">
-                <p className="text-sm text-green-700">Converted Amount:</p>
+                <p className="text-sm text-green-700">Converted Amount (with {bufferPercentage}% buffer):</p>
                 <p className="text-2xl font-bold text-green-800">
                   {formatCurrency(convertedAmount, conversionForm.getValues("toCurrency"))}
                 </p>
@@ -185,8 +241,8 @@ export default function CurrencyConverterPage() {
         <Card className="shadow-lg">
           <CardHeader className="flex flex-row justify-between items-center">
             <div>
-              <CardTitle className="text-xl">Manage Exchange Rates</CardTitle>
-              <CardDescription>Define and update exchange rates used for conversion.</CardDescription>
+              <CardTitle className="text-xl">Manage Base Exchange Rates</CardTitle>
+              <CardDescription>Define and update base exchange rates (buffer is applied on top during conversion).</CardDescription>
             </div>
             <Button onClick={openNewRateDialog} size="sm">
               <PlusCircle className="mr-2 h-4 w-4" /> Add New Rate
@@ -227,9 +283,25 @@ export default function CurrencyConverterPage() {
                           <Button variant="ghost" size="icon" onClick={() => openEditRateDialog(rate)} className="mr-2 text-primary hover:bg-primary/10 h-8 w-8">
                             <Edit className="h-4 w-4" />
                           </Button>
-                          <Button variant="ghost" size="icon" onClick={() => deleteRate(rate.id)} className="text-destructive hover:bg-destructive/10 h-8 w-8">
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                          <Dialog>
+                            <DialogTrigger asChild>
+                              <Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10 h-8 w-8">
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </DialogTrigger>
+                            <DialogContent>
+                              <DialogHeader>
+                                <DialogTitle>Confirm Deletion</DialogTitle>
+                                <AlertDescription>
+                                  Are you sure you want to delete the rate {rate.fromCurrency} to {rate.toCurrency}?
+                                </AlertDescription>
+                              </DialogHeader>
+                              <DialogFooter>
+                                <DialogClose asChild><Button variant="outline">Cancel</Button></DialogClose>
+                                <Button variant="destructive" onClick={() => deleteRate(rate.id)}>Delete</Button>
+                              </DialogFooter>
+                            </DialogContent>
+                          </Dialog>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -288,7 +360,7 @@ export default function CurrencyConverterPage() {
                 <DialogClose asChild>
                   <Button type="button" variant="outline">Cancel</Button>
                 </DialogClose>
-                <Button type="submit" className="bg-accent hover:bg-accent/90 text-accent-foreground">{editingRate ? 'Update' : 'Add'} Rate</Button>
+                <Button type="submit" className="bg-primary hover:bg-primary/90 text-primary-foreground">{editingRate ? 'Update' : 'Add'} Rate</Button>
               </div>
             </form>
           </DialogContent>
@@ -297,4 +369,3 @@ export default function CurrencyConverterPage() {
     </main>
   );
 }
-

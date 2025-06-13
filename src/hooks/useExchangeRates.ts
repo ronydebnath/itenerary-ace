@@ -5,6 +5,7 @@ import { generateGUID } from '@/lib/utils';
 import { useToast } from './use-toast';
 
 const EXCHANGE_RATES_STORAGE_KEY = 'itineraryAceExchangeRates';
+const EXCHANGE_BUFFER_STORAGE_KEY = 'itineraryAceExchangeBuffer';
 
 const DEFAULT_RATES_DATA: Omit<ExchangeRate, 'id' | 'updatedAt'>[] = [
   { fromCurrency: "USD", toCurrency: "THB", rate: 36.50 },
@@ -19,59 +20,67 @@ const DEFAULT_RATES_DATA: Omit<ExchangeRate, 'id' | 'updatedAt'>[] = [
 
 export function useExchangeRates() {
   const [exchangeRates, setExchangeRates] = React.useState<ExchangeRate[]>([]);
+  const [bufferPercentage, setBufferPercentageState] = React.useState<number>(0);
   const [isLoading, setIsLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
   const { toast } = useToast();
 
-  const fetchAndSeedRates = React.useCallback(() => {
+  const fetchAndSeedData = React.useCallback(() => {
     setIsLoading(true);
     setError(null);
     try {
+      // Load Rates
       const storedRatesString = localStorage.getItem(EXCHANGE_RATES_STORAGE_KEY);
       let ratesToSet: ExchangeRate[] = [];
       if (storedRatesString) {
         try {
           ratesToSet = JSON.parse(storedRatesString);
-          // Add/Update defaults if not present or if structure changed
           DEFAULT_RATES_DATA.forEach(defaultRate => {
             const existing = ratesToSet.find(r => r.fromCurrency === defaultRate.fromCurrency && r.toCurrency === defaultRate.toCurrency);
             if (!existing) {
               ratesToSet.push({ ...defaultRate, id: generateGUID(), updatedAt: new Date().toISOString() });
-            } else {
-              // Optionally update rate if it's a default pair to keep it fresh,
-              // but for user-managed rates, this might be undesirable. For now, only add if missing.
             }
           });
-
         } catch (parseError) {
           console.warn("Error parsing exchange rates from localStorage, seeding defaults:", parseError);
-          localStorage.removeItem(EXCHANGE_RATES_STORAGE_KEY); // Clear corrupted data
+          localStorage.removeItem(EXCHANGE_RATES_STORAGE_KEY);
           ratesToSet = DEFAULT_RATES_DATA.map(rate => ({
-            ...rate,
-            id: generateGUID(),
-            updatedAt: new Date().toISOString(),
+            ...rate, id: generateGUID(), updatedAt: new Date().toISOString(),
           }));
         }
       } else {
         ratesToSet = DEFAULT_RATES_DATA.map(rate => ({
-          ...rate,
-          id: generateGUID(),
-          updatedAt: new Date().toISOString(),
+          ...rate, id: generateGUID(), updatedAt: new Date().toISOString(),
         }));
       }
       localStorage.setItem(EXCHANGE_RATES_STORAGE_KEY, JSON.stringify(ratesToSet));
       setExchangeRates(ratesToSet.sort((a,b) => `${a.fromCurrency}-${a.toCurrency}`.localeCompare(`${b.fromCurrency}-${b.toCurrency}`)));
+
+      // Load Buffer
+      const storedBuffer = localStorage.getItem(EXCHANGE_BUFFER_STORAGE_KEY);
+      if (storedBuffer) {
+        const parsedBuffer = parseFloat(storedBuffer);
+        if (!isNaN(parsedBuffer) && parsedBuffer >= 0) {
+          setBufferPercentageState(parsedBuffer);
+        } else {
+          setBufferPercentageState(0); // Default if invalid
+        }
+      } else {
+        setBufferPercentageState(0); // Default if not found
+      }
+
     } catch (e: any) {
-      console.error("Error initializing exchange rates from localStorage:", e);
-      setError("Failed to load exchange rates.");
+      console.error("Error initializing exchange rates/buffer from localStorage:", e);
+      setError("Failed to load exchange rates or buffer.");
       setExchangeRates([]);
+      setBufferPercentageState(0);
     }
     setIsLoading(false);
   }, []);
 
   React.useEffect(() => {
-    fetchAndSeedRates();
-  }, [fetchAndSeedRates]);
+    fetchAndSeedData();
+  }, [fetchAndSeedData]);
 
   const saveRates = (rates: ExchangeRate[]) => {
     try {
@@ -81,6 +90,26 @@ export function useExchangeRates() {
     } catch (e: any) {
       console.error("Error saving rates to localStorage:", e);
       toast({ title: "Error Saving Rates", description: e.message, variant: "destructive" });
+    }
+  };
+
+  const setGlobalBuffer = (newBuffer: number) => {
+    if (isNaN(newBuffer) || newBuffer < 0) {
+      toast({ title: "Invalid Buffer", description: "Buffer percentage must be a non-negative number.", variant: "destructive"});
+      return;
+    }
+    // Optional: Add an upper limit if desired, e.g., newBuffer > 50
+    // if (newBuffer > 50) {
+    //   toast({ title: "Invalid Buffer", description: "Buffer percentage cannot exceed 50%.", variant: "destructive"});
+    //   return;
+    // }
+    try {
+      localStorage.setItem(EXCHANGE_BUFFER_STORAGE_KEY, String(newBuffer));
+      setBufferPercentageState(newBuffer);
+      toast({ title: "Success", description: `Conversion buffer set to ${newBuffer}%.` });
+    } catch (e: any) {
+      console.error("Error saving buffer to localStorage:", e);
+      toast({ title: "Error Setting Buffer", description: e.message, variant: "destructive" });
     }
   };
 
@@ -95,9 +124,7 @@ export function useExchangeRates() {
         return;
     }
     const newRate: ExchangeRate = {
-      ...newRateData,
-      id: generateGUID(),
-      updatedAt: new Date().toISOString(),
+      ...newRateData, id: generateGUID(), updatedAt: new Date().toISOString(),
     };
     saveRates([...exchangeRates, newRate]);
     toast({ title: "Success", description: `Rate ${newRate.fromCurrency} -> ${newRate.toCurrency} added.` });
@@ -123,18 +150,34 @@ export function useExchangeRates() {
   const getRate = (fromCurrency: CurrencyCode, toCurrency: CurrencyCode): number | null => {
     if (fromCurrency === toCurrency) return 1;
 
-    const directRate = exchangeRates.find(
-      r => r.fromCurrency === fromCurrency && r.toCurrency === toCurrency
-    );
-    if (directRate) return directRate.rate;
+    let baseRate: number | null = null;
+    const directRate = exchangeRates.find(r => r.fromCurrency === fromCurrency && r.toCurrency === toCurrency);
+    if (directRate) {
+      baseRate = directRate.rate;
+    } else {
+      const inverseRate = exchangeRates.find(r => r.fromCurrency === toCurrency && r.toCurrency === fromCurrency);
+      if (inverseRate && inverseRate.rate !== 0) {
+        baseRate = 1 / inverseRate.rate;
+      }
+    }
 
-    const inverseRate = exchangeRates.find(
-      r => r.fromCurrency === toCurrency && r.toCurrency === fromCurrency
-    );
-    if (inverseRate && inverseRate.rate !== 0) return 1 / inverseRate.rate;
+    if (baseRate === null) return null;
 
-    return null; // Rate not found
+    // Apply buffer: user gets less of the target currency
+    const effectiveRate = baseRate * (1 - (bufferPercentage / 100));
+    return Math.max(0.000001, effectiveRate); // Prevent zero or negative rates
   };
 
-  return { exchangeRates, isLoading, error, addRate, updateRate, deleteRate, getRate, refreshRates: fetchAndSeedRates };
+  return { 
+    exchangeRates, 
+    isLoading, 
+    error, 
+    addRate, 
+    updateRate, 
+    deleteRate, 
+    getRate, 
+    bufferPercentage,
+    setGlobalBuffer,
+    refreshRates: fetchAndSeedData // Changed to fetchAndSeedData to also reload buffer
+  };
 }
