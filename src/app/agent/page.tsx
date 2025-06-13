@@ -4,7 +4,7 @@
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
-import { Briefcase, Route, Users, ListOrdered, LayoutDashboard } from 'lucide-react';
+import { Briefcase, Route, Users, ListOrdered, LayoutDashboard, UserCog } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface AgentDashboardCardProps {
@@ -62,6 +62,14 @@ export default function AgentDashboardPage() {
             icon={Route}
             buttonText="Launch Planner"
             className="lg:col-span-1 bg-accent/5 border-accent/30"
+          />
+          <AgentDashboardCard
+            title="My Agent Profile"
+            description="Update your contact information, agency details, and professional preferences."
+            href="/agent/profile"
+            icon={UserCog} 
+            buttonText="Manage Profile"
+            className="lg:col-span-1"
           />
           <AgentDashboardCard
             title="My Client Itineraries"
