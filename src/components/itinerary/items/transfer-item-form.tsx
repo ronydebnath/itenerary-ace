@@ -113,6 +113,7 @@ export function TransferItemForm({ item, travelers, currency, tripSettings, dayN
     if (selectedValue === "none") {
       onUpdate({
         ...item,
+        name: `New transfer`,
         selectedServicePriceId: undefined,
         selectedVehicleOptionId: undefined,
         adultTicketPrice: item.mode === 'ticket' ? 0 : undefined,
@@ -148,9 +149,10 @@ export function TransferItemForm({ item, travelers, currency, tripSettings, dayN
             updatedItemPartial.selectedVehicleOptionId = firstOption.id;
             updatedItemPartial.costPerVehicle = firstOption.price;
             updatedItemPartial.vehicleType = firstOption.vehicleType;
-            updatedItemPartial.note = firstOption.notes || service.notes || undefined;
+            // Keep existing note for vehicle options if any, otherwise use service note.
+            updatedItemPartial.note = item.note || firstOption.notes || service.notes || undefined; 
           } else {
-            updatedItemPartial.costPerVehicle = service.price1 ?? 0; // Use price1 as base for vehicle if no options
+            updatedItemPartial.costPerVehicle = service.price1 ?? 0; 
             updatedItemPartial.vehicleType = (service.subCategory && VEHICLE_TYPES.includes(service.subCategory as VehicleType))
                                              ? service.subCategory as VehicleType
                                              : VEHICLE_TYPES[0];
@@ -161,7 +163,8 @@ export function TransferItemForm({ item, travelers, currency, tripSettings, dayN
       } else {
          onUpdate({
           ...item,
-          selectedServicePriceId: selectedValue,
+          name: `New transfer`,
+          selectedServicePriceId: selectedValue, // Keep ID to show error
           selectedVehicleOptionId: undefined,
           adultTicketPrice: item.mode === 'ticket' ? 0 : undefined,
           childTicketPrice: undefined,
@@ -430,3 +433,5 @@ export function TransferItemForm({ item, travelers, currency, tripSettings, dayN
     </BaseItemForm>
   );
 }
+
+    

@@ -86,6 +86,7 @@ export function MiscItemForm({ item, travelers, currency, tripSettings, dayNumbe
     if (selectedValue === "none") {
       onUpdate({
         ...item,
+        name: `New misc`,
         selectedServicePriceId: undefined,
         unitCost: 0,
         note: undefined,
@@ -106,7 +107,8 @@ export function MiscItemForm({ item, travelers, currency, tripSettings, dayNumbe
       } else {
         onUpdate({
           ...item,
-          selectedServicePriceId: selectedValue,
+          name: `New misc`,
+          selectedServicePriceId: selectedValue, // Keep ID for error display
           unitCost: 0,
           note: undefined,
         });
@@ -177,7 +179,7 @@ export function MiscItemForm({ item, travelers, currency, tripSettings, dayNumbe
             <Input
             id={`itemName-${item.id}`}
             value={item.name}
-            onChange={(e) => onUpdate({ ...item, name: e.target.value })}
+            onChange={(e) => handleInputChange('name', e.target.value)}
             placeholder={`e.g., Visa Fee, Souvenir`}
             className="h-9 text-sm"
             />
@@ -186,7 +188,7 @@ export function MiscItemForm({ item, travelers, currency, tripSettings, dayNumbe
             <Input
             id={`itemNote-${item.id}`}
             value={item.note || ''}
-            onChange={(e) => onUpdate({ ...item, note: e.target.value })}
+            onChange={(e) => handleInputChange('note', e.target.value)}
             placeholder={`e.g., Details about the item`}
             className="h-9 text-sm"
             />
@@ -237,3 +239,5 @@ export function MiscItemForm({ item, travelers, currency, tripSettings, dayNumbe
     </BaseItemForm>
   );
 }
+
+    

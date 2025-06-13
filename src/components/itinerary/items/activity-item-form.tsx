@@ -30,7 +30,6 @@ const WEEKDAYS_MAP = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 export function ActivityItemForm({ item, travelers, currency, dayNumber, tripSettings, onUpdate, onDelete, allServicePrices: passedInAllServicePrices }: ActivityItemFormProps) {
   const { allServicePrices: hookServicePrices, isLoading: isLoadingServices } = useServicePrices();
-  // Prefer passedInAllServicePrices if available, otherwise fallback to hookServicePrices
   const currentAllServicePrices = passedInAllServicePrices || hookServicePrices;
   const { countries, getCountryById } = useCountries();
   const [activityServices, setActivityServices] = React.useState<ServicePriceItem[]>([]);
@@ -56,7 +55,7 @@ export function ActivityItemForm({ item, travelers, currency, dayNumber, tripSet
   }, [selectedActivityService, item.selectedPackageId]);
 
   React.useEffect(() => {
-    if (isLoadingServices && !passedInAllServicePrices) { // Only rely on hook's loading if prop isn't passed
+    if (isLoadingServices && !passedInAllServicePrices) { 
       setActivityServices([]);
       return;
     }
@@ -97,6 +96,7 @@ export function ActivityItemForm({ item, travelers, currency, dayNumber, tripSet
     if (selectedValue === "none") {
       onUpdate({
         ...item,
+        name: `New activity`,
         selectedServicePriceId: undefined,
         selectedPackageId: undefined,
         adultPrice: 0,
@@ -122,7 +122,8 @@ export function ActivityItemForm({ item, travelers, currency, dayNumber, tripSet
       } else {
         onUpdate({
           ...item,
-          selectedServicePriceId: selectedValue,
+          name: `New activity`,
+          selectedServicePriceId: selectedValue, // Keep the ID if service not found, to show error
           selectedPackageId: undefined,
           adultPrice: 0,
           childPrice: undefined,
@@ -174,7 +175,6 @@ export function ActivityItemForm({ item, travelers, currency, dayNumber, tripSet
   } else if (provinceCtx) {
     locationDisplay = provinceCtx;
   }
-
 
   return (
     <BaseItemForm item={item} travelers={travelers} currency={currency} tripSettings={tripSettings} onUpdate={onUpdate} onDelete={onDelete} itemTypeLabel="Activity" dayNumber={dayNumber}>
@@ -359,3 +359,5 @@ export function ActivityItemForm({ item, travelers, currency, dayNumber, tripSet
     </BaseItemForm>
   );
 }
+
+    

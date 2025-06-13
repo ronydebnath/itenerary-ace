@@ -78,6 +78,7 @@ export function MealItemForm({ item, travelers, currency, tripSettings, dayNumbe
     if (selectedValue === "none") {
       onUpdate({
         ...item,
+        name: `New meal`,
         selectedServicePriceId: undefined,
         adultMealPrice: 0,
         childMealPrice: undefined,
@@ -100,7 +101,8 @@ export function MealItemForm({ item, travelers, currency, tripSettings, dayNumbe
       } else {
          onUpdate({
           ...item,
-          selectedServicePriceId: selectedValue,
+          name: `New meal`,
+          selectedServicePriceId: selectedValue, // Keep ID for error display
           adultMealPrice: 0,
           childMealPrice: undefined,
           note: undefined,
@@ -233,3 +235,5 @@ export function MealItemForm({ item, travelers, currency, tripSettings, dayNumbe
     </BaseItemForm>
   );
 }
+
+    
