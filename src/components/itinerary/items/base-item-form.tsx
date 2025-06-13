@@ -46,55 +46,68 @@ export function BaseItemForm<T extends ItineraryItem>({
   dayNumber,
 }: BaseItemFormProps<T>) {
   const [isOptOutOpen, setIsOptOutOpen] = React.useState(item.excludedTravelerIds.length > 0);
-  const { countries: allAvailableCountries, isLoading: isLoadingCountries, getCountryById } = useCountries();
+  const { countries: allAvailableCountriesHook, isLoading: isLoadingCountries, getCountryById } = useCountries();
   const { provinces: allAvailableProvincesForHook, isLoading: isLoadingProvinces, getProvincesByCountry } = useProvinces();
 
   const displayableCountriesForItem = React.useMemo(() => {
     if (isLoadingCountries) return [];
     const globallySelectedCountries = tripSettings.selectedCountries || [];
     if (globallySelectedCountries.length > 0) {
-      return allAvailableCountries.filter(country => globallySelectedCountries.includes(country.id));
+      return allAvailableCountriesHook.filter(country => globallySelectedCountries.includes(country.id));
     }
-    return allAvailableCountries;
-  }, [isLoadingCountries, tripSettings.selectedCountries, allAvailableCountries]);
+    return allAvailableCountriesHook;
+  }, [isLoadingCountries, tripSettings.selectedCountries, allAvailableCountriesHook]);
 
-  const displayProvincesForItem = React.useMemo(() => {
+  const displayableProvincesForItem = React.useMemo(() => {
     if (isLoadingProvinces) return [];
 
     const globallySelectedCountries = tripSettings.selectedCountries || [];
     const globallySelectedProvincesFromSettings = tripSettings.selectedProvinces || [];
-    let provincesToDisplay: ProvinceItem[] = [];
 
+    // Case 1: Item has a specific country selected.
     if (item.countryId) {
       let provincesWithinItemCountry = getProvincesByCountry(item.countryId);
       if (globallySelectedProvincesFromSettings.length > 0) {
+        // Filter provinces of item's country by globally selected provinces
         provincesWithinItemCountry = provincesWithinItemCountry.filter(p => 
           globallySelectedProvincesFromSettings.includes(p.name)
         );
       }
       return provincesWithinItemCountry.sort((a,b) => a.name.localeCompare(b.name));
-    } else { 
-      if (globallySelectedProvincesFromSettings.length > 0) {
-        provincesToDisplay = allAvailableProvincesForHook.filter(p => 
-          globallySelectedProvincesFromSettings.includes(p.name)
+    }
+    
+    // Case 2: Item does NOT have a specific country selected.
+    // Filter based on global settings.
+    let provincesToDisplay: ProvinceItem[] = [];
+
+    if (globallySelectedProvincesFromSettings.length > 0) {
+      // If global provinces are selected, these take precedence.
+      // They are implicitly within the scope of globally selected countries (if any).
+      provincesToDisplay = allAvailableProvincesForHook.filter(p => 
+        globallySelectedProvincesFromSettings.includes(p.name)
+      );
+      // If global countries are also selected, further refine the globally selected provinces
+      // to only include those that belong to one of the globally selected countries.
+      if (globallySelectedCountries.length > 0) {
+        provincesToDisplay = provincesToDisplay.filter(p => 
+          globallySelectedCountries.includes(p.countryId)
         );
-        if (globallySelectedCountries.length > 0) {
-            provincesToDisplay = provincesToDisplay.filter(p => 
-            globallySelectedCountries.includes(p.countryId)
-            );
-        }
-      } else if (globallySelectedCountries.length > 0) {
-        globallySelectedCountries.forEach(countryId => {
-          provincesToDisplay = provincesToDisplay.concat(getProvincesByCountry(countryId));
-        });
-        provincesToDisplay = provincesToDisplay.filter((province, index, self) =>
-          index === self.findIndex((p) => p.id === province.id)
-        );
-      } else {
-        provincesToDisplay = [...allAvailableProvincesForHook];
       }
+    } else if (globallySelectedCountries.length > 0) {
+      // No global provinces selected, but global countries are. Show all provinces from these countries.
+      globallySelectedCountries.forEach(countryId => {
+        provincesToDisplay = provincesToDisplay.concat(getProvincesByCountry(countryId));
+      });
+      // Remove duplicates if a province is in multiple sources (shouldn't happen with current structure but good practice)
+      provincesToDisplay = provincesToDisplay.filter((province, index, self) =>
+        index === self.findIndex((p) => p.id === province.id)
+      );
+    } else {
+      // No global provinces AND no global countries selected. Show all available provinces.
+      provincesToDisplay = [...allAvailableProvincesForHook];
     }
     return provincesToDisplay.sort((a,b) => a.name.localeCompare(b.name));
+
   }, [
     item.countryId, 
     tripSettings.selectedCountries, 
@@ -105,11 +118,11 @@ export function BaseItemForm<T extends ItineraryItem>({
   ]);
 
   const handleItemCountryChange = React.useCallback((countryIdValue?: string) => {
-    const selectedCountry = allAvailableCountries.find(c => c.id === countryIdValue);
+    const selectedCountry = allAvailableCountriesHook.find(c => c.id === countryIdValue);
     const updatedItem: Partial<ItineraryItem> = {
       countryId: selectedCountry?.id,
       countryName: selectedCountry?.name,
-      province: undefined,
+      province: undefined, // Always reset province when country changes
       selectedServicePriceId: undefined,
       selectedPackageId: undefined,
       selectedVehicleOptionId: undefined,
@@ -117,11 +130,11 @@ export function BaseItemForm<T extends ItineraryItem>({
       selectedRooms: (item.type === 'hotel' ? [] : undefined) as any,
     };
     onUpdate({ ...item, ...updatedItem as Partial<T> });
-  }, [allAvailableCountries, item, onUpdate]);
+  }, [allAvailableCountriesHook, item, onUpdate]);
 
   const handleItemProvinceChange = React.useCallback((provinceName?: string) => {
     const updatedItem: Partial<ItineraryItem> = {
-      province: provinceName === "none" ? undefined : provinceName,
+      province: provinceName === "none" || provinceName === undefined ? undefined : provinceName,
       selectedServicePriceId: undefined,
       selectedPackageId: undefined,
       selectedVehicleOptionId: undefined,
@@ -132,31 +145,35 @@ export function BaseItemForm<T extends ItineraryItem>({
   }, [item, onUpdate]);
 
   React.useEffect(() => {
-    let countryReset = false;
+    let countryOrProvinceReset = false;
+
+    // Check if item.countryId is valid based on displayableCountriesForItem
     const currentItemCountryIsValid = !item.countryId || displayableCountriesForItem.some(c => c.id === item.countryId);
     if (!currentItemCountryIsValid && item.countryId) {
-      handleItemCountryChange(undefined);
-      countryReset = true;
+      handleItemCountryChange(undefined); // This will also clear province
+      countryOrProvinceReset = true;
     }
 
-    if (!isLoadingProvinces && !countryReset) {
-      const provincesList = Array.isArray(displayableProvincesForItem) ? displayableProvincesForItem : [];
-      const currentItemProvinceIsValid = !item.province || provincesList.some(p => p.name === item.province);
-      if (!currentItemProvinceIsValid && item.province) {
-        handleItemProvinceChange(undefined);
-      }
+    // Check if item.province is valid based on displayableProvincesForItem
+    // This logic runs AFTER country validity check. If country was reset, province is already undefined.
+    const provincesList = Array.isArray(displayableProvincesForItem) ? displayableProvincesForItem : [];
+    const currentItemProvinceIsValid = !item.province || provincesList.some(p => p.name === item.province);
+
+    if (!isLoadingProvinces && !countryOrProvinceReset && !currentItemProvinceIsValid && item.province) {
+      handleItemProvinceChange(undefined);
     }
   }, [
     item.countryId,
     item.province,
     displayableCountriesForItem,
-    displayableProvincesForItem, // Added back as per last fix
-    isLoadingProvinces, // Added back as per last fix
-    tripSettings.selectedProvinces,
-    tripSettings.selectedCountries,
-    allAvailableProvincesForHook,
-    handleItemCountryChange,
-    handleItemProvinceChange
+    // displayableProvincesForItem, // Removed from dependencies
+    isLoadingProvinces,
+    tripSettings.selectedProvinces, // Source of truth for global province filter
+    tripSettings.selectedCountries, // Source of truth for global country filter
+    allAvailableProvincesForHook,   // Master list of provinces
+    getProvincesByCountry,          // Stable callback from custom hook
+    handleItemCountryChange,        // Stable callback
+    handleItemProvinceChange        // Stable callback
   ]);
 
 
@@ -172,12 +189,33 @@ export function BaseItemForm<T extends ItineraryItem>({
   };
   
   const locationDisplayForServiceSelection = React.useMemo(() => {
-    if (item.province) return `${item.province}${item.countryId ? `, ${allAvailableCountries.find(c => c.id === item.countryId)?.name}` : ''}`;
-    if (item.countryId) return allAvailableCountries.find(c => c.id === item.countryId)?.name || 'Selected Country';
-    if (tripSettings.selectedProvinces.length > 0) return tripSettings.selectedProvinces.join('/');
-    if (tripSettings.selectedCountries.length > 0) return tripSettings.selectedCountries.map(cid => allAvailableCountries.find(c=>c.id === cid)?.name).filter(Boolean).join('/');
+    if (item.province) {
+        const countryOfProvince = allAvailableProvincesForHook.find(p => p.name === item.province)?.countryId;
+        const countryName = countryOfProvince ? allAvailableCountriesHook.find(c=> c.id === countryOfProvince)?.name : '';
+        return `${item.province}${countryName ? `, ${countryName}` : ''}`;
+    }
+    if (item.countryId) return allAvailableCountriesHook.find(c => c.id === item.countryId)?.name || 'Selected Country';
+    
+    const globalCountries = tripSettings.selectedCountries || [];
+    const globalProvinces = tripSettings.selectedProvinces || [];
+
+    if (globalProvinces.length > 0) {
+        // If global provinces are selected, list them. 
+        // Optionally, if global countries are also selected, ensure these provinces belong to one of them.
+        let relevantProvinces = globalProvinces;
+        if (globalCountries.length > 0) {
+            relevantProvinces = globalProvinces.filter(provName => {
+                const provObj = allAvailableProvincesForHook.find(p => p.name === provName);
+                return provObj && globalCountries.includes(provObj.countryId);
+            });
+        }
+        if (relevantProvinces.length > 0) return relevantProvinces.slice(0,2).join('/') + (relevantProvinces.length > 2 ? '...' : '');
+    }
+    if (globalCountries.length > 0) return globalCountries.map(cid => allAvailableCountriesHook.find(c=>c.id === cid)?.name).filter(Boolean).slice(0,2).join('/') + (globalCountries.length > 2 ? '...' : '');
+    
     return 'Global';
-  }, [item.countryId, item.province, tripSettings.selectedCountries, tripSettings.selectedProvinces, allAvailableCountries]);
+  }, [item.countryId, item.province, tripSettings.selectedCountries, tripSettings.selectedProvinces, allAvailableCountriesHook, allAvailableProvincesForHook]);
+
 
   return (
     <Card className="mb-4 shadow-sm border border-border hover:shadow-md transition-shadow duration-200">
@@ -219,17 +257,17 @@ export function BaseItemForm<T extends ItineraryItem>({
               <SelectContent>
                 <SelectItem value="none">-- Any in selected scope --</SelectItem>
                 {displayableProvincesForItem.map(p => (
-                  <SelectItem key={p.id} value={p.name}>{p.name} ({allAvailableCountries.find(c => c.id === p.countryId)?.name || 'N/A'})</SelectItem>
+                  <SelectItem key={p.id} value={p.name}>{p.name} ({allAvailableCountriesHook.find(c => c.id === p.countryId)?.name || 'N/A'})</SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </FormField>
         </div>
-
+        
         {children} 
         
         <div className="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-1 gap-3 sm:gap-4"> {/* Name and Note now in their own row */}
-            <FormField label={`${itemTypeLabel} Name`} id={`itemName-${item.id}`} className="md:col-span-1">
+            <FormField label={`${itemTypeLabel} Name / Description`} id={`itemName-${item.id}`} className="md:col-span-1">
                 <Input
                 id={`itemName-${item.id}`}
                 value={item.name}
@@ -290,6 +328,3 @@ export function BaseItemForm<T extends ItineraryItem>({
     </Card>
   );
 }
-    
-
-    
