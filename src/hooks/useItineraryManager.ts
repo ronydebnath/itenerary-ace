@@ -1,4 +1,16 @@
-
+/**
+ * @fileoverview This custom React hook manages the state and core logic for an itinerary.
+ * It handles loading existing itineraries from localStorage or creating new ones,
+ * updating itinerary data (settings, passenger details, day-to-day items),
+ * and saving changes back to localStorage. It also manages the overall page
+ * status (e.g., 'loading', 'planner').
+ *
+ * @bangla এই কাস্টম রিঅ্যাক্ট হুক একটি ভ্রমণপথের অবস্থা এবং মূল যুক্তি পরিচালনা করে।
+ * এটি localStorage থেকে বিদ্যমান ভ্রমণপথ লোড করা বা নতুন তৈরি করা, ভ্রমণপথের ডেটা
+ * (সেটিংস, যাত্রী বিবরণ, প্রতিদিনের আইটেম) আপডেট করা এবং পরিবর্তনগুলি localStorage-এ
+ * সংরক্ষণ করা পরিচালনা করে। এটি পৃষ্ঠার সামগ্রিক অবস্থা (যেমন, 'লোডিং', 'প্ল্যানার')
+ * পরিচালনা করে।
+ */
 "use client";
 
 import * as React from 'react';
@@ -318,4 +330,3 @@ export function useItineraryManager() {
     handleManualSave,
   };
 }
-

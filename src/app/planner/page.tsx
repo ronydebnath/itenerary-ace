@@ -1,4 +1,14 @@
-
+/**
+ * @fileoverview This file defines the main page for the Itinerary Planner.
+ * It utilizes the `useItineraryManager` hook to manage the state and logic
+ * of the itinerary. Depending on the page status (loading or planner), it either
+ * shows a loading indicator or renders the `ItineraryPlanner` component.
+ *
+ * @bangla এই ফাইলটি ইটিনেরারি প্ল্যানারের প্রধান পৃষ্ঠা নির্ধারণ করে।
+ * এটি ইটিনেরারির অবস্থা এবং যুক্তি পরিচালনা করার জন্য `useItineraryManager` হুক ব্যবহার করে।
+ * পৃষ্ঠার অবস্থার (লোডিং বা প্ল্যানার) উপর নির্ভর করে, এটি হয় একটি লোডিং সূচক দেখায়
+ * অথবা `ItineraryPlanner` কম্পোনেন্ট রেন্ডার করে।
+ */
 "use client";
 
 import React from 'react';
@@ -45,5 +55,3 @@ export default function PlannerPage() {
     </div>
   );
 }
-
-    

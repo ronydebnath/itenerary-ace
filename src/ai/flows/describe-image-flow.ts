@@ -1,12 +1,27 @@
-
-'use server';
 /**
- * @fileOverview A Genkit flow to describe an image using the OpenRouter API.
+ * @fileoverview This file implements a Genkit flow named 'describeImageGenkitFlow'
+ * designed to take an image (as a data URI) and return a textual description of it.
+ * It interacts with the OpenRouter API, specifically using the "google/gemma-3n-e4b-it:free" model,
+ * to perform the image description task. The flow handles API key management from
+ * environment variables and includes error handling for API requests.
  *
- * - describeImage - A function that takes an image data URI and returns a description.
- * - DescribeImageInput - The input type for the describeImage function.
- * - DescribeImageOutput - The return type for the describeImage function.
+ * It exports the following:
+ * - `describeImage`: An async function that serves as the public interface to call the Genkit flow.
+ * - `DescribeImageInput`: The Zod schema type for the input to the `describeImage` function.
+ * - `DescribeImageOutput`: The Zod schema type for the output from the `describeImage` function.
+ *
+ * @bangla এই ফাইলটি 'describeImageGenkitFlow' নামে একটি Genkit ফ্লো প্রয়োগ করে।
+ * এটি একটি ছবি (ডেটা URI হিসাবে) গ্রহণ করে এবং তার একটি পাঠ্য বিবরণ প্রদান করার জন্য ডিজাইন করা হয়েছে।
+ * এটি OpenRouter API-এর সাথে ইন্টারঅ্যাক্ট করে, বিশেষত "google/gemma-3n-e4b-it:free" মডেল ব্যবহার করে,
+ * ছবির বিবরণ টাস্ক সম্পাদন করার জন্য। এই ফ্লো পরিবেশ পরিবর্তনশীল থেকে API কী পরিচালনা করে এবং
+ * API অনুরোধগুলির জন্য ত্রুটি হ্যান্ডলিং অন্তর্ভুক্ত করে।
+ *
+ * এটি নিম্নলিখিতগুলি রপ্তানি করে:
+ * - `describeImage`: একটি অ্যাসিঙ্ক্রোনাস ফাংশন যা Genkit ফ্লো কল করার জন্য পাবলিক ইন্টারফেস হিসেবে কাজ করে।
+ * - `DescribeImageInput`: `describeImage` ফাংশনের ইনপুটের জন্য Zod স্কিমা টাইপ।
+ * - `DescribeImageOutput`: `describeImage` ফাংশনের আউটপুটের জন্য Zod স্কিমা টাইপ।
  */
+'use server';
 
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';

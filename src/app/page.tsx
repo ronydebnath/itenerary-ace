@@ -1,10 +1,20 @@
-
+/**
+ * @fileoverview This file serves as the main admin dashboard page for the application.
+ * It displays various cards linking to different management sections like itinerary creation,
+ * service pricing, location management, and AI tools. It functions as the primary entry
+ * point for administrative tasks.
+ *
+ * @bangla এই ফাইলটি অ্যাপ্লিকেশনের প্রধান অ্যাডমিন ড্যাশবোর্ড পৃষ্ঠা হিসেবে কাজ করে।
+ * এটি ভ্রমণপথ তৈরি, পরিষেবা মূল্য নির্ধারণ, অবস্থান পরিচালনা এবং এআই সরঞ্জামগুলির মতো
+ * বিভিন্ন পরিচালনা বিভাগে লিঙ্ক করা বিভিন্ন কার্ড প্রদর্শন করে। এটি প্রশাসনিক কাজগুলির
+ * জন্য প্রাথমিক প্রবেশদ্বার হিসেবে কাজ করে।
+ */
 "use client";
 
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
-import { LayoutDashboard, Route, ListOrdered, DollarSign, MapPinned, Wand2, Globe, Repeat, Briefcase, Map } from 'lucide-react';
+import { LayoutDashboard, Route, ListOrdered, DollarSign, MapPinned, Wand2, Globe, Repeat, Briefcase, Map, UserCog, FilePlus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface DashboardCardProps {
@@ -58,7 +68,7 @@ export default function AdminDashboardPage() {
             title="Itinerary Creation Suite"
             description="Craft new itineraries, plan day-by-day activities, and calculate costs with our powerful planner."
             href="/planner"
-            icon={Route} 
+            icon={Route}
             buttonText="Launch Planner"
             className="lg:col-span-1 bg-accent/5 border-accent/30"
           />
@@ -102,11 +112,11 @@ export default function AdminDashboardPage() {
             buttonText="Use Converter"
             className="lg:col-span-1"
           />
-          <DashboardCard
+           <DashboardCard
             title="Agent Dashboard"
             description="Access the dashboard designed for travel agents to manage their specific tasks and clients."
             href="/agent"
-            icon={Briefcase} 
+            icon={Briefcase}
             buttonText="Go to Agent View"
             className="lg:col-span-1 border-secondary"
           />

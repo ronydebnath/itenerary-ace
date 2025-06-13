@@ -1,4 +1,14 @@
-
+/**
+ * @fileoverview This component is the core user interface for planning an itinerary.
+ * It orchestrates various sub-components like the `PlannerHeader` for global settings,
+ * `DayNavigation` for moving between days, and `DayView` for managing items within
+ * a specific day. It also displays cost summaries and detailed breakdowns.
+ *
+ * @bangla এই কম্পোনেন্টটি একটি ভ্রমণপথ পরিকল্পনা করার প্রধান ব্যবহারকারী ইন্টারফেস।
+ * এটি বিভিন্ন সাব-কম্পোনেন্ট যেমন গ্লোবাল সেটিংসের জন্য `PlannerHeader`, দিনগুলির মধ্যে
+ * নেভিগেট করার জন্য `DayNavigation`, এবং একটি নির্দিষ্ট দিনের মধ্যে আইটেমগুলি পরিচালনা
+ * করার জন্য `DayView` সমন্বিত করে। এটি ব্যয়ের সারাংশ এবং বিস্তারিত ভাঙ্গনও প্রদর্শন করে।
+ */
 "use client";
 
 import * as React from 'react';
