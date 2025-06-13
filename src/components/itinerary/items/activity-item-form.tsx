@@ -34,8 +34,6 @@ export function ActivityItemForm({ item, travelers, currency, dayNumber, tripSet
   const { countries, getCountryById } = useCountries();
   const [activityServices, setActivityServices] = React.useState<ServicePriceItem[]>([]);
 
-  const itemCountry = React.useMemo(() => item.countryId ? getCountryById(item.countryId) : undefined, [item.countryId, getCountryById]);
-
   const getServicePriceById = React.useCallback((id: string) => {
     return currentAllServicePrices.find(sp => sp.id === id);
   }, [currentAllServicePrices]);
@@ -73,7 +71,7 @@ export function ActivityItemForm({ item, travelers, currency, dayNumber, tripSet
     if (provincesToFilterBy.length > 0) {
          filteredServices = filteredServices.filter(s => !s.province || provincesToFilterBy.includes(s.province));
     }
-    setActivityServices(filteredServices);
+    setActivityServices(filteredServices.sort((a,b) => a.name.localeCompare(b.name)));
   }, [currentAllServicePrices, currency, item.countryId, item.province, tripSettings.selectedCountries, tripSettings.selectedProvinces, isLoadingServices, passedInAllServicePrices]);
 
 
@@ -102,6 +100,9 @@ export function ActivityItemForm({ item, travelers, currency, dayNumber, tripSet
         adultPrice: 0,
         childPrice: undefined,
         note: undefined,
+        province: item.province, // Keep existing province unless service overwrites
+        countryId: item.countryId,
+        countryName: item.countryId ? countries.find(c => c.id === item.countryId)?.name : undefined,
       });
     } else {
       const service = getServicePriceById(selectedValue);
@@ -123,7 +124,7 @@ export function ActivityItemForm({ item, travelers, currency, dayNumber, tripSet
         onUpdate({
           ...item,
           name: `New activity`,
-          selectedServicePriceId: selectedValue, // Keep the ID if service not found, to show error
+          selectedServicePriceId: selectedValue, 
           selectedPackageId: undefined,
           adultPrice: 0,
           childPrice: undefined,
@@ -167,20 +168,24 @@ export function ActivityItemForm({ item, travelers, currency, dayNumber, tripSet
   const actualLoadingState = passedInAllServicePrices ? false : isLoadingServices;
   const serviceDefinitionNotFound = item.selectedServicePriceId && !selectedActivityService && !actualLoadingState;
   
-  const countryCtx = item.countryId ? countries.find(c => c.id === item.countryId)?.name : (tripSettings.selectedCountries.length === 1 ? countries.find(c => c.id === tripSettings.selectedCountries[0])?.name : (tripSettings.selectedCountries.length > 1 ? "Multi" : undefined));
-  const provinceCtx = item.province || (tripSettings.selectedProvinces.length === 1 ? tripSettings.selectedProvinces[0] : (tripSettings.selectedProvinces.length > 1 ? "Multi" : undefined));
-  let locationDisplay = "Global";
-  if (countryCtx) {
-    locationDisplay = provinceCtx ? `${provinceCtx}, ${countryCtx}` : countryCtx;
-  } else if (provinceCtx) {
-    locationDisplay = provinceCtx;
+  const itemCountryName = item.countryId ? countries.find(c => c.id === item.countryId)?.name : undefined;
+  const globalCountryNames = tripSettings.selectedCountries.map(id => countries.find(c => c.id === id)?.name).filter(Boolean) as string[];
+  let locationContext = "Global";
+  if (itemCountryName) {
+    locationContext = item.province ? `${item.province}, ${itemCountryName}` : itemCountryName;
+  } else if (globalCountryNames.length > 0) {
+    locationContext = tripSettings.selectedProvinces.length > 0 
+      ? `${tripSettings.selectedProvinces.join('/')} (${globalCountryNames.join('/')})` 
+      : globalCountryNames.join('/');
+  } else if (tripSettings.selectedProvinces.length > 0) {
+    locationContext = tripSettings.selectedProvinces.join('/');
   }
 
   return (
     <BaseItemForm item={item} travelers={travelers} currency={currency} tripSettings={tripSettings} onUpdate={onUpdate} onDelete={onDelete} itemTypeLabel="Activity" dayNumber={dayNumber}>
       {(activityServices.length > 0 || item.selectedServicePriceId || actualLoadingState) && (
         <div className="mb-4">
-          <FormField label={`Select Predefined Activity (${locationDisplay})`} id={`predefined-activity-${item.id}`}>
+          <FormField label={`Select Predefined Activity (${locationContext})`} id={`predefined-activity-${item.id}`}>
             {actualLoadingState ? (
                  <div className="flex items-center h-10 border rounded-md px-3 bg-muted/50">
                     <Loader2 className="h-4 w-4 animate-spin mr-2 text-muted-foreground" />
@@ -359,5 +364,4 @@ export function ActivityItemForm({ item, travelers, currency, dayNumber, tripSet
     </BaseItemForm>
   );
 }
-
     

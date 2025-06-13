@@ -32,8 +32,6 @@ export function TransferItemForm({ item, travelers, currency, tripSettings, dayN
   const { countries, getCountryById } = useCountries();
   const [transferServices, setTransferServices] = React.useState<ServicePriceItem[]>([]);
 
-  const itemCountry = React.useMemo(() => item.countryId ? getCountryById(item.countryId) : undefined, [item.countryId, getCountryById]);
-
   const getServicePriceById = React.useCallback((id: string) => {
     return currentAllServicePrices.find(sp => sp.id === id);
   }, [currentAllServicePrices]);
@@ -71,7 +69,7 @@ export function TransferItemForm({ item, travelers, currency, tripSettings, dayN
       filteredServices = filteredServices.filter(s => !s.province || provincesToFilterBy.includes(s.province));
     }
 
-    setTransferServices(filteredServices);
+    setTransferServices(filteredServices.sort((a,b) => a.name.localeCompare(b.name)));
   }, [currentAllServicePrices, currency, item.mode, item.countryId, item.province, tripSettings.selectedCountries, tripSettings.selectedProvinces, isLoadingServices, passedInAllServicePrices]);
 
 
@@ -122,6 +120,9 @@ export function TransferItemForm({ item, travelers, currency, tripSettings, dayN
         vehicleType: item.mode === 'vehicle' ? (item.vehicleType || VEHICLE_TYPES[0]) : undefined,
         vehicles: item.mode === 'vehicle' ? (item.vehicles || 1) : undefined,
         note: undefined,
+        province: item.province, // Keep existing
+        countryId: item.countryId,
+        countryName: item.countryId ? countries.find(c => c.id === item.countryId)?.name : undefined,
       });
     } else {
       const service = getServicePriceById(selectedValue);
@@ -149,8 +150,7 @@ export function TransferItemForm({ item, travelers, currency, tripSettings, dayN
             updatedItemPartial.selectedVehicleOptionId = firstOption.id;
             updatedItemPartial.costPerVehicle = firstOption.price;
             updatedItemPartial.vehicleType = firstOption.vehicleType;
-            // Keep existing note for vehicle options if any, otherwise use service note.
-            updatedItemPartial.note = item.note || firstOption.notes || service.notes || undefined; 
+            updatedItemPartial.note = firstOption.notes || service.notes || undefined; 
           } else {
             updatedItemPartial.costPerVehicle = service.price1 ?? 0; 
             updatedItemPartial.vehicleType = (service.subCategory && VEHICLE_TYPES.includes(service.subCategory as VehicleType))
@@ -164,7 +164,7 @@ export function TransferItemForm({ item, travelers, currency, tripSettings, dayN
          onUpdate({
           ...item,
           name: `New transfer`,
-          selectedServicePriceId: selectedValue, // Keep ID to show error
+          selectedServicePriceId: selectedValue, 
           selectedVehicleOptionId: undefined,
           adultTicketPrice: item.mode === 'ticket' ? 0 : undefined,
           childTicketPrice: undefined,
@@ -230,16 +230,20 @@ export function TransferItemForm({ item, travelers, currency, tripSettings, dayN
     ? (item.selectedVehicleOptionId && selectedService?.vehicleOptions?.find(vo => vo.id === item.selectedVehicleOptionId)?.price) ??
       (!item.selectedVehicleOptionId && selectedService && (!selectedService.vehicleOptions || selectedService.vehicleOptions.length === 0) ? selectedService.price1 : item.costPerVehicle) ?? 0
     : undefined;
-    
-  const countryCtx = item.countryId ? countries.find(c => c.id === item.countryId)?.name : (tripSettings.selectedCountries.length === 1 ? countries.find(c => c.id === tripSettings.selectedCountries[0])?.name : (tripSettings.selectedCountries.length > 1 ? "Multi" : undefined));
-  const provinceCtx = item.province || (tripSettings.selectedProvinces.length === 1 ? tripSettings.selectedProvinces[0] : (tripSettings.selectedProvinces.length > 1 ? "Multi" : undefined));
-  let locationDisplay = "Global";
-  if (countryCtx) {
-    locationDisplay = provinceCtx ? `${provinceCtx}, ${countryCtx}` : countryCtx;
-  } else if (provinceCtx) {
-    locationDisplay = provinceCtx;
-  }
 
+  const itemCountryName = item.countryId ? countries.find(c => c.id === item.countryId)?.name : undefined;
+  const globalCountryNames = tripSettings.selectedCountries.map(id => countries.find(c => c.id === id)?.name).filter(Boolean) as string[];
+  let locationContext = "Global";
+  if (itemCountryName) {
+    locationContext = item.province ? `${item.province}, ${itemCountryName}` : itemCountryName;
+  } else if (globalCountryNames.length > 0) {
+    locationContext = tripSettings.selectedProvinces.length > 0 
+      ? `${tripSettings.selectedProvinces.join('/')} (${globalCountryNames.join('/')})` 
+      : globalCountryNames.join('/');
+  } else if (tripSettings.selectedProvinces.length > 0) {
+    locationContext = tripSettings.selectedProvinces.join('/');
+  }
+    
   return (
     <BaseItemForm item={item} travelers={travelers} currency={currency} tripSettings={tripSettings} onUpdate={onUpdate} onDelete={onDelete} itemTypeLabel="Transfer" dayNumber={dayNumber}>
       <div className="pt-2">
@@ -256,7 +260,7 @@ export function TransferItemForm({ item, travelers, currency, tripSettings, dayN
 
       {(transferServices.length > 0 || item.selectedServicePriceId || actualLoadingState) && (
         <div className="mt-4">
-          <FormField label={`Select Predefined Service (${locationDisplay})`} id={`predefined-transfer-${item.id}`}>
+          <FormField label={`Select Predefined Service (${locationContext})`} id={`predefined-transfer-${item.id}`}>
               {actualLoadingState ? (
                  <div className="flex items-center h-10 border rounded-md px-3 bg-muted/50">
                     <Loader2 className="h-4 w-4 animate-spin mr-2 text-muted-foreground" />
@@ -433,5 +437,4 @@ export function TransferItemForm({ item, travelers, currency, tripSettings, dayN
     </BaseItemForm>
   );
 }
-
     
