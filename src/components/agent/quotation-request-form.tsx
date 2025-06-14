@@ -1,4 +1,3 @@
-
 /**
  * @fileoverview This component provides a comprehensive form for travel agents to submit
  * new quotation requests. It captures client information, detailed trip preferences
@@ -23,6 +22,7 @@ import {
   TRIP_TYPES,
   BUDGET_RANGES,
   HOTEL_STAR_RATINGS,
+  MEAL_PLAN_OPTIONS,
 } from '@/types/quotation';
 import { Button } from "@/components/ui/button";
 import {
@@ -87,6 +87,9 @@ export function QuotationRequestForm({ onSubmit, onCancel, defaultAgentId }: Quo
       flightPrefs: {
         airportTransfersRequired: false,
         activityTransfersRequired: false,
+      },
+      mealPrefs: {
+        mealPlan: "No Meal",
       },
       otherRequirements: "",
       status: "Pending",
@@ -329,7 +332,7 @@ export function QuotationRequestForm({ onSubmit, onCancel, defaultAgentId }: Quo
                     : 'Duration: Auto-calculated based on dates'}
                 </p>
               </div>
-                <FormField control={form.control} name="tripDetails.tripType" render={({ field }) => (<FormItem><FormLabel>Type of Trip</FormLabel><Select onValueChange={field.onChange} value={field.value || ""}><FormControl><SelectTrigger><SelectValue placeholder="Select trip type (Optional)" /></SelectTrigger></FormControl><SelectContent>{TRIP_TYPES.map(type => <SelectItem key={type} value={type}>{type}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
+                <FormField control={form.control} name="tripDetails.tripType" render={({ field }) => (<FormItem><FormLabel>Type of Trip (Optional)</FormLabel><Select onValueChange={field.onChange} value={field.value || ""}><FormControl><SelectTrigger><SelectValue placeholder="Select trip type" /></SelectTrigger></FormControl><SelectContent>{TRIP_TYPES.map(type => <SelectItem key={type} value={type}>{type}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
               <FormField control={form.control} name="tripDetails.budgetRange" render={({ field }) => (<FormItem><FormLabel>Budget Expectation</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select budget range" /></SelectTrigger></FormControl><SelectContent>{BUDGET_RANGES.map(range => <SelectItem key={range} value={range}>{range}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
               {watchBudgetRange === "Specific Amount (see notes)" && (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
@@ -378,6 +381,28 @@ export function QuotationRequestForm({ onSubmit, onCancel, defaultAgentId }: Quo
             <CardContent className="space-y-4">
               <FormField control={form.control} name="flightPrefs.airportTransfersRequired" render={({ field }) => (<FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4 shadow"><FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl><div className="space-y-1 leading-none"><FormLabel>Airport Transfers Required?</FormLabel><FormDescription>Include transfers to/from airports.</FormDescription></div><FormMessage /></FormItem>)} />
               <FormField control={form.control} name="flightPrefs.activityTransfersRequired" render={({ field }) => (<FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4 shadow"><FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl><div className="space-y-1 leading-none"><FormLabel>Include transfers for activities/tours?</FormLabel><FormDescription>Arrange transportation to/from scheduled activities and tours.</FormDescription></div><FormMessage /></FormItem>)} />
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardHeader><CardTitle>Meal Preferences (Optional)</CardTitle></CardHeader>
+            <CardContent className="space-y-4">
+              <FormField
+                control={form.control}
+                name="mealPrefs.mealPlan"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Preferred Meal Plan</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value || "No Meal"}>
+                      <FormControl><SelectTrigger><SelectValue placeholder="Select meal plan" /></SelectTrigger></FormControl>
+                      <SelectContent>
+                        {MEAL_PLAN_OPTIONS.map(plan => <SelectItem key={plan} value={plan}>{plan}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
             </CardContent>
           </Card>
 

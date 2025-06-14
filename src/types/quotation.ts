@@ -17,6 +17,7 @@ export const TRIP_TYPES = ["Leisure", "Business", "Honeymoon", "Family", "Advent
 export const BUDGET_RANGES = ["Economy/Budget", "Mid-Range/Comfort", "Luxury/Premium", "Specific Amount (see notes)"] as const;
 export const HOTEL_STAR_RATINGS = ["Any", "2 Stars", "3 Stars", "4 Stars", "5 Stars", "Boutique/Unrated"] as const;
 export const QUOTATION_STATUSES = ["Pending", "Quoted", "ConfirmedByAgent", "BookingInProgress", "Booked", "Cancelled"] as const;
+export const MEAL_PLAN_OPTIONS = ["No Meal", "Breakfast Only", "Breakfast and Lunch/Dinner", "Breakfast, Lunch and Dinner"] as const;
 
 
 export const QuotationRequestClientInfoSchema = z.object({
@@ -78,6 +79,12 @@ export const QuotationRequestFlightPrefsSchema = z.object({
   activityTransfersRequired: z.boolean().default(false).describe("Request transfers for scheduled activities/tours"),
 });
 
+export const QuotationRequestMealPrefsSchema = z.object({
+  mealPlan: z.enum(MEAL_PLAN_OPTIONS).optional(),
+});
+export type QuotationRequestMealPrefs = z.infer<typeof QuotationRequestMealPrefsSchema>;
+
+
 export const QuotationRequestSchema = z.object({
   id: z.string().default(() => `QR-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`),
   requestDate: z.string().default(() => new Date().toISOString()),
@@ -87,9 +94,11 @@ export const QuotationRequestSchema = z.object({
   accommodationPrefs: QuotationRequestAccommodationPrefsSchema.optional(),
   activityPrefs: QuotationRequestActivityPrefsSchema.optional(),
   flightPrefs: QuotationRequestFlightPrefsSchema.optional(),
+  mealPrefs: QuotationRequestMealPrefsSchema.optional(),
   otherRequirements: z.string().optional(),
   status: z.enum(QUOTATION_STATUSES).default("Pending"),
   linkedItineraryId: z.string().optional().describe("ID of the itinerary created for this request"),
+  updatedAt: z.string().optional().default(() => new Date().toISOString()),
 });
 
 export type QuotationRequestStatus = z.infer<typeof QuotationRequestSchema.shape.status>;
