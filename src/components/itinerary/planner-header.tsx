@@ -24,7 +24,7 @@ import { DatePicker } from '@/components/ui/date-picker';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Edit3, Save, Info, CalendarDays, Users, MapPin, Route, Loader2, DollarSign, Globe, FileText, Image as ImageIconLucide, Cog } from 'lucide-react';
+import { Edit3, Save, Info, CalendarDays, Users, MapPin, Route, Loader2, DollarSign, Globe, FileText, Image as ImageIconLucide, Cog, Landmark } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
 import { format, parseISO, isValid } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
@@ -258,7 +258,7 @@ function PlannerHeaderComponent({
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4 items-end">
             <div>
-                <Label htmlFor="currency" className="text-sm font-medium text-muted-foreground flex items-center"><span className="mr-1 text-lg">💵</span>Billing Currency</Label>
+                <Label htmlFor="currency" className="text-sm font-medium text-muted-foreground flex items-center"><Landmark className="h-4 w-4 mr-1"/>Billing Currency</Label>
                 <Select value={tripData.pax.currency} onValueChange={(value) => handlePaxChange('currency', value as CurrencyCode)}>
                 <SelectTrigger id="currency" className="w-full text-base h-11 sm:h-10 mt-1">
                     <SelectValue />
