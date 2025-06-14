@@ -14,7 +14,7 @@
 import Link from 'next/link';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
-import { Briefcase, Route, Users, ListOrdered, LayoutDashboard, UserCog, FilePlus } from 'lucide-react';
+import { Briefcase, Route, Users, ListOrdered, LayoutDashboard, UserCog, FilePlus, ClipboardList } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface AgentDashboardCardProps {
@@ -81,32 +81,40 @@ export default function AgentDashboardPage() {
             buttonText="Request Quote"
             className="lg:col-span-1"
           />
+           <AgentDashboardCard
+            title="My Quotation Requests"
+            description="View the status of your submitted quotation requests and access proposals."
+            href="/agent/my-quotation-requests"
+            icon={ClipboardList}
+            buttonText="View My Requests"
+            className="lg:col-span-1"
+          />
           <AgentDashboardCard
             title="My Agent Profile"
             description="Update your contact information, agency details, and professional preferences."
             href="/agent/profile"
-            icon={UserCog} 
+            icon={UserCog}
             buttonText="Manage Profile"
             className="lg:col-span-1"
           />
           <AgentDashboardCard
             title="My Client Itineraries"
             description="View, edit, and organize all itineraries you have created for your clients. (Coming Soon)"
-            href="#" 
+            href="#"
             icon={ListOrdered}
             buttonText="View My Itineraries"
             className="lg:col-span-1"
-            disabled 
+            disabled
           />
            <AgentDashboardCard
             title="Client Management"
             description="Manage your client profiles, contact information, and travel preferences. (Coming Soon)"
-            href="#" 
+            href="#"
             icon={Users}
             buttonText="Manage Clients"
-            disabled 
+            disabled
           />
-          
+
         </div>
 
         <div className="mt-12 text-center">
