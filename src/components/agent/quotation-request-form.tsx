@@ -44,11 +44,12 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Separator } from '@/components/ui/separator';
 import { CURRENCIES, type CurrencyCode, type CountryItem, type ProvinceItem } from '@/types/itinerary';
 import { parseISO, format, differenceInDays, isValid } from 'date-fns';
-import { Loader2, MapPin, Globe } from 'lucide-react';
+import { Loader2, MapPin, Globe, AlertCircle } from 'lucide-react';
 import { useCountries } from '@/hooks/useCountries';
 import { useProvinces } from '@/hooks/useProvinces';
 import { cn } from '@/lib/utils';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { Alert, AlertTitle as ShadcnAlertTitle, AlertDescription as ShadcnAlertDescription } from "@/components/ui/alert";
 
 
 interface QuotationRequestFormProps {
@@ -60,6 +61,7 @@ interface QuotationRequestFormProps {
 export function QuotationRequestForm({ onSubmit, onCancel, defaultAgentId }: QuotationRequestFormProps) {
   const { countries, isLoading: isLoadingCountries, getCountryById } = useCountries();
   const { provinces: allProvinces, isLoading: isLoadingProvinces, getProvincesByCountry } = useProvinces();
+  const [countrySelectionError, setCountrySelectionError] = React.useState<string | null>(null);
 
   const form = useForm<QuotationRequest>({
     resolver: zodResolver(QuotationRequestSchema),
@@ -175,21 +177,22 @@ export function QuotationRequestForm({ onSubmit, onCancel, defaultAgentId }: Quo
     return Object.fromEntries(sortedGroupEntries);
   }, [displayableProvinces, isLoadingProvinces, isLoadingCountries, countries]);
 
- const onFormSubmitError = (errors: FieldErrors<QuotationRequest>) => {
+  const onFormSubmitError = (errors: FieldErrors<QuotationRequest>) => {
     console.error(`[DEBUG] Quotation Form Validation Failure. Top-level error keys: ${Object.keys(errors).join(', ')}`);
+    setCountrySelectionError(null); // Clear previous general error
 
-    // Explicitly check for the common "preferredCountryIds" error
     if (errors.tripDetails && errors.tripDetails.preferredCountryIds && typeof errors.tripDetails.preferredCountryIds.message === 'string') {
       console.error(`[DEBUG] Specific Validation Error: tripDetails.preferredCountryIds - ${errors.tripDetails.preferredCountryIds.message}`);
+      setCountrySelectionError(errors.tripDetails.preferredCountryIds.message); // Set specific error message
       const countrySelectionElement = document.querySelector('div[data-testid="preferred-countries-form-item"]');
       if (countrySelectionElement) {
         countrySelectionElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
         console.log("[DEBUG] Scrolled to preferred countries section via data-testid.");
       }
-      return; // Early return if we've handled this specific, common error
+      return;
     }
 
-
+    // Fallback for other errors
     const allMessages: { path: string; message: string; type?: string }[] = [];
     const logAllMessages = (currentErrorObject: any, currentPathPrefix = "") => {
       if (!currentErrorObject) return;
@@ -239,12 +242,11 @@ export function QuotationRequestForm({ onSubmit, onCancel, defaultAgentId }: Quo
         if (elementToScroll) {
           let scrollTarget: HTMLElement | null = elementToScroll.closest('div[data-form-item-container]');
           if (!scrollTarget) {
-            scrollTarget = elementToScroll.closest('.space-y-2');
+            scrollTarget = elementToScroll.closest('.space-y-2'); // Fallback selector
           }
           if (!scrollTarget) {
-            scrollTarget = elementToScroll;
+            scrollTarget = elementToScroll; // Last resort
           }
-
           scrollTarget.scrollIntoView({ behavior: 'smooth', block: 'center' });
           console.log("[DEBUG] Scrolled element for path into view:", firstError.path, "Scrolled element:", scrollTarget);
         } else {
@@ -291,6 +293,13 @@ export function QuotationRequestForm({ onSubmit, onCancel, defaultAgentId }: Quo
                   render={({ field }) => (
                     <FormItem data-testid="preferred-countries-form-item">
                       <FormLabel className="text-foreground/80 flex items-center mb-1"><Globe className="h-4 w-4 mr-2 text-primary"/>Preferred Countries *</FormLabel>
+                      {countrySelectionError && (
+                        <Alert variant="destructive" className="mb-2">
+                          <AlertCircle className="h-4 w-4" />
+                          <ShadcnAlertTitle>Validation Error</ShadcnAlertTitle>
+                          <ShadcnAlertDescription>{countrySelectionError}</ShadcnAlertDescription>
+                        </Alert>
+                      )}
                       {isLoadingCountries ? (
                         <div className="flex items-center justify-center h-28 border rounded-md bg-muted/50">
                           <Loader2 className="h-5 w-5 animate-spin text-primary" />
@@ -310,6 +319,7 @@ export function QuotationRequestForm({ onSubmit, onCancel, defaultAgentId }: Quo
                                       <Checkbox
                                         checked={countryField.value?.includes(country.id)}
                                         onCheckedChange={(checked) => {
+                                          setCountrySelectionError(null); // Clear error on interaction
                                           const newValue = checked
                                             ? [...(countryField.value || []), country.id]
                                             : (countryField.value || []).filter((id) => id !== country.id);
@@ -333,7 +343,7 @@ export function QuotationRequestForm({ onSubmit, onCancel, defaultAgentId }: Quo
                           <p className="text-sm text-muted-foreground text-center py-4 border rounded-md bg-muted/50">No countries available for selection.</p>
                       )}
                       {selectedCountryNames.length > 0 && (<div className="pt-1 text-xs text-muted-foreground">Selected Countries: {selectedCountryNames.join(', ')}</div>)}
-                      <FormMessage />
+                      <FormMessage /> {/* This should still display the Zod error if `countrySelectionError` is not set by `onFormSubmitError` */}
                     </FormItem>
                   )}
                 />
@@ -510,3 +520,4 @@ export function QuotationRequestForm({ onSubmit, onCancel, defaultAgentId }: Quo
     </Form>
   );
 }
+
