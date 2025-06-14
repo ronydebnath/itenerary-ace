@@ -25,6 +25,7 @@ import { DetailsSummaryTable } from '../itinerary/details-summary-table';
 import { calculateAllCosts } from '@/lib/calculation-utils';
 import { useServicePrices } from '@/hooks/useServicePrices';
 import { useHotelDefinitions } from '@/hooks/useHotelDefinitions';
+import { useExchangeRates } from '@/hooks/useExchangeRates'; // Import useExchangeRates
 import { addDays, format, parseISO } from 'date-fns';
 import { PlannerHeader } from './planner-header';
 import { DayNavigation } from './day-navigation';
@@ -60,15 +61,16 @@ export function ItineraryPlanner({
   const [showCosts, setShowCosts] = React.useState<boolean>(true);
   const { allServicePrices, isLoading: isLoadingServices } = useServicePrices();
   const { allHotelDefinitions, isLoading: isLoadingHotelDefinitions } = useHotelDefinitions();
+  const { getRate, isLoading: isLoadingExchangeRates, exchangeRates, globalMarkupPercentage, specificMarkupRates } = useExchangeRates(); // Use the hook
 
   React.useEffect(() => {
-    if (tripData && !isLoadingServices && !isLoadingHotelDefinitions) {
-      const summary = calculateAllCosts(tripData, allServicePrices, allHotelDefinitions); 
+    if (tripData && !isLoadingServices && !isLoadingHotelDefinitions && !isLoadingExchangeRates) {
+      const summary = calculateAllCosts(tripData, allServicePrices, allHotelDefinitions, getRate);
       setCostSummary(summary);
     } else {
       setCostSummary(null);
     }
-  }, [tripData, isLoadingServices, isLoadingHotelDefinitions, allServicePrices, allHotelDefinitions]);
+  }, [tripData, isLoadingServices, isLoadingHotelDefinitions, isLoadingExchangeRates, allServicePrices, allHotelDefinitions, getRate, exchangeRates, globalMarkupPercentage, specificMarkupRates]); // Add exchange rate related dependencies
 
   React.useEffect(() => {
     if (tripData.settings.numDays < currentDayView) {
@@ -111,7 +113,7 @@ export function ItineraryPlanner({
           ...baseNewItem,
           type: 'hotel',
           checkoutDay: day + 1,
-          hotelDefinitionId: '', // Important: initialize with an empty string or a specific default if applicable
+          hotelDefinitionId: '', 
           selectedRooms: []
         };
         break;
@@ -161,7 +163,7 @@ export function ItineraryPlanner({
     return <PrintLayout tripData={tripData} costSummary={costSummary} showCosts={showCosts} />;
   }
 
-  const isLoadingAnything = isLoadingServices || isLoadingHotelDefinitions;
+  const isLoadingAnything = isLoadingServices || isLoadingHotelDefinitions || isLoadingExchangeRates;
 
   return (
     <div className="w-full max-w-[1600px] mx-auto p-2 sm:p-4 md:p-6 lg:p-8">
