@@ -178,6 +178,18 @@ export function QuotationRequestForm({ onSubmit, onCancel, defaultAgentId }: Quo
  const onFormSubmitError = (errors: FieldErrors<QuotationRequest>) => {
     console.error(`[DEBUG] Quotation Form Validation Failure. Top-level error keys: ${Object.keys(errors).join(', ')}`);
 
+    // Explicitly check for the common "preferredCountryIds" error
+    if (errors.tripDetails && errors.tripDetails.preferredCountryIds && typeof errors.tripDetails.preferredCountryIds.message === 'string') {
+      console.error(`[DEBUG] Specific Validation Error: tripDetails.preferredCountryIds - ${errors.tripDetails.preferredCountryIds.message}`);
+      const countrySelectionElement = document.querySelector('div[data-testid="preferred-countries-form-item"]');
+      if (countrySelectionElement) {
+        countrySelectionElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        console.log("[DEBUG] Scrolled to preferred countries section via data-testid.");
+      }
+      return; // Early return if we've handled this specific, common error
+    }
+
+
     const allMessages: { path: string; message: string; type?: string }[] = [];
     const logAllMessages = (currentErrorObject: any, currentPathPrefix = "") => {
       if (!currentErrorObject) return;
@@ -225,15 +237,14 @@ export function QuotationRequestForm({ onSubmit, onCancel, defaultAgentId }: Quo
         }
 
         if (elementToScroll) {
-          // Try to find the FormItem parent, which is more likely to be the visual container.
           let scrollTarget: HTMLElement | null = elementToScroll.closest('div[data-form-item-container]');
-          if (!scrollTarget) { // Fallback to a common class or the element itself
-            scrollTarget = elementToScroll.closest('.space-y-2'); // FormItem default class
+          if (!scrollTarget) {
+            scrollTarget = elementToScroll.closest('.space-y-2');
           }
           if (!scrollTarget) {
             scrollTarget = elementToScroll;
           }
-          
+
           scrollTarget.scrollIntoView({ behavior: 'smooth', block: 'center' });
           console.log("[DEBUG] Scrolled element for path into view:", firstError.path, "Scrolled element:", scrollTarget);
         } else {
@@ -278,7 +289,7 @@ export function QuotationRequestForm({ onSubmit, onCancel, defaultAgentId }: Quo
                   control={form.control}
                   name="tripDetails.preferredCountryIds"
                   render={({ field }) => (
-                    <FormItem>
+                    <FormItem data-testid="preferred-countries-form-item">
                       <FormLabel className="text-foreground/80 flex items-center mb-1"><Globe className="h-4 w-4 mr-2 text-primary"/>Preferred Countries *</FormLabel>
                       {isLoadingCountries ? (
                         <div className="flex items-center justify-center h-28 border rounded-md bg-muted/50">
