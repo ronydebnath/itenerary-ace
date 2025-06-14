@@ -4,10 +4,11 @@
  * and provides functions to retrieve, add, update, and delete agency and agent items.
  */
 import * as React from 'react';
-import type { Agency, AgentProfile, AgentAddress, CountryItem } from '@/types/agent';
+import type { Agency, AgentProfile, AgentAddress } from '@/types/agent';
 import { generateGUID } from '@/lib/utils';
 import { useCountries, DEFAULT_THAILAND_ID, DEFAULT_MALAYSIA_ID, DEFAULT_BANGLADESH_ID } from './useCountries';
 import { useToast } from './use-toast';
+import type { CurrencyCode } from '@/types/itinerary';
 
 const AGENCIES_STORAGE_KEY = 'itineraryAceAgencies';
 const AGENTS_STORAGE_KEY = 'itineraryAceAgents';
@@ -18,19 +19,22 @@ const DEFAULT_AGENCIES_DATA_SEED: Omit<Agency, 'id'>[] = [
     name: "Global Travel Experts",
     mainAddress: { street: "100 Sukhumvit Rd", city: "Bangkok", postalCode: "10110", countryId: DEFAULT_THAILAND_ID, stateProvince: "Bangkok" },
     contactEmail: "contact@globaltravel.com",
-    contactPhone: "+66 2 555 0100"
+    contactPhone: "+66 2 555 0100",
+    preferredCurrency: "THB" as CurrencyCode,
   },
   {
     name: "Local Adventures Inc.",
     mainAddress: { street: "50 Jalan Ampang", city: "Kuala Lumpur", postalCode: "50450", countryId: DEFAULT_MALAYSIA_ID, stateProvince: "WP Kuala Lumpur" },
     contactEmail: "info@localadventures.my",
-    contactPhone: "+60 3 555 0200"
+    contactPhone: "+60 3 555 0200",
+    preferredCurrency: "MYR" as CurrencyCode,
   },
   {
     name: "Bengal Voyager",
     mainAddress: { street: "75 Gulshan Ave", city: "Dhaka", postalCode: "1212", countryId: DEFAULT_BANGLADESH_ID, stateProvince: "Dhaka" },
     contactEmail: "support@bengalvoyager.com.bd",
-    contactPhone: "+880 2 555 0300"
+    contactPhone: "+880 2 555 0300",
+    preferredCurrency: "BDT" as CurrencyCode,
   }
 ];
 
@@ -43,9 +47,7 @@ const DEFAULT_AGENTS_DATA_SEED: Omit<AgentProfile, 'id' | 'agencyId'>[] = [
     fullName: "John Doe (GTE)",
     email: "john.doe@globaltravel.com",
     phoneNumber: "+66 81 123 4567",
-    agencyName: "Global Travel Experts (Sukhumvit Branch)",
-    agencyAddress: { street: "100 Sukhumvit Rd", city: "Bangkok", postalCode: "10110", countryId: DEFAULT_THAILAND_ID, stateProvince: "Bangkok" },
-    preferredCurrency: "THB",
+    agencyName: "Global Travel Experts (Sukhumvit Branch)", // This could be a specific branch name
     specializations: "Luxury Travel, Thailand & SE Asia",
     yearsOfExperience: 10,
     bio: "Experienced travel consultant specializing in bespoke luxury itineraries across Southeast Asia."
@@ -54,7 +56,6 @@ const DEFAULT_AGENTS_DATA_SEED: Omit<AgentProfile, 'id' | 'agencyId'>[] = [
     fullName: "Alice Smith (GTE)",
     email: "alice.smith@globaltravel.com",
     phoneNumber: "+66 82 987 6543",
-    preferredCurrency: "USD",
     specializations: "Cultural Tours, Indochina",
     yearsOfExperience: 7,
     bio: "Passionate about cultural immersion and unique travel experiences in Vietnam, Laos, and Cambodia."
@@ -63,7 +64,6 @@ const DEFAULT_AGENTS_DATA_SEED: Omit<AgentProfile, 'id' | 'agencyId'>[] = [
     fullName: "Bob Johnson (LAI)",
     email: "bob.johnson@localadventures.my",
     phoneNumber: "+60 12 345 6789",
-    preferredCurrency: "MYR",
     specializations: "Adventure Tours, Malaysia & Borneo",
     yearsOfExperience: 5,
     bio: "Your guide for thrilling adventures, from jungle trekking in Borneo to diving in Sipadan."
@@ -72,7 +72,6 @@ const DEFAULT_AGENTS_DATA_SEED: Omit<AgentProfile, 'id' | 'agencyId'>[] = [
     fullName: "Fatima Ahmed (BV)",
     email: "fatima.ahmed@bengalvoyager.com.bd",
     phoneNumber: "+880 17 111 2222",
-    preferredCurrency: "BDT",
     specializations: "Heritage Tours, Bangladesh",
     yearsOfExperience: 8,
     bio: "Discover the rich history and vibrant culture of Bangladesh with expertly crafted tours."
@@ -85,11 +84,11 @@ const assignFixedAgencyIdsAndMapAgents = (agencySeedData: Omit<Agency, 'id'>[], 
     if (agency.name === "Global Travel Experts") id = AGENCY_ID_GLOBAL_TRAVEL;
     else if (agency.name === "Local Adventures Inc.") id = AGENCY_ID_LOCAL_ADVENTURES;
     else if (agency.name === "Bengal Voyager") id = AGENCY_ID_BENGAL_VOYAGER;
-    return { ...agency, id };
+    return { ...agency, id, preferredCurrency: agency.preferredCurrency || "USD" as CurrencyCode };
   });
 
   const finalAgents: AgentProfile[] = agentSeedData.map(agent => {
-    let agencyIdToLink = finalAgencies[0]?.id; // Default to first agency if no match
+    let agencyIdToLink = finalAgencies[0]?.id; 
     if (agent.fullName.includes("(GTE)")) agencyIdToLink = AGENCY_ID_GLOBAL_TRAVEL;
     else if (agent.fullName.includes("(LAI)")) agencyIdToLink = AGENCY_ID_LOCAL_ADVENTURES;
     else if (agent.fullName.includes("(BV)")) agencyIdToLink = AGENCY_ID_BENGAL_VOYAGER;
@@ -118,6 +117,7 @@ export function useAgents() {
       const storedAgencies = localStorage.getItem(AGENCIES_STORAGE_KEY);
       let agenciesToSet: Agency[] = storedAgencies ? JSON.parse(storedAgencies) : [...seededAgencies];
       seededAgencies.forEach(sa => { if (!agenciesToSet.find(a => a.id === sa.id)) agenciesToSet.push(sa); });
+      agenciesToSet.forEach(agency => { if (!agency.preferredCurrency) agency.preferredCurrency = "USD" as CurrencyCode}); // Ensure preferredCurrency
       agenciesToSet.sort((a, b) => a.name.localeCompare(b.name));
       setAgenciesState(agenciesToSet);
       localStorage.setItem(AGENCIES_STORAGE_KEY, JSON.stringify(agenciesToSet));
@@ -132,6 +132,7 @@ export function useAgents() {
       console.error("Error initializing agent/agency data:", e);
       setError("Failed to load agent/agency data.");
       const { agencies: defaultAgencies, agents: defaultAgents } = assignFixedAgencyIdsAndMapAgents(DEFAULT_AGENCIES_DATA_SEED, DEFAULT_AGENTS_DATA_SEED);
+      defaultAgencies.forEach(agency => { if (!agency.preferredCurrency) agency.preferredCurrency = "USD" as CurrencyCode});
       setAgenciesState(defaultAgencies.sort((a, b) => a.name.localeCompare(b.name)));
       localStorage.setItem(AGENCIES_STORAGE_KEY, JSON.stringify(defaultAgencies));
       setAgentsState(defaultAgents);
@@ -149,7 +150,7 @@ export function useAgents() {
   }, [agencies]);
   
   const addAgency = React.useCallback((agencyData: Omit<Agency, 'id'>) => {
-    const newAgency: Agency = { ...agencyData, id: generateGUID() };
+    const newAgency: Agency = { ...agencyData, id: generateGUID(), preferredCurrency: agencyData.preferredCurrency || ("USD" as CurrencyCode) };
     const updatedAgencies = [...agencies, newAgency].sort((a, b) => a.name.localeCompare(b.name));
     setAgenciesState(updatedAgencies);
     localStorage.setItem(AGENCIES_STORAGE_KEY, JSON.stringify(updatedAgencies));
@@ -157,12 +158,13 @@ export function useAgents() {
   }, [agencies, toast]);
 
   const updateAgency = React.useCallback((updatedAgencyData: Agency) => {
+    const finalAgencyData = { ...updatedAgencyData, preferredCurrency: updatedAgencyData.preferredCurrency || ("USD" as CurrencyCode) };
     const updatedAgencies = agencies.map(agency =>
-      agency.id === updatedAgencyData.id ? updatedAgencyData : agency
+      agency.id === finalAgencyData.id ? finalAgencyData : agency
     ).sort((a, b) => a.name.localeCompare(b.name));
     setAgenciesState(updatedAgencies);
     localStorage.setItem(AGENCIES_STORAGE_KEY, JSON.stringify(updatedAgencies));
-    toast({ title: "Agency Updated", description: `Agency "${updatedAgencyData.name}" updated.` });
+    toast({ title: "Agency Updated", description: `Agency "${finalAgencyData.name}" updated.` });
   }, [agencies, toast]);
 
   const deleteAgency = React.useCallback((agencyId: string) => {

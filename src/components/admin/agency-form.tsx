@@ -1,4 +1,3 @@
-
 /**
  * @fileoverview This component provides a form for creating or editing agency details.
  * It includes fields for agency name, address (street, city, postal code, country),
@@ -16,7 +15,8 @@ import * as React from 'react';
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, Controller } from "react-hook-form";
 import { AgencySchema, type Agency } from '@/types/agent';
-import type { CountryItem } from '@/types/itinerary';
+import type { CountryItem, CurrencyCode } from '@/types/itinerary';
+import { CURRENCIES } from '@/types/itinerary';
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -44,13 +44,14 @@ export function AgencyForm({ initialData, onSubmit, onCancel }: AgencyFormProps)
   const { countries, isLoading: isLoadingCountries } = useCountries();
 
   const form = useForm<AgencyFormValues>({
-    resolver: zodResolver(AgencySchema.omit({ id: initialData ? false : true })), // Omit ID validation for creation
+    resolver: zodResolver(AgencySchema.omit({ id: initialData ? false : true })), 
     defaultValues: {
       id: initialData?.id,
       name: initialData?.name || "",
       mainAddress: initialData?.mainAddress || { street: "", city: "", postalCode: "", countryId: "" },
       contactEmail: initialData?.contactEmail || "",
       contactPhone: initialData?.contactPhone || "",
+      preferredCurrency: initialData?.preferredCurrency || ("USD" as CurrencyCode),
     },
   });
 
@@ -58,11 +59,12 @@ export function AgencyForm({ initialData, onSubmit, onCancel }: AgencyFormProps)
     if (initialData) {
       form.reset({
         ...initialData,
-        mainAddress: initialData.mainAddress || { street: "", city: "", postalCode: "", countryId: "" }
+        mainAddress: initialData.mainAddress || { street: "", city: "", postalCode: "", countryId: "" },
+        preferredCurrency: initialData.preferredCurrency || ("USD" as CurrencyCode),
       });
     } else if (!isLoadingCountries && countries.length > 0 && !form.getValues('mainAddress.countryId') && !initialData) {
-        // Pre-select first country if creating new and no country is set
         form.setValue('mainAddress.countryId', countries[0].id);
+        form.setValue('preferredCurrency', initialData?.preferredCurrency || countries[0].defaultCurrency || ("USD" as CurrencyCode));
     }
   }, [initialData, form, countries, isLoadingCountries]);
 
@@ -123,7 +125,7 @@ export function AgencyForm({ initialData, onSubmit, onCancel }: AgencyFormProps)
             />
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <FormField
                 control={form.control}
                 name="contactEmail"
@@ -142,6 +144,23 @@ export function AgencyForm({ initialData, onSubmit, onCancel }: AgencyFormProps)
                     <FormItem>
                     <FormLabel>Contact Phone</FormLabel>
                     <FormControl><Input type="tel" placeholder="+1 555 123 4567" {...field} /></FormControl>
+                    <FormMessage />
+                    </FormItem>
+                )}
+            />
+             <FormField
+                control={form.control}
+                name="preferredCurrency"
+                render={({ field }) => (
+                    <FormItem>
+                    <FormLabel>Preferred Currency</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl><SelectTrigger><SelectValue placeholder="Select currency" /></SelectTrigger></FormControl>
+                        <SelectContent>
+                            {CURRENCIES.map(curr => <SelectItem key={curr} value={curr}>{curr}</SelectItem>)}
+                            <SelectItem value="USD">USD</SelectItem> 
+                        </SelectContent>
+                    </Select>
                     <FormMessage />
                     </FormItem>
                 )}
