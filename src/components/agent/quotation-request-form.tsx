@@ -104,6 +104,9 @@ export function QuotationRequestForm({ onSubmit, onCancel, defaultAgentId }: Quo
   const watchChildren = form.watch("clientInfo.children");
   const watchBudgetRange = form.watch("tripDetails.budgetRange");
   const watchSelectedCountryIds = form.watch("tripDetails.preferredCountryIds");
+  const durationDays = form.watch("tripDetails.durationDays");
+  const durationNights = form.watch("tripDetails.durationNights");
+
 
   React.useEffect(() => {
     if (watchStartDate && watchEndDate) {
@@ -328,8 +331,20 @@ export function QuotationRequestForm({ onSubmit, onCancel, defaultAgentId }: Quo
                 </div>
                  <FormField control={form.control} name="tripDetails.approximateDatesOrSeason" render={({ field }) => (<FormItem><FormLabel>Approximate Dates/Season (if specific dates unknown)</FormLabel><FormControl><Input placeholder="e.g., Mid-June for 2 weeks, Christmas 2024" {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem>)} />
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <FormField control={form.control} name="tripDetails.durationDays" render={({ field }) => (<FormItem><FormLabel>Trip Duration (Days)</FormLabel><FormControl><Input type="number" placeholder="Auto-calculated" {...field} value={field.value ?? ""} readOnly className="bg-muted/50 cursor-default" /></FormControl><FormMessage /></FormItem>)} />
-                  <FormField control={form.control} name="tripDetails.durationNights" render={({ field }) => (<FormItem><FormLabel>Trip Duration (Nights)</FormLabel><FormControl><Input type="number" placeholder="Auto-calculated" {...field} value={field.value ?? ""} readOnly className="bg-muted/50 cursor-default" /></FormControl><FormMessage /></FormItem>)} />
+                  <FormItem>
+                    <FormLabel>Trip Duration (Days)</FormLabel>
+                    <p className="h-10 flex items-center px-3 py-2 text-sm bg-muted/50 rounded-md text-muted-foreground">
+                        {typeof durationDays === 'number' ? `${durationDays} day(s)` : 'Auto-calculated'}
+                    </p>
+                    <FormMessage />
+                  </FormItem>
+                  <FormItem>
+                    <FormLabel>Trip Duration (Nights)</FormLabel>
+                     <p className="h-10 flex items-center px-3 py-2 text-sm bg-muted/50 rounded-md text-muted-foreground">
+                        {typeof durationNights === 'number' ? `${durationNights} night(s)` : 'Auto-calculated'}
+                    </p>
+                    <FormMessage />
+                  </FormItem>
                 </div>
                  <FormField control={form.control} name="tripDetails.tripType" render={({ field }) => (<FormItem><FormLabel>Type of Trip</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select trip type" /></SelectTrigger></FormControl><SelectContent>{TRIP_TYPES.map(type => <SelectItem key={type} value={type}>{type}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
                 <FormField control={form.control} name="tripDetails.budgetRange" render={({ field }) => (<FormItem><FormLabel>Budget Expectation</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select budget range" /></SelectTrigger></FormControl><SelectContent>{BUDGET_RANGES.map(range => <SelectItem key={range} value={range}>{range}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
@@ -394,3 +409,4 @@ export function QuotationRequestForm({ onSubmit, onCancel, defaultAgentId }: Quo
     </Form>
   );
 }
+
