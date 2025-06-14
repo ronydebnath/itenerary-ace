@@ -2,8 +2,8 @@
 /**
  * @fileoverview This page component provides a user interface for currency conversion
  * and managing exchange rates. It allows users to convert amounts between different
- * currencies based on stored exchange rates (potentially fetched from an API), 
- * set a global conversion markup, and add, edit, or delete base exchange rates. 
+ * currencies based on stored exchange rates (potentially fetched from an API),
+ * set a global conversion markup, and add, edit, or delete base exchange rates.
  * It utilizes the `useExchangeRates` hook to manage exchange rate data and logic.
  *
  * @bangla এই পৃষ্ঠা কম্পোনেন্টটি মুদ্রা রূপান্তর এবং বিনিময় হার ব্যবস্থাপনার জন্য একটি
@@ -67,14 +67,14 @@ interface ConversionResultState {
 }
 
 export default function CurrencyConverterPage() {
-  const { 
-    exchangeRates, 
-    isLoading, 
-    error, 
-    addRate, 
-    updateRate, 
-    deleteRate, 
-    getRate, 
+  const {
+    exchangeRates,
+    isLoading,
+    error,
+    addRate,
+    updateRate,
+    deleteRate,
+    getRate,
     refreshRates,
     markupPercentage,
     setGlobalMarkup,
@@ -83,7 +83,7 @@ export default function CurrencyConverterPage() {
 
   const [conversionResult, setConversionResult] = React.useState<ConversionResultState | null>(null);
   const [conversionError, setConversionError] = React.useState<string | null>(null);
-  
+
   const [isRateFormOpen, setIsRateFormOpen] = React.useState(false);
   const [editingRate, setEditingRate] = React.useState<ExchangeRate | null>(null);
 
@@ -118,6 +118,10 @@ export default function CurrencyConverterPage() {
     }
   }, [editingRate, rateForm]);
 
+  React.useEffect(() => {
+    console.log('CurrencyConverterPage: lastApiFetchTimestamp changed to:', lastApiFetchTimestamp);
+  }, [lastApiFetchTimestamp]);
+
   const handleConversionSubmit = (data: ConversionFormValues) => {
     setConversionError(null);
     setConversionResult(null);
@@ -129,7 +133,7 @@ export default function CurrencyConverterPage() {
       return;
     }
     const finalConvertedAmount = data.amount * rateDetails.finalRate;
-    
+
     const resultToDisplay: ConversionResultState = {
       originalAmount: data.amount,
       fromCurrency: data.fromCurrency,
@@ -162,16 +166,19 @@ export default function CurrencyConverterPage() {
     setEditingRate(rateToEdit);
     setIsRateFormOpen(true);
   };
-  
+
   const openNewRateDialog = () => {
     setEditingRate(null);
     rateForm.reset({ fromCurrency: "USD", toCurrency: "EUR", rate: 0.92 });
     setIsRateFormOpen(true);
   };
 
-  const lastFetchedDate = lastApiFetchTimestamp && isValid(parseISO(lastApiFetchTimestamp)) 
-    ? format(parseISO(lastApiFetchTimestamp), "MMM d, yyyy HH:mm:ss") 
-    : "N/A (Using local/default rates)";
+  const lastFetchedDate = React.useMemo(() => {
+    if (lastApiFetchTimestamp && isValid(parseISO(lastApiFetchTimestamp))) {
+      return format(parseISO(lastApiFetchTimestamp), "MMM d, yyyy HH:mm:ss");
+    }
+    return "N/A (Using local/default rates)";
+  }, [lastApiFetchTimestamp]);
 
   return (
     <main className="min-h-screen bg-background p-4 md:p-8">
@@ -198,10 +205,10 @@ export default function CurrencyConverterPage() {
             <form onSubmit={markupForm.handleSubmit(handleMarkupFormSubmit)} className="flex items-end gap-3">
               <div className="flex-grow">
                 <Label htmlFor="markup">Markup Percentage (%)</Label>
-                <Input 
-                  id="markup" 
-                  type="number" 
-                  step="0.01" 
+                <Input
+                  id="markup"
+                  type="number"
+                  step="0.01"
                   {...markupForm.register("markup")}
                   className="mt-1"
                   placeholder="e.g., 2.5 for 2.5%"
@@ -271,7 +278,7 @@ export default function CurrencyConverterPage() {
                   <p><strong>Original:</strong> {formatCurrency(conversionResult.originalAmount, conversionResult.fromCurrency)} ({conversionResult.fromCurrency})</p>
                   <p><strong>Target:</strong> {conversionResult.toCurrency}</p>
                   <p className="font-mono"><strong>Base Rate (1 {conversionResult.fromCurrency}):</strong> {conversionResult.baseRate.toFixed(6)} {conversionResult.toCurrency} (System calculated, possibly via USD)</p>
-                  
+
                   {conversionResult.markupApplied > 0 && conversionResult.fromCurrency !== conversionResult.toCurrency && (
                     <>
                       <p className="font-semibold text-accent dark:text-orange-400 pt-1 border-t border-border/50 mt-1">Markup Details:</p>
@@ -295,7 +302,7 @@ export default function CurrencyConverterPage() {
           <CardHeader className="flex flex-row justify-between items-center">
             <div>
               <CardTitle className="text-xl">Manage Base Exchange Rates</CardTitle>
-              <CardDescription>Define base rates. The "Effective Final Rate" column shows how the system (using USD intermediate &amp; current markup of <strong>{markupPercentage}%</strong>) would calculate it. Last API fetch: {lastFetchedDate}</CardDescription>
+              <CardDescription>Define base rates. The "Effective Final Rate" column shows how the system (using USD intermediate &amp; current markup of <strong>{markupPercentage}%</strong>) would calculate it. Last API fetch: <span className="font-semibold text-primary">{lastFetchedDate}</span></CardDescription>
             </div>
             <div className="flex flex-col sm:flex-row gap-2">
                 <Button onClick={refreshRates} size="sm" variant="outline" className="border-primary text-primary hover:bg-primary/10">
@@ -348,7 +355,7 @@ export default function CurrencyConverterPage() {
                         effectiveFinalRateDisplay = rate.rate.toFixed(6);
                         markupAddedDisplay = "Calc Error";
                       }
-                      
+
                       return (
                         <TableRow key={rate.id}>
                           <TableCell>{rate.fromCurrency}</TableCell>
