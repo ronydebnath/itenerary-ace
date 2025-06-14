@@ -30,7 +30,7 @@ export default function AgentQuotationRequestPage() {
 
   const handleFormSubmit = (data: QuotationRequest) => {
     const newRequest = { ...data, agentId: placeholderAgentId };
-    console.log("New Quotation Request Submitted:", newRequest);
+    console.log("Processing quotation request to be sent (saved for admin):", newRequest);
 
     try {
       const storedRequestsString = localStorage.getItem(AGENT_QUOTATION_REQUESTS_KEY);
@@ -39,8 +39,8 @@ export default function AgentQuotationRequestPage() {
       localStorage.setItem(AGENT_QUOTATION_REQUESTS_KEY, JSON.stringify(existingRequests));
 
       toast({
-        title: "Request Submitted!",
-        description: "Your quotation request has been sent. Admin will be notified and will prepare a proposal.",
+        title: "Request Sent to Admin!",
+        description: "Your quotation request has been successfully saved and is now pending admin review for a proposal.",
         variant: "default",
       });
       router.push('/agent'); 
@@ -96,4 +96,3 @@ export default function AgentQuotationRequestPage() {
     </main>
   );
 }
-
