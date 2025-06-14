@@ -186,7 +186,7 @@ export function QuotationRequestForm({ onSubmit, onCancel, defaultAgentId }: Quo
     setCountrySelectionError(null); // Clear previous general error
 
     const allMessages: { path: string; message: string; type?: string }[] = [];
-    const extractErrorMessages = (currentErrorObject: any, currentPathPrefix = "") => {
+    const logAllMessages = (currentErrorObject: any, currentPathPrefix = "") => {
       if (!currentErrorObject) return;
       Object.keys(currentErrorObject).forEach(key => {
         const fieldError = currentErrorObject[key];
@@ -197,29 +197,30 @@ export function QuotationRequestForm({ onSubmit, onCancel, defaultAgentId }: Quo
             allMessages.push({ path: fieldPath, message: fieldError.message, type: fieldError.type });
           }
           if (typeof fieldError === 'object' && !fieldError.message && key !== 'ref' && key !== 'types' && Object.keys(fieldError).length > 0) {
-            extractErrorMessages(fieldError, fieldPath);
+            logAllMessages(fieldError, fieldPath); // Recurse for nested objects
           }
         }
       });
     };
 
-    extractErrorMessages(errors); // Populate allMessages
+    logAllMessages(errors); // Populate allMessages with all error messages from any depth
+    console.error("[DEBUG] All Extracted Validation Errors:", allMessages);
 
+    if (errors.tripDetails?.preferredCountryIds && typeof errors.tripDetails.preferredCountryIds.message === 'string') {
+      setCountrySelectionError(errors.tripDetails.preferredCountryIds.message);
+      const countrySectionElement = document.querySelector('div[data-testid="preferred-countries-form-item"]');
+      if (countrySectionElement) {
+        countrySectionElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        console.log("[DEBUG] Scrolled to preferred-countries-form-item due to specific error.");
+        return; // Prioritize this specific scroll and error display
+      }
+    }
+
+    // General scroll to the first errored field
     if (allMessages.length > 0) {
       const firstError = allMessages[0];
-      console.log(`[DEBUG] First validation error: Path='${firstError.path}', Message='${firstError.message}', Type='${firstError.type}'`);
+      console.log(`[DEBUG] First validation error identified: Path='${firstError.path}', Message='${firstError.message}', Type='${firstError.type}'`);
 
-      if (firstError.path === 'tripDetails.preferredCountryIds' && typeof firstError.message === 'string') {
-        setCountrySelectionError(firstError.message);
-        const countrySectionElement = document.querySelector('div[data-testid="preferred-countries-form-item"]');
-        if (countrySectionElement) {
-          countrySectionElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          console.log("[DEBUG] Scrolled to preferred-countries-form-item due to specific error.");
-          return; // Prioritize this specific scroll and error display
-        }
-      }
-
-      // General scroll to the first errored field
       try {
         form.setFocus(firstError.path as FieldPath<QuotationRequest>);
         const fieldState = form.getFieldState(firstError.path as FieldPath<QuotationRequest>);
@@ -228,7 +229,6 @@ export function QuotationRequestForm({ onSubmit, onCancel, defaultAgentId }: Quo
         if (fieldState?.ref instanceof HTMLElement) {
           elementToScroll = fieldState.ref;
         } else {
-          // Fallback if ref is not HTMLElement (e.g., for custom components or arrays)
           const elementsByName = document.getElementsByName(firstError.path);
           if (elementsByName.length > 0 && elementsByName[0] instanceof HTMLElement) {
             elementToScroll = elementsByName[0];
@@ -237,7 +237,7 @@ export function QuotationRequestForm({ onSubmit, onCancel, defaultAgentId }: Quo
 
         if (elementToScroll) {
           let scrollTarget: HTMLElement | null = elementToScroll.closest('div[data-form-item-container]');
-          if (!scrollTarget) scrollTarget = elementToScroll.closest('.space-y-2'); // Common FormItem structure
+          if (!scrollTarget) scrollTarget = elementToScroll.closest('.space-y-2');
           if (!scrollTarget) scrollTarget = elementToScroll;
 
           if (scrollTarget) {
@@ -257,7 +257,6 @@ export function QuotationRequestForm({ onSubmit, onCancel, defaultAgentId }: Quo
       }
     } else if (errors.root?.message) {
       console.error(`[DEBUG] Root form error: ${errors.root.message}`);
-      // Handle root error display if necessary, e.g., general alert at top of form
     } else if (Object.keys(errors).length > 0) {
       console.warn("[DEBUG] Validation failed but no specific field error messages extracted. Errors object:", errors);
       (document.querySelector('form') as HTMLFormElement)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
