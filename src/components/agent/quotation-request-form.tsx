@@ -78,7 +78,7 @@ export function QuotationRequestForm({ onSubmit, onCancel, defaultAgentId }: Quo
         preferredProvinceNames: [],
       },
       accommodationPrefs: {
-        hotelStarRating: "Any",
+        hotelStarRating: "3 Stars", // Default to 3 Stars
         roomPreferences: "",
         specificHotelRequests: "",
       },
@@ -329,7 +329,7 @@ export function QuotationRequestForm({ onSubmit, onCancel, defaultAgentId }: Quo
                   <FormField control={form.control} name="tripDetails.preferredStartDate" render={({ field }) => (<FormItem className="flex flex-col"><FormLabel>Preferred Start Date</FormLabel><Controller control={form.control} name="tripDetails.preferredStartDate" render={({ field: { onChange, value } }) => <DatePicker date={value ? parseISO(value) : undefined} onDateChange={(date) => onChange(date ? format(date, 'yyyy-MM-dd') : undefined)} placeholder="Select start date"/>} /><FormMessage /></FormItem>)} />
                   <FormField control={form.control} name="tripDetails.preferredEndDate" render={({ field }) => (<FormItem className="flex flex-col"><FormLabel>Preferred End Date</FormLabel><Controller control={form.control} name="tripDetails.preferredEndDate" render={({ field: { onChange, value } }) => <DatePicker date={value ? parseISO(value) : undefined} onDateChange={(date) => onChange(date ? format(date, 'yyyy-MM-dd') : undefined)} placeholder="Select end date" minDate={watchStartDate ? parseISO(watchStartDate) : undefined} />} /><FormMessage /></FormItem>)} />
                 </div>
-                <p className="text-base text-muted-foreground pt-2">
+                 <p className="text-base text-muted-foreground pt-2">
                   {typeof durationNights === 'number' && typeof durationDays === 'number'
                     ? `Duration: ${durationNights} night(s) / ${durationDays} day(s)`
                     : 'Duration: Auto-calculated based on dates'}
@@ -397,3 +397,4 @@ export function QuotationRequestForm({ onSubmit, onCancel, defaultAgentId }: Quo
     </Form>
   );
 }
+
