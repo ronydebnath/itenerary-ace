@@ -203,7 +203,7 @@ export function QuotationRequestForm({ onSubmit, onCancel, defaultAgentId }: Quo
       });
     };
 
-    logAllMessages(errors); // Populate allMessages with all error messages from any depth
+    logAllMessages(errors);
     console.error("[DEBUG] All Extracted Validation Errors:", allMessages);
 
     if (errors.tripDetails?.preferredCountryIds && typeof errors.tripDetails.preferredCountryIds.message === 'string') {
@@ -234,11 +234,11 @@ export function QuotationRequestForm({ onSubmit, onCancel, defaultAgentId }: Quo
             elementToScroll = elementsByName[0];
           }
         }
-
+        
         if (elementToScroll) {
           let scrollTarget: HTMLElement | null = elementToScroll.closest('div[data-form-item-container]');
-          if (!scrollTarget) scrollTarget = elementToScroll.closest('.space-y-2');
-          if (!scrollTarget) scrollTarget = elementToScroll;
+          if (!scrollTarget) scrollTarget = elementToScroll.closest('.space-y-2'); // Fallback if no data-attribute
+          if (!scrollTarget) scrollTarget = elementToScroll; // Last resort
 
           if (scrollTarget) {
             scrollTarget.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -253,6 +253,7 @@ export function QuotationRequestForm({ onSubmit, onCancel, defaultAgentId }: Quo
         }
       } catch (focusError) {
         console.error("[DEBUG] Error trying to set focus or scroll:", focusError, "Path:", firstError.path);
+        // Fallback scroll to form top on any error during focus/scroll attempt
         (document.querySelector('form') as HTMLFormElement)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
     } else if (errors.root?.message) {
@@ -343,7 +344,7 @@ export function QuotationRequestForm({ onSubmit, onCancel, defaultAgentId }: Quo
                           <p className="text-sm text-muted-foreground text-center py-4 border rounded-md bg-muted/50">No countries available for selection.</p>
                       )}
                       {selectedCountryNames.length > 0 && (<div className="pt-1 text-xs text-muted-foreground">Selected Countries: {selectedCountryNames.join(', ')}</div>)}
-                      <FormMessage /> 
+                      <FormMessage />
                     </FormItem>
                   )}
                 />
