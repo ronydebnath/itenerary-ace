@@ -1,4 +1,16 @@
-
+/**
+ * @fileoverview This component provides a form for travel agents to manage their
+ * professional profile. It includes fields for personal information (name, email, phone),
+ * agency details (name, address), and professional preferences (currency, specializations,
+ * experience, bio, profile picture URL). The form uses Zod for validation and interacts
+ * with a submit handler to save the profile data, typically to localStorage.
+ *
+ * @bangla এই কম্পোনেন্টটি ট্রাভেল এজেন্টদের তাদের পেশাদার প্রোফাইল পরিচালনা করার জন্য
+ * একটি ফর্ম সরবরাহ করে। এটিতে ব্যক্তিগত তথ্য (নাম, ইমেল, ফোন), এজেন্সি বিবরণ (নাম, ঠিকানা)
+ * এবং পেশাগত পছন্দ (মুদ্রা, বিশেষত্ব, অভিজ্ঞতা, জীবনবৃত্তান্ত, প্রোফাইল ছবির URL) এর জন্য
+ * ক্ষেত্র অন্তর্ভুক্ত রয়েছে। ফর্মটি বৈধতা যাচাইয়ের জন্য Zod ব্যবহার করে এবং প্রোফাইল ডেটা
+ * সংরক্ষণ করার জন্য একটি সাবমিট হ্যান্ডলারের সাথে ইন্টারঅ্যাক্ট করে, সাধারণত localStorage-এ।
+ */
 "use client";
 
 import * as React from 'react';

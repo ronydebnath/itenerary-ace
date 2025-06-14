@@ -1,4 +1,16 @@
-
+/**
+ * @fileoverview This component provides a comprehensive form for travel agents to submit
+ * new quotation requests. It captures client information, detailed trip preferences
+ * (destinations, dates, duration, type, budget), accommodation choices, activity interests,
+ * and flight requirements. The form utilizes Zod for validation and is designed to collect
+ * all necessary data for an admin to prepare a travel proposal.
+ *
+ * @bangla এই কম্পোনেন্টটি ট্রাভেল এজেন্টদের নতুন উদ্ধৃতি অনুরোধ জমা দেওয়ার জন্য একটি
+ * ব্যাপক ফর্ম সরবরাহ করে। এটি ক্লায়েন্টের তথ্য, বিস্তারিত ভ্রমণ পছন্দ (গন্তব্য, তারিখ,
+ * সময়কাল, প্রকার, বাজেট), আবাসনের পছন্দ, কার্যকলাপের আগ্রহ এবং ফ্লাইটের প্রয়োজনীয়তা
+ * ক্যাপচার করে। ফর্মটি বৈধতা যাচাইয়ের জন্য Zod ব্যবহার করে এবং একটি অ্যাডমিনকে ভ্রমণের
+ * প্রস্তাবনা প্রস্তুত করার জন্য সমস্ত প্রয়োজনীয় ডেটা সংগ্রহ করার জন্য ডিজাইন করা হয়েছে।
+ */
 "use client";
 
 import * as React from 'react';

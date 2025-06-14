@@ -1,4 +1,14 @@
-
+/**
+ * @fileoverview This component defines the layout for the print view of an itinerary.
+ * It structures the itinerary data, including a header with company details,
+ * the main content (cost breakdown and detailed summary), and a footer.
+ * This layout is specifically styled for printing using CSS print media queries.
+ *
+ * @bangla এই কম্পোনেন্টটি একটি ভ্রমণপথের প্রিন্ট ভিউয়ের জন্য লেআউট নির্ধারণ করে।
+ * এটি ভ্রমণপথের ডেটা কাঠামোবদ্ধ করে, যার মধ্যে কোম্পানির বিবরণ সহ একটি হেডার,
+ * মূল বিষয়বস্তু (খরচ ভাঙ্গন এবং বিস্তারিত সারাংশ) এবং একটি ফুটার অন্তর্ভুক্ত।
+ * এই লেআউটটি CSS প্রিন্ট মিডিয়া কোয়েরি ব্যবহার করে প্রিন্টিংয়ের জন্য বিশেষভাবে স্টাইল করা হয়েছে।
+ */
 "use client";
 
 import type { TripData, CostSummary } from '@/types/itinerary';

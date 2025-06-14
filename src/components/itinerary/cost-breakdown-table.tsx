@@ -1,4 +1,14 @@
-
+/**
+ * @fileoverview This component renders a table displaying the cost breakdown
+ * per traveler for an itinerary. It takes the cost summary, currency, and list
+ * of travelers as props, and shows individual totals and the grand total.
+ * It also has an option to hide/show cost details.
+ *
+ * @bangla এই কম্পোনেন্টটি একটি ভ্রমণপথের জন্য প্রতি ভ্রমণকারীর খরচ ভাঙ্গন প্রদর্শনকারী
+ * একটি টেবিল রেন্ডার করে। এটি খরচের সারাংশ, মুদ্রা এবং ভ্রমণকারীদের তালিকা props
+ * হিসেবে গ্রহণ করে এবং ব্যক্তিগত মোট এবং গ্র্যান্ড টোটাল দেখায়। এটিতে খরচের বিবরণ
+ * লুকানো/দেখানোর একটি বিকল্পও রয়েছে।
+ */
 "use client";
 
 import * as React from 'react';

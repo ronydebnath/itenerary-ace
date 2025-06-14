@@ -1,4 +1,15 @@
-
+/**
+ * @fileoverview This component renders a detailed table summarizing all items in an itinerary.
+ * It groups items by category (e.g., Hotels, Activities, Transfers) and displays key details
+ * for each item, including name, notes, configuration, excluded travelers, and costs (if shown).
+ * It is designed to provide a comprehensive overview for both screen and print views.
+ *
+ * @bangla এই কম্পোনেন্টটি একটি ভ্রমণপথের সমস্ত আইটেমের সারসংক্ষেপ একটি বিস্তারিত টেবিল রেন্ডার করে।
+ * এটি আইটেমগুলিকে বিভাগ অনুসারে (যেমন, হোটেল, কার্যকলাপ, ট্রান্সফার) গ্রুপ করে এবং প্রতিটি
+ * আইটেমের জন্য মূল বিবরণ প্রদর্শন করে, যার মধ্যে নাম, নোট, কনফিগারেশন, বাদ দেওয়া ভ্রমণকারী
+ * এবং খরচ (যদি দেখানো হয়) অন্তর্ভুক্ত। এটি স্ক্রিন এবং প্রিন্ট উভয় ভিউয়ের জন্য একটি
+ * ব্যাপক ওভারভিউ প্রদানের জন্য ডিজাইন করা হয়েছে।
+ */
 "use client";
 import React from 'react';
 import type { CostSummary, CurrencyCode, DetailedSummaryItem, HotelOccupancyDetail } from '@/types/itinerary';
@@ -12,15 +23,15 @@ interface DetailsSummaryTableProps {
 }
 
 function DetailsSummaryTableComponent({ summary, currency, showCosts }: DetailsSummaryTableProps) {
-  const renderItemRow = (item: DetailedSummaryItem, isPrintView: boolean = false) => {
+  const renderItemRow = (item: DetailedSummaryItem, isPrintContext: boolean = false) => {
     const configDetailsArray = item.configurationDetails?.split(';').map(d => d.trim()).filter(Boolean) || [];
 
     return (
-      <React.Fragment key={`${item.id}-${isPrintView ? 'print' : 'screen'}-${showCosts ? 'costs' : 'no-costs'}`}>
-        <TableRow className={isPrintView ? 'print-details-item' : ''}>
+      <React.Fragment key={`${item.id}-${isPrintContext ? 'print' : 'screen'}-${showCosts ? 'costs' : 'no-costs'}`}>
+        <TableRow className={isPrintContext ? 'print-details-item' : ''}>
           <TableCell className="font-medium align-top">{item.type}</TableCell>
           <TableCell className="align-top">
-            {item.day && !isPrintView ? `(Day ${item.day}) ` : ''}
+            {item.day && !isPrintContext ? `(Day ${item.day}) ` : ''}
             {item.name}
             {item.province && <div className="text-xs text-muted-foreground">Loc: {item.province}{item.countryName ? `, ${item.countryName}` : ''}</div>}
           </TableCell>
@@ -32,17 +43,17 @@ function DetailsSummaryTableComponent({ summary, currency, showCosts }: DetailsS
               ))
             ) : '-'}
           </TableCell>
-          {!isPrintView && <TableCell className="text-xs align-top">{item.excludedTravelers || 'All Included'}</TableCell>}
-          {showCosts && !isPrintView && <TableCell className="text-right font-code align-top">{formatCurrency(item.adultCost, currency)}</TableCell>}
-          {showCosts && !isPrintView && <TableCell className="text-right font-code align-top">{formatCurrency(item.childCost, currency)}</TableCell>}
+          {!isPrintContext && <TableCell className="text-xs align-top">{item.excludedTravelers || 'All Included'}</TableCell>}
+          {showCosts && !isPrintContext && <TableCell className="text-right font-code align-top">{formatCurrency(item.adultCost, currency)}</TableCell>}
+          {showCosts && !isPrintContext && <TableCell className="text-right font-code align-top">{formatCurrency(item.childCost, currency)}</TableCell>}
           {showCosts && <TableCell className="text-right font-semibold font-code align-top">{formatCurrency(item.totalCost, currency)}</TableCell>}
         </TableRow>
         {item.occupancyDetails && item.occupancyDetails.map((occDetail: HotelOccupancyDetail, index) => {
           const characteristicsArray = occDetail.characteristics?.split(';').map(d => d.trim()).filter(Boolean) || [];
           return (
             <TableRow 
-                key={`${item.id}-occ-${index}-${isPrintView ? 'print' : 'screen'}-${showCosts ? 'costs' : 'no-costs'}`} 
-                className={`bg-muted/30 text-xs ${isPrintView ? 'print-hotel-occupancy-detail-item' : 'hotel-occupancy-detail-item'}`}
+                key={`${item.id}-occ-${index}-${isPrintContext ? 'print' : 'screen'}-${showCosts ? 'costs' : 'no-costs'}`} 
+                className={`bg-muted/30 text-xs ${isPrintContext ? 'print-hotel-occupancy-detail-item' : 'hotel-occupancy-detail-item'}`}
             >
               <TableCell className="py-1 pl-4 align-top"></TableCell> {/* Indent for sub-item */}
               <TableCell className="py-1 pl-4 align-top italic">└ Room: {occDetail.roomTypeName}</TableCell>
@@ -62,9 +73,9 @@ function DetailsSummaryTableComponent({ summary, currency, showCosts }: DetailsS
                   </div>
                 )}
               </TableCell>
-              {!isPrintView && <TableCell className="py-1 align-top"></TableCell>}
-              {showCosts && !isPrintView && <TableCell className="py-1 align-top"></TableCell>}
-              {showCosts && !isPrintView && <TableCell className="py-1 align-top"></TableCell>}
+              {!isPrintContext && <TableCell className="py-1 align-top"></TableCell>}
+              {showCosts && !isPrintContext && <TableCell className="py-1 align-top"></TableCell>}
+              {showCosts && !isPrintContext && <TableCell className="py-1 align-top"></TableCell>}
               {showCosts && <TableCell className="text-right font-code py-1 align-top">{formatCurrency(occDetail.totalRoomBlockCost, currency)}</TableCell>}
             </TableRow>
           );
