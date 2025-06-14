@@ -25,7 +25,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { LayoutDashboard, PlusCircle, Trash2, AlertCircle, Loader2, Settings, BadgeDollarSign, Edit, Repeat, RefreshCw, ArrowUpDown, ArrowUp, ArrowDown, Tag, Info, Percent } from 'lucide-react';
 import { useCustomCurrencies } from '@/hooks/useCustomCurrencies';
 import type { CurrencyCode, ManagedCurrency, ExchangeRate, SpecificMarkupRate } from '@/types/itinerary';
-import { REFERENCE_CURRENCY, SYSTEM_DEFAULT_CURRENCIES } from '@/types/itinerary';
+import { REFERENCE_CURRENCY, CURRENCIES as SYSTEM_DEFAULT_CURRENCIES_ARRAY } from '@/types/itinerary'; // Aliased to avoid name clash locally
 import { Badge } from '@/components/ui/badge';
 import { useExchangeRates, type ConversionRateDetails } from '@/hooks/useExchangeRates';
 import { formatCurrency } from '@/lib/utils';
@@ -75,8 +75,8 @@ export default function ManageCurrenciesPage() {
   const [specificMarkupSortConfig, setSpecificMarkupSortConfig] = React.useState<SpecificMarkupSortConfig | null>({ key: 'fromCurrency', direction: 'ascending' });
 
   const allManagedCurrencyCodesForDisplay = React.useMemo(() => {
-    if (isLoadingCustomCurrenciesHook) return [...SYSTEM_DEFAULT_CURRENCIES, REFERENCE_CURRENCY]; // Provide a fallback during loading
-    return getAllManagedCurrencyCodesFromHook();
+    if (isLoadingCustomCurrenciesHook || !SYSTEM_DEFAULT_CURRENCIES_ARRAY) return [REFERENCE_CURRENCY]; // Provide a fallback during loading or if constant is not ready
+    return Array.from(new Set([...SYSTEM_DEFAULT_CURRENCIES_ARRAY, REFERENCE_CURRENCY, ...getAllManagedCurrencyCodesFromHook()]));
   }, [isLoadingCustomCurrenciesHook, getAllManagedCurrencyCodesFromHook]);
 
 
@@ -297,11 +297,11 @@ export default function ManageCurrenciesPage() {
                                 let displaySourceVariant: 'secondary' | 'outline';
                                 let displaySourceClassName: string;
 
-                                if (lastApiFetchTimestamp) { // If API is active, all effective rates calculations are API-driven
+                                if (lastApiFetchTimestamp) { 
                                     displaySourceText = 'API';
                                     displaySourceVariant = 'secondary';
                                     displaySourceClassName = 'bg-blue-100 text-blue-700 border-blue-300';
-                                } else { // API not active, show actual source of the defined base rate
+                                } else { 
                                     displaySourceText = rate.source?.toUpperCase() || 'MANUAL';
                                     displaySourceVariant = rate.source === 'api' ? 'secondary' : 'outline';
                                     displaySourceClassName = rate.source === 'api' ? 'bg-blue-100 text-blue-700 border-blue-300' : 'bg-green-50 text-green-700 border-green-300';
@@ -369,3 +369,4 @@ export default function ManageCurrenciesPage() {
 }
 
     
+
