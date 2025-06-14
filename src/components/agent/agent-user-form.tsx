@@ -54,8 +54,8 @@ export function AgentUserForm({
       fullName: initialData?.fullName || "",
       email: initialData?.email || "",
       phoneNumber: initialData?.phoneNumber || "",
-      agencyName: initialData?.agencyName || "", // This might be the parent agency's name, or a branch specific name
-      agencyAddress: initialData?.agencyAddress || { street: "", city: "", postalCode: "", countryId: "" },
+      agencyName: initialData?.agencyName || "", 
+      agencyAddress: initialData?.agencyAddress || { street: "", city: "", postalCode: "", countryId: countries.length > 0 ? countries[0].id : "" },
       preferredCurrency: initialData?.preferredCurrency || "USD",
       specializations: initialData?.specializations || "",
       yearsOfExperience: initialData?.yearsOfExperience || undefined,
@@ -69,7 +69,7 @@ export function AgentUserForm({
     if (initialData) {
       form.reset({ ...initialData, agencyId });
     } else {
-      form.reset({ // Reset to default for new user but keep agencyId
+      form.reset({ 
         id: `agent_${crypto.randomUUID()}`,
         agencyId: agencyId,
         fullName: "",
@@ -88,36 +88,35 @@ export function AgentUserForm({
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 max-h-[70vh] overflow-y-auto pr-2">
-        {/* Basic Information Section */}
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 max-h-[70vh] overflow-y-auto p-1">
         <FormField control={form.control} name="fullName" render={({ field }) => (<FormItem><FormLabel>Full Name</FormLabel><FormControl><Input placeholder="e.g., Jane Doe" {...field} /></FormControl><FormMessage /></FormItem> )} />
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <FormField control={form.control} name="email" render={({ field }) => (<FormItem><FormLabel>Email Address</FormLabel><FormControl><Input type="email" placeholder="user@example.com" {...field} /></FormControl><FormMessage /></FormItem>)} />
-          <FormField control={form.control} name="phoneNumber" render={({ field }) => (<FormItem><FormLabel>Phone Number</FormLabel><FormControl><Input type="tel" placeholder="+1 555 123 4567" {...field} /></FormControl><FormMessage /></FormItem> )} />
+          <FormField control={form.control} name="phoneNumber" render={({ field }) => (<FormItem><FormLabel>Phone Number (Optional)</FormLabel><FormControl><Input type="tel" placeholder="+1 555 123 4567" {...field} /></FormControl><FormMessage /></FormItem> )} />
         </div>
-
-        {/* Professional Details Section (Optional agency-specific address if needed) */}
+        
         <FormField control={form.control} name="agencyName" render={({ field }) => (<FormItem><FormLabel>Specific Office/Branch Name (Optional)</FormLabel><FormControl><Input placeholder="e.g., Downtown Branch" {...field} /></FormControl><FormDescription className="text-xs">If different from main agency name.</FormDescription><FormMessage /></FormItem>)} />
         
-        <div className="text-sm font-medium text-muted-foreground pt-2">Office Address (Optional for this user)</div>
-        <FormField control={form.control} name="agencyAddress.street" render={({ field }) => (<FormItem><FormLabel className="text-xs">Street</FormLabel><FormControl><Input placeholder="123 Office Park" {...field} /></FormControl><FormMessage /></FormItem>)} />
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <FormField control={form.control} name="agencyAddress.city" render={({ field }) => (<FormItem><FormLabel className="text-xs">City</FormLabel><FormControl><Input placeholder="Officetown" {...field} /></FormControl><FormMessage /></FormItem>)} />
-            <FormField control={form.control} name="agencyAddress.stateProvince" render={({ field }) => (<FormItem><FormLabel className="text-xs">State/Province</FormLabel><FormControl><Input placeholder="OS" {...field} /></FormControl><FormMessage /></FormItem>)} />
-            <FormField control={form.control} name="agencyAddress.postalCode" render={({ field }) => (<FormItem><FormLabel className="text-xs">Postal</FormLabel><FormControl><Input placeholder="90210" {...field} /></FormControl><FormMessage /></FormItem>)} />
+        <div className="border p-3 rounded-md space-y-3 mt-3">
+            <p className="text-sm font-medium text-muted-foreground -mt-1">User's Office Address (Optional)</p>
+            <FormField control={form.control} name="agencyAddress.street" render={({ field }) => (<FormItem><FormLabel className="text-xs">Street</FormLabel><FormControl><Input placeholder="123 Office Park" {...field} /></FormControl><FormMessage /></FormItem>)} />
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <FormField control={form.control} name="agencyAddress.city" render={({ field }) => (<FormItem><FormLabel className="text-xs">City</FormLabel><FormControl><Input placeholder="Officetown" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                <FormField control={form.control} name="agencyAddress.stateProvince" render={({ field }) => (<FormItem><FormLabel className="text-xs">State/Province</FormLabel><FormControl><Input placeholder="OS" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                <FormField control={form.control} name="agencyAddress.postalCode" render={({ field }) => (<FormItem><FormLabel className="text-xs">Postal</FormLabel><FormControl><Input placeholder="90210" {...field} /></FormControl><FormMessage /></FormItem>)} />
+            </div>
+            <FormField control={form.control} name="agencyAddress.countryId" render={({ field }) => (<FormItem><FormLabel className="text-xs">Country</FormLabel><Select onValueChange={field.onChange} value={field.value || ""} disabled={isLoadingCountries}><FormControl><SelectTrigger><SelectValue placeholder={isLoadingCountries ? "Loading..." : "Select"} /></SelectTrigger></FormControl><SelectContent>{countries.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
         </div>
-        <FormField control={form.control} name="agencyAddress.countryId" render={({ field }) => (<FormItem><FormLabel className="text-xs">Country</FormLabel><Select onValueChange={field.onChange} value={field.value || ""} disabled={isLoadingCountries}><FormControl><SelectTrigger><SelectValue placeholder={isLoadingCountries ? "Loading..." : "Select"} /></SelectTrigger></FormControl><SelectContent>{countries.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
 
-
-        <FormField control={form.control} name="preferredCurrency" render={({ field }) => (<FormItem><FormLabel>Preferred Currency</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select currency" /></SelectTrigger></FormControl><SelectContent>{CURRENCIES.map(curr => <SelectItem key={curr} value={curr}>{curr}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
-        <FormField control={form.control} name="specializations" render={({ field }) => (<FormItem><FormLabel>Specializations</FormLabel><FormControl><Textarea placeholder="e.g., Luxury Travel, Adventure Tours" {...field} rows={2} /></FormControl><FormMessage /></FormItem>)} />
-        <FormField control={form.control} name="yearsOfExperience" render={({ field }) => (<FormItem><FormLabel>Years of Experience</FormLabel><FormControl><Input type="number" placeholder="5" {...field} onChange={e => field.onChange(e.target.value === '' ? undefined : parseInt(e.target.value, 10))} /></FormControl><FormMessage /></FormItem>)} />
-        <FormField control={form.control} name="bio" render={({ field }) => (<FormItem><FormLabel>Short Bio</FormLabel><FormControl><Textarea placeholder="User's professional background..." {...field} rows={3} /></FormControl><FormMessage /></FormItem>)} />
-        <FormField control={form.control} name="profilePictureUrl" render={({ field }) => (<FormItem><FormLabel>Profile Picture URL</FormLabel><FormControl><Input type="url" placeholder="https://example.com/photo.jpg" {...field} /></FormControl><FormMessage /></FormItem>)} />
+        <FormField control={form.control} name="preferredCurrency" render={({ field }) => (<FormItem><FormLabel>Preferred Currency</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select currency" /></SelectTrigger></FormControl><SelectContent>{CURRENCIES.map(curr => <SelectItem key={curr} value={curr}>{curr}</SelectItem>)}<SelectItem value="USD">USD</SelectItem></SelectContent></Select><FormMessage /></FormItem>)} />
+        <FormField control={form.control} name="specializations" render={({ field }) => (<FormItem><FormLabel>Specializations (Optional)</FormLabel><FormControl><Textarea placeholder="e.g., Luxury Travel, Adventure Tours" {...field} rows={2} /></FormControl><FormMessage /></FormItem>)} />
+        <FormField control={form.control} name="yearsOfExperience" render={({ field }) => (<FormItem><FormLabel>Years of Experience (Optional)</FormLabel><FormControl><Input type="number" placeholder="5" {...field} onChange={e => field.onChange(e.target.value === '' ? undefined : parseInt(e.target.value, 10))} /></FormControl><FormMessage /></FormItem>)} />
+        <FormField control={form.control} name="bio" render={({ field }) => (<FormItem><FormLabel>Short Bio (Optional)</FormLabel><FormControl><Textarea placeholder="User's professional background..." {...field} rows={3} /></FormControl><FormMessage /></FormItem>)} />
+        <FormField control={form.control} name="profilePictureUrl" render={({ field }) => (<FormItem><FormLabel>Profile Picture URL (Optional)</FormLabel><FormControl><Input type="url" placeholder="https://example.com/photo.jpg" {...field} /></FormControl><FormMessage /></FormItem>)} />
         
         <FormField control={form.control} name="agencyId" render={({ field }) => (<FormItem className="hidden"><FormLabel>Agency ID (Hidden)</FormLabel><FormControl><Input {...field} readOnly /></FormControl><FormMessage /></FormItem>)} />
 
-        <div className="flex justify-end space-x-3 pt-4">
+        <div className="flex justify-end space-x-3 pt-4 sticky bottom-0 bg-background pb-1">
           <Button type="button" variant="outline" onClick={onCancel} disabled={form.formState.isSubmitting}>
             Cancel
           </Button>
