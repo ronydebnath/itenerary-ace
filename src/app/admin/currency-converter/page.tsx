@@ -2,13 +2,13 @@
 /**
  * @fileoverview This page component provides a user interface for currency conversion
  * and managing exchange rates. It allows users to convert amounts between different
- * currencies based on stored exchange rates, set a global conversion markup (for THB/MYR based tours),
+ * currencies based on stored exchange rates, set a global conversion markup,
  * and add, edit, or delete base exchange rates. It utilizes the `useExchangeRates`
  * hook to manage exchange rate data and logic.
  *
  * @bangla এই পৃষ্ঠা কম্পোনেন্টটি মুদ্রা রূপান্তর এবং বিনিময় হার ব্যবস্থাপনার জন্য একটি
  * ব্যবহারকারী ইন্টারফেস সরবরাহ করে। এটি ব্যবহারকারীদের সংরক্ষিত বিনিময় হারের উপর ভিত্তি করে
- * বিভিন্ন মুদ্রার মধ্যে পরিমাণ রূপান্তর করতে, একটি গ্লোবাল রূপান্তর মার্কআপ (THB/MYR ভিত্তিক ট্যুরের জন্য) সেট করতে, এবং
+ * বিভিন্ন মুদ্রার মধ্যে পরিমাণ রূপান্তর করতে, একটি গ্লোবাল রূপান্তর মার্কআপ সেট করতে, এবং
  * বেস বিনিময় হার যোগ, সম্পাদনা বা মুছে ফেলতে দেয়। এটি বিনিময় হারের ডেটা এবং যুক্তি
  * পরিচালনা করার জন্য `useExchangeRates` হুক ব্যবহার করে।
  */
@@ -55,11 +55,14 @@ const markupSchema = z.object({
 });
 type MarkupFormValues = z.infer<typeof markupSchema>;
 
-interface ConversionResultState extends ConversionRateDetails {
+interface ConversionResultState {
   originalAmount: number;
   fromCurrency: CurrencyCode;
   toCurrency: CurrencyCode;
-  convertedAmount: number;
+  baseRate: number;       // Rate without markup
+  finalRate: number;      // Rate with markup
+  markupApplied: number;  // Percentage of markup applied
+  convertedAmount: number;// Final converted amount
 }
 
 export default function CurrencyConverterPage() {
@@ -118,7 +121,7 @@ export default function CurrencyConverterPage() {
     setConversionResult(null);
     const rateDetails = getRate(data.fromCurrency, data.toCurrency);
     if (rateDetails === null) {
-      setConversionError(`Exchange rate from ${data.fromCurrency} to ${data.toCurrency} is not defined or calculable. Ensure base rates to/from USD are set.`);
+      setConversionError(`Exchange rate from ${data.fromCurrency} to ${data.toCurrency} is not defined or calculable. Ensure base rates to/from USD are set for all currencies.`);
       return;
     }
     const finalConvertedAmount = data.amount * rateDetails.finalRate;
@@ -175,7 +178,6 @@ export default function CurrencyConverterPage() {
           </div>
         </div>
 
-        {/* Conversion Markup Settings Section */}
         <Card className="mb-8 shadow-lg">
           <CardHeader>
             <CardTitle className="text-xl flex items-center"><Settings className="mr-2 h-5 w-5"/>Conversion Markup Settings</CardTitle>
@@ -198,12 +200,11 @@ export default function CurrencyConverterPage() {
               <Button type="submit" className="bg-accent hover:bg-accent/90 text-accent-foreground" size="sm">Set Markup</Button>
             </form>
             <p className="text-xs text-muted-foreground mt-2">
-              This markup is applied when a tour's price, listed in a base currency, is converted to a different currency for display or transaction. The conversion always uses USD as an intermediate step. For example, if the markup is {markupPercentage}%, the rate from Base Currency to USD is first determined, then USD to Target Currency. The markup is applied to the final calculated rate.
+              This markup is applied when the 'From' and 'To' currencies are different. USD is used as an intermediate for all conversions.
             </p>
           </CardContent>
         </Card>
 
-        {/* Conversion Section */}
         <Card className="mb-8 shadow-lg">
           <CardHeader>
             <CardTitle className="text-xl">Convert Currency</CardTitle>
@@ -260,8 +261,9 @@ export default function CurrencyConverterPage() {
                 <p className="text-lg font-semibold text-green-800 dark:text-green-300 text-center">Conversion Result</p>
                 <div className="text-sm text-green-700/90 dark:text-green-300/90 space-y-1">
                   <p><strong>Original:</strong> {formatCurrency(conversionResult.originalAmount, conversionResult.fromCurrency)} ({conversionResult.fromCurrency})</p>
-                  <p><strong>To:</strong> {conversionResult.toCurrency}</p>
+                  <p><strong>Target:</strong> {conversionResult.toCurrency}</p>
                   <p className="font-mono"><strong>Base Rate (1 {conversionResult.fromCurrency}):</strong> {conversionResult.baseRate.toFixed(6)} {conversionResult.toCurrency}</p>
+                  
                   {conversionResult.markupApplied > 0 && conversionResult.fromCurrency !== conversionResult.toCurrency && (
                     <>
                       <p className="font-semibold text-primary dark:text-blue-400">Markup Details:</p>
@@ -281,7 +283,6 @@ export default function CurrencyConverterPage() {
           </CardContent>
         </Card>
 
-        {/* Exchange Rate Management Section */}
         <Card className="shadow-lg">
           <CardHeader className="flex flex-row justify-between items-center">
             <div>
@@ -357,7 +358,6 @@ export default function CurrencyConverterPage() {
           </CardContent>
         </Card>
 
-        {/* Add/Edit Rate Dialog */}
         <Dialog open={isRateFormOpen} onOpenChange={(isOpen) => {
             setIsRateFormOpen(isOpen);
             if (!isOpen) setEditingRate(null);
@@ -413,5 +413,4 @@ export default function CurrencyConverterPage() {
     </main>
   );
 }
-
     
