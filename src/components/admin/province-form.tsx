@@ -1,4 +1,15 @@
-
+/**
+ * @fileoverview This component provides a form for creating or editing province details.
+ * It includes fields for the province name and selecting its parent country from a list
+ * populated by the `useCountries` hook. The form uses Zod for validation and interacts
+ * with submit/cancel handlers from its parent component (usually `ProvinceManager`).
+ *
+ * @bangla এই কম্পোনেন্টটি প্রদেশের বিবরণ তৈরি বা সম্পাদনা করার জন্য একটি ফর্ম সরবরাহ করে।
+ * এটিতে প্রদেশের নাম এবং `useCountries` হুক দ্বারা জনবহুল তালিকা থেকে এর মূল দেশ
+ * নির্বাচন করার জন্য ক্ষেত্র অন্তর্ভুক্ত রয়েছে। ফর্মটি বৈধতা যাচাইয়ের জন্য Zod ব্যবহার করে
+ * এবং এর প্যারেন্ট কম্পোনেন্ট (`ProvinceManager`) থেকে সাবমিট/ বাতিল হ্যান্ডলারগুলির সাথে
+ * ইন্টারঅ্যাক্ট করে।
+ */
 "use client";
 
 import * as React from 'react';

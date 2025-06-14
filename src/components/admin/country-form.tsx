@@ -1,4 +1,14 @@
-
+/**
+ * @fileoverview This component provides a form for creating or editing country details.
+ * It includes fields for the country name and its default currency. The form uses
+ * Zod for validation and interacts with submit/cancel handlers provided by its parent
+ * component (typically `CountryManager`).
+ *
+ * @bangla এই কম্পোনেন্টটি দেশের বিবরণ তৈরি বা সম্পাদনা করার জন্য একটি ফর্ম সরবরাহ করে।
+ * এটিতে দেশের নাম এবং এর ডিফল্ট মুদ্রার জন্য ক্ষেত্র অন্তর্ভুক্ত রয়েছে। ফর্মটি বৈধতা
+ * যাচাইয়ের জন্য Zod ব্যবহার করে এবং এর প্যারেন্ট কম্পোনেন্ট (`CountryManager`) দ্বারা
+ * সরবরাহ করা সাবমিট/ বাতিল হ্যান্ডলারগুলির সাথে ইন্টারঅ্যাক্ট করে।
+ */
 "use client";
 
 import * as React from 'react';

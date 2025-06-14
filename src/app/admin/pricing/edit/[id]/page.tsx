@@ -1,4 +1,14 @@
-
+/**
+ * @fileoverview This page component allows administrators to edit an existing service price item.
+ * It fetches the service price details based on the ID from the URL, pre-fills the
+ * `ServicePriceFormRouter` with this data, and handles the submission of updated information
+ * back to localStorage.
+ *
+ * @bangla এই পৃষ্ঠা কম্পোনেন্টটি প্রশাসকদের একটি বিদ্যমান পরিষেবা মূল্য আইটেম সম্পাদনা করার
+ * অনুমতি দেয়। এটি URL থেকে আইডির উপর ভিত্তি করে পরিষেবা মূল্যের বিবরণ আনে, এই ডেটা সহ
+ * `ServicePriceFormRouter` প্রি-ফিল করে, এবং আপডেট করা তথ্য localStorage-এ জমা দেওয়ার
+ * প্রক্রিয়া পরিচালনা করে।
+ */
 "use client";
 
 import * as React from 'react';

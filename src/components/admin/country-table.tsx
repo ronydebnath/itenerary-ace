@@ -1,4 +1,12 @@
-
+/**
+ * @fileoverview This component renders a table displaying a list of countries.
+ * Each row shows the country's name, default currency, and provides actions
+ * to edit or delete the country. It is used within the `CountryManager` component.
+ *
+ * @bangla এই কম্পোনেন্টটি দেশগুলির একটি তালিকা প্রদর্শনকারী একটি টেবিল রেন্ডার করে।
+ * প্রতিটি সারিতে দেশের নাম, ডিফল্ট মুদ্রা এবং দেশটি সম্পাদনা বা মুছে ফেলার জন্য
+ * ক্রিয়া সরবরাহ করা হয়। এটি `CountryManager` কম্পোনেন্টের মধ্যে ব্যবহৃত হয়।
+ */
 "use client";
 
 import {

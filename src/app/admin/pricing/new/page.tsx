@@ -1,4 +1,16 @@
-
+/**
+ * @fileoverview This page component allows administrators to add a new service price item.
+ * It utilizes the `ServicePriceFormRouter` to render the appropriate form fields based
+ * on the selected service category. It can optionally prefill form data from localStorage
+ * if an AI parsing process (like contract import) has placed temporary data there.
+ * Submitted data is saved to localStorage.
+ *
+ * @bangla এই পৃষ্ঠা কম্পোনেন্টটি প্রশাসকদের একটি নতুন পরিষেবা মূল্য আইটেম যোগ করার অনুমতি দেয়।
+ * এটি নির্বাচিত পরিষেবা বিভাগের উপর ভিত্তি করে উপযুক্ত ফর্ম ক্ষেত্রগুলি রেন্ডার করার জন্য
+ * `ServicePriceFormRouter` ব্যবহার করে। যদি কোনও AI পার্সিং প্রক্রিয়া (যেমন চুক্তি আমদানি)
+ * অস্থায়ী ডেটা localStorage-এ রেখে থাকে, তবে এটি ঐচ্ছিকভাবে ফর্ম ডেটা প্রিফিল করতে পারে।
+ * জমা দেওয়া ডেটা localStorage-এ সংরক্ষিত হয়।
+ */
 "use client";
 
 import * as React from 'react';
