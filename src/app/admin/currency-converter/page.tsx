@@ -50,10 +50,10 @@ const rateSchema = z.object({
 });
 type RateFormValues = z.infer<typeof rateSchema>;
 
-const markupSchema = z.object({ // Renamed from bufferSchema
-  markup: z.coerce.number().min(0, "Markup must be non-negative").max(50, "Markup cannot exceed 50%"), // Renamed field
+const markupSchema = z.object({
+  markup: z.coerce.number().min(0, "Markup must be non-negative").max(50, "Markup cannot exceed 50%"),
 });
-type MarkupFormValues = z.infer<typeof markupSchema>; // Renamed from BufferFormValues
+type MarkupFormValues = z.infer<typeof markupSchema>;
 
 export default function CurrencyConverterPage() {
   const { 
@@ -65,8 +65,8 @@ export default function CurrencyConverterPage() {
     deleteRate, 
     getRate, 
     refreshRates,
-    markupPercentage, // Renamed from bufferPercentage
-    setGlobalMarkup   // Renamed from setGlobalBuffer
+    markupPercentage,
+    setGlobalMarkup
   } = useExchangeRates();
 
   const [convertedAmount, setConvertedAmount] = React.useState<number | null>(null);
@@ -85,13 +85,13 @@ export default function CurrencyConverterPage() {
     defaultValues: { fromCurrency: "USD", toCurrency: "EUR", rate: 0.92 },
   });
 
-  const markupForm = useForm<MarkupFormValues>({ // Renamed from bufferForm
+  const markupForm = useForm<MarkupFormValues>({
     resolver: zodResolver(markupSchema),
-    defaultValues: { markup: markupPercentage }, // Renamed field
+    defaultValues: { markup: markupPercentage },
   });
 
   React.useEffect(() => {
-    markupForm.reset({ markup: markupPercentage }); // Renamed field and form
+    markupForm.reset({ markup: markupPercentage });
   }, [markupPercentage, markupForm]);
 
   React.useEffect(() => {
@@ -128,8 +128,8 @@ export default function CurrencyConverterPage() {
     rateForm.reset({ fromCurrency: "USD", toCurrency: "EUR", rate: 0.92 });
   };
 
-  const handleMarkupFormSubmit = (data: MarkupFormValues) => { // Renamed from handleBufferFormSubmit
-    setGlobalMarkup(data.markup); // Renamed field and function
+  const handleMarkupFormSubmit = (data: MarkupFormValues) => {
+    setGlobalMarkup(data.markup);
   };
 
   const openEditRateDialog = (rateToEdit: ExchangeRate) => {
@@ -163,26 +163,26 @@ export default function CurrencyConverterPage() {
         <Card className="mb-8 shadow-lg">
           <CardHeader>
             <CardTitle className="text-xl flex items-center"><Settings className="mr-2 h-5 w-5"/>Conversion Markup Settings</CardTitle>
-            <CardDescription>Set a global markup for conversions from THB or MYR. Currently applied markup: <strong>{markupPercentage}%</strong></CardDescription>
+            <CardDescription>Set a global markup for conversions. Currently applied markup: <strong>{markupPercentage}%</strong></CardDescription>
           </CardHeader>
           <CardContent>
-            <form onSubmit={markupForm.handleSubmit(handleMarkupFormSubmit)} className="flex items-end gap-3"> {/* Renamed form */}
+            <form onSubmit={markupForm.handleSubmit(handleMarkupFormSubmit)} className="flex items-end gap-3">
               <div className="flex-grow">
-                <Label htmlFor="markup">Markup Percentage (%)</Label> {/* Renamed field */}
+                <Label htmlFor="markup">Markup Percentage (%)</Label>
                 <Input 
                   id="markup" 
                   type="number" 
                   step="0.01" 
-                  {...markupForm.register("markup")} // Renamed field
+                  {...markupForm.register("markup")}
                   className="mt-1"
                   placeholder="e.g., 2.5 for 2.5%"
                 />
-                {markupForm.formState.errors.markup && <p className="text-xs text-destructive mt-1">{markupForm.formState.errors.markup.message}</p>} {/* Renamed field */}
+                {markupForm.formState.errors.markup && <p className="text-xs text-destructive mt-1">{markupForm.formState.errors.markup.message}</p>}
               </div>
               <Button type="submit" className="bg-accent hover:bg-accent/90 text-accent-foreground" size="sm">Set Markup</Button>
             </form>
             <p className="text-xs text-muted-foreground mt-2">
-              This markup is applied when the tour's base price is in THB or MYR and it's displayed in a different currency. The conversion goes via USD. For example, with a 3% markup, an item costing 100 THB (base rate 1 THB = 0.027 USD) would convert to 0.02781 USD per THB for calculation purposes.
+              This markup is applied when a tour's price, listed in a base currency, is converted to a different currency for display or transaction. The conversion always uses USD as an intermediate step. For instance, if the markup is 3%, and an item costs 100 units in its base currency which converts to 0.027 USD per unit (base rate), the effective rate used for further conversion will be 0.02781 USD per unit of the base currency.
             </p>
           </CardContent>
         </Card>
@@ -191,7 +191,7 @@ export default function CurrencyConverterPage() {
         <Card className="mb-8 shadow-lg">
           <CardHeader>
             <CardTitle className="text-xl">Convert Currency</CardTitle>
-            <CardDescription>Enter amount and select currencies to convert. Markup of <strong>{markupPercentage}%</strong> will be applied if converting from THB/MYR.</CardDescription>
+            <CardDescription>Enter amount and select currencies to convert. Markup of <strong>{markupPercentage}%</strong> will be applied if the 'From' and 'To' currencies are different.</CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={conversionForm.handleSubmit(handleConversionSubmit)} className="space-y-4">
@@ -241,7 +241,7 @@ export default function CurrencyConverterPage() {
             )}
             {convertedAmount !== null && (
               <div className="mt-6 p-4 bg-green-50 border border-green-200 rounded-md text-center">
-                <p className="text-sm text-green-700">Converted Amount (with {markupPercentage}% markup if applicable):</p>
+                <p className="text-sm text-green-700">Converted Amount ({markupPercentage > 0 && conversionForm.getValues("fromCurrency") !== conversionForm.getValues("toCurrency") ? `with ${markupPercentage}% markup` : 'no markup applied'}):</p>
                 <p className="text-2xl font-bold text-green-800">
                   {formatCurrency(convertedAmount, conversionForm.getValues("toCurrency"))}
                 </p>

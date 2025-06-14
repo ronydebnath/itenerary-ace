@@ -18,7 +18,7 @@ import { generateGUID } from '@/lib/utils';
 import { useToast } from './use-toast';
 
 const EXCHANGE_RATES_STORAGE_KEY = 'itineraryAceExchangeRates';
-const EXCHANGE_MARKUP_STORAGE_KEY = 'itineraryAceExchangeMarkup'; // Renamed from BUFFER
+const EXCHANGE_MARKUP_STORAGE_KEY = 'itineraryAceExchangeMarkup';
 const REFERENCE_CURRENCY: CurrencyCode = "USD";
 
 // Ensure DEFAULT_RATES_DATA is USD-centric
@@ -34,7 +34,7 @@ const DEFAULT_RATES_DATA: Omit<ExchangeRate, 'id' | 'updatedAt'>[] = [
 
 export function useExchangeRates() {
   const [exchangeRates, setExchangeRates] = React.useState<ExchangeRate[]>([]);
-  const [markupPercentage, setMarkupPercentageState] = React.useState<number>(0); // Renamed from bufferPercentage
+  const [markupPercentage, setMarkupPercentageState] = React.useState<number>(0);
   const [isLoading, setIsLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
   const { toast } = useToast();
@@ -108,7 +108,7 @@ export function useExchangeRates() {
     }
   };
 
-  const setGlobalMarkup = (newMarkup: number) => { // Renamed from setGlobalBuffer
+  const setGlobalMarkup = (newMarkup: number) => {
     if (isNaN(newMarkup) || newMarkup < 0) {
       toast({ title: "Invalid Markup", description: "Markup percentage must be a non-negative number.", variant: "destructive"});
       return;
@@ -207,8 +207,8 @@ export function useExchangeRates() {
 
     const combinedBaseRate = rateFromToUSD * rateUSDToTo;
 
-    // Apply markup if fromCurrency is THB or MYR and it's different from toCurrency
-    if ((fromCurrency === 'THB' || fromCurrency === 'MYR') && fromCurrency !== toCurrency) {
+    // Apply markup if fromCurrency is different from toCurrency and markup is set
+    if (fromCurrency !== toCurrency && markupPercentage > 0) {
       const markedUpRate = combinedBaseRate * (1 + (markupPercentage / 100));
       return Math.max(0.000001, markedUpRate);
     }
@@ -224,8 +224,9 @@ export function useExchangeRates() {
     updateRate, 
     deleteRate, 
     getRate, 
-    markupPercentage, // Renamed from bufferPercentage
-    setGlobalMarkup,  // Renamed from setGlobalBuffer
+    markupPercentage,
+    setGlobalMarkup,
     refreshRates: fetchAndSeedData
   };
 }
+
