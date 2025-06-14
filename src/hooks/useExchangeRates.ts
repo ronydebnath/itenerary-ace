@@ -31,6 +31,7 @@ const DEFAULT_RATES_DATA: Omit<ExchangeRate, 'id' | 'updatedAt'>[] = [
   { fromCurrency: "USD", toCurrency: "EUR", rate: 0.92 },
   { fromCurrency: "USD", toCurrency: "GBP", rate: 0.79 },
   { fromCurrency: "USD", toCurrency: "JPY", rate: 157.00 },
+  { fromCurrency: "USD", toCurrency: "AUD", rate: 1.50 }, // Added AUD
 ];
 
 export interface ConversionRateDetails {
@@ -119,8 +120,8 @@ export function useExchangeRates() {
           }
         });
         toast({ title: "Rates Updated", description: "Successfully fetched latest exchange rates.", variant: "default" });
-      } else if (!storedRatesString || ratesToSet.filter(r => r.fromCurrency === REFERENCE_CURRENCY).length === 0) {
-        // If API failed AND no stored rates OR no USD rates in storage, use hardcoded defaults for USD pairs
+      } else if (!storedRatesString || ratesToSet.filter(r => r.fromCurrency === REFERENCE_CURRENCY).length < (CURRENCIES.length -1) ) {
+        // If API failed AND no stored rates OR not all USD rates in storage, use hardcoded defaults for USD pairs
         DEFAULT_RATES_DATA.forEach(defaultRate => {
           if (!ratesToSet.some(r => r.fromCurrency === defaultRate.fromCurrency && r.toCurrency === defaultRate.toCurrency)) {
             ratesToSet.push({ ...defaultRate, id: generateGUID(), updatedAt: new Date().toISOString() });

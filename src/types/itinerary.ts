@@ -29,7 +29,7 @@ export interface Traveler {
   type: 'adult' | 'child';
 }
 
-export const CURRENCIES = ['USD', 'EUR', 'GBP', 'THB', 'JPY', 'MYR', 'SGD', 'VND'] as const;
+export const CURRENCIES = ['USD', 'EUR', 'GBP', 'THB', 'JPY', 'MYR', 'SGD', 'VND', 'AUD'] as const;
 export type CurrencyCode = typeof CURRENCIES[number];
 
 export interface PaxDetails {
