@@ -120,12 +120,15 @@ export default function CurrencyConverterPage() {
     setConversionError(null);
     setConversionResult(null);
     const rateDetails = getRate(data.fromCurrency, data.toCurrency);
+    console.log("CurrencyConverterPage: rateDetails from getRate:", rateDetails);
+
     if (rateDetails === null) {
       setConversionError(`Exchange rate from ${data.fromCurrency} to ${data.toCurrency} is not defined or calculable. Ensure base rates to/from USD are set for all currencies.`);
       return;
     }
     const finalConvertedAmount = data.amount * rateDetails.finalRate;
-    setConversionResult({
+    
+    const resultToDisplay: ConversionResultState = {
       originalAmount: data.amount,
       fromCurrency: data.fromCurrency,
       toCurrency: data.toCurrency,
@@ -133,7 +136,9 @@ export default function CurrencyConverterPage() {
       finalRate: rateDetails.finalRate,
       markupApplied: rateDetails.markupApplied,
       convertedAmount: finalConvertedAmount,
-    });
+    };
+    console.log("CurrencyConverterPage: resultToDisplay to be set in state:", resultToDisplay);
+    setConversionResult(resultToDisplay);
   };
 
   const handleRateFormSubmit = (data: RateFormValues) => {
@@ -181,7 +186,7 @@ export default function CurrencyConverterPage() {
         <Card className="mb-8 shadow-lg">
           <CardHeader>
             <CardTitle className="text-xl flex items-center"><Settings className="mr-2 h-5 w-5"/>Conversion Markup Settings</CardTitle>
-            <CardDescription>Set a global markup for conversions. Currently applied markup: <strong>{markupPercentage}%</strong></CardDescription>
+            <CardDescription>Set a global markup percentage for conversions. Currently applied markup: <strong>{markupPercentage}%</strong></CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={markupForm.handleSubmit(handleMarkupFormSubmit)} className="flex items-end gap-3">
@@ -208,7 +213,7 @@ export default function CurrencyConverterPage() {
         <Card className="mb-8 shadow-lg">
           <CardHeader>
             <CardTitle className="text-xl">Convert Currency</CardTitle>
-            <CardDescription>Enter amount and select currencies to convert. Markup of <strong>{markupPercentage}%</strong> will be applied if the 'From' and 'To' currencies are different.</CardDescription>
+            <CardDescription>Enter amount and select currencies to convert. A markup of <strong>{markupPercentage}%</strong> will be applied if the 'From' and 'To' currencies are different.</CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={conversionForm.handleSubmit(handleConversionSubmit)} className="space-y-4">
@@ -257,25 +262,25 @@ export default function CurrencyConverterPage() {
               </Alert>
             )}
             {conversionResult && (
-              <div className="mt-6 p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700 rounded-md space-y-2">
-                <p className="text-lg font-semibold text-green-800 dark:text-green-300 text-center">Conversion Result</p>
-                <div className="text-sm text-green-700/90 dark:text-green-300/90 space-y-1">
+              <div className="mt-6 p-4 bg-secondary/30 dark:bg-secondary/10 border border-secondary rounded-md space-y-2">
+                <p className="text-lg font-semibold text-primary dark:text-blue-400 text-center">Conversion Result</p>
+                <div className="text-sm text-foreground/90 dark:text-foreground/80 space-y-1">
                   <p><strong>Original:</strong> {formatCurrency(conversionResult.originalAmount, conversionResult.fromCurrency)} ({conversionResult.fromCurrency})</p>
                   <p><strong>Target:</strong> {conversionResult.toCurrency}</p>
                   <p className="font-mono"><strong>Base Rate (1 {conversionResult.fromCurrency}):</strong> {conversionResult.baseRate.toFixed(6)} {conversionResult.toCurrency}</p>
                   
                   {conversionResult.markupApplied > 0 && conversionResult.fromCurrency !== conversionResult.toCurrency && (
                     <>
-                      <p className="font-semibold text-primary dark:text-blue-400">Markup Details:</p>
+                      <p className="font-semibold text-accent dark:text-orange-400 pt-1 border-t border-border/50 mt-1">Markup Details:</p>
                       <ul className="list-disc list-inside pl-4 text-xs">
                         <li><strong>Applied Markup:</strong> {conversionResult.markupApplied.toFixed(2)}%</li>
-                        <li className="font-mono"><strong>Markup Value:</strong> {formatCurrency(conversionResult.convertedAmount - (conversionResult.originalAmount * conversionResult.baseRate), conversionResult.toCurrency)}</li>
+                        <li className="font-mono"><strong>Markup Value:</strong> +{formatCurrency(conversionResult.convertedAmount - (conversionResult.originalAmount * conversionResult.baseRate), conversionResult.toCurrency)}</li>
                         <li className="font-mono"><strong>Effective Rate (1 {conversionResult.fromCurrency}):</strong> {conversionResult.finalRate.toFixed(6)} {conversionResult.toCurrency}</li>
                       </ul>
                     </>
                   )}
-                  <p className="text-xl font-bold text-green-800 dark:text-green-200 mt-2 pt-2 border-t border-green-200 dark:border-green-600">
-                    Converted Amount: {formatCurrency(conversionResult.convertedAmount, conversionResult.toCurrency)}
+                  <p className="text-xl font-bold text-accent-foreground dark:text-accent-foreground mt-2 pt-2 border-t border-border">
+                    Final Converted Amount: {formatCurrency(conversionResult.convertedAmount, conversionResult.toCurrency)}
                   </p>
                 </div>
               </div>

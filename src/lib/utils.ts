@@ -18,6 +18,12 @@ export function formatCurrency(amount: number, currencyCode: CurrencyCode = 'THB
   try {
     const minDigits = precision !== undefined ? precision : 2;
     const maxDigits = precision !== undefined ? precision : 2;
+
+    if (typeof amount !== 'number' || isNaN(amount)) {
+      // console.warn(`formatCurrency received non-numeric amount: ${amount} for currency ${currencyCode}. Returning placeholder.`);
+      return `${currencyCode} --.--`; 
+    }
+
     return new Intl.NumberFormat(undefined, { 
       style: 'currency',
       currency: currencyCode,
@@ -25,12 +31,15 @@ export function formatCurrency(amount: number, currencyCode: CurrencyCode = 'THB
       maximumFractionDigits: maxDigits,
     }).format(amount);
   } catch (error) {
-    // Fallback for environments where Intl might not support the currency or other issues
-    // console.warn(`Currency formatting error for ${currencyCode}, falling back. Error: ${error}`);
-    return `${currencyCode} ${amount.toFixed(precision !== undefined ? precision : 2)}`;
+    // console.warn(`Currency formatting error for ${currencyCode}, amount ${amount}. Falling back. Error: ${error}`);
+    const fallbackAmount = (typeof amount === 'number' && !isNaN(amount)) 
+                           ? amount.toFixed(precision !== undefined ? precision : 2) 
+                           : '--.--';
+    return `${currencyCode} ${fallbackAmount}`;
   }
 }
 
 export function generateGUID(): string {
   return crypto.randomUUID();
 }
+
