@@ -45,7 +45,6 @@ export function CommonPriceFields({ form }: CommonPriceFieldsProps) {
       setFilteredProvinces(getProvincesByCountry(selectedCountryId));
       const selectedCountryDetails = getCountryById(selectedCountryId);
       if (selectedCountryDetails?.defaultCurrency) {
-        // Auto-set currency if category is not 'misc' and country has a default
         if (selectedCategory !== 'misc') {
             if (form.getValues('currency') !== selectedCountryDetails.defaultCurrency) {
               form.setValue('currency', selectedCountryDetails.defaultCurrency, { shouldValidate: true });
@@ -71,12 +70,11 @@ export function CommonPriceFields({ form }: CommonPriceFieldsProps) {
 
 
   React.useEffect(() => {
-    // If creating a new hotel and no country is selected, default to Thailand if available
     if (selectedCategory === 'hotel' && !form.getValues('countryId') && !isLoadingCountries && countries.length > 0) {
       const thailand = countries.find(c => c.name === "Thailand");
       if (thailand) {
         form.setValue('countryId', thailand.id, { shouldValidate: true });
-        if (thailand.defaultCurrency && selectedCategory !== 'misc') { // Check category again
+        if (thailand.defaultCurrency && selectedCategory !== 'misc') { 
           form.setValue('currency', thailand.defaultCurrency, { shouldValidate: true });
         }
       }
@@ -90,8 +88,8 @@ export function CommonPriceFields({ form }: CommonPriceFieldsProps) {
                             selectedCategory === 'meal');
 
   return (
-    <div className="border border-border rounded-md p-3 sm:p-4 relative">
-      <p className="text-xs sm:text-sm font-semibold -mt-5 sm:-mt-6 ml-2 px-1 bg-background inline-block absolute left-2 top-[-0.7rem] mb-4">Basic Service Details</p>
+    <div className="border border-border rounded-lg p-3 sm:p-4 relative bg-card shadow-sm">
+      <legend className="text-sm font-semibold -mt-5 sm:-mt-6 ml-2 px-1 bg-card inline-block absolute left-2 top-[-0.7rem] mb-3 sm:mb-4 text-primary">Basic Service Details</legend>
       <div className="space-y-3 sm:space-y-4 pt-2">
         <FormField
             control={form.control}
@@ -102,8 +100,6 @@ export function CommonPriceFields({ form }: CommonPriceFieldsProps) {
                 <Select
                 onValueChange={(value) => {
                     field.onChange(value);
-                    // When category changes, if a country is selected and the new category is not 'misc',
-                    // re-apply the country's default currency.
                     const country = getCountryById(form.getValues('countryId'));
                     if (country?.defaultCurrency && value !== 'misc') {
                     form.setValue('currency', country.defaultCurrency, { shouldValidate: true });
@@ -131,7 +127,7 @@ export function CommonPriceFields({ form }: CommonPriceFieldsProps) {
                     onValueChange={(value) => {
                         const newCountryId = value === "none" ? undefined : value;
                         field.onChange(newCountryId);
-                        form.setValue('province', undefined); // Reset province when country changes
+                        form.setValue('province', undefined); 
                         const country = getCountryById(newCountryId);
                         if (country?.defaultCurrency && selectedCategory !== 'misc') {
                             form.setValue('currency', country.defaultCurrency, {shouldValidate: true});

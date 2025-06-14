@@ -133,15 +133,15 @@ function DayViewComponent({
   };
 
   return (
-    <Card className="mb-6 shadow-md border-primary/20 w-full">
-      <CardContent className="px-1 sm:px-2 md:px-4 py-2 md:py-4">
-        <div className="space-y-4">
+    <Card className="mb-6 shadow-md border-primary/20 w-full bg-card">
+      <CardContent className="px-2 sm:px-4 py-3 md:py-4">
+        <div className="space-y-3 md:space-y-4">
           {items.length > 0 ? (
             items.map(item => renderItemForm(item))
           ) : (
-            <div className="text-center py-8 text-muted-foreground">
+            <div className="text-center py-10 text-muted-foreground">
               <PackagePlus className="mx-auto h-12 w-12 mb-2 text-gray-400" />
-              <p>No services planned for this day.</p>
+              <p className="text-md">No services planned for this day.</p>
               <p className="text-sm">Add services using the buttons below.</p>
             </div>
           )}
@@ -150,7 +150,7 @@ function DayViewComponent({
         <Separator className="my-4 md:my-6" />
 
         <div>
-          <h3 className="text-base font-semibold mb-2 text-center text-primary uppercase tracking-wider">Add Service to Day {dayNumber}</h3>
+          <h3 className="text-md font-semibold mb-2 text-center text-primary uppercase tracking-wider">Add Service to Day {dayNumber}</h3>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 sm:gap-3">
             {SERVICE_TYPES_CONFIG.map(serviceConfig => {
               const IconComponent = serviceConfig.icon;
@@ -158,11 +158,11 @@ function DayViewComponent({
                 <Button
                   key={serviceConfig.type}
                   variant="outline"
-                  className="flex-col h-auto px-2 py-3 sm:px-3 sm:py-4 border-dashed hover:border-solid hover:bg-primary/5 hover:text-primary group transition-all duration-150 ease-in-out"
+                  className="flex-col h-auto px-2 py-3 sm:py-4 border-dashed hover:border-solid hover:bg-primary/5 hover:text-primary group transition-all duration-150 ease-in-out text-xs sm:text-sm"
                   onClick={() => onAddItem(dayNumber, serviceConfig.type)}
                 >
-                  <IconComponent className="h-6 w-6 sm:h-5 sm:w-5 mb-1 text-muted-foreground group-hover:text-primary transition-colors" />
-                  <span className="text-xs sm:text-sm font-medium">{serviceConfig.label}</span>
+                  <IconComponent className="h-5 w-5 sm:h-6 sm:w-6 mb-1 text-muted-foreground group-hover:text-primary transition-colors" />
+                  <span className="font-medium">{serviceConfig.label}</span>
                 </Button>
               );
             })}
@@ -173,4 +173,3 @@ function DayViewComponent({
   );
 }
 export const DayView = React.memo(DayViewComponent);
-

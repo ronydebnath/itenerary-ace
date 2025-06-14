@@ -30,19 +30,19 @@ interface DashboardCardProps {
 
 function DashboardCard({ title, description, href, icon: Icon, buttonText = "Manage", className }: DashboardCardProps) {
   return (
-    <Card className={cn("shadow-lg hover:shadow-xl transition-shadow duration-300 flex flex-col", className)}>
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-xl font-semibold text-primary">{title}</CardTitle>
+    <Card className={cn("shadow-lg hover:shadow-xl transition-shadow duration-300 flex flex-col bg-card", className)}>
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 pt-4 px-4 sm:px-6">
+        <CardTitle className="text-lg sm:text-xl font-semibold text-primary">{title}</CardTitle>
         <div className="p-2 bg-primary/10 rounded-md">
-          <Icon className="h-6 w-6 text-primary" />
+          <Icon className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
         </div>
       </CardHeader>
-      <CardContent className="flex-grow">
-        <p className="text-sm text-muted-foreground">{description}</p>
+      <CardContent className="flex-grow px-4 sm:px-6 pt-2 pb-4">
+        <p className="text-xs sm:text-sm text-muted-foreground">{description}</p>
       </CardContent>
-      <CardFooter>
+      <CardFooter className="px-4 sm:px-6 pb-4">
         <Link href={href} passHref className="w-full">
-          <Button className="w-full bg-primary hover:bg-primary/90 text-primary-foreground text-md py-3">
+          <Button className="w-full bg-primary hover:bg-primary/90 text-primary-foreground text-sm sm:text-base py-2.5 sm:py-3">
             {buttonText}
           </Button>
         </Link>
@@ -53,23 +53,23 @@ function DashboardCard({ title, description, href, icon: Icon, buttonText = "Man
 
 export default function AdminDashboardPage() {
   return (
-    <main className="min-h-screen bg-background flex flex-col items-center p-4 md:p-8">
-      <div className="w-full max-w-5xl">
-        <header className="mb-10 text-center">
+    <main className="min-h-screen bg-background flex flex-col items-center p-4 md:p-6 lg:p-8">
+      <div className="w-full max-w-6xl">
+        <header className="mb-8 sm:mb-10 text-center">
           <div className="flex justify-between items-center w-full mb-4">
             <div></div> {/* Spacer */}
-            <div className="inline-block p-4 bg-primary/10 rounded-full">
-              <LayoutDashboard className="h-12 w-12 text-primary" />
+            <div className="inline-block p-3 sm:p-4 bg-primary/10 rounded-full">
+              <LayoutDashboard className="h-10 w-10 sm:h-12 sm:w-12 text-primary" />
             </div>
             <div className="self-start"> {/* Placeholder for potential future buttons like login/logout */} </div>
           </div>
-          <h1 className="text-4xl font-bold text-primary tracking-tight">Admin Dashboard</h1>
-          <p className="mt-2 text-lg text-muted-foreground">
+          <h1 className="text-3xl sm:text-4xl font-bold text-primary tracking-tight">Admin Dashboard</h1>
+          <p className="mt-2 text-md sm:text-lg text-muted-foreground">
             Oversee and manage all aspects of your Itinerary Ace application.
           </p>
         </header>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
            <DashboardCard
             title="Itinerary Creation Suite"
             description="Craft new itineraries, plan day-by-day activities, and calculate costs with our powerful planner."
@@ -84,7 +84,6 @@ export default function AdminDashboardPage() {
             href="/admin/quotation-requests"
             icon={ListChecks}
             buttonText="View Requests"
-            className="lg:col-span-1"
           />
           <DashboardCard
             title="Manage Saved Itineraries"
@@ -92,7 +91,6 @@ export default function AdminDashboardPage() {
             href="/admin/itineraries"
             icon={ListOrdered}
             buttonText="View Itineraries"
-            className="lg:col-span-1"
           />
           <DashboardCard
             title="Manage Service Prices"
@@ -100,7 +98,6 @@ export default function AdminDashboardPage() {
             href="/admin/pricing"
             icon={DollarSign}
             buttonText="Update Prices"
-            className="lg:col-span-1"
           />
           <DashboardCard
             title="Location Management"
@@ -108,7 +105,6 @@ export default function AdminDashboardPage() {
             href="/admin/locations"
             icon={Map}
             buttonText="Manage Locations"
-            className="lg:col-span-1"
           />
           <DashboardCard
             title="Currency Management"
@@ -116,7 +112,6 @@ export default function AdminDashboardPage() {
             href="/admin/currencies-management"
             icon={BadgeDollarSign}
             buttonText="Manage Currencies & Rates"
-            className="lg:col-span-1"
           />
            <DashboardCard
             title="AI Image Describer"
@@ -124,7 +119,6 @@ export default function AdminDashboardPage() {
             href="/image-describer"
             icon={Wand2}
             buttonText="Describe Image"
-            className="lg:col-span-1"
           />
           <DashboardCard
             title="Manage Agencies & Agents"
@@ -132,7 +126,6 @@ export default function AdminDashboardPage() {
             href="/admin/agencies"
             icon={Users}
             buttonText="Manage Agencies"
-            className="lg:col-span-1"
           />
            <DashboardCard
             title="Agent Tools & Portal"
@@ -140,7 +133,7 @@ export default function AdminDashboardPage() {
             href="/agent"
             icon={Briefcase}
             buttonText="Go to Agent Portal"
-            className="lg:col-span-1 border-secondary"
+            className="border-secondary"
           />
         </div>
       </div>

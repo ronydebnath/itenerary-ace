@@ -21,7 +21,7 @@ import { ServicePriceFormRouter } from '@/components/admin/service-pricing/Servi
 import type { ServicePriceItem } from '@/types/itinerary';
 import { generateGUID } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
-import { LayoutDashboard, ListPlus, ArrowLeft } from 'lucide-react'; // Changed Home to LayoutDashboard
+import { LayoutDashboard, ListPlus, ArrowLeft, Loader2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 const SERVICE_PRICES_STORAGE_KEY = 'itineraryAceServicePrices';
@@ -72,30 +72,35 @@ export default function NewServicePricePage() {
   };
   
   if (isLoading) {
-    return <div className="flex justify-center items-center min-h-screen">Loading...</div>;
+    return (
+        <main className="min-h-screen bg-background flex flex-col items-center justify-center p-4 md:p-8">
+            <Loader2 className="h-12 w-12 animate-spin text-primary mb-4"/>
+            <p className="text-muted-foreground">Loading form...</p>
+        </main>
+    );
   }
 
   return (
-    <main className="min-h-screen bg-background p-4 md:p-8">
+    <main className="min-h-screen bg-background p-4 md:p-6 lg:p-8">
       <Card className="w-full max-w-4xl mx-auto shadow-xl">
-        <CardHeader>
-          <div className="flex justify-between items-center mb-4">
+        <CardHeader className="p-4 sm:p-6">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
              <Link href="/" passHref>
-                <Button variant="outline" size="icon" className="h-10 w-10">
-                  <LayoutDashboard className="h-5 w-5" />
+                <Button variant="outline" size="icon" className="h-9 w-9 sm:h-10 sm:w-10">
+                  <LayoutDashboard className="h-4 w-4 sm:h-5 sm:w-5" />
                 </Button>
               </Link>
-            <CardTitle className="text-2xl font-bold text-primary flex items-center">
-              <ListPlus className="mr-3 h-7 w-7" /> Add New Service Price
+            <CardTitle className="text-xl sm:text-2xl font-bold text-primary flex items-center">
+              <ListPlus className="mr-2 sm:mr-3 h-6 w-6 sm:h-7 sm:w-7" /> Add New Service Price
             </CardTitle>
             <Link href="/admin/pricing" passHref>
-              <Button variant="outline">
-                <ArrowLeft className="mr-2 h-4 w-4" /> Back to Pricing List
+              <Button variant="outline" size="sm" className="h-9 text-xs sm:text-sm">
+                <ArrowLeft className="mr-1.5 h-4 w-4" /> Back to List
               </Button>
             </Link>
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-4 sm:p-6">
           <ServicePriceFormRouter
             key={JSON.stringify(initialData) || 'new-service'} 
             initialData={initialData}

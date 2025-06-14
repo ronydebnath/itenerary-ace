@@ -139,12 +139,13 @@ const vehicleOptionSchema = z.object({
 const servicePriceSchema = z.object({
   name: z.string().min(1, "Service name is required"),
   countryId: z.string().optional().nullable(),
-  province: z.string().optional().nullable(), // province name
+  province: z.string().optional().nullable(), 
   category: z.custom<ItineraryItemType>((val) => SERVICE_CATEGORIES.includes(val as ItineraryItemType), "Invalid category"),
   subCategory: z.string().optional().nullable(),
   price1: z.coerce.number().min(0, "Price must be non-negative").optional().nullable(),
   price2: z.coerce.number().min(0, "Price must be non-negative").optional().nullable(),
   currency: z.custom<CurrencyCode>((val) => CURRENCIES.includes(val as CurrencyCode), "Invalid currency"),
+  unitDescription: z.string().optional().nullable(), // Added nullable for consistency
   notes: z.string().optional().nullable(),
   selectedServicePriceId: z.string().optional().nullable(),
   
@@ -166,6 +167,7 @@ const servicePriceSchema = z.object({
     }
     data.price1 = undefined; data.price2 = undefined; data.subCategory = undefined;
     data.vehicleOptions = undefined; data.transferMode = undefined; data.maxPassengers = undefined;
+    if(!data.unitDescription) data.unitDescription = "per night";
   } else if (data.category === 'activity') {
     if ((!data.activityPackages || data.activityPackages.length === 0) && (typeof data.price1 !== 'number' || data.price1 < 0)) {
         ctx.addIssue({ code: z.ZodIssueCode.custom, message: "For activities, either define packages or provide a valid default Adult Price.", path: ["price1"] });
@@ -175,18 +177,21 @@ const servicePriceSchema = z.object({
     }
     data.subCategory = undefined; data.hotelDetails = undefined;
     data.vehicleOptions = undefined; data.transferMode = undefined; data.maxPassengers = undefined;
+    if(!data.unitDescription) data.unitDescription = "per person";
   } else if (data.category === 'transfer') {
     if (data.transferMode === 'vehicle') {
       if (!data.vehicleOptions || data.vehicleOptions.length === 0) {
         ctx.addIssue({ code: z.ZodIssueCode.custom, message: "For vehicle transfers, define at least one vehicle option.", path: ["vehicleOptions"] });
       }
       data.price1 = undefined; data.price2 = undefined; data.subCategory = undefined; data.maxPassengers = undefined;
+      if(!data.unitDescription) data.unitDescription = "per service";
     } else { 
       if (typeof data.price1 !== 'number') {
         ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Adult Ticket Price is required for ticket-based transfers.", path: ["price1"] });
       }
       data.subCategory = 'ticket';
       data.vehicleOptions = undefined; data.surchargePeriods = undefined;
+      if(!data.unitDescription) data.unitDescription = "per person";
     }
     data.hotelDetails = undefined; data.activityPackages = undefined;
   } else { 
@@ -195,6 +200,7 @@ const servicePriceSchema = z.object({
     }
     data.hotelDetails = undefined; data.activityPackages = undefined;
     data.vehicleOptions = undefined; data.transferMode = undefined; data.surchargePeriods = undefined; data.maxPassengers = undefined;
+    if(!data.unitDescription) data.unitDescription = "per person";
   }
 });
 
@@ -213,7 +219,7 @@ const createDefaultSeasonalPrice = (rate: number = 0): RoomTypeSeasonalPrice => 
 const createDefaultRoomType = (name?: string): HotelRoomTypeDefinition => ({ id: generateGUID(), name: name || 'Standard Room', extraBedAllowed: false, notes: '', seasonalPrices: [createDefaultSeasonalPrice()], characteristics: [] });
 
 const transformInitialDataToFormValues = (initialData?: Partial<ServicePriceItem>, countries?: CountryItem[]): Partial<ServicePriceFormValues> => {
-  const defaultCategory: ItineraryItemType = "misc"; // Changed default to misc
+  const defaultCategory: ItineraryItemType = initialData?.category || "activity";
   const today = new Date();
   
   let defaultCurrency: CurrencyCode = CURRENCIES.includes('USD') ? 'USD' : CURRENCIES[0];
@@ -222,7 +228,7 @@ const transformInitialDataToFormValues = (initialData?: Partial<ServicePriceItem
     if (country?.defaultCurrency) {
       defaultCurrency = country.defaultCurrency;
     }
-  } else if (initialData?.category === 'hotel') {
+  } else if (defaultCategory === 'hotel') {
     const thailand = countries?.find(c => c.name === "Thailand");
     if (thailand?.defaultCurrency) defaultCurrency = thailand.defaultCurrency;
   }
@@ -231,7 +237,8 @@ const transformInitialDataToFormValues = (initialData?: Partial<ServicePriceItem
     name: initialData?.name || "",
     countryId: initialData?.countryId || undefined,
     province: initialData?.province || undefined,
-    category: initialData?.category || defaultCategory,
+    category: defaultCategory,
+    unitDescription: initialData?.unitDescription || (defaultCategory === 'hotel' ? 'per night' : (defaultCategory === 'transfer' && initialData?.transferMode === 'vehicle' ? 'per service' : 'per person')),
     currency: initialData?.currency || defaultCurrency,
     notes: initialData?.notes || "",
     selectedServicePriceId: initialData?.selectedServicePriceId || undefined,
@@ -318,26 +325,24 @@ export function ServicePriceFormRouter({ initialData, onSubmit, onCancel }: Serv
   const isNewService = !initialData?.id;
   const isCreateMode = !initialData?.id;
 
-
   React.useEffect(() => {
     if(!isLoadingCountries) {
       form.reset(transformInitialDataToFormValues(initialData, countries));
     }
   }, [initialData, countries, form.reset, form, isLoadingCountries]);
 
-
   React.useEffect(() => {
     const currentCategoryValue = form.getValues('category');
     const currentName = form.getValues('name');
     const currentCountryId = form.getValues('countryId');
     const currentProvince = form.getValues('province');
-    const today = new Date();
-
+    const currentUnitDesc = form.getValues('unitDescription');
+    
     const setFieldValue = (path: any, value: any) => form.setValue(path, value, { shouldValidate: true, shouldDirty: true });
     
     if (currentCategoryValue === 'hotel') {
         let hotelDetailsCurrent = form.getValues('hotelDetails');
-        const expectedHotelName = currentName || (isNewService ? "New Hotel (Default Name)" : hotelDetailsCurrent?.name);
+        const expectedHotelName = currentName || (isNewService ? "New Hotel" : hotelDetailsCurrent?.name);
         const expectedCountryId = currentCountryId || (hotelDetailsCurrent?.countryId || "");
         const expectedProvince = currentProvince || hotelDetailsCurrent?.province || "";
         let updateRequired = false;
@@ -348,7 +353,7 @@ export function ServicePriceFormRouter({ initialData, onSubmit, onCancel }: Serv
                 name: expectedHotelName, 
                 countryId: expectedCountryId, 
                 province: expectedProvince, 
-                starRating: hotelDetailsCurrent?.starRating ?? 3, // Default star rating
+                starRating: hotelDetailsCurrent?.starRating ?? 3,
                 roomTypes: hotelDetailsCurrent?.roomTypes?.length ? hotelDetailsCurrent.roomTypes : [createDefaultRoomType()] 
             });
         } else {
@@ -359,9 +364,20 @@ export function ServicePriceFormRouter({ initialData, onSubmit, onCancel }: Serv
             if (hotelDetailsCurrent.starRating === undefined) { hotelDetailsCurrent.starRating = 3; updateRequired = true;}
             if (updateRequired) setFieldValue('hotelDetails', { ...hotelDetailsCurrent });
         }
+        if(!currentUnitDesc) setFieldValue('unitDescription', 'per night');
+    } else if (currentCategoryValue === 'activity') {
+        if(!currentUnitDesc) setFieldValue('unitDescription', 'per person');
+    } else if (currentCategoryValue === 'transfer') {
+        const currentTransferMode = form.getValues('transferMode');
+        if (currentTransferMode === 'vehicle' && !currentUnitDesc) {
+            setFieldValue('unitDescription', 'per service');
+        } else if (currentTransferMode !== 'vehicle' && !currentUnitDesc) { // ticket or undefined defaults to per person
+             setFieldValue('unitDescription', 'per person');
+        }
+    } else { // meal, misc
+        if(!currentUnitDesc) setFieldValue('unitDescription', 'per person');
     }
   }, [watchedCategory, watchedName, watchedCountryId, watchedProvince, isNewService, initialData, form, countries]);
-
 
   const handleActualSubmit = (values: ServicePriceFormValues) => {
     const dataToSubmit: any = JSON.parse(JSON.stringify(values)); 
@@ -369,7 +385,7 @@ export function ServicePriceFormRouter({ initialData, onSubmit, onCancel }: Serv
       dataToSubmit.hotelDetails.name = dataToSubmit.name || dataToSubmit.hotelDetails.name; 
       dataToSubmit.hotelDetails.countryId = dataToSubmit.countryId || dataToSubmit.hotelDetails.countryId;
       dataToSubmit.hotelDetails.province = dataToSubmit.province || dataToSubmit.hotelDetails.province || ""; 
-      dataToSubmit.hotelDetails.starRating = dataToSubmit.hotelDetails.starRating; // Ensure starRating is passed
+      dataToSubmit.hotelDetails.starRating = dataToSubmit.hotelDetails.starRating; 
       dataToSubmit.hotelDetails.roomTypes = dataToSubmit.hotelDetails.roomTypes.map((rt: any) => ({
         ...rt,
         seasonalPrices: rt.seasonalPrices.map((sp: any) => ({
@@ -409,8 +425,8 @@ export function ServicePriceFormRouter({ initialData, onSubmit, onCancel }: Serv
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(handleActualSubmit, handleFormError)} className="space-y-6">
-        <ScrollArea className="h-[calc(100vh-250px)] md:h-[calc(100vh-220px)] pr-3">
-          <div className="space-y-6 p-1">
+        <ScrollArea className="h-[calc(100vh-280px)] md:h-[calc(100vh-250px)] pr-3">
+          <div className="space-y-4 md:space-y-6 p-1">
             <CommonPriceFields form={form} />
             {watchedCategory === 'hotel' && <HotelPriceForm form={form} />}
             {watchedCategory === 'activity' && <ActivityPriceForm form={form} isCreateMode={isCreateMode} />}
@@ -420,8 +436,9 @@ export function ServicePriceFormRouter({ initialData, onSubmit, onCancel }: Serv
           </div>
         </ScrollArea>
         <div className="flex justify-end space-x-3 pt-4 border-t mt-4">
-          <Button type="button" variant="outline" onClick={onCancel}>Cancel</Button>
-          <Button type="submit" className="bg-accent hover:bg-accent/90 text-accent-foreground">
+          <Button type="button" variant="outline" onClick={onCancel} size="sm" className="h-9 text-sm">Cancel</Button>
+          <Button type="submit" className="bg-accent hover:bg-accent/90 text-accent-foreground h-9 text-sm" size="sm">
+            {form.formState.isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : null}
             {initialData?.id ? 'Update' : 'Create'} Service Price
           </Button>
         </div>

@@ -31,23 +31,23 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import type { ZodError } from 'zod';
 import { Dialog, DialogClose, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useCountries } from '@/hooks/useCountries'; // Import useCountries
+import { useCountries } from '@/hooks/useCountries'; 
 
 const SERVICE_PRICES_STORAGE_KEY = 'itineraryAceServicePrices';
 const TEMP_PREFILL_DATA_KEY = 'tempServicePricePrefillData';
 
-const TABS_CONFIG: Array<{ value: ItineraryItemType | 'all', label: string }> = [
-    { value: 'all', label: 'All' }, // Shortened for mobile
+const TABS_CONFIG: Array<{ value: ItineraryItemType | 'all', label: string, shortLabel?: string }> = [
+    { value: 'all', label: 'All Services', shortLabel: 'All' },
     { value: 'hotel', label: 'Hotels' },
     { value: 'activity', label: 'Activities' },
     { value: 'transfer', label: 'Transfers' },
     { value: 'meal', label: 'Meals' },
-    { value: 'misc', label: 'Misc' }, // Shortened for mobile
+    { value: 'misc', label: 'Miscellaneous', shortLabel: 'Misc' },
 ];
 
 export function PricingManager() {
   const { allServicePrices, isLoading: isLoadingServices } = useServicePrices();
-  const { countries, isLoading: isLoadingCountries, getCountryByName } = useCountries(); // Get countries
+  const { countries, isLoading: isLoadingCountries, getCountryByName } = useCountries();
   const [currentServicePrices, setCurrentServicePrices] = React.useState<ServicePriceItem[]>([]);
   const router = useRouter();
 
@@ -124,17 +124,15 @@ export function PricingManager() {
       const extractedData: AIContractDataOutput = await extractContractData({ contractText: textToParse });
       
       let countryIdForService: string | undefined = undefined;
-      if (extractedData.province) { // Try to infer country from province if AI provides one
+      if (extractedData.province) { 
           const foundCountry = countries.find(country => country.name.toLowerCase() === extractedData.province?.toLowerCase() || country.name.toLowerCase().includes(extractedData.province!.toLowerCase()));
           if (foundCountry) {
              countryIdForService = foundCountry.id;
           } else {
-            // If province is mentioned but not a direct country match, check if it's a known province
             const provinceObj = allServicePrices.find(sp => sp.province?.toLowerCase() === extractedData.province?.toLowerCase());
             if (provinceObj?.countryId) countryIdForService = provinceObj.countryId;
           }
       }
-
 
       const prefillData: Partial<ServicePriceItem> = {
         name: extractedData.name || "",
@@ -194,12 +192,12 @@ export function PricingManager() {
         if (extractedData.transferModeAttempt === 'vehicle') {
           prefillData.transferMode = 'vehicle';
           if (extractedData.vehicleTypeAttempt) {
-            prefillData.subCategory = undefined; // No subcat for vehicle, type is in vehicleOptions
+            prefillData.subCategory = undefined;
             prefillData.vehicleOptions = [{id: generateGUID(), vehicleType: extractedData.vehicleTypeAttempt, price: prefillData.price1 || 0, maxPassengers: prefillData.maxPassengers || 1, notes: ''}];
           } else if (!prefillData.subCategory || prefillData.subCategory === 'ticket') {
              prefillData.vehicleOptions = [{id: generateGUID(), vehicleType: VEHICLE_TYPES[0], price: prefillData.price1 || 0, maxPassengers: prefillData.maxPassengers || 1, notes: ''}];
           }
-          prefillData.price1 = undefined; // price is in vehicleOptions
+          prefillData.price1 = undefined; 
         } else if (extractedData.transferModeAttempt === 'ticket') {
            prefillData.transferMode = 'ticket';
            prefillData.subCategory = 'ticket';
@@ -224,8 +222,8 @@ export function PricingManager() {
 
 
   return (
-    <div className="container mx-auto py-6 md:py-8 px-2 sm:px-4">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 md:mb-6 gap-3">
+    <div className="container mx-auto py-4 sm:py-6 md:py-8 px-2 sm:px-0">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 md:mb-8 gap-3">
         <div className="flex items-center gap-2">
           <Link href="/">
             <Button variant="outline" size="icon" className="h-9 w-9 sm:h-10 sm:w-10">
@@ -233,7 +231,7 @@ export function PricingManager() {
             </Button>
           </Link>
           <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-primary flex items-center">
-             <ListPlus className="mr-2 sm:mr-3 h-6 w-6 sm:h-8 sm:w-8" /> Manage Service Prices
+             <ListPlus className="mr-2 sm:mr-3 h-6 w-6 sm:h-7 md:h-8 md:w-8" /> Manage Service Prices
           </h1>
         </div>
         <div className="flex gap-2 w-full sm:w-auto">
@@ -242,17 +240,17 @@ export function PricingManager() {
             if (!isOpen) resetImportDialogState();
           }}>
             <DialogTrigger asChild>
-              <Button variant="outline" className="border-accent text-accent hover:bg-accent/10 hover:text-accent flex-1 sm:flex-none text-xs sm:text-sm h-9 sm:h-10">
-                <FileText className="mr-1.5 sm:mr-2 h-3.5 w-3.5 sm:h-5 sm:w-5" /> Import (AI)
+              <Button variant="outline" className="border-accent text-accent hover:bg-accent/10 hover:text-accent flex-1 sm:flex-none text-xs sm:text-sm h-9">
+                <FileText className="mr-1.5 h-4 w-4" /> Import (AI)
               </Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-lg">
               <DialogHeader>
-                <DialogTitle className="flex items-center"><Sparkles className="mr-2 h-5 w-5 text-accent"/> Parse Contract with AI</DialogTitle>
+                <DialogTitle className="flex items-center text-lg"><Sparkles className="mr-2 h-5 w-5 text-accent"/> Parse Contract with AI</DialogTitle>
               </DialogHeader>
               <div className="space-y-4 py-4">
                 <div>
-                  <Label htmlFor="contract-text-input" className="text-xs sm:text-sm">Paste Contract Text</Label>
+                  <Label htmlFor="contract-text-input" className="text-sm">Paste Contract Text</Label>
                   <Textarea
                     id="contract-text-input"
                     value={contractText}
@@ -264,15 +262,15 @@ export function PricingManager() {
                 </div>
                 {contractParseError && (
                   <Alert variant="destructive">
-                    <AlertTitle className="text-sm">Error</AlertTitle>
-                    <AlertDescription className="text-xs">{contractParseError}</AlertDescription>
+                    <AlertTitle>Error</AlertTitle>
+                    <AlertDescription className="text-sm">{contractParseError}</AlertDescription>
                   </Alert>
                 )}
                 {isParsingContract && parsingStatusMessage && (
-                    <Alert variant="default" className="bg-blue-50 border-blue-200">
-                        <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
-                        <AlertTitle className="text-sm text-blue-700">Processing...</AlertTitle>
-                        <AlertDescription className="text-xs text-blue-600">{parsingStatusMessage}</AlertDescription>
+                    <Alert variant="default" className="bg-primary/10 border-primary/20">
+                        <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                        <AlertTitle className="text-sm text-primary">Processing...</AlertTitle>
+                        <AlertDescription className="text-xs text-primary/80">{parsingStatusMessage}</AlertDescription>
                     </Alert>
                 )}
               </div>
@@ -292,25 +290,28 @@ export function PricingManager() {
           </Dialog>
 
           <Link href="/admin/pricing/new" passHref className="flex-1 sm:flex-none">
-            <Button className="bg-primary hover:bg-primary/90 text-primary-foreground w-full text-xs sm:text-sm h-9 sm:h-10">
-              <PlusCircle className="mr-1.5 sm:mr-2 h-3.5 w-3.5 sm:h-5 sm:w-5" /> Add New
+            <Button className="bg-primary hover:bg-primary/90 text-primary-foreground w-full text-xs sm:text-sm h-9">
+              <PlusCircle className="mr-1.5 h-4 w-4" /> Add New
             </Button>
           </Link>
         </div>
       </div>
 
       <div className="mb-4 md:mb-6">
-        <Link href="/admin/provinces">
-          <Button variant="link" className="text-primary flex items-center p-1 text-xs sm:text-sm">
-            <MapPinned className="mr-1.5 sm:mr-2 h-3.5 w-3.5 sm:h-5 sm:w-5" /> Manage Provinces
+        <Link href="/admin/locations">
+          <Button variant="link" className="text-primary flex items-center p-1 text-sm">
+            <MapPinned className="mr-2 h-4 w-4" /> Manage Locations (Countries & Provinces)
           </Button>
         </Link>
       </div>
 
       <Tabs defaultValue="all" className="w-full">
-        <TabsList className="grid w-full grid-cols-3 sm:grid-cols-6 mb-4 h-auto sm:h-10">
+        <TabsList className="grid w-full grid-cols-3 sm:grid-cols-6 mb-6 h-auto">
             {TABS_CONFIG.map(tab => (
-                <TabsTrigger key={tab.value} value={tab.value} className="text-xs sm:text-sm py-1.5 sm:py-2">{tab.label}</TabsTrigger>
+                <TabsTrigger key={tab.value} value={tab.value} className="text-xs sm:text-sm py-2 sm:py-2.5 data-[state=active]:shadow-md">
+                  <span className="hidden sm:inline">{tab.label}</span>
+                  <span className="sm:hidden">{tab.shortLabel || tab.label}</span>
+                </TabsTrigger>
             ))}
         </TabsList>
 
@@ -362,11 +363,10 @@ export function PricingManager() {
 
       {currentServicePrices.length === 0 && !isLoadingServices && !isLoadingCountries && (
          <div className="text-center py-8 sm:py-10 border-2 border-dashed border-muted-foreground/30 rounded-lg mt-6">
-          <p className="text-muted-foreground text-sm sm:text-lg">No service prices defined yet.</p>
-          <p className="text-xs sm:text-sm text-muted-foreground mt-2">Use "Import from Contract" or "Add New Service Price" to add services.</p>
+          <p className="text-muted-foreground text-md sm:text-lg">No service prices defined yet.</p>
+          <p className="text-sm text-muted-foreground mt-2">Use "Import from Contract" or "Add New Service Price" to add services.</p>
         </div>
       )}
-
     </div>
   );
 }

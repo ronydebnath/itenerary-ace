@@ -29,19 +29,19 @@ interface AgentDashboardCardProps {
 
 function AgentDashboardCard({ title, description, href, icon: Icon, buttonText = "Access", className, disabled = false }: AgentDashboardCardProps) {
   return (
-    <Card className={cn("shadow-lg hover:shadow-xl transition-shadow duration-300 flex flex-col", className, disabled && "opacity-60 cursor-not-allowed")}>
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-xl font-semibold text-primary">{title}</CardTitle>
+    <Card className={cn("shadow-lg hover:shadow-xl transition-shadow duration-300 flex flex-col bg-card", className, disabled && "opacity-60 cursor-not-allowed")}>
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 pt-4 px-4 sm:px-6">
+        <CardTitle className="text-lg sm:text-xl font-semibold text-primary">{title}</CardTitle>
         <div className="p-2 bg-primary/10 rounded-md">
-          <Icon className="h-6 w-6 text-primary" />
+          <Icon className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
         </div>
       </CardHeader>
-      <CardContent className="flex-grow">
-        <p className="text-sm text-muted-foreground">{description}</p>
+      <CardContent className="flex-grow px-4 sm:px-6 pt-2 pb-4">
+        <p className="text-xs sm:text-sm text-muted-foreground">{description}</p>
       </CardContent>
-      <CardFooter>
+      <CardFooter className="px-4 sm:px-6 pb-4">
         <Link href={disabled ? "#" : href} passHref className="w-full">
-          <Button className="w-full bg-primary hover:bg-primary/90 text-primary-foreground text-md py-3" disabled={disabled}>
+          <Button className="w-full bg-primary hover:bg-primary/90 text-primary-foreground text-sm sm:text-base py-2.5 sm:py-3" disabled={disabled}>
             {buttonText}
           </Button>
         </Link>
@@ -52,19 +52,19 @@ function AgentDashboardCard({ title, description, href, icon: Icon, buttonText =
 
 export default function AgentDashboardPage() {
   return (
-    <main className="min-h-screen bg-background flex flex-col items-center p-4 md:p-8">
+    <main className="min-h-screen bg-background flex flex-col items-center p-4 md:p-6 lg:p-8">
       <div className="w-full max-w-5xl">
-        <header className="mb-10 text-center">
-          <div className="inline-block p-4 bg-primary/10 rounded-full mb-4">
-            <Briefcase className="h-12 w-12 text-primary" />
+        <header className="mb-8 sm:mb-10 text-center">
+          <div className="inline-block p-3 sm:p-4 bg-primary/10 rounded-full mb-4">
+            <Briefcase className="h-10 w-10 sm:h-12 sm:w-12 text-primary" />
           </div>
-          <h1 className="text-4xl font-bold text-primary tracking-tight">Agent Dashboard</h1>
-          <p className="mt-2 text-lg text-muted-foreground">
+          <h1 className="text-3xl sm:text-4xl font-bold text-primary tracking-tight">Agent Dashboard</h1>
+          <p className="mt-2 text-md sm:text-lg text-muted-foreground">
             Manage your clients, itineraries, and bookings.
           </p>
         </header>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 mb-6 md:mb-8">
           <AgentDashboardCard
             title="Itinerary Creation Suite"
             description="Craft new itineraries, plan day-by-day activities, and calculate costs for your clients."
@@ -79,7 +79,6 @@ export default function AgentDashboardPage() {
             href="/agent/quotation-request"
             icon={FilePlus}
             buttonText="Request Quote"
-            className="lg:col-span-1"
           />
            <AgentDashboardCard
             title="My Quotation Requests"
@@ -87,7 +86,6 @@ export default function AgentDashboardPage() {
             href="/agent/my-quotation-requests"
             icon={ClipboardList}
             buttonText="View My Requests"
-            className="lg:col-span-1"
           />
           <AgentDashboardCard
             title="My Agent Profile"
@@ -95,7 +93,6 @@ export default function AgentDashboardPage() {
             href="/agent/profile"
             icon={UserCog}
             buttonText="Manage Profile"
-            className="lg:col-span-1"
           />
           <AgentDashboardCard
             title="My Client Itineraries"
@@ -103,7 +100,6 @@ export default function AgentDashboardPage() {
             href="#"
             icon={ListOrdered}
             buttonText="View My Itineraries"
-            className="lg:col-span-1"
             disabled
           />
            <AgentDashboardCard
@@ -114,10 +110,9 @@ export default function AgentDashboardPage() {
             buttonText="Manage Clients"
             disabled
           />
-
         </div>
 
-        <div className="mt-12 text-center">
+        <div className="mt-10 sm:mt-12 text-center">
             <Link href="/" passHref>
                 <Button variant="outline">
                     <LayoutDashboard className="mr-2 h-4 w-4" /> Go to Admin Dashboard (Dev Access)

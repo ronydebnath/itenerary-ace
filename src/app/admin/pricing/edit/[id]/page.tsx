@@ -18,7 +18,7 @@ import { Button } from '@/components/ui/button';
 import { ServicePriceFormRouter } from '@/components/admin/service-pricing/ServicePriceFormRouter';
 import type { ServicePriceItem } from '@/types/itinerary';
 import { useToast } from '@/hooks/use-toast';
-import { LayoutDashboard, Edit, ArrowLeft } from 'lucide-react'; // Changed Home to LayoutDashboard
+import { LayoutDashboard, Edit, ArrowLeft, Loader2 } from 'lucide-react'; 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 const SERVICE_PRICES_STORAGE_KEY = 'itineraryAceServicePrices';
@@ -86,21 +86,26 @@ export default function EditServicePricePage() {
   };
 
   if (isLoading) {
-    return <div className="flex justify-center items-center min-h-screen">Loading service details...</div>;
+    return (
+        <main className="min-h-screen bg-background flex flex-col items-center justify-center p-4 md:p-8">
+            <Loader2 className="h-12 w-12 animate-spin text-primary mb-4"/>
+            <p className="text-muted-foreground">Loading service details...</p>
+        </main>
+    );
   }
 
   if (error) {
     return (
       <main className="min-h-screen bg-background flex flex-col items-center justify-center p-4 md:p-8">
         <Card className="w-full max-w-md shadow-xl">
-          <CardHeader className="text-center">
-            <CardTitle className="text-2xl text-destructive">Error Loading Service</CardTitle>
+          <CardHeader className="text-center p-4 sm:p-6">
+            <CardTitle className="text-xl sm:text-2xl text-destructive">Error Loading Service</CardTitle>
           </CardHeader>
-          <CardContent>
-            <p className="text-center text-muted-foreground">{error}</p>
+          <CardContent className="p-4 sm:p-6">
+            <p className="text-center text-muted-foreground text-sm">{error}</p>
             <Link href="/admin/pricing" passHref className="mt-4 block text-center">
-              <Button variant="outline">
-                <ArrowLeft className="mr-2 h-4 w-4" /> Back to Pricing List
+              <Button variant="outline" size="sm" className="h-9 text-xs sm:text-sm">
+                <ArrowLeft className="mr-1.5 h-4 w-4" /> Back to Pricing List
               </Button>
             </Link>
           </CardContent>
@@ -110,30 +115,37 @@ export default function EditServicePricePage() {
   }
   
   if (!initialData) {
-     return <div className="flex justify-center items-center min-h-screen">Service not found.</div>;
+     return (
+        <main className="min-h-screen bg-background flex flex-col items-center justify-center p-4 md:p-8">
+            <p className="text-muted-foreground">Service not found.</p>
+            <Link href="/admin/pricing" passHref className="mt-4">
+              <Button variant="outline" size="sm">Back to Pricing List</Button>
+            </Link>
+        </main>
+     );
   }
 
   return (
-    <main className="min-h-screen bg-background p-4 md:p-8">
+    <main className="min-h-screen bg-background p-4 md:p-6 lg:p-8">
       <Card className="w-full max-w-4xl mx-auto shadow-xl">
-        <CardHeader>
-          <div className="flex justify-between items-center mb-4">
+        <CardHeader className="p-4 sm:p-6">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
              <Link href="/" passHref>
-                <Button variant="outline" size="icon" className="h-10 w-10">
-                  <LayoutDashboard className="h-5 w-5" />
+                <Button variant="outline" size="icon" className="h-9 w-9 sm:h-10 sm:w-10">
+                  <LayoutDashboard className="h-4 w-4 sm:h-5 sm:w-5" />
                 </Button>
               </Link>
-            <CardTitle className="text-2xl font-bold text-primary flex items-center">
-              <Edit className="mr-3 h-7 w-7" /> Edit Service Price
+            <CardTitle className="text-xl sm:text-2xl font-bold text-primary flex items-center">
+              <Edit className="mr-2 sm:mr-3 h-6 w-6 sm:h-7 sm:w-7" /> Edit Service Price
             </CardTitle>
             <Link href="/admin/pricing" passHref>
-              <Button variant="outline">
-                <ArrowLeft className="mr-2 h-4 w-4" /> Back to Pricing List
+              <Button variant="outline" size="sm" className="h-9 text-xs sm:text-sm">
+                <ArrowLeft className="mr-1.5 h-4 w-4" /> Back to List
               </Button>
             </Link>
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-4 sm:p-6">
           <ServicePriceFormRouter
             key={initialData.id || 'edit-service'} 
             initialData={initialData}
