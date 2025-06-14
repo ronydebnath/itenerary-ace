@@ -89,7 +89,7 @@ export function QuotationRequestForm({ onSubmit, onCancel, defaultAgentId }: Quo
         activityTransfersRequired: false,
       },
       mealPrefs: {
-        mealPlan: "No Meal",
+        mealPlan: "Breakfast Only",
       },
       otherRequirements: "",
       status: "Pending",
@@ -332,7 +332,7 @@ export function QuotationRequestForm({ onSubmit, onCancel, defaultAgentId }: Quo
                     : 'Duration: Auto-calculated based on dates'}
                 </p>
               </div>
-                <FormField control={form.control} name="tripDetails.tripType" render={({ field }) => (<FormItem><FormLabel>Type of Trip (Optional)</FormLabel><Select onValueChange={field.onChange} value={field.value || ""}><FormControl><SelectTrigger><SelectValue placeholder="Select trip type" /></SelectTrigger></FormControl><SelectContent>{TRIP_TYPES.map(type => <SelectItem key={type} value={type}>{type}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
+                <FormField control={form.control} name="tripDetails.tripType" render={({ field }) => (<FormItem><FormLabel>Type of Trip (Optional)</FormLabel><Select onValueChange={field.onChange} value={field.value || ""}><FormControl><SelectTrigger><SelectValue placeholder="Select trip type (Optional)" /></SelectTrigger></FormControl><SelectContent>{TRIP_TYPES.map(type => <SelectItem key={type} value={type}>{type}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
               <FormField control={form.control} name="tripDetails.budgetRange" render={({ field }) => (<FormItem><FormLabel>Budget Expectation</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select budget range" /></SelectTrigger></FormControl><SelectContent>{BUDGET_RANGES.map(range => <SelectItem key={range} value={range}>{range}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
               {watchBudgetRange === "Specific Amount (see notes)" && (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
@@ -393,7 +393,7 @@ export function QuotationRequestForm({ onSubmit, onCancel, defaultAgentId }: Quo
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Preferred Meal Plan</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value || "No Meal"}>
+                    <Select onValueChange={field.onChange} value={field.value || "Breakfast Only"}>
                       <FormControl><SelectTrigger><SelectValue placeholder="Select meal plan" /></SelectTrigger></FormControl>
                       <SelectContent>
                         {MEAL_PLAN_OPTIONS.map(plan => <SelectItem key={plan} value={plan}>{plan}</SelectItem>)}
@@ -425,4 +425,3 @@ export function QuotationRequestForm({ onSubmit, onCancel, defaultAgentId }: Quo
     </Form>
   );
 }
-
