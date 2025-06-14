@@ -1,4 +1,3 @@
-
 /**
  * @fileoverview This component provides a comprehensive form for travel agents to submit
  * new quotation requests. It captures client information, detailed trip preferences
@@ -48,6 +47,8 @@ import { Loader2, MapPin, Globe } from 'lucide-react';
 import { useCountries } from '@/hooks/useCountries';
 import { useProvinces } from '@/hooks/useProvinces';
 import { cn } from '@/lib/utils';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+
 
 interface QuotationRequestFormProps {
   onSubmit: (data: QuotationRequest) => void;
@@ -56,7 +57,7 @@ interface QuotationRequestFormProps {
 }
 
 export function QuotationRequestForm({ onSubmit, onCancel, defaultAgentId }: QuotationRequestFormProps) {
-  const { countries, isLoading: isLoadingCountries } = useCountries();
+  const { countries, isLoading: isLoadingCountries, getCountryById } = useCountries();
   const { provinces: allProvinces, isLoading: isLoadingProvinces, getProvincesByCountry } = useProvinces();
 
   const form = useForm<QuotationRequest>({
@@ -147,6 +148,31 @@ export function QuotationRequestForm({ onSubmit, onCancel, defaultAgentId }: Quo
       .filter(Boolean) as string[];
   }, [watchSelectedCountryIds, countries]);
 
+  const groupedProvinces = React.useMemo(() => {
+    if (isLoadingProvinces || isLoadingCountries) return {};
+    const groups: Record<string, { countryName: string; provinces: ProvinceItem[] }> = {};
+    
+    displayableProvinces.forEach(province => {
+      const country = countries.find(c => c.id === province.countryId);
+      const countryKey = province.countryId || 'unknown';
+      const countryName = country?.name || 'Unknown Country';
+
+      if (!groups[countryKey]) {
+        groups[countryKey] = { countryName, provinces: [] };
+      }
+      groups[countryKey].provinces.push(province);
+    });
+
+    for (const key in groups) {
+      groups[key].provinces.sort((a, b) => a.name.localeCompare(b.name));
+    }
+
+    const sortedGroupEntries = Object.entries(groups).sort(([, groupA], [, groupB]) => {
+      return groupA.countryName.localeCompare(groupB.countryName);
+    });
+    return Object.fromEntries(sortedGroupEntries);
+  }, [displayableProvinces, isLoadingProvinces, isLoadingCountries, countries]);
+
 
   return (
     <Form {...form}>
@@ -202,7 +228,6 @@ export function QuotationRequestForm({ onSubmit, onCancel, defaultAgentId }: Quo
                                               ? [...(countryField.value || []), country.id]
                                               : (countryField.value || []).filter((id) => id !== country.id);
                                             countryField.onChange(newValue);
-                                            // Clear provinces if no countries are selected or if the provinces are not in the newly selected countries
                                             const currentProvinces = form.getValues("tripDetails.preferredProvinceNames") || [];
                                             const validProvincesForNewCountries = currentProvinces.filter(provName => 
                                                 allProvinces.find(p => p.name === provName && newValue.includes(p.countryId))
@@ -238,41 +263,52 @@ export function QuotationRequestForm({ onSubmit, onCancel, defaultAgentId }: Quo
                          <FormDescription className="text-xs mb-1">
                            {(!watchSelectedCountryIds || watchSelectedCountryIds.length === 0) ? "Select countries first to see relevant provinces, or choose from all." : "Provinces within selected countries."}
                          </FormDescription>
-                        {isLoadingProvinces ? (
-                          <div className="flex items-center justify-center h-24 border rounded-md bg-muted/50">
+                        {isLoadingProvinces || isLoadingCountries ? (
+                          <div className="flex items-center justify-center h-36 border rounded-md bg-muted/50">
                             <Loader2 className="h-5 w-5 animate-spin text-primary" />
                             <span className="ml-2 text-xs sm:text-sm text-muted-foreground">Loading provinces...</span>
                           </div>
-                        ) : displayableProvinces.length > 0 ? (
-                          <ScrollArea className="h-28 w-full rounded-md border p-3 bg-background">
-                             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-1.5">
-                              {displayableProvinces.map((province) => (
-                                <FormField
-                                  key={province.id}
-                                  control={form.control}
-                                  name="tripDetails.preferredProvinceNames"
-                                  render={({ field: provinceField }) => (
-                                    <FormItem className="flex flex-row items-start space-x-2 space-y-0">
-                                      <FormControl>
-                                        <Checkbox
-                                          checked={provinceField.value?.includes(province.name)}
-                                          onCheckedChange={(checked) => {
-                                            return checked
-                                              ? provinceField.onChange([...(provinceField.value || []), province.name])
-                                              : provinceField.onChange(
-                                                (provinceField.value || []).filter(
-                                                    (value) => value !== province.name
-                                                  )
-                                                )
-                                          }}
+                        ) : Object.keys(groupedProvinces).length > 0 ? (
+                          <ScrollArea className="h-36 w-full rounded-md border p-1 bg-background">
+                            <Accordion type="multiple" className="w-full" defaultValue={Object.keys(groupedProvinces)}>
+                              {Object.entries(groupedProvinces).map(([countryId, { countryName, provinces: provincesInGroup }]) => (
+                                <AccordionItem value={countryId} key={countryId} className="border-b-0">
+                                  <AccordionTrigger className="py-1.5 px-2 text-xs hover:bg-muted/50 rounded-sm sticky top-0 bg-background z-10">
+                                    {countryName} ({provincesInGroup.length})
+                                  </AccordionTrigger>
+                                  <AccordionContent className="pt-0 pb-1 pl-2">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-1">
+                                      {provincesInGroup.map((province) => (
+                                        <FormField
+                                          key={province.id}
+                                          control={form.control}
+                                          name="tripDetails.preferredProvinceNames"
+                                          render={({ field: provinceField }) => (
+                                            <FormItem className="flex flex-row items-start space-x-2 space-y-0 py-0.5">
+                                              <FormControl>
+                                                <Checkbox
+                                                  checked={provinceField.value?.includes(province.name)}
+                                                  onCheckedChange={(checked) => {
+                                                    return checked
+                                                      ? provinceField.onChange([...(provinceField.value || []), province.name])
+                                                      : provinceField.onChange(
+                                                        (provinceField.value || []).filter(
+                                                            (value) => value !== province.name
+                                                          )
+                                                        )
+                                                  }}
+                                                />
+                                              </FormControl>
+                                              <FormLabel className="font-normal text-xs cursor-pointer">{province.name}</FormLabel>
+                                            </FormItem>
+                                          )}
                                         />
-                                      </FormControl>
-                                      <FormLabel className="font-normal cursor-pointer">{province.name} <span className="text-muted-foreground/70 text-xs">({countries.find(c=>c.id===province.countryId)?.name || 'N/A'})</span></FormLabel>
-                                    </FormItem>
-                                  )}
-                                />
+                                      ))}
+                                    </div>
+                                  </AccordionContent>
+                                </AccordionItem>
                               ))}
-                            </div>
+                            </Accordion>
                           </ScrollArea>
                         ) : (
                            <p className="text-sm text-muted-foreground text-center py-4 border rounded-md bg-muted/50">
@@ -318,7 +354,7 @@ export function QuotationRequestForm({ onSubmit, onCancel, defaultAgentId }: Quo
             <Card>
               <CardHeader><CardTitle>Activity & Tour Preferences (Optional)</CardTitle></CardHeader>
               <CardContent className="space-y-4">
-                <FormField control={form.control} name="activityPrefs.interests" render={({ field }) => (<FormItem><FormLabel>Client Interests</FormLabel><FormControl><Textarea placeholder="e.g., History, Museums, Beaches, Hiking, Shopping, Nightlife, Local Cuisine" {...field} value={field.value || ''} rows={3} /></FormControl><FormMessage /></FormItem>)} />
+                <FormField control={form.control} name="activityPrefs.interests" render={({ field }) => (<FormItem><FormLabel>Client Interests</FormLabel><FormControl><Textarea placeholder="e.g., History, Beaches, Hiking, Shopping, Nightlife, Local Cuisine" {...field} value={field.value || ''} rows={3} /></FormControl><FormMessage /></FormItem>)} />
                 <FormField control={form.control} name="activityPrefs.mustDoActivities" render={({ field }) => (<FormItem><FormLabel>Must-do Activities or Sights</FormLabel><FormControl><Textarea placeholder="e.g., 'Visit the Colosseum', 'Snorkeling trip', 'Cooking class'" {...field} value={field.value || ''} rows={3} /></FormControl><FormMessage /></FormItem>)} />
               </CardContent>
             </Card>
