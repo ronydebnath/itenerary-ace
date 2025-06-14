@@ -1,3 +1,4 @@
+
 /**
  * @fileoverview This component renders a section for managing multiple activity packages
  * within the activity service price form. It allows users to add, edit, and remove
@@ -30,7 +31,7 @@ interface ActivityPackageFormSectionProps {
 }
 
 export function ActivityPackageFormSection({ currency, activityNameForLegend }: ActivityPackageFormSectionProps) {
-  const { control, formState: { errors } } = useFormContext<ServicePriceFormValues>();
+  const { control, formState: { errors }, getValues } = useFormContext<ServicePriceFormValues>();
 
   const { fields: activityPackageFields, append: appendActivityPackage, remove: removeActivityPackage } = useFieldArray({
     control,
@@ -56,11 +57,11 @@ export function ActivityPackageFormSection({ currency, activityNameForLegend }: 
       </p>
       <div id="activityPackagesContainer" className="space-y-3 sm:space-y-4 pt-2">
         {activityPackageFields.map((packageField, packageIndex) => {
-          const currentPackageValues = control.getValues(`activityPackages.${packageIndex}`);
+          const currentPackageValues = getValues(`activityPackages.${packageIndex}`);
           const packageLegend = currentPackageValues?.name || `Package ${packageIndex + 1}`;
           return (
             <div key={packageField.packageFieldId} className="border border-muted rounded-md p-3 sm:p-4 pt-5 sm:pt-6 relative bg-card shadow-sm">
-              <p className="text-sm sm:text-base font-medium -mt-5 sm:-mt-6 ml-2 px-1 bg-card inline-block absolute left-2 top-[0.1rem] max-w-[calc(100%-2.5rem)] truncate"> {packageLegend} </p>
+               <p className="text-sm sm:text-base font-medium -mt-5 sm:-mt-6 ml-2 px-1 bg-card inline-block absolute left-2 top-[0.1rem] max-w-[calc(100%-2.5rem)] truncate"> {packageLegend} </p>
               <Button type="button" variant="ghost" size="icon" onClick={() => activityPackageFields.length > 1 ? removeActivityPackage(packageIndex) : null} disabled={activityPackageFields.length <= 1} className="absolute top-1 right-1 h-6 w-6 sm:h-7 sm:w-7 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center text-xs sm:text-sm hover:bg-destructive/80 disabled:opacity-50">
                 <XIcon size={14} className="sm:h-4 sm:w-4" />
               </Button>
