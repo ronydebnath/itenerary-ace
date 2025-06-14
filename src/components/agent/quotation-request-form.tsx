@@ -81,8 +81,7 @@ export function QuotationRequestForm({ onSubmit, onCancel, defaultAgentId }: Quo
         specificHotelRequests: "",
       },
       activityPrefs: {
-        interests: "",
-        mustDoActivities: "",
+        requestedActivities: "",
       },
       flightPrefs: {
         airportTransfersRequired: false,
@@ -351,8 +350,24 @@ export function QuotationRequestForm({ onSubmit, onCancel, defaultAgentId }: Quo
           <Card>
             <CardHeader><CardTitle>Activity & Tour Preferences (Optional)</CardTitle></CardHeader>
             <CardContent className="space-y-4">
-              <FormField control={form.control} name="activityPrefs.interests" render={({ field }) => (<FormItem><FormLabel>Client Interests</FormLabel><FormControl><Textarea placeholder="e.g., History, Beaches, Hiking, Shopping, Nightlife, Local Cuisine" {...field} value={field.value || ''} rows={3} /></FormControl><FormMessage /></FormItem>)} />
-              <FormField control={form.control} name="activityPrefs.mustDoActivities" render={({ field }) => (<FormItem><FormLabel>Must-do Activities or Sights</FormLabel><FormControl><Textarea placeholder="e.g., 'Visit the Colosseum', 'Snorkeling trip', 'Cooking class'" {...field} value={field.value || ''} rows={3} /></FormControl><FormMessage /></FormItem>)} />
+              <FormField
+                control={form.control}
+                name="activityPrefs.requestedActivities"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Requested Activities / Tours / Interests</FormLabel>
+                    <FormControl>
+                      <Textarea
+                        placeholder="e.g., Eiffel Tower visit, Snorkeling trip, Cooking class, interested in history and beaches."
+                        {...field}
+                        value={field.value || ''}
+                        rows={3}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
             </CardContent>
           </Card>
 

@@ -68,8 +68,7 @@ export const QuotationRequestAccommodationPrefsSchema = z.object({
 });
 
 export const QuotationRequestActivityPrefsSchema = z.object({
-  interests: z.string().optional().describe("e.g., History, Beaches, Hiking, Shopping, Nightlife"),
-  mustDoActivities: z.string().optional(),
+  requestedActivities: z.string().optional().describe("List specific tours, activities, or general interests."),
 });
 
 export const QuotationRequestFlightPrefsSchema = z.object({
