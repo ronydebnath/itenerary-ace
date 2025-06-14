@@ -59,8 +59,8 @@ interface ConversionResultState {
   originalAmount: number;
   fromCurrency: CurrencyCode;
   toCurrency: CurrencyCode;
-  baseRate: number;       // Rate without markup
-  finalRate: number;      // Rate with markup
+  baseRate: number;       // Rate without markup (system calculated, possibly via USD)
+  finalRate: number;      // Rate with markup (system calculated)
   markupApplied: number;  // Percentage of markup applied
   convertedAmount: number;// Final converted amount
 }
@@ -118,12 +118,12 @@ export default function CurrencyConverterPage() {
 
   const handleConversionSubmit = (data: ConversionFormValues) => {
     setConversionError(null);
-    setConversionResult(null); // Clear previous result
+    setConversionResult(null);
     const rateDetails = getRate(data.fromCurrency, data.toCurrency);
     console.log("CurrencyConverterPage: rateDetails from getRate:", rateDetails);
 
     if (rateDetails === null) {
-      setConversionError(`Exchange rate from ${data.fromCurrency} to ${data.toCurrency} is not defined or calculable. Ensure base rates to/from USD are set for all currencies.`);
+      setConversionError(`Exchange rate from ${data.fromCurrency} to ${data.toCurrency} is not defined or calculable. Ensure base rates to/from USD are set for all relevant currencies.`);
       return;
     }
     const finalConvertedAmount = data.amount * rateDetails.finalRate;
@@ -186,7 +186,7 @@ export default function CurrencyConverterPage() {
         <Card className="mb-8 shadow-lg">
           <CardHeader>
             <CardTitle className="text-xl flex items-center"><Settings className="mr-2 h-5 w-5"/>Conversion Markup Settings</CardTitle>
-            <CardDescription>Set a global markup percentage for conversions. Currently applied markup: <strong>{markupPercentage}%</strong></CardDescription>
+            <CardDescription>Set a global markup percentage for conversions. This markup is applied when the 'From' and 'To' currencies are different, using USD as an intermediate. Currently applied markup: <strong>{markupPercentage}%</strong></CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={markupForm.handleSubmit(handleMarkupFormSubmit)} className="flex items-end gap-3">
@@ -204,9 +204,6 @@ export default function CurrencyConverterPage() {
               </div>
               <Button type="submit" className="bg-accent hover:bg-accent/90 text-accent-foreground" size="sm">Set Markup</Button>
             </form>
-            <p className="text-xs text-muted-foreground mt-2">
-              This markup is applied when the 'From' and 'To' currencies are different. USD is used as an intermediate for all conversions.
-            </p>
           </CardContent>
         </Card>
 
@@ -267,14 +264,14 @@ export default function CurrencyConverterPage() {
                 <div className="text-sm text-foreground/90 dark:text-foreground/80 space-y-1">
                   <p><strong>Original:</strong> {formatCurrency(conversionResult.originalAmount, conversionResult.fromCurrency)} ({conversionResult.fromCurrency})</p>
                   <p><strong>Target:</strong> {conversionResult.toCurrency}</p>
-                  <p className="font-mono"><strong>Base Rate (1 {conversionResult.fromCurrency}):</strong> {conversionResult.baseRate.toFixed(6)} {conversionResult.toCurrency}</p>
+                  <p className="font-mono"><strong>Base Rate (1 {conversionResult.fromCurrency}):</strong> {conversionResult.baseRate.toFixed(6)} {conversionResult.toCurrency} (System calculated, possibly via USD)</p>
                   
                   {conversionResult.markupApplied > 0 && conversionResult.fromCurrency !== conversionResult.toCurrency && (
                     <>
                       <p className="font-semibold text-accent dark:text-orange-400 pt-1 border-t border-border/50 mt-1">Markup Details:</p>
                       <ul className="list-disc list-inside pl-4 text-xs">
                         <li><strong>Applied Markup:</strong> {conversionResult.markupApplied.toFixed(2)}%</li>
-                        <li className="font-mono"><strong>Markup Value:</strong> +{formatCurrency(conversionResult.convertedAmount - (conversionResult.originalAmount * conversionResult.baseRate), conversionResult.toCurrency)}</li>
+                        <li className="font-mono"><strong>Markup Value:</strong> +{formatCurrency( (conversionResult.finalRate - conversionResult.baseRate) * conversionResult.originalAmount, conversionResult.toCurrency)}</li>
                         <li className="font-mono"><strong>Effective Rate (1 {conversionResult.fromCurrency}):</strong> {conversionResult.finalRate.toFixed(6)} {conversionResult.toCurrency}</li>
                       </ul>
                     </>
@@ -292,7 +289,7 @@ export default function CurrencyConverterPage() {
           <CardHeader className="flex flex-row justify-between items-center">
             <div>
               <CardTitle className="text-xl">Manage Base Exchange Rates</CardTitle>
-              <CardDescription>Define and update base exchange rates (markup is applied on top during conversion if applicable). USD is used as an intermediate currency for all conversions.</CardDescription>
+              <CardDescription>Define base rates. The "Effective Final Rate" column shows how the system (using USD intermediate & current markup of <strong>{markupPercentage}%</strong>) would calculate it.</CardDescription>
             </div>
             <Button onClick={openNewRateDialog} size="sm">
               <PlusCircle className="mr-2 h-4 w-4" /> Add New Rate
@@ -319,42 +316,57 @@ export default function CurrencyConverterPage() {
                     <TableRow>
                       <TableHead>From</TableHead>
                       <TableHead>To</TableHead>
-                      <TableHead className="text-right">Rate (1 From = X To)</TableHead>
+                      <TableHead className="text-right">Defined Base Rate</TableHead>
+                      <TableHead className="text-right">Effective Final Rate (incl. Markup)</TableHead>
+                      <TableHead className="text-right">Markup Added</TableHead>
                       <TableHead className="text-center">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {exchangeRates.map((rate) => (
-                      <TableRow key={rate.id}>
-                        <TableCell>{rate.fromCurrency}</TableCell>
-                        <TableCell>{rate.toCurrency}</TableCell>
-                        <TableCell className="text-right font-mono">{rate.rate.toFixed(4)}</TableCell>
-                        <TableCell className="text-center">
-                          <Button variant="ghost" size="icon" onClick={() => openEditRateDialog(rate)} className="mr-2 text-primary hover:bg-primary/10 h-8 w-8">
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Dialog>
-                            <DialogTrigger asChild>
-                              <Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10 h-8 w-8">
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </DialogTrigger>
-                            <DialogContent>
-                              <DialogHeader>
-                                <DialogTitle>Confirm Deletion</DialogTitle>
-                                <AlertDescription>
-                                  Are you sure you want to delete the rate {rate.fromCurrency} to {rate.toCurrency}? This is a base rate.
-                                </AlertDescription>
-                              </DialogHeader>
-                              <DialogFooter>
-                                <DialogClose asChild><Button variant="outline">Cancel</Button></DialogClose>
-                                <Button variant="destructive" onClick={() => deleteRate(rate.id)}>Delete</Button>
-                              </DialogFooter>
-                            </DialogContent>
-                          </Dialog>
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                    {exchangeRates.map((rate) => {
+                      const rateDetails = getRate(rate.fromCurrency, rate.toCurrency);
+                      let effectiveFinalRateDisplay = "N/A";
+                      let markupAddedDisplay = "N/A";
+
+                      if (rateDetails) {
+                        effectiveFinalRateDisplay = rateDetails.finalRate.toFixed(6);
+                        markupAddedDisplay = (rateDetails.finalRate - rateDetails.baseRate).toFixed(6);
+                      }
+                      
+                      return (
+                        <TableRow key={rate.id}>
+                          <TableCell>{rate.fromCurrency}</TableCell>
+                          <TableCell>{rate.toCurrency}</TableCell>
+                          <TableCell className="text-right font-mono">{rate.rate.toFixed(4)}</TableCell>
+                          <TableCell className="text-right font-mono">{effectiveFinalRateDisplay}</TableCell>
+                          <TableCell className="text-right font-mono">{markupAddedDisplay}</TableCell>
+                          <TableCell className="text-center">
+                            <Button variant="ghost" size="icon" onClick={() => openEditRateDialog(rate)} className="mr-2 text-primary hover:bg-primary/10 h-8 w-8">
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Dialog>
+                              <DialogTrigger asChild>
+                                <Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10 h-8 w-8">
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </DialogTrigger>
+                              <DialogContent>
+                                <DialogHeader>
+                                  <DialogTitle>Confirm Deletion</DialogTitle>
+                                  <AlertDescription>
+                                    Are you sure you want to delete the base rate from {rate.fromCurrency} to {rate.toCurrency}?
+                                  </AlertDescription>
+                                </DialogHeader>
+                                <DialogFooter>
+                                  <DialogClose asChild><Button variant="outline">Cancel</Button></DialogClose>
+                                  <Button variant="destructive" onClick={() => deleteRate(rate.id)}>Delete</Button>
+                                </DialogFooter>
+                              </DialogContent>
+                            </Dialog>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
                   </TableBody>
                 </Table>
               </div>
@@ -369,7 +381,8 @@ export default function CurrencyConverterPage() {
         }}>
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
-              <DialogTitle>{editingRate ? 'Edit' : 'Add'} Exchange Rate</DialogTitle>
+              <DialogTitle>{editingRate ? 'Edit' : 'Add'} Base Exchange Rate</DialogTitle>
+              <AlertDescription>This is a direct base rate. The system may use USD as an intermediate for actual conversions if a direct path to USD is more optimal or this rate is missing.</AlertDescription>
             </DialogHeader>
             <form onSubmit={rateForm.handleSubmit(handleRateFormSubmit)} className="space-y-4 py-4">
               <div>
@@ -401,7 +414,7 @@ export default function CurrencyConverterPage() {
                 {rateForm.formState.errors.toCurrency && <p className="text-xs text-destructive mt-1">{rateForm.formState.errors.toCurrency.message}</p>}
               </div>
               <div>
-                <Label htmlFor="rateValue">Rate (1 From = X To)</Label>
+                <Label htmlFor="rateValue">Rate (1 Unit of "From" = X Units of "To")</Label>
                 <Input id="rateValue" type="number" step="0.000001" {...rateForm.register("rate")} className="mt-1" />
                 {rateForm.formState.errors.rate && <p className="text-xs text-destructive mt-1">{rateForm.formState.errors.rate.message}</p>}
               </div>
