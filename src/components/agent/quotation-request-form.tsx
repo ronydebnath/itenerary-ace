@@ -197,29 +197,28 @@ export function QuotationRequestForm({ onSubmit, onCancel, defaultAgentId }: Quo
             allMessages.push({ path: fieldPath, message: fieldError.message, type: fieldError.type });
           }
           if (typeof fieldError === 'object' && !fieldError.message && key !== 'ref' && key !== 'types' && Object.keys(fieldError).length > 0) {
-            logAllMessages(fieldError, fieldPath); // Recurse for nested objects
+            logAllMessages(fieldError, fieldPath);
           }
         }
       });
     };
 
     logAllMessages(errors);
-    console.error("[DEBUG] All Extracted Validation Errors:", allMessages);
+    console.error("[DEBUG] All Extracted Validation Errors (onFormSubmitError):", allMessages);
 
     if (errors.tripDetails?.preferredCountryIds && typeof errors.tripDetails.preferredCountryIds.message === 'string') {
-      setCountrySelectionError(errors.tripDetails.preferredCountryIds.message);
+      setCountrySelectionError(errors.tripDetails.preferredCountryIds.message); // Set specific error for UI alert
       const countrySectionElement = document.querySelector('div[data-testid="preferred-countries-form-item"]');
       if (countrySectionElement) {
         countrySectionElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
         console.log("[DEBUG] Scrolled to preferred-countries-form-item due to specific error.");
-        return; // Prioritize this specific scroll and error display
+        return;
       }
     }
 
-    // General scroll to the first errored field
     if (allMessages.length > 0) {
       const firstError = allMessages[0];
-      console.log(`[DEBUG] First validation error identified: Path='${firstError.path}', Message='${firstError.message}', Type='${firstError.type}'`);
+      console.log(`[DEBUG] First validation error identified by onFormSubmitError: Path='${firstError.path}', Message='${firstError.message}', Type='${firstError.type}'`);
 
       try {
         form.setFocus(firstError.path as FieldPath<QuotationRequest>);
@@ -237,29 +236,28 @@ export function QuotationRequestForm({ onSubmit, onCancel, defaultAgentId }: Quo
         
         if (elementToScroll) {
           let scrollTarget: HTMLElement | null = elementToScroll.closest('div[data-form-item-container]');
-          if (!scrollTarget) scrollTarget = elementToScroll.closest('.space-y-2'); // Fallback if no data-attribute
-          if (!scrollTarget) scrollTarget = elementToScroll; // Last resort
+          if (!scrollTarget) scrollTarget = elementToScroll.closest('.space-y-2');
+          if (!scrollTarget) scrollTarget = elementToScroll;
 
           if (scrollTarget) {
             scrollTarget.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            console.log(`[DEBUG] Scrolled to element for path: ${firstError.path}`);
+            console.log(`[DEBUG] Scrolled by onFormSubmitError to element for path: ${firstError.path}`);
           } else {
-            console.warn(`[DEBUG] Could not find suitable scroll target for path: ${firstError.path}. Scrolling to form top.`);
+            console.warn(`[DEBUG] Could not find suitable scroll target for path: ${firstError.path} in onFormSubmitError. Scrolling to form top.`);
             (document.querySelector('form') as HTMLFormElement)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
           }
         } else {
-          console.warn(`[DEBUG] No element found to scroll to for path: ${firstError.path}. Scrolling to form top.`);
+          console.warn(`[DEBUG] No element found by onFormSubmitError to scroll to for path: ${firstError.path}. Scrolling to form top.`);
           (document.querySelector('form') as HTMLFormElement)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
       } catch (focusError) {
-        console.error("[DEBUG] Error trying to set focus or scroll:", focusError, "Path:", firstError.path);
-        // Fallback scroll to form top on any error during focus/scroll attempt
+        console.error("[DEBUG] Error trying to set focus or scroll in onFormSubmitError:", focusError, "Path:", firstError.path);
         (document.querySelector('form') as HTMLFormElement)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
     } else if (errors.root?.message) {
-      console.error(`[DEBUG] Root form error: ${errors.root.message}`);
+      console.error(`[DEBUG] Root form error in onFormSubmitError: ${errors.root.message}`);
     } else if (Object.keys(errors).length > 0) {
-      console.warn("[DEBUG] Validation failed but no specific field error messages extracted. Errors object:", errors);
+      console.warn("[DEBUG] Validation failed in onFormSubmitError but no specific field error messages extracted. Errors object:", errors);
       (document.querySelector('form') as HTMLFormElement)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
   };
@@ -275,11 +273,11 @@ export function QuotationRequestForm({ onSubmit, onCancel, defaultAgentId }: Quo
               <CardDescription>Details about the group requesting the quotation.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-                <FormField control={form.control} name="clientInfo.clientReference" render={({ field }) => (<FormItem><FormLabel>Client Reference (For your records - Optional)</FormLabel><FormControl><Input placeholder="e.g., Smith Family Summer Trip, Mr. J Q1" {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem>)} />
+                <FormField control={form.control} name="clientInfo.clientReference" render={({ field }) => (<FormItem data-form-item-container><FormLabel>Client Reference (For your records - Optional)</FormLabel><FormControl><Input placeholder="e.g., Smith Family Summer Trip, Mr. J Q1" {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem>)} />
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <FormField control={form.control} name="clientInfo.adults" render={({ field }) => (<FormItem><FormLabel>Adults *</FormLabel><FormControl><Input type="number" min="1" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                <FormField control={form.control} name="clientInfo.children" render={({ field }) => (<FormItem><FormLabel>Children</FormLabel><FormControl><Input type="number" min="0" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                  <FormField control={form.control} name="clientInfo.childAges" render={({ field }) => (<FormItem><FormLabel>Child Ages {watchChildren > 0 && "*"}</FormLabel><FormControl><Input placeholder="e.g., 5, 8, 12" {...field} value={field.value || ''} disabled={!(watchChildren > 0)} /></FormControl><FormDescription className="text-xs">Comma-separated if multiple.</FormDescription><FormMessage /></FormItem>)} />
+                <FormField control={form.control} name="clientInfo.adults" render={({ field }) => (<FormItem data-form-item-container><FormLabel>Adults *</FormLabel><FormControl><Input type="number" min="1" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                <FormField control={form.control} name="clientInfo.children" render={({ field }) => (<FormItem data-form-item-container><FormLabel>Children</FormLabel><FormControl><Input type="number" min="0" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                  <FormField control={form.control} name="clientInfo.childAges" render={({ field }) => (<FormItem data-form-item-container><FormLabel>Child Ages {watchChildren > 0 && "*"}</FormLabel><FormControl><Input placeholder="e.g., 5, 8, 12" {...field} value={field.value || ''} disabled={!(watchChildren > 0)} /></FormControl><FormDescription className="text-xs">Comma-separated if multiple.</FormDescription><FormMessage /></FormItem>)} />
               </div>
             </CardContent>
           </Card>
@@ -320,7 +318,7 @@ export function QuotationRequestForm({ onSubmit, onCancel, defaultAgentId }: Quo
                                       <Checkbox
                                         checked={countryField.value?.includes(country.id)}
                                         onCheckedChange={(checked) => {
-                                          setCountrySelectionError(null); // Clear error on interaction
+                                          setCountrySelectionError(null);
                                           const newValue = checked
                                             ? [...(countryField.value || []), country.id]
                                             : (countryField.value || []).filter((id) => id !== country.id);
