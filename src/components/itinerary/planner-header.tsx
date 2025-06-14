@@ -1,3 +1,4 @@
+
 /**
  * @fileoverview This component renders the header section of the itinerary planner.
  * It includes fields for setting the itinerary name, client name, start date, number of days,
@@ -257,7 +258,7 @@ function PlannerHeaderComponent({
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4 items-end">
             <div>
-                <Label htmlFor="currency" className="text-sm font-medium text-muted-foreground flex items-center"><Globe className="h-4 w-4 mr-1"/>Currency</Label>
+                <Label htmlFor="currency" className="text-sm font-medium text-muted-foreground flex items-center"><Globe className="h-4 w-4 mr-1"/>Billing Currency</Label>
                 <Select value={tripData.pax.currency} onValueChange={(value) => handlePaxChange('currency', value as CurrencyCode)}>
                 <SelectTrigger id="currency" className="w-full text-base h-11 sm:h-10 mt-1">
                     <SelectValue />
@@ -372,7 +373,7 @@ function PlannerHeaderComponent({
         <div className="mt-3 md:mt-4 p-3 bg-secondary/20 rounded-lg border border-secondary/30 text-sm text-muted-foreground">
             <div>
               <span className="font-semibold text-foreground text-sm">Current Config:</span> <strong className="text-sm font-semibold text-primary">{numNights} Night(s) / {tripData.settings.numDays} Day(s)</strong> starting {displayStartDate}.
-              For {tripData.pax.adults} Adult(s), {tripData.pax.children} Child(ren). Currency: {tripData.pax.currency}.
+              For {tripData.pax.adults} Adult(s), {tripData.pax.children} Child(ren). Billing Currency: {tripData.pax.currency}.
               {tripData.settings.isTemplate ? <Badge variant="outline" className="ml-1 border-accent text-accent text-xs">TEMPLATE{tripData.settings.templateCategory ? `: ${tripData.settings.templateCategory}` : ''}</Badge> : ""}
               {selectedCountryNames.length > 0 ? ` Countries: ${selectedCountryNames.join(', ')}.` : " All countries."}
               {(tripData.settings.selectedProvinces || []).length > 0 ? ` Provinces: ${tripData.settings.selectedProvinces.join(', ')}.` : (selectedCountryNames.length > 0 ? " All provinces in selected countries." : " All provinces.")}
@@ -386,3 +387,4 @@ function PlannerHeaderComponent({
 }
 
 export const PlannerHeader = React.memo(PlannerHeaderComponent);
+
