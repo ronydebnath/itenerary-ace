@@ -22,7 +22,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { LayoutDashboard, PlusCircle, Trash2, AlertCircle, Loader2, Settings, BadgeDollarSign, Edit, Repeat, RefreshCw, ArrowUpDown, ArrowUp, ArrowDown, Tag, Info } from 'lucide-react';
+import { LayoutDashboard, PlusCircle, Trash2, AlertCircle, Loader2, Settings, BadgeDollarSign, Edit, Repeat, RefreshCw, ArrowUpDown, ArrowUp, ArrowDown, Tag, Info, Percent } from 'lucide-react';
 import { useCustomCurrencies } from '@/hooks/useCustomCurrencies';
 import type { CurrencyCode, ManagedCurrency, ExchangeRate, SpecificMarkupRate } from '@/types/itinerary';
 import { REFERENCE_CURRENCY } from '@/types/itinerary';
@@ -49,7 +49,7 @@ const currencyCodeSchema = z.object({
 type CurrencyCodeFormValues = z.infer<typeof currencyCodeSchema>;
 
 type SortableRateKey = keyof Pick<ExchangeRate, 'fromCurrency' | 'toCurrency' | 'rate' | 'source'>;
-type SortableDerivedKey = 'effectiveFinalRate' | 'markupAdded';
+type SortableDerivedKey = 'effectiveFinalRate' | 'markupAdded' | 'markupPercentageApplied';
 type RateTableSortKey = SortableRateKey | SortableDerivedKey;
 
 interface RateTableSortConfig { key: RateTableSortKey; direction: 'ascending' | 'descending'; }
@@ -168,11 +168,15 @@ export default function ManageCurrenciesPage() {
       sortableItems.sort((a, b) => {
         let aValue: string | number | null | undefined;
         let bValue: string | number | null | undefined;
-        if (rateTableSortConfig.key === 'effectiveFinalRate' || rateTableSortConfig.key === 'markupAdded') {
-          const aRateDetails = getRate(a.fromCurrency, a.toCurrency); const bRateDetails = getRate(b.fromCurrency, b.toCurrency);
-          if (rateTableSortConfig.key === 'effectiveFinalRate') { aValue = aRateDetails?.finalRate; bValue = bRateDetails?.finalRate; }
-          else { aValue = aRateDetails ? aRateDetails.finalRate - aRateDetails.baseRate : undefined; bValue = bRateDetails ? bRateDetails.finalRate - bRateDetails.baseRate : undefined; }
-        } else { aValue = a[rateTableSortConfig.key as keyof ExchangeRate]; bValue = b[rateTableSortConfig.key as keyof ExchangeRate]; }
+        
+        const aRateDetails = getRate(a.fromCurrency, a.toCurrency); 
+        const bRateDetails = getRate(b.fromCurrency, b.toCurrency);
+
+        if (rateTableSortConfig.key === 'effectiveFinalRate') { aValue = aRateDetails?.finalRate; bValue = bRateDetails?.finalRate; }
+        else if (rateTableSortConfig.key === 'markupAdded') { aValue = aRateDetails ? aRateDetails.finalRate - aRateDetails.baseRate : undefined; bValue = bRateDetails ? bRateDetails.finalRate - bRateDetails.baseRate : undefined; }
+        else if (rateTableSortConfig.key === 'markupPercentageApplied') { aValue = aRateDetails?.markupApplied; bValue = bRateDetails?.markupApplied; }
+        else { aValue = a[rateTableSortConfig.key as keyof ExchangeRate]; bValue = b[rateTableSortConfig.key as keyof ExchangeRate]; }
+        
         if (aValue == null && bValue != null) return rateTableSortConfig.direction === 'ascending' ? 1 : -1; if (aValue != null && bValue == null) return rateTableSortConfig.direction === 'ascending' ? -1 : 1; if (aValue == null && bValue == null) return 0;
         if (typeof aValue === 'number' && typeof bValue === 'number') return rateTableSortConfig.direction === 'ascending' ? aValue - bValue : bValue - aValue;
         if (typeof aValue === 'string' && typeof bValue === 'string') return rateTableSortConfig.direction === 'ascending' ? aValue.localeCompare(bValue) : bValue.localeCompare(aValue);
@@ -251,6 +255,7 @@ export default function ManageCurrenciesPage() {
                             <TableHead onClick={() => requestRateTableSort('fromCurrency')} className="cursor-pointer hover:bg-muted/50"><div className="flex items-center">From {getSortIcon('fromCurrency', rateTableSortConfig)}</div></TableHead>
                             <TableHead onClick={() => requestRateTableSort('toCurrency')} className="cursor-pointer hover:bg-muted/50"><div className="flex items-center">To {getSortIcon('toCurrency', rateTableSortConfig)}</div></TableHead>
                             <TableHead onClick={() => requestRateTableSort('rate')} className="text-right cursor-pointer hover:bg-muted/50"><div className="flex items-center justify-end">Defined Base Rate {getSortIcon('rate', rateTableSortConfig)}</div></TableHead>
+                            <TableHead onClick={() => requestRateTableSort('markupPercentageApplied')} className="text-right cursor-pointer hover:bg-muted/50"><div className="flex items-center justify-end">Markup % {getSortIcon('markupPercentageApplied', rateTableSortConfig)}</div></TableHead>
                             <TableHead onClick={() => requestRateTableSort('markupAdded')} className="text-right cursor-pointer hover:bg-muted/50"><div className="flex items-center justify-end">Markup Added {getSortIcon('markupAdded', rateTableSortConfig)}</div></TableHead>
                             <TableHead onClick={() => requestRateTableSort('effectiveFinalRate')} className="text-right cursor-pointer hover:bg-muted/50"><div className="flex items-center justify-end">Effective Final Rate {getSortIcon('effectiveFinalRate', rateTableSortConfig)}</div></TableHead>
                             <TableHead onClick={() => requestRateTableSort('source')} className="cursor-pointer hover:bg-muted/50 text-center"><div className="flex items-center justify-center">Source {getSortIcon('source', rateTableSortConfig)}</div></TableHead>
@@ -260,25 +265,33 @@ export default function ManageCurrenciesPage() {
                             {sortedExchangeRates.map((rate) => {
                                 const rateDetails = getRate(rate.fromCurrency, rate.toCurrency);
                                 let effectiveFinalRateDisplay = "N/A";
-                                let markupAddedDisplay = "N/A";
+                                let markupValueAddedDisplay = "N/A";
+                                let markupPercentageDisplay = "N/A";
+                                let markupTypeDisplay: string | null = null;
+
                                 if (rateDetails) {
                                     effectiveFinalRateDisplay = rateDetails.finalRate.toFixed(6);
-                                    markupAddedDisplay = (rateDetails.finalRate - rateDetails.baseRate).toFixed(6);
-                                    if (Math.abs(parseFloat(markupAddedDisplay)) < 0.0000001) markupAddedDisplay = "0.000000";
+                                    markupValueAddedDisplay = (rateDetails.finalRate - rateDetails.baseRate).toFixed(6);
+                                    if (Math.abs(parseFloat(markupValueAddedDisplay)) < 0.0000001) markupValueAddedDisplay = "0.000000";
+                                    markupPercentageDisplay = rateDetails.markupApplied.toFixed(2) + "%";
+                                    if (rateDetails.markupType !== 'none' && rateDetails.fromCurrency !== rateDetails.toCurrency) {
+                                      markupTypeDisplay = rateDetails.markupType === 'specific' ? 'S' : 'G';
+                                    }
                                 } else {
                                     effectiveFinalRateDisplay = rate.rate.toFixed(6);
-                                    markupAddedDisplay = "Calc Error";
+                                    markupValueAddedDisplay = "Calc Error";
+                                    markupPercentageDisplay = "Error";
                                 }
 
                                 let displaySourceText: string;
                                 let displaySourceVariant: 'secondary' | 'outline';
                                 let displaySourceClassName: string;
 
-                                if (lastApiFetchTimestamp) {
+                                if (lastApiFetchTimestamp) { // If API is active, all effective rates are API-driven
                                     displaySourceText = 'API';
                                     displaySourceVariant = 'secondary';
                                     displaySourceClassName = 'bg-blue-100 text-blue-700 border-blue-300';
-                                } else {
+                                } else { // API not active, show actual source
                                     displaySourceText = rate.source?.toUpperCase() || 'MANUAL';
                                     displaySourceVariant = rate.source === 'api' ? 'secondary' : 'outline';
                                     displaySourceClassName = rate.source === 'api' ? 'bg-blue-100 text-blue-700 border-blue-300' : 'bg-green-50 text-green-700 border-green-300';
@@ -289,7 +302,24 @@ export default function ManageCurrenciesPage() {
                                         <TableCell>{rate.fromCurrency}</TableCell>
                                         <TableCell>{rate.toCurrency}</TableCell>
                                         <TableCell className="text-right font-mono">{rate.rate.toFixed(6)}</TableCell>
-                                        <TableCell className="text-right font-mono">{markupAddedDisplay}</TableCell>
+                                        <TableCell className="text-right font-mono">
+                                          <div className="flex items-center justify-end">
+                                            {markupPercentageDisplay}
+                                            {markupTypeDisplay && (
+                                                <TooltipProvider delayDuration={100}>
+                                                    <Tooltip>
+                                                        <TooltipTrigger asChild>
+                                                            <Badge variant="outline" className={`ml-1 px-1 py-0 text-xs rounded-sm ${markupTypeDisplay === 'S' ? 'border-purple-500 text-purple-600' : 'border-gray-400 text-gray-500'}`}>{markupTypeDisplay}</Badge>
+                                                        </TooltipTrigger>
+                                                        <TooltipContent side="top" className="text-xs p-1.5">
+                                                            <p>{markupTypeDisplay === 'S' ? 'Specific Markup Applied' : 'Global Markup Applied'}</p>
+                                                        </TooltipContent>
+                                                    </Tooltip>
+                                                </TooltipProvider>
+                                            )}
+                                          </div>
+                                        </TableCell>
+                                        <TableCell className="text-right font-mono">{markupValueAddedDisplay}</TableCell>
                                         <TableCell className="text-right font-mono">{effectiveFinalRateDisplay}</TableCell>
                                         <TableCell className="text-center">
                                             <TooltipProvider>
