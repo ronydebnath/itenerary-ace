@@ -33,7 +33,6 @@ export const QuotationRequestTripDetailsSchema = z.object({
   preferredProvinceNames: z.array(z.string()).optional().describe("Specific provinces of interest within selected countries."),
   preferredStartDate: z.string().refine(val => val ? isValid(parseISO(val)) : true, { message: "Invalid start date."}).optional(),
   preferredEndDate: z.string().refine(val => val ? isValid(parseISO(val)) : true, { message: "Invalid end date."}).optional(),
-  approximateDatesOrSeason: z.string().optional().describe("e.g., Mid-June, Christmas, Around 2 weeks in August"),
   durationDays: z.coerce.number().int().min(1, "Trip duration must be at least 1 day.").optional(),
   durationNights: z.coerce.number().int().min(0).optional(),
   tripType: z.enum(TRIP_TYPES).optional(),

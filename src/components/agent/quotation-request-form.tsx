@@ -75,7 +75,6 @@ export function QuotationRequestForm({ onSubmit, onCancel, defaultAgentId }: Quo
         budgetCurrency: 'USD',
         preferredCountryIds: [],
         preferredProvinceNames: [],
-        approximateDatesOrSeason: "",
       },
       accommodationPrefs: {
         hotelStarRating: "Any",
@@ -329,7 +328,6 @@ export function QuotationRequestForm({ onSubmit, onCancel, defaultAgentId }: Quo
                   <FormField control={form.control} name="tripDetails.preferredStartDate" render={({ field }) => (<FormItem className="flex flex-col"><FormLabel>Preferred Start Date</FormLabel><Controller control={form.control} name="tripDetails.preferredStartDate" render={({ field: { onChange, value } }) => <DatePicker date={value ? parseISO(value) : undefined} onDateChange={(date) => onChange(date ? format(date, 'yyyy-MM-dd') : undefined)} placeholder="Select start date"/>} /><FormMessage /></FormItem>)} />
                   <FormField control={form.control} name="tripDetails.preferredEndDate" render={({ field }) => (<FormItem className="flex flex-col"><FormLabel>Preferred End Date</FormLabel><Controller control={form.control} name="tripDetails.preferredEndDate" render={({ field: { onChange, value } }) => <DatePicker date={value ? parseISO(value) : undefined} onDateChange={(date) => onChange(date ? format(date, 'yyyy-MM-dd') : undefined)} placeholder="Select end date" minDate={watchStartDate ? parseISO(watchStartDate) : undefined} />} /><FormMessage /></FormItem>)} />
                 </div>
-                 <FormField control={form.control} name="tripDetails.approximateDatesOrSeason" render={({ field }) => (<FormItem><FormLabel>Approximate Dates/Season (if specific dates unknown)</FormLabel><FormControl><Input placeholder="e.g., Mid-June for 2 weeks, Christmas 2024" {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem>)} />
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <FormItem>
                     <FormLabel>Trip Duration (Days)</FormLabel>
@@ -409,4 +407,3 @@ export function QuotationRequestForm({ onSubmit, onCancel, defaultAgentId }: Quo
     </Form>
   );
 }
-
