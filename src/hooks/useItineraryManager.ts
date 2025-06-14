@@ -73,10 +73,10 @@ const createDefaultTripData = (quotationRequestId?: string, quotationRequest?: Q
 
   return {
     id: newId,
-    itineraryName: quotationRequest?.clientInfo.clientReference
-      ? `Proposal for ${quotationRequest.clientInfo.clientReference}`
+    itineraryName: quotationRequest
+      ? `Proposal for Quotation ${quotationRequest.id.slice(-6)}`
       : `New Itinerary ${newId.split('-').pop()}`,
-    clientName: quotationRequest?.clientInfo.clientReference || undefined, // Or a dedicated client name field if available
+    clientName: undefined, // Client reference removed
     createdAt: now,
     updatedAt: now,
     settings,
@@ -144,8 +144,8 @@ export function useItineraryManager() {
           const defaultSettings = createDefaultTripData(quotationRequestIdFromUrl, associatedQuotationRequest).settings;
           loadedTripData = {
             id: parsedData.id || idToLoad,
-            itineraryName: parsedData.itineraryName || `Itinerary ${idToLoad.slice(-6)}`,
-            clientName: parsedData.clientName || associatedQuotationRequest?.clientInfo.clientReference || undefined,
+            itineraryName: parsedData.itineraryName || (associatedQuotationRequest ? `Proposal for Quotation ${associatedQuotationRequest.id.slice(-6)}` : `Itinerary ${idToLoad.slice(-6)}`),
+            clientName: parsedData.clientName || undefined,
             createdAt: parsedData.createdAt || new Date().toISOString(),
             updatedAt: parsedData.updatedAt || new Date().toISOString(),
             settings: { ...defaultSettings, ...parsedData.settings },

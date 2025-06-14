@@ -1,4 +1,3 @@
-
 /**
  * @fileoverview This component provides a comprehensive form for travel agents to submit
  * new quotation requests. It captures client information, detailed trip preferences
@@ -70,7 +69,6 @@ export function QuotationRequestForm({ onSubmit, onCancel, defaultAgentId }: Quo
       clientInfo: {
         adults: 1,
         children: 0,
-        clientReference: "",
         childAges: "",
       },
       tripDetails: {
@@ -204,23 +202,19 @@ export function QuotationRequestForm({ onSubmit, onCancel, defaultAgentId }: Quo
     };
     logAllMessages(errors); // Populate allMessages
 
-    // Prioritize preferredCountryIds error for specific UI alert
-    const countryErrorField = errors.tripDetails?.preferredCountryIds;
-    if (countryErrorField && typeof countryErrorField.message === 'string') {
-      setCountrySelectionError(countryErrorField.message);
+    if (errors.tripDetails && errors.tripDetails.preferredCountryIds && typeof errors.tripDetails.preferredCountryIds.message === 'string') {
+      setCountrySelectionError(errors.tripDetails.preferredCountryIds.message);
       const countrySectionElement = document.querySelector('div[data-testid="preferred-countries-form-item"]');
       if (countrySectionElement) {
         countrySectionElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        console.log("[DEBUG] Scrolled to preferred-countries-form-item due to specific error.");
       }
-      return; // Stop further processing if country error is handled
+      return;
     }
 
 
-    // Fallback to generic error handling if not the country error
     if (allMessages.length > 0) {
         const firstError = allMessages[0];
-        console.error(`[DEBUG] First identified validation error (after country check): Path='${firstError.path}', Message='${firstError.message}', Type='${firstError.type}'`);
+        console.error(`[DEBUG] First identified validation error: Path='${firstError.path}', Message='${firstError.message}', Type='${firstError.type}'`);
         try {
             form.setFocus(firstError.path as FieldPath<QuotationRequest>);
             const fieldElement = (form.getFieldState(firstError.path as FieldPath<QuotationRequest>).ref as any);
@@ -235,9 +229,9 @@ export function QuotationRequestForm({ onSubmit, onCancel, defaultAgentId }: Quo
             console.error("[DEBUG] Error trying to set focus or scroll:", focusError, "Path:", firstError.path);
             (document.querySelector('form') as HTMLFormElement)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
-    } else if (errors.root?.message) { // Handle form-level errors (e.g., from superRefine)
+    } else if (errors.root?.message) {
         console.error(`[DEBUG] Root form error: ${errors.root.message}`);
-        setCountrySelectionError(errors.root.message); // Re-using state for general form error display
+        setCountrySelectionError(errors.root.message);
     } else {
         console.warn("[DEBUG] Validation failed but no specific field error messages extracted. Errors object:", errors);
     }
@@ -254,7 +248,6 @@ export function QuotationRequestForm({ onSubmit, onCancel, defaultAgentId }: Quo
               <CardDescription>Details about the group requesting the quotation.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-                <FormField control={form.control} name="clientInfo.clientReference" render={({ field }) => (<FormItem data-form-item-container><FormLabel>Client Reference (For your records - Optional)</FormLabel><FormControl><Input placeholder="e.g., Smith Family Summer Trip, Mr. J Q1" {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem>)} />
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <FormField control={form.control} name="clientInfo.adults" render={({ field }) => (<FormItem data-form-item-container><FormLabel>Adults *</FormLabel><FormControl><Input type="number" min="1" {...field} /></FormControl><FormMessage /></FormItem>)} />
                 <FormField control={form.control} name="clientInfo.children" render={({ field }) => (<FormItem data-form-item-container><FormLabel>Children</FormLabel><FormControl><Input type="number" min="0" {...field} /></FormControl><FormMessage /></FormItem>)} />

@@ -21,7 +21,6 @@ export const MEAL_PLAN_OPTIONS = ["No Meal", "Breakfast Only", "Breakfast and Lu
 
 
 export const QuotationRequestClientInfoSchema = z.object({
-  clientReference: z.string().optional().describe("Agent's internal reference for the client"),
   adults: z.coerce.number().int().min(1, "At least one adult is required."),
   children: z.coerce.number().int().min(0, "Number of children must be 0 or more.").default(0),
   childAges: z.string().optional().describe("Comma-separated ages, e.g., 5, 8, 12. Required if children > 0."),
