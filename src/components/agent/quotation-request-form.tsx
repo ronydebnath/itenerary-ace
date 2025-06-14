@@ -40,7 +40,6 @@ import { DatePicker } from '@/components/ui/date-picker';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { CURRENCIES, type CurrencyCode, type CountryItem, type ProvinceItem } from '@/types/itinerary';
 import { parseISO, format, differenceInDays, isValid } from 'date-fns';
 import { Loader2, MapPin, Globe } from 'lucide-react';
@@ -94,7 +93,6 @@ export function QuotationRequestForm({ onSubmit, onCancel, defaultAgentId }: Quo
       otherRequirements: "",
       status: "Pending",
       requestDate: new Date().toISOString(),
-      quotationDeadline: undefined,
     },
   });
 
@@ -211,7 +209,7 @@ export function QuotationRequestForm({ onSubmit, onCancel, defaultAgentId }: Quo
                           <span className="ml-2 text-xs sm:text-sm text-muted-foreground">Loading countries...</span>
                         </div>
                       ) : countries.length > 0 ? (
-                        <ScrollArea className="h-28 w-full rounded-md border p-3 bg-background">
+                        <div className="h-28 w-full rounded-md border p-3 bg-background overflow-y-auto">
                           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-1.5">
                             {countries.map((country) => (
                               <FormField
@@ -242,7 +240,7 @@ export function QuotationRequestForm({ onSubmit, onCancel, defaultAgentId }: Quo
                               />
                             ))}
                           </div>
-                        </ScrollArea>
+                        </div>
                       ) : (
                           <p className="text-sm text-muted-foreground text-center py-4 border rounded-md bg-muted/50">No countries available for selection.</p>
                       )}
@@ -269,7 +267,7 @@ export function QuotationRequestForm({ onSubmit, onCancel, defaultAgentId }: Quo
                           <span className="ml-2 text-xs sm:text-sm text-muted-foreground">Loading provinces...</span>
                         </div>
                       ) : Object.keys(groupedProvinces).length > 0 ? (
-                        <ScrollArea className="h-36 w-full rounded-md border p-1 bg-background">
+                        <div className="h-36 w-full rounded-md border p-1 bg-background overflow-y-auto">
                           <Accordion type="multiple" className="w-full" defaultValue={Object.keys(groupedProvinces)}>
                             {Object.entries(groupedProvinces).map(([countryId, { countryName, provinces: provincesInGroup }]) => (
                               <AccordionItem value={countryId} key={countryId} className="border-b-0">
@@ -309,7 +307,7 @@ export function QuotationRequestForm({ onSubmit, onCancel, defaultAgentId }: Quo
                               </AccordionItem>
                             ))}
                           </Accordion>
-                        </ScrollArea>
+                        </div>
                       ) : (
                           <p className="text-sm text-muted-foreground text-center py-4 border rounded-md bg-muted/50">
                           {(!watchSelectedCountryIds || watchSelectedCountryIds.length === 0) ? "No provinces available (select countries or add provinces in admin)." : "No provinces in selected countries."}
@@ -331,7 +329,7 @@ export function QuotationRequestForm({ onSubmit, onCancel, defaultAgentId }: Quo
                   ? `Duration: ${durationNights} night(s) / ${durationDays} day(s)`
                   : 'Duration: Auto-calculated based on dates'}
               </p>
-                <FormField control={form.control} name="tripDetails.tripType" render={({ field }) => (<FormItem><FormLabel>Type of Trip (Optional)</FormLabel><Select onValueChange={field.onChange} value={field.value || ""}><FormControl><SelectTrigger><SelectValue placeholder="Select trip type (Optional)" /></SelectTrigger></FormControl><SelectContent>{TRIP_TYPES.map(type => <SelectItem key={type} value={type}>{type}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
+                <FormField control={form.control} name="tripDetails.tripType" render={({ field }) => (<FormItem><FormLabel>Type of Trip</FormLabel><Select onValueChange={field.onChange} value={field.value || ""}><FormControl><SelectTrigger><SelectValue placeholder="Select trip type (Optional)" /></SelectTrigger></FormControl><SelectContent>{TRIP_TYPES.map(type => <SelectItem key={type} value={type}>{type}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
               <FormField control={form.control} name="tripDetails.budgetRange" render={({ field }) => (<FormItem><FormLabel>Budget Expectation</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select budget range" /></SelectTrigger></FormControl><SelectContent>{BUDGET_RANGES.map(range => <SelectItem key={range} value={range}>{range}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
               {watchBudgetRange === "Specific Amount (see notes)" && (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
@@ -377,7 +375,6 @@ export function QuotationRequestForm({ onSubmit, onCancel, defaultAgentId }: Quo
             <CardHeader><CardTitle>Other Requirements</CardTitle></CardHeader>
             <CardContent className="space-y-4">
               <FormField control={form.control} name="otherRequirements" render={({ field }) => (<FormItem><FormLabel>Special Requests or Notes</FormLabel><FormControl><Textarea placeholder="e.g., Dietary restrictions (vegetarian, gluten-free), accessibility needs, celebrating an anniversary, prefer non-smoking rooms, etc." {...field} value={field.value || ''} rows={4} /></FormControl><FormMessage /></FormItem>)} />
-              <FormField control={form.control} name="quotationDeadline" render={({ field }) => (<FormItem className="flex flex-col"><FormLabel>Preferred Quotation Deadline (Optional)</FormLabel><Controller control={form.control} name="quotationDeadline" render={({ field: { onChange, value } }) => <DatePicker date={value ? parseISO(value) : undefined} onDateChange={(date) => onChange(date ? format(date, 'yyyy-MM-dd') : undefined)} placeholder="Select deadline"/>} /><FormMessage /></FormItem>)} />
             </CardContent>
           </Card>
         </div>
@@ -393,4 +390,3 @@ export function QuotationRequestForm({ onSubmit, onCancel, defaultAgentId }: Quo
     </Form>
   );
 }
-
