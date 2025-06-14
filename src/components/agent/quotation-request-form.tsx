@@ -225,8 +225,17 @@ export function QuotationRequestForm({ onSubmit, onCancel, defaultAgentId }: Quo
         }
 
         if (elementToScroll) {
-          elementToScroll.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          console.log("[DEBUG] Scrolled field element into view:", firstError.path);
+          // Try to find the FormItem parent, which is more likely to be the visual container.
+          let scrollTarget: HTMLElement | null = elementToScroll.closest('div[data-form-item-container]');
+          if (!scrollTarget) { // Fallback to a common class or the element itself
+            scrollTarget = elementToScroll.closest('.space-y-2'); // FormItem default class
+          }
+          if (!scrollTarget) {
+            scrollTarget = elementToScroll;
+          }
+          
+          scrollTarget.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          console.log("[DEBUG] Scrolled element for path into view:", firstError.path, "Scrolled element:", scrollTarget);
         } else {
           console.warn("[DEBUG] Could not get a specific DOM element to scroll for field:", firstError.path, ". Relying on setFocus(). The <FormMessage /> should display the error. Fallback scroll to form top.");
           (document.querySelector('form') as HTMLFormElement)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
