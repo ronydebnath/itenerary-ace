@@ -1,3 +1,4 @@
+
 /**
  * @fileoverview This component provides a specialized form for defining and editing
  * activity service prices. It allows users to select predefined activity services,
@@ -125,8 +126,6 @@ export function ActivityPriceForm({ form }: ActivityPriceFormProps) {
 
   return (
     <div className="space-y-4 md:space-y-6">
-      <ActivityAIParser onPrefillData={handlePrefillFromAI} />
-
        {availableActivityServices.length > 0 && (
         <div className="border border-border rounded-md p-3 sm:p-4 relative">
           <p className="text-xs sm:text-sm font-semibold -mt-5 sm:-mt-6 ml-2 px-1 bg-background inline-block absolute left-2 top-[-0.7rem] mb-4">Predefined Services</p>
@@ -168,6 +167,7 @@ export function ActivityPriceForm({ form }: ActivityPriceFormProps) {
           </FormMessage>
         </div>
       )}
+      <ActivityAIParser onPrefillData={handlePrefillFromAI} />
     </div>
   );
 }
