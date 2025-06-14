@@ -25,7 +25,7 @@ import { useCountries } from '@/hooks/useCountries';
 interface MealItemFormProps {
   item: MealItemType;
   travelers: Traveler[];
-  currency: CurrencyCode;
+  currency: CurrencyCode; // Billing Currency
   tripSettings: TripSettings;
   dayNumber: number;
   onUpdate: (item: MealItemType) => void;
@@ -39,7 +39,7 @@ interface MealItemFormProps {
 function MealItemFormComponent({
   item,
   travelers,
-  currency,
+  currency: billingCurrency, // Renamed for clarity
   tripSettings,
   dayNumber,
   onUpdate,
@@ -53,6 +53,7 @@ function MealItemFormComponent({
   const currentAllServicePrices = passedInAllServicePrices || hookServicePrices;
   const { countries, getCountryById } = useCountries();
   const [mealServices, setMealServices] = React.useState<ServicePriceItem[]>([]);
+  const [itemSourceCurrency, setItemSourceCurrency] = React.useState<CurrencyCode>(billingCurrency);
 
   const getServicePriceById = React.useCallback((id: string) => {
     return currentAllServicePrices.find(sp => sp.id === id);
@@ -64,13 +65,25 @@ function MealItemFormComponent({
     }
     return undefined;
   }, [item.selectedServicePriceId, getServicePriceById]);
+  
+  React.useEffect(() => {
+    if (selectedService) {
+      setItemSourceCurrency(selectedService.currency);
+    } else {
+      setItemSourceCurrency(billingCurrency);
+    }
+  }, [selectedService, billingCurrency]);
 
   React.useEffect(() => {
     if (isLoadingServices && !passedInAllServicePrices) {
       setMealServices([]);
       return;
     }
-    let filteredServices = currentAllServicePrices.filter(s => s.category === 'meal' && s.currency === currency);
+    let filteredServices = currentAllServicePrices.filter(s => s.category === 'meal');
+    
+    // Determine the currency to filter by: service's own currency if selected, else billing currency
+    const currencyToFilterBy = selectedService?.currency || billingCurrency;
+    filteredServices = filteredServices.filter(s => s.currency === currencyToFilterBy);
 
     const countryIdToFilterBy = item.countryId || (tripSettings.selectedCountries.length === 1 ? tripSettings.selectedCountries[0] : undefined);
     const provincesToFilterBy = item.province ? [item.province] : tripSettings.selectedProvinces;
@@ -85,7 +98,7 @@ function MealItemFormComponent({
       filteredServices = filteredServices.filter(s => !s.province || provincesToFilterBy.includes(s.province));
     }
     setMealServices(filteredServices.sort((a,b) => a.name.localeCompare(b.name)));
-  }, [currentAllServicePrices, currency, item.countryId, item.province, tripSettings.selectedCountries, tripSettings.selectedProvinces, isLoadingServices, passedInAllServicePrices]);
+  }, [currentAllServicePrices, billingCurrency, item.countryId, item.province, tripSettings.selectedCountries, tripSettings.selectedProvinces, isLoadingServices, passedInAllServicePrices, selectedService]);
 
 
   const handleNumericInputChange = (field: keyof MealItemType, value: string) => {
@@ -110,6 +123,7 @@ function MealItemFormComponent({
         countryId: item.countryId,
         countryName: item.countryId ? countries.find(c => c.id === item.countryId)?.name : undefined,
       });
+      setItemSourceCurrency(billingCurrency);
     } else {
       const service = getServicePriceById(selectedValue);
       if (service) {
@@ -124,6 +138,7 @@ function MealItemFormComponent({
           countryId: service.countryId || item.countryId,
           countryName: service.countryId ? countries.find(c => c.id === service.countryId)?.name : item.countryName,
         });
+        setItemSourceCurrency(service.currency);
       } else {
          onUpdate({
           ...item,
@@ -133,6 +148,7 @@ function MealItemFormComponent({
           childMealPrice: undefined,
           note: undefined,
         });
+        setItemSourceCurrency(billingCurrency);
       }
     }
   };
@@ -158,7 +174,7 @@ function MealItemFormComponent({
     <BaseItemForm
       item={item}
       travelers={travelers}
-      currency={currency}
+      currency={billingCurrency}
       tripSettings={tripSettings}
       onUpdate={onUpdate as any}
       onDelete={onDelete}
@@ -170,7 +186,7 @@ function MealItemFormComponent({
     >
       {(mealServices.length > 0 || item.selectedServicePriceId || actualLoadingState) && (
         <div className="mb-4">
-          <FormField label={`Select Predefined Meal (${locationContext})`} id={`predefined-meal-${item.id}`}>
+          <FormField label={`Select Predefined Meal (${locationContext} - ${itemSourceCurrency})`} id={`predefined-meal-${item.id}`}>
             {actualLoadingState ? (
                  <div className="flex items-center h-10 border rounded-md px-3 bg-muted/50">
                     <Loader2 className="h-4 w-4 animate-spin mr-2 text-muted-foreground" />
@@ -189,7 +205,7 @@ function MealItemFormComponent({
                     <SelectItem value="none">None (Custom Price)</SelectItem>
                     {mealServices.map(service => (
                     <SelectItem key={service.id} value={service.id}>
-                        {service.name} ({service.province || (service.countryId ? countries.find(c=>c.id === service.countryId)?.name : 'Generic')}) - {currency} {service.price1}
+                        {service.name} ({service.province || (service.countryId ? countries.find(c=>c.id === service.countryId)?.name : 'Generic')}) - {service.currency} {service.price1}
                         {service.price2 !== undefined ? ` / Ch: ${service.price2}` : ''}
                         {service.subCategory ? ` (${service.subCategory})` : ''}
                     </SelectItem>
@@ -198,7 +214,7 @@ function MealItemFormComponent({
                 </Select>
             )}
           </FormField>
-          {selectedService && <p className="text-xs text-muted-foreground pt-1">Using: {selectedService.name}{selectedService.subCategory ? ` (${selectedService.subCategory})` : ''}</p>}
+          {selectedService && <p className="text-xs text-muted-foreground pt-1">Using: {selectedService.name}{selectedService.subCategory ? ` (${selectedService.subCategory})` : ''} (Priced in {selectedService.currency})</p>}
         </div>
       )}
 
@@ -210,6 +226,9 @@ function MealItemFormComponent({
             The selected meal service (ID: {item.selectedServicePriceId}) could not be found. Please choose another or set a custom price.
           </AlertDescription>
         </Alert>
+      )}
+      {itemSourceCurrency !== billingCurrency && selectedService && (
+        <p className="text-xs text-blue-600 mb-2">Note: Prices shown in {itemSourceCurrency}. Final cost will be converted to {billingCurrency}.</p>
       )}
 
       <div className="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-1 gap-3 sm:gap-4 mb-4">
@@ -239,7 +258,7 @@ function MealItemFormComponent({
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <FormField label={`Adult Meal Price (${currency})`} id={`adultMealPrice-${item.id}`}>
+        <FormField label={`Adult Meal Price (${itemSourceCurrency})`} id={`adultMealPrice-${item.id}`}>
           <Input
             type="number"
             id={`adultMealPrice-${item.id}`}
@@ -251,7 +270,7 @@ function MealItemFormComponent({
             className={isPriceReadOnly ? "bg-muted/50 cursor-not-allowed" : ""}
           />
         </FormField>
-        <FormField label={`Child Meal Price (${currency}) (Optional)`} id={`childMealPrice-${item.id}`}>
+        <FormField label={`Child Meal Price (${itemSourceCurrency}) (Optional)`} id={`childMealPrice-${item.id}`}>
           <Input
             type="number"
             id={`childMealPrice-${item.id}`}

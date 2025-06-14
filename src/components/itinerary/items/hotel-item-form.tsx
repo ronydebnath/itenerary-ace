@@ -34,7 +34,7 @@ import { cn } from '@/lib/utils';
 interface HotelItemFormProps {
   item: HotelItemType;
   travelers: Traveler[];
-  currency: CurrencyCode;
+  currency: CurrencyCode; // This is the Billing Currency for the itinerary
   dayNumber: number;
   tripSettings: TripSettings;
   onUpdate: (item: HotelItemType) => void;
@@ -49,7 +49,7 @@ interface HotelItemFormProps {
 function HotelItemFormComponent({
   item,
   travelers,
-  currency,
+  currency: billingCurrency, // Renamed for clarity
   dayNumber,
   tripSettings,
   onUpdate,
@@ -67,6 +67,7 @@ function HotelItemFormComponent({
   const { countries, getCountryById } = useCountries();
   const [availableHotels, setAvailableHotels] = React.useState<HotelDefinition[]>([]);
   const [selectedHotelDef, setSelectedHotelDef] = React.useState<HotelDefinition | undefined>(undefined);
+  const [itemSourceCurrency, setItemSourceCurrency] = React.useState<CurrencyCode>(billingCurrency);
   const [starFilter, setStarFilter] = React.useState<string>("all");
   const [openTravelerAssignments, setOpenTravelerAssignments] = React.useState<{[key: string]: boolean}>({});
 
@@ -89,7 +90,6 @@ function HotelItemFormComponent({
     } else if (tripSettings.selectedProvinces.length > 0 && (!countryIdToFilterBy && tripSettings.selectedCountries.length === 0)) {
         filteredDefs = filteredDefs.filter(hd => tripSettings.selectedProvinces.includes(hd.province));
     }
-
     if (starFilter !== "all") {
       const numericStarFilter = parseInt(starFilter, 10);
       filteredDefs = filteredDefs.filter(hd => hd.starRating === numericStarFilter);
@@ -98,13 +98,23 @@ function HotelItemFormComponent({
   }, [item.countryId, item.province, currentAllHotelDefinitions, isLoadingHotelDefs, tripSettings.selectedCountries, tripSettings.selectedProvinces, starFilter]);
 
   React.useEffect(() => {
-    if (item.hotelDefinitionId && !isLoadingHotelDefs) {
+    let determinedSourceCurrency = billingCurrency; // Fallback to billing currency
+    if (item.hotelDefinitionId) {
       const hotelDef = currentAllHotelDefinitions.find(hd => hd.id === item.hotelDefinitionId);
       setSelectedHotelDef(hotelDef);
+      if (hotelDef) {
+        const servicePriceForHotel = allServicePrices.find(
+          (sp) => sp.category === 'hotel' && sp.hotelDetails?.id === item.hotelDefinitionId
+        );
+        if (servicePriceForHotel) {
+          determinedSourceCurrency = servicePriceForHotel.currency;
+        }
+      }
     } else {
       setSelectedHotelDef(undefined);
     }
-  }, [item.hotelDefinitionId, currentAllHotelDefinitions, isLoadingHotelDefs]);
+    setItemSourceCurrency(determinedSourceCurrency);
+  }, [item.hotelDefinitionId, currentAllHotelDefinitions, allServicePrices, billingCurrency]);
 
   const handleHotelDefinitionChange = (hotelDefId: string) => {
     const newHotelDef = currentAllHotelDefinitions.find(hd => hd.id === hotelDefId);
@@ -216,7 +226,7 @@ function HotelItemFormComponent({
 
 
   return (
-    <BaseItemForm item={item} travelers={travelers} currency={currency} tripSettings={tripSettings} onUpdate={onUpdate as any} onDelete={onDelete} itemTypeLabel="Hotel Stay" dayNumber={dayNumber} itemSummaryLine={itemSummaryLine} isCurrentlyExpanded={isCurrentlyExpanded} onToggleExpand={onToggleExpand}>
+    <BaseItemForm item={item} travelers={travelers} currency={billingCurrency} tripSettings={tripSettings} onUpdate={onUpdate as any} onDelete={onDelete} itemTypeLabel="Hotel Stay" dayNumber={dayNumber} itemSummaryLine={itemSummaryLine} isCurrentlyExpanded={isCurrentlyExpanded} onToggleExpand={onToggleExpand}>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 mb-4">
         <FormField label="Filter by Star Rating" id={`star-filter-${item.id}`}>
           <Select value={starFilter} onValueChange={setStarFilter}>
@@ -236,7 +246,8 @@ function HotelItemFormComponent({
           )}
         </FormField>
       </div>
-      {selectedHotelDef && (<Card className="text-xs bg-muted/30 p-2 mb-4 border-dashed"><p><strong>Selected Hotel:</strong> {selectedHotelDef.name}</p><p><strong>Location:</strong> {selectedHotelDef.province || "N/A"}, {countries.find(c => c.id === selectedHotelDef.countryId)?.name || "N/A"}{selectedHotelDef.starRating && <span className="ml-1">({selectedHotelDef.starRating} <Star className="inline-block h-3 w-3 -mt-0.5 fill-yellow-400 text-yellow-500" />)</span>}</p></Card>)}
+      {selectedHotelDef && (<Card className="text-xs bg-muted/30 p-2 mb-4 border-dashed"><p><strong>Selected Hotel:</strong> {selectedHotelDef.name}</p><p><strong>Location:</strong> {selectedHotelDef.province || "N/A"}, {countries.find(c => c.id === selectedHotelDef.countryId)?.name || "N/A"}{selectedHotelDef.starRating && <span className="ml-1">({selectedHotelDef.starRating} <Star className="inline-block h-3 w-3 -mt-0.5 fill-yellow-400 text-yellow-500" />)</span>} <span className="font-semibold">(Rates in {itemSourceCurrency})</span></p></Card>)}
+      {itemSourceCurrency !== billingCurrency && selectedHotelDef && (<p className="text-xs text-blue-600 mb-2">Note: Hotel prices are in {itemSourceCurrency}. Final cost will be converted to {billingCurrency}.</p>)}
       <div className="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-1 gap-3 sm:gap-4 mb-4">
         <FormField label="Hotel Stay Name / Reference" id={`itemName-${item.id}`} className="md:col-span-1">
             <Input id={`itemName-${item.id}`} value={item.name} onChange={(e) => onUpdate({ ...item, name: e.target.value })} placeholder={`e.g., City Center Stay, Beach Resort`} className="h-9 text-sm"/>
@@ -295,7 +306,7 @@ function HotelItemFormComponent({
                   }
                 }
                 if (foundRate !== undefined) {
-                  effectiveRateDisplay = (<div className="mt-2 text-xs text-muted-foreground bg-green-50 border border-green-200 p-2 rounded-md space-y-0.5"><p className="flex items-center"><DollarSign className="h-3 w-3 mr-1 text-green-600"/>Effective Nightly Rate ({seasonName || 'Current'}): <strong className="ml-1 text-green-700">{formatCurrency(foundRate, currency)}</strong></p>{currentRoomTypeDef.extraBedAllowed && foundExtraBedRate !== undefined && (<p className="flex items-center"><DollarSign className="h-3 w-3 mr-1 text-green-600"/>Effective Extra Bed: <strong className="ml-1 text-green-700">{formatCurrency(foundExtraBedRate, currency)}</strong></p>)}{currentRoomTypeDef.extraBedAllowed && foundExtraBedRate === undefined && (<p className="italic text-orange-600">Extra bed allowed, but no specific rate for this season.</p>)}</div>);
+                  effectiveRateDisplay = (<div className="mt-2 text-xs text-muted-foreground bg-green-50 border border-green-200 p-2 rounded-md space-y-0.5"><p className="flex items-center"><DollarSign className="h-3 w-3 mr-1 text-green-600"/>Effective Nightly Rate ({seasonName || 'Current'}): <strong className="ml-1 text-green-700">{formatCurrency(foundRate, itemSourceCurrency)}</strong></p>{currentRoomTypeDef.extraBedAllowed && foundExtraBedRate !== undefined && (<p className="flex items-center"><DollarSign className="h-3 w-3 mr-1 text-green-600"/>Effective Extra Bed: <strong className="ml-1 text-green-700">{formatCurrency(foundExtraBedRate, itemSourceCurrency)}</strong></p>)}{currentRoomTypeDef.extraBedAllowed && foundExtraBedRate === undefined && (<p className="italic text-orange-600">Extra bed allowed, but no specific rate for this season.</p>)}</div>);
                 } else {
                   effectiveRateDisplay = (<div className="mt-2 text-xs text-orange-600 bg-orange-50 border border-orange-200 p-2 rounded-md">Rate not available for check-in date ({format(checkInDateOfStay, 'dd-MMM-yy')}). Check hotel's seasonal pricing.</div>);
                 }
@@ -338,7 +349,7 @@ function HotelItemFormComponent({
             </Card>
             );
           })}
-           {currentSelectedRoomsForRender.length > 0 && (<p className="text-xs text-muted-foreground text-center pt-2">Hotel costs are calculated night-by-night based on room types and seasonal rates from the hotel's master data.</p>)}
+           {currentSelectedRoomsForRender.length > 0 && (<p className="text-xs text-muted-foreground text-center pt-2">Hotel costs are calculated night-by-night based on room types and seasonal rates from the hotel's master data (defined in {itemSourceCurrency}).</p>)}
         </div>
         </>
       )}
@@ -346,6 +357,4 @@ function HotelItemFormComponent({
   );
 }
 export const HotelItemForm = React.memo(HotelItemFormComponent);
-
-
     

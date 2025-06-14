@@ -28,7 +28,7 @@ import { useCountries } from '@/hooks/useCountries';
 interface ActivityItemFormProps {
   item: ActivityItemType;
   travelers: Traveler[];
-  currency: CurrencyCode;
+  currency: CurrencyCode; // Billing Currency
   dayNumber: number;
   tripSettings: TripSettings;
   onUpdate: (item: ActivityItemType) => void;
@@ -44,7 +44,7 @@ const WEEKDAYS_MAP = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 function ActivityItemFormComponent({
   item,
   travelers,
-  currency,
+  currency: billingCurrency, // Renamed for clarity
   dayNumber,
   tripSettings,
   onUpdate,
@@ -58,6 +58,7 @@ function ActivityItemFormComponent({
   const currentAllServicePrices = passedInAllServicePrices || hookServicePrices;
   const { countries, getCountryById } = useCountries();
   const [activityServices, setActivityServices] = React.useState<ServicePriceItem[]>([]);
+  const [itemSourceCurrency, setItemSourceCurrency] = React.useState<CurrencyCode>(billingCurrency);
 
   const getServicePriceById = React.useCallback((id: string) => {
     return currentAllServicePrices.find(sp => sp.id === id);
@@ -82,7 +83,12 @@ function ActivityItemFormComponent({
       setActivityServices([]);
       return;
     }
-    let filteredServices = currentAllServicePrices.filter(s => s.category === 'activity' && s.currency === currency);
+    let filteredServices = currentAllServicePrices.filter(s => s.category === 'activity'); // Initial filter by category
+    
+    // Determine the currency to filter by: service's own currency if selected, else billing currency
+    const currencyToFilterBy = selectedActivityService?.currency || billingCurrency;
+    filteredServices = filteredServices.filter(s => s.currency === currencyToFilterBy);
+
 
     const countryIdToFilterBy = item.countryId || (tripSettings.selectedCountries.length === 1 ? tripSettings.selectedCountries[0] : undefined);
     const provincesToFilterBy = item.province ? [item.province] : tripSettings.selectedProvinces;
@@ -97,7 +103,15 @@ function ActivityItemFormComponent({
          filteredServices = filteredServices.filter(s => !s.province || provincesToFilterBy.includes(s.province));
     }
     setActivityServices(filteredServices.sort((a,b) => a.name.localeCompare(b.name)));
-  }, [currentAllServicePrices, currency, item.countryId, item.province, tripSettings.selectedCountries, tripSettings.selectedProvinces, isLoadingServices, passedInAllServicePrices]);
+  }, [currentAllServicePrices, billingCurrency, item.countryId, item.province, tripSettings.selectedCountries, tripSettings.selectedProvinces, isLoadingServices, passedInAllServicePrices, selectedActivityService]);
+
+  React.useEffect(() => {
+    if (selectedActivityService) {
+      setItemSourceCurrency(selectedActivityService.currency);
+    } else {
+      setItemSourceCurrency(billingCurrency);
+    }
+  }, [selectedActivityService, billingCurrency]);
 
 
   const handleNumericInputChange = (field: keyof ActivityItemType, value: string) => {
@@ -129,6 +143,7 @@ function ActivityItemFormComponent({
         countryId: item.countryId,
         countryName: item.countryId ? countries.find(c => c.id === item.countryId)?.name : undefined,
       });
+      setItemSourceCurrency(billingCurrency);
     } else {
       const service = getServicePriceById(selectedValue);
       if (service) {
@@ -145,6 +160,7 @@ function ActivityItemFormComponent({
           countryId: service.countryId || item.countryId,
           countryName: service.countryId ? countries.find(c => c.id === service.countryId)?.name : item.countryName,
         });
+        setItemSourceCurrency(service.currency);
       } else {
         onUpdate({
           ...item,
@@ -155,6 +171,7 @@ function ActivityItemFormComponent({
           childPrice: undefined,
           note: undefined,
         });
+        setItemSourceCurrency(billingCurrency);
       }
     }
   };
@@ -210,7 +227,7 @@ function ActivityItemFormComponent({
     <BaseItemForm
       item={item}
       travelers={travelers}
-      currency={currency}
+      currency={billingCurrency}
       tripSettings={tripSettings}
       onUpdate={onUpdate as any}
       onDelete={onDelete}
@@ -222,7 +239,7 @@ function ActivityItemFormComponent({
     >
         {(activityServices.length > 0 || item.selectedServicePriceId || actualLoadingState) && (
             <div className="mb-4">
-            <FormField label={`Select Predefined Activity (${locationContext})`} id={`predefined-activity-${item.id}`}>
+            <FormField label={`Select Predefined Activity (${locationContext} - ${itemSourceCurrency})`} id={`predefined-activity-${item.id}`}>
                 {actualLoadingState ? (
                     <div className="flex items-center h-10 border rounded-md px-3 bg-muted/50">
                         <Loader2 className="h-4 w-4 animate-spin mr-2 text-muted-foreground" />
@@ -244,21 +261,21 @@ function ActivityItemFormComponent({
                             {service.name} ({service.province || (service.countryId ? countries.find(c=>c.id === service.countryId)?.name : 'Generic')})
                             {service.activityPackages && service.activityPackages.length > 0
                             ? ` - ${service.activityPackages.length} pkg(s)`
-                            : service.price1 !== undefined ? ` - ${currency} ${service.price1}` : ''}
+                            : service.price1 !== undefined ? ` - ${service.currency} ${service.price1}` : ''}
                         </SelectItem>
                         ))}
                     </SelectContent>
                     </Select>
                 )}
             </FormField>
-            {selectedActivityService && <p className="text-xs text-muted-foreground pt-1">Using: {selectedActivityService.name}</p>}
+            {selectedActivityService && <p className="text-xs text-muted-foreground pt-1">Using: {selectedActivityService.name} (Priced in {selectedActivityService.currency})</p>}
             </div>
         )}
 
 
         {selectedActivityService && selectedActivityService.activityPackages && selectedActivityService.activityPackages.length > 0 && (
         <div className="mb-4">
-            <FormField label="Select Package" id={`activity-package-${item.id}`}>
+            <FormField label={`Select Package (from ${selectedActivityService.name})`} id={`activity-package-${item.id}`}>
             <Select
                 value={item.selectedPackageId || "none"}
                 onValueChange={handlePackageSelect}
@@ -270,7 +287,7 @@ function ActivityItemFormComponent({
                 <SelectItem value="none">None (Use Activity Base Price or Custom)</SelectItem>
                 {selectedActivityService.activityPackages.map(pkg => (
                     <SelectItem key={pkg.id} value={pkg.id}>
-                    {pkg.name} - {currency} {pkg.price1}
+                    {pkg.name} - {itemSourceCurrency} {pkg.price1}
                     {pkg.price2 !== undefined ? ` / Ch: ${pkg.price2}` : ''}
                     </SelectItem>
                 ))}
@@ -288,6 +305,9 @@ function ActivityItemFormComponent({
             The selected activity (ID: {item.selectedServicePriceId}) could not be found. Please choose another or set a custom price.
           </AlertDescription>
         </Alert>
+      )}
+      {itemSourceCurrency !== billingCurrency && (selectedActivityService || selectedPackage) && (
+        <p className="text-xs text-blue-600 mb-2">Note: Prices shown in {itemSourceCurrency}. Final cost will be converted to {billingCurrency}.</p>
       )}
 
       <div className="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-1 gap-3 sm:gap-4 mb-4">
@@ -347,7 +367,7 @@ function ActivityItemFormComponent({
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <FormField label={`Adult Price (${currency})`} id={`adultPrice-${item.id}`}>
+        <FormField label={`Adult Price (${itemSourceCurrency})`} id={`adultPrice-${item.id}`}>
           <Input
             type="number"
             id={`adultPrice-${item.id}`}
@@ -359,7 +379,7 @@ function ActivityItemFormComponent({
             className={isPriceReadOnly ? "bg-muted/50 cursor-not-allowed" : ""}
           />
         </FormField>
-        <FormField label={`Child Price (${currency}) (Optional)`} id={`childPrice-${item.id}`}>
+        <FormField label={`Child Price (${itemSourceCurrency}) (Optional)`} id={`childPrice-${item.id}`}>
           <Input
             type="number"
             id={`childPrice-${item.id}`}
@@ -403,4 +423,3 @@ function ActivityItemFormComponent({
 }
 export const ActivityItemForm = React.memo(ActivityItemFormComponent);
     
-

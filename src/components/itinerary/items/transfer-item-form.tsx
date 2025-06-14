@@ -31,7 +31,7 @@ import { useCountries } from '@/hooks/useCountries';
 interface TransferItemFormProps {
   item: TransferItemType;
   travelers: Traveler[];
-  currency: CurrencyCode;
+  currency: CurrencyCode; // Billing Currency
   tripSettings: TripSettings;
   dayNumber: number;
   onUpdate: (item: TransferItemType) => void;
@@ -45,7 +45,7 @@ interface TransferItemFormProps {
 function TransferItemFormComponent({
   item,
   travelers,
-  currency,
+  currency: billingCurrency, // Renamed for clarity
   tripSettings,
   dayNumber,
   onUpdate,
@@ -59,6 +59,7 @@ function TransferItemFormComponent({
   const currentAllServicePrices = passedInAllServicePrices || hookServicePrices;
   const { countries, getCountryById } = useCountries();
   const [transferServices, setTransferServices] = React.useState<ServicePriceItem[]>([]);
+  const [itemSourceCurrency, setItemSourceCurrency] = React.useState<CurrencyCode>(billingCurrency);
 
   const getServicePriceById = React.useCallback((id: string) => {
     return currentAllServicePrices.find(sp => sp.id === id);
@@ -70,13 +71,26 @@ function TransferItemFormComponent({
     }
     return undefined;
   }, [item.selectedServicePriceId, getServicePriceById]);
+  
+  React.useEffect(() => {
+    if (selectedService) {
+      setItemSourceCurrency(selectedService.currency);
+    } else {
+      setItemSourceCurrency(billingCurrency);
+    }
+  }, [selectedService, billingCurrency]);
 
   React.useEffect(() => {
     if (isLoadingServices && !passedInAllServicePrices) {
       setTransferServices([]);
       return;
     }
-    let filteredServices = currentAllServicePrices.filter(s => s.category === 'transfer' && s.currency === currency);
+    let filteredServices = currentAllServicePrices.filter(s => s.category === 'transfer');
+    
+    // Determine the currency to filter by: service's own currency if selected, else billing currency
+    const currencyToFilterBy = selectedService?.currency || billingCurrency;
+    filteredServices = filteredServices.filter(s => s.currency === currencyToFilterBy);
+
 
     filteredServices = filteredServices.filter(s => {
         if (item.mode === 'ticket') return s.subCategory === 'ticket' || s.transferMode === 'ticket';
@@ -98,7 +112,7 @@ function TransferItemFormComponent({
     }
 
     setTransferServices(filteredServices.sort((a,b) => a.name.localeCompare(b.name)));
-  }, [currentAllServicePrices, currency, item.mode, item.countryId, item.province, tripSettings.selectedCountries, tripSettings.selectedProvinces, isLoadingServices, passedInAllServicePrices]);
+  }, [currentAllServicePrices, billingCurrency, item.mode, item.countryId, item.province, tripSettings.selectedCountries, tripSettings.selectedProvinces, isLoadingServices, passedInAllServicePrices, selectedService]);
 
 
   const handleInputChange = (field: keyof TransferItemType, value: any) => {
@@ -130,7 +144,7 @@ function TransferItemFormComponent({
     onUpdate({
       ...item,
       [field]: numValue,
-      selectedServicePriceId: undefined,
+      selectedServicePriceId: undefined, // Custom price implies deselecting predefined service
       selectedVehicleOptionId: undefined
     });
   };
@@ -152,6 +166,7 @@ function TransferItemFormComponent({
         countryId: item.countryId,
         countryName: item.countryId ? countries.find(c => c.id === item.countryId)?.name : undefined,
       });
+      setItemSourceCurrency(billingCurrency);
     } else {
       const service = getServicePriceById(selectedValue);
       if (service) {
@@ -188,6 +203,7 @@ function TransferItemFormComponent({
           updatedItemPartial.vehicles = item.vehicles || 1;
         }
         onUpdate({ ...item, ...updatedItemPartial });
+        setItemSourceCurrency(service.currency);
       } else {
          onUpdate({
           ...item,
@@ -201,6 +217,7 @@ function TransferItemFormComponent({
           vehicles: item.mode === 'vehicle' ? (item.vehicles || 1) : undefined,
           note: undefined,
         });
+        setItemSourceCurrency(billingCurrency);
       }
     }
   };
@@ -271,7 +288,7 @@ function TransferItemFormComponent({
     <BaseItemForm
       item={item}
       travelers={travelers}
-      currency={currency}
+      currency={billingCurrency}
       tripSettings={tripSettings}
       onUpdate={onUpdate as any}
       onDelete={onDelete}
@@ -295,7 +312,7 @@ function TransferItemFormComponent({
 
       {item.mode && (
         <div className="mt-4">
-          <FormField label={`Select Predefined Route (${locationContext})`} id={`predefined-transfer-${item.id}`}>
+          <FormField label={`Select Predefined Route (${locationContext} - ${itemSourceCurrency})`} id={`predefined-transfer-${item.id}`}>
               {actualLoadingState && (!item.selectedServicePriceId && transferServices.length === 0) ? (
                  <div className="flex items-center h-10 border rounded-md px-3 bg-muted/50">
                     <Loader2 className="h-4 w-4 animate-spin mr-2 text-muted-foreground" />
@@ -317,14 +334,14 @@ function TransferItemFormComponent({
                         {transferServices.map(service => (
                         <SelectItem key={service.id} value={service.id}>
                             {service.name} ({service.province || (service.countryId ? countries.find(c => c.id === service.countryId)?.name : 'Generic')})
-                            {service.vehicleOptions && service.vehicleOptions.length > 0 ? ` - ${service.vehicleOptions.length} options` : (service.price1 !== undefined ? ` - ${currency} ${service.price1}`: '')}
+                            {service.vehicleOptions && service.vehicleOptions.length > 0 ? ` - ${service.vehicleOptions.length} options` : (service.price1 !== undefined ? ` - ${service.currency} ${service.price1}`: '')}
                         </SelectItem>
                         ))}
                     </SelectContent>
                 </Select>
               )}
           </FormField>
-          {selectedService && <p className="text-xs text-muted-foreground pt-1">Using: {selectedService.name}</p>}
+          {selectedService && <p className="text-xs text-muted-foreground pt-1">Using: {selectedService.name} (Priced in {selectedService.currency})</p>}
 
           {item.mode === 'vehicle' && selectedService && selectedService.vehicleOptions && selectedService.vehicleOptions.length > 0 && (
             <div className="mt-3">
@@ -340,7 +357,7 @@ function TransferItemFormComponent({
                     <SelectItem value="none">None (Use Service Base or Custom)</SelectItem>
                     {selectedService.vehicleOptions.map(opt => (
                       <SelectItem key={opt.id} value={opt.id}>
-                        {opt.vehicleType} - {currency} {opt.price} (Max: {opt.maxPassengers} Pax)
+                        {opt.vehicleType} - {itemSourceCurrency} {opt.price} (Max: {opt.maxPassengers} Pax)
                         {opt.notes ? ` - ${opt.notes}` : ''}
                       </SelectItem>
                     ))}
@@ -360,6 +377,9 @@ function TransferItemFormComponent({
             The selected transfer service (ID: {item.selectedServicePriceId}) could not be found. Please choose another or set a custom price/options.
           </AlertDescription>
         </Alert>
+      )}
+       {itemSourceCurrency !== billingCurrency && selectedService && (
+        <p className="text-xs text-blue-600 mb-2">Note: Prices shown in {itemSourceCurrency}. Final cost will be converted to {billingCurrency}.</p>
       )}
 
       <div className="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-1 gap-3 sm:gap-4 mt-4">
@@ -390,7 +410,7 @@ function TransferItemFormComponent({
 
       {item.mode === 'ticket' && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <FormField label={`Adult Ticket Price (${currency})`} id={`adultTicketPrice-${item.id}`}>
+          <FormField label={`Adult Ticket Price (${itemSourceCurrency})`} id={`adultTicketPrice-${item.id}`}>
             <Input
               type="number"
               id={`adultTicketPrice-${item.id}`}
@@ -402,7 +422,7 @@ function TransferItemFormComponent({
               className={!!selectedService ? "bg-muted/50 cursor-not-allowed" : ""}
             />
           </FormField>
-          <FormField label={`Child Ticket Price (${currency}) (Optional)`} id={`childTicketPrice-${item.id}`}>
+          <FormField label={`Child Ticket Price (${itemSourceCurrency}) (Optional)`} id={`childTicketPrice-${item.id}`}>
             <Input
               type="number"
               id={`childTicketPrice-${item.id}`}
@@ -436,7 +456,7 @@ function TransferItemFormComponent({
                 </SelectContent>
               </Select>
             </FormField>
-            <FormField label={`Cost Per Vehicle (${currency})`} id={`costPerVehicle-${item.id}`}>
+            <FormField label={`Cost Per Vehicle (${itemSourceCurrency})`} id={`costPerVehicle-${item.id}`}>
               <Input
                 type="number"
                 id={`costPerVehicle-${item.id}`}
@@ -467,7 +487,7 @@ function TransferItemFormComponent({
                   try {
                     return (
                       <li key={sp.id}>
-                        {sp.name}: +{formatCurrency(sp.surchargeAmount, currency)}
+                        {sp.name}: +{formatCurrency(sp.surchargeAmount, itemSourceCurrency)}
                         ({formatDateFns(parseISO(sp.startDate), 'dd MMM')} - {formatDateFns(parseISO(sp.endDate), 'dd MMM')})
                       </li>
                     );
@@ -484,6 +504,3 @@ function TransferItemFormComponent({
   );
 }
 export const TransferItemForm = React.memo(TransferItemFormComponent);
-
-
-
