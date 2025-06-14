@@ -15,7 +15,7 @@
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
-import { LayoutDashboard, Route, ListOrdered, DollarSign, Wand2, Briefcase, Map, Users, BadgeDollarSign } from 'lucide-react';
+import { LayoutDashboard, Route, ListOrdered, DollarSign, Wand2, Briefcase, Map, Users, BadgeDollarSign, ListChecks } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import React from 'react';
 
@@ -77,6 +77,14 @@ export default function AdminDashboardPage() {
             icon={Route}
             buttonText="Launch Planner"
             className="lg:col-span-1 bg-accent/5 border-accent/30"
+          />
+          <DashboardCard
+            title="Manage Quotation Requests"
+            description="View and process new quotation requests from agents. Create itinerary proposals."
+            href="/admin/quotation-requests"
+            icon={ListChecks}
+            buttonText="View Requests"
+            className="lg:col-span-1"
           />
           <DashboardCard
             title="Manage Saved Itineraries"

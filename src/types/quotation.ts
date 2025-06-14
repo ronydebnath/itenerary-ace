@@ -16,6 +16,8 @@ import { isValid, parseISO } from 'date-fns';
 export const TRIP_TYPES = ["Leisure", "Business", "Honeymoon", "Family", "Adventure", "Cultural", "Cruise", "Group Tour", "Backpacking", "Other"] as const;
 export const BUDGET_RANGES = ["Economy/Budget", "Mid-Range/Comfort", "Luxury/Premium", "Specific Amount (see notes)"] as const;
 export const HOTEL_STAR_RATINGS = ["Any", "2 Stars", "3 Stars", "4 Stars", "5 Stars", "Boutique/Unrated"] as const;
+export const QUOTATION_STATUSES = ["Pending", "Quoted", "ConfirmedByAgent", "BookingInProgress", "Booked", "Cancelled"] as const;
+
 
 export const QuotationRequestClientInfoSchema = z.object({
   clientReference: z.string().optional().describe("Agent's internal reference for the client"),
@@ -40,15 +42,15 @@ export const QuotationRequestTripDetailsSchema = z.object({
   budgetCurrency: z.custom<CurrencyCode>((val) => CURRENCIES.includes(val as CurrencyCode)).default('USD'),
 }).refine(data => {
   if (data.preferredStartDate && data.preferredEndDate) {
-    try { 
+    try {
         const startDate = parseISO(data.preferredStartDate);
         const endDate = parseISO(data.preferredEndDate);
         if (isValid(startDate) && isValid(endDate)) {
             return endDate >= startDate;
         }
-        return true; 
+        return true;
     } catch (e) {
-        return true; 
+        return true;
     }
   }
   return true;
@@ -79,16 +81,18 @@ export const QuotationRequestFlightPrefsSchema = z.object({
 export const QuotationRequestSchema = z.object({
   id: z.string().default(() => `QR-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`),
   requestDate: z.string().default(() => new Date().toISOString()),
-  agentId: z.string().optional(), 
+  agentId: z.string().optional(),
   clientInfo: QuotationRequestClientInfoSchema,
   tripDetails: QuotationRequestTripDetailsSchema,
   accommodationPrefs: QuotationRequestAccommodationPrefsSchema.optional(),
   activityPrefs: QuotationRequestActivityPrefsSchema.optional(),
   flightPrefs: QuotationRequestFlightPrefsSchema.optional(),
   otherRequirements: z.string().optional(),
-  status: z.enum(["Pending", "Quoted", "Booked", "Cancelled"]).default("Pending"),
+  status: z.enum(QUOTATION_STATUSES).default("Pending"),
+  linkedItineraryId: z.string().optional().describe("ID of the itinerary created for this request"),
 });
 
+export type QuotationRequestStatus = z.infer<typeof QuotationRequestSchema.shape.status>;
 export type QuotationRequest = z.infer<typeof QuotationRequestSchema>;
 export type QuotationRequestClientInfo = z.infer<typeof QuotationRequestClientInfoSchema>;
 export type QuotationRequestTripDetails = z.infer<typeof QuotationRequestTripDetailsSchema>;

@@ -57,6 +57,13 @@ export const VEHICLE_TYPES = [
 ] as const;
 export type VehicleType = typeof VEHICLE_TYPES[number];
 
+export const BOOKING_STATUSES = ["Pending", "Requested", "Confirmed", "Unavailable", "Cancelled"] as const;
+export type BookingStatus = typeof BOOKING_STATUSES[number];
+
+export const OVERALL_BOOKING_STATUSES = ["NotStarted", "InProgress", "PartiallyBooked", "FullyBooked", "Issues"] as const;
+export type OverallBookingStatus = typeof OVERALL_BOOKING_STATUSES[number];
+
+
 export interface BaseItem {
   id: string;
   day: number;
@@ -69,6 +76,8 @@ export interface BaseItem {
   countryId?: string; // ID of the country for this item
   countryName?: string; // Name of the country for this item (denormalized for convenience)
   province?: string; // Province name
+  bookingStatus?: BookingStatus;
+  confirmationRef?: string;
 }
 
 export interface VehicleOption {
@@ -201,6 +210,9 @@ export interface TripData {
   pax: PaxDetails;
   travelers: Traveler[];
   days: { [dayNumber: number]: DayItinerary };
+  quotationRequestId?: string;
+  version?: number;
+  overallBookingStatus?: OverallBookingStatus;
 }
 
 export interface CostSummary {
@@ -223,6 +235,8 @@ export interface DetailedSummaryItem {
   childCost: number;
   totalCost: number;
   occupancyDetails?: HotelOccupancyDetail[]; // Specific to hotels
+  bookingStatus?: BookingStatus; // Added for summary display
+  confirmationRef?: string;    // Added for summary display
 }
 
 export interface HotelOccupancyDetail { // For cost summary display
@@ -257,7 +271,7 @@ export interface ServicePriceItem {
   countryId?: string; // Country this service is primarily associated with
   province?: string;  // Province this service is primarily associated with
   category: ItineraryItemType;
-  
+
   // For simple pricing (ticket transfers, meals, misc, or fallback for activities)
   price1?: number;       // e.g., Adult price, Unit cost
   price2?: number;       // e.g., Child price
@@ -279,7 +293,7 @@ export interface ServicePriceItem {
   surchargePeriods?: SurchargePeriod[]; // Mainly for vehicle transfers
 
   // For UI state in forms, not part of the core definition itself
-  selectedServicePriceId?: string; 
+  selectedServicePriceId?: string;
 }
 
 
@@ -319,5 +333,3 @@ export interface SpecificMarkupRate {
   markupPercentage: number;
   updatedAt: string; // ISO Date string
 }
-
-    

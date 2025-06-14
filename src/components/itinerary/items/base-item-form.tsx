@@ -14,11 +14,13 @@
 "use client";
 
 import * as React from 'react';
-import type { ItineraryItem, Traveler, CurrencyCode, TripSettings } from '@/types/itinerary';
+import type { ItineraryItem, Traveler, CurrencyCode, TripSettings, BookingStatus } from '@/types/itinerary';
+import { BOOKING_STATUSES } from '@/types/itinerary';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Trash2, ChevronDown, ChevronUp, Hotel, Car, Ticket, Utensils, ShoppingBag, AlertCircle, Loader2 } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Trash2, ChevronDown, ChevronUp, Hotel, Car, Ticket, Utensils, ShoppingBag, AlertCircle, Loader2, BadgeCheck, Clock, Ban, HelpCircle, FileQuestion } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useProvinces } from '@/hooks/useProvinces';
@@ -55,6 +57,14 @@ const ITEM_TYPE_ICONS: { [key in ItineraryItem['type']]: React.ElementType } = {
   activity: Ticket,
   meal: Utensils,
   misc: ShoppingBag,
+};
+
+const BOOKING_STATUS_ICONS: { [key in BookingStatus]: React.ElementType } = {
+  Pending: FileQuestion,
+  Requested: Clock,
+  Confirmed: BadgeCheck,
+  Unavailable: Ban,
+  Cancelled: HelpCircle,
 };
 
 function BaseItemFormComponent<T extends ItineraryItem>({
@@ -189,7 +199,16 @@ function BaseItemFormComponent<T extends ItineraryItem>({
     onUpdate({ ...item, excludedTravelerIds: newExcludedTravelerIds });
   };
 
+  const handleBookingStatusChange = (newStatus: BookingStatus) => {
+    onUpdate({ ...item, bookingStatus: newStatus });
+  };
+
+  const handleConfirmationRefChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    onUpdate({ ...item, confirmationRef: event.target.value || undefined });
+  };
+
   const IconComponent = ITEM_TYPE_ICONS[item.type] || AlertCircle;
+  const BookingStatusIcon = item.bookingStatus ? BOOKING_STATUS_ICONS[item.bookingStatus] : FileQuestion;
   const itemNameDisplay = item.name || `New ${itemTypeLabel}`;
 
   return (
@@ -212,6 +231,7 @@ function BaseItemFormComponent<T extends ItineraryItem>({
           <IconComponent className="h-5 w-5 mr-2 flex-shrink-0 text-primary" />
           <div className="flex-grow min-w-0">
             <CardTitle className="text-base font-semibold text-primary truncate" title={`${itemTypeLabel}: ${itemNameDisplay}`}>
+              <BookingStatusIcon className="h-4 w-4 mr-1.5 inline-block relative -top-px text-muted-foreground" />
               {itemTypeLabel}: {itemNameDisplay}
             </CardTitle>
             {itemSummaryLine && (
@@ -289,6 +309,39 @@ function BaseItemFormComponent<T extends ItineraryItem>({
 
           {children}
 
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 pt-2 border-t mt-3">
+            <FormField label="Booking Status" id={`bookingStatus-${item.id}`}>
+              <Select
+                value={item.bookingStatus || "Pending"}
+                onValueChange={(value) => handleBookingStatusChange(value as BookingStatus)}
+              >
+                <SelectTrigger className="h-9 text-sm">
+                  <SelectValue placeholder="Set booking status" />
+                </SelectTrigger>
+                <SelectContent>
+                  {BOOKING_STATUSES.map(status => (
+                    <SelectItem key={status} value={status} className="text-sm">
+                      <div className="flex items-center">
+                        <BookingStatusIcon className="h-4 w-4 mr-2" />
+                        {status}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </FormField>
+            <FormField label="Confirmation Ref (Optional)" id={`confirmationRef-${item.id}`}>
+              <Input
+                id={`confirmationRef-${item.id}`}
+                value={item.confirmationRef || ""}
+                onChange={handleConfirmationRefChange}
+                placeholder="e.g., Booking ID, PNR"
+                className="h-9 text-sm"
+              />
+            </FormField>
+          </div>
+
+
           <div className="pt-1 sm:pt-2">
             <button
               onClick={() => setIsOptOutOpen(!isOptOutOpen)}
@@ -328,4 +381,3 @@ function BaseItemFormComponent<T extends ItineraryItem>({
 }
 
 export const BaseItemForm = React.memo(BaseItemFormComponent) as typeof BaseItemFormComponent;
-
