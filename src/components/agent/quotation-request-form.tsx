@@ -16,7 +16,7 @@
 
 import * as React from 'react';
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm, Controller, type FieldErrors } from "react-hook-form";
+import { useForm, Controller, type FieldErrors, type FieldPath } from "react-hook-form";
 import {
   QuotationRequestSchema,
   type QuotationRequest,
@@ -75,10 +75,10 @@ export function QuotationRequestForm({ onSubmit, onCancel, defaultAgentId }: Quo
         budgetCurrency: 'USD',
         preferredCountryIds: [],
         preferredProvinceNames: [],
-        tripType: undefined, 
+        tripType: undefined,
       },
       accommodationPrefs: {
-        hotelStarRating: "3 Stars", 
+        hotelStarRating: "3 Stars",
         roomPreferences: "",
         specificHotelRequests: "",
       },
@@ -90,7 +90,7 @@ export function QuotationRequestForm({ onSubmit, onCancel, defaultAgentId }: Quo
         activityTransfersRequired: false,
       },
       mealPrefs: {
-        mealPlan: "Breakfast Only", 
+        mealPlan: "Breakfast Only",
       },
       otherRequirements: "",
       status: "Pending",
@@ -183,39 +183,47 @@ export function QuotationRequestForm({ onSubmit, onCancel, defaultAgentId }: Quo
     } catch (e) {
       console.error("Could not stringify errors object for Quotation Form:", e);
     }
-    
-    const firstErrorField = Object.keys(errors)[0] as keyof QuotationRequest | string;
-    
-    if (firstErrorField) {
-      let fieldNameToFocus: any = firstErrorField;
-      
-      if (errors.clientInfo && firstErrorField in errors.clientInfo) {
-        fieldNameToFocus = `clientInfo.${firstErrorField}`;
-      } else if (errors.tripDetails && firstErrorField in errors.tripDetails) {
-        fieldNameToFocus = `tripDetails.${firstErrorField}`;
-      } else if (errors.accommodationPrefs && firstErrorField in errors.accommodationPrefs) {
-        fieldNameToFocus = `accommodationPrefs.${firstErrorField}`;
-      } else if (errors.activityPrefs && firstErrorField in errors.activityPrefs) {
-        fieldNameToFocus = `activityPrefs.${firstErrorField}`;
-      } else if (errors.flightPrefs && firstErrorField in errors.flightPrefs) {
-        fieldNameToFocus = `flightPrefs.${firstErrorField}`;
-      } else if (errors.mealPrefs && firstErrorField in errors.mealPrefs) {
-        fieldNameToFocus = `mealPrefs.${firstErrorField}`;
+
+    let firstErrorPath: FieldPath<QuotationRequest> | undefined;
+
+    // Function to recursively find the first error path and log all errors
+    const findAndLogErrors = (currentErrors: any, basePath = ""): string | undefined => {
+      let firstPathFound: string | undefined;
+      const keys = Object.keys(currentErrors);
+      for (const key of keys) {
+        const fullPath = basePath ? `${basePath}.${key}` : key;
+        if (currentErrors[key] && typeof currentErrors[key] === 'object' && currentErrors[key].message && typeof currentErrors[key].message === 'string') {
+          console.error(`Validation Error: Field: ${fullPath}, Message: ${currentErrors[key].message}`);
+          if (!firstPathFound) firstPathFound = fullPath;
+        } else if (currentErrors[key] && typeof currentErrors[key] === 'object' && !currentErrors[key].message) {
+          const nestedErrorPath = findAndLogErrors(currentErrors[key], fullPath);
+          if (nestedErrorPath && !firstPathFound) firstPathFound = nestedErrorPath;
+        } else if (typeof currentErrors[key] === 'string') { // Sometimes error is just a string message (less common with Zod)
+          console.error(`Validation Error: Field: ${fullPath}, Message: ${currentErrors[key]}`);
+          if (!firstPathFound) firstPathFound = fullPath;
+        }
       }
-      
-      console.log("Attempting to focus on field for Quotation Form:", fieldNameToFocus);
-      const fieldElement = document.getElementsByName(fieldNameToFocus)[0];
+      return firstPathFound;
+    };
+
+    firstErrorPath = findAndLogErrors(errors) as FieldPath<QuotationRequest> | undefined;
+
+    if (firstErrorPath) {
+      console.log("Attempting to focus on field for Quotation Form:", firstErrorPath);
+      form.setFocus(firstErrorPath);
+      // Attempt to scroll to the element, though setFocus often handles this.
+      // Using name attribute as fallback if setFocus doesn't scroll.
+      const fieldElement = document.getElementsByName(firstErrorPath)[0] || document.getElementById(firstErrorPath); // Also try ID
       if (fieldElement) {
-        fieldElement.focus({ preventScroll: true });
         fieldElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        console.log("Focused on (Quotation Form):", fieldNameToFocus);
+        console.log("Scrolled to (Quotation Form):", firstErrorPath);
       } else {
-        console.warn("Could not find field element to focus for Quotation Form:", fieldNameToFocus);
+        console.warn("Could not find field element to scroll for Quotation Form:", firstErrorPath, "Scrolling to top of form.");
         const mainFormElement = (document.querySelector('form') as HTMLFormElement);
         if(mainFormElement) mainFormElement.scrollIntoView({ behavior: 'smooth', block: 'start'});
       }
     } else {
-      console.warn("No specific error field found in the errors object for Quotation Form. Scrolling to top.");
+      console.warn("No specific error field found with a message in the errors object for Quotation Form, or error structure not as expected. Scrolling to top.");
       const mainFormElement = (document.querySelector('form') as HTMLFormElement);
       if(mainFormElement) mainFormElement.scrollIntoView({ behavior: 'smooth', block: 'start'});
     }
