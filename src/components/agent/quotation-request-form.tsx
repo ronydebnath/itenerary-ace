@@ -177,12 +177,12 @@ export function QuotationRequestForm({ onSubmit, onCancel, defaultAgentId }: Quo
     return Object.fromEntries(sortedGroupEntries);
   }, [displayableProvinces, isLoadingProvinces, isLoadingCountries, countries]);
 
-  const onFormSubmitError = (errors: FieldErrors<QuotationRequest>) => {
+ const onFormSubmitError = (errors: FieldErrors<QuotationRequest>) => {
     console.error(`[DEBUG] Quotation Form Validation Failure. Top-level error keys: ${Object.keys(errors).join(', ')}`);
     setCountrySelectionError(null); // Clear previous general error
 
     const allMessages: { path: string; message: string; type?: string }[] = [];
-    const logAllMessages = (currentErrorObject: any, currentPathPrefix = "") => {
+    const extractErrorMessages = (currentErrorObject: any, currentPathPrefix = "") => {
       if (!currentErrorObject) return;
       Object.keys(currentErrorObject).forEach(key => {
         const fieldError = currentErrorObject[key];
@@ -192,21 +192,29 @@ export function QuotationRequestForm({ onSubmit, onCancel, defaultAgentId }: Quo
           if (typeof fieldError.message === 'string') {
             allMessages.push({ path: fieldPath, message: fieldError.message, type: fieldError.type });
           }
-          // Recursively check nested objects that are not actual ZodError types (like the 'ref' or 'types' properties)
           if (typeof fieldError === 'object' && !fieldError.message && key !== 'ref' && key !== 'types' && Object.keys(fieldError).length > 0) {
-            logAllMessages(fieldError, fieldPath);
+            extractErrorMessages(fieldError, fieldPath);
           }
         }
       });
     };
 
-    logAllMessages(errors);
-    console.log('[DEBUG] Extracted validation messages:', allMessages);
-
-    // Check if the specific country selection error exists
+    extractErrorMessages(errors);
+    if (allMessages.length > 0) {
+      console.log('[DEBUG] Extracted validation messages:', allMessages);
+    } else {
+      console.warn('[DEBUG] No specific validation messages extracted, check raw errors object:', errors);
+    }
+    
     const countryError = allMessages.find(msg => msg.path === 'tripDetails.preferredCountryIds');
     if (countryError) {
       setCountrySelectionError(countryError.message);
+      const countrySectionElement = document.querySelector('div[data-testid="preferred-countries-form-item"]');
+      if (countrySectionElement) {
+        countrySectionElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        console.log("[DEBUG] Scrolled to preferred-countries-form-item due to specific error.");
+        return; // Prioritize this specific scroll and error display
+      }
     }
 
     if (allMessages.length > 0) {
@@ -214,14 +222,12 @@ export function QuotationRequestForm({ onSubmit, onCancel, defaultAgentId }: Quo
       console.error(`[DEBUG] First specific error: Path='${firstError.path}', Message='${firstError.message}', Type='${firstError.type}'`);
       try {
         form.setFocus(firstError.path as FieldPath<QuotationRequest>);
-        // Attempt to scroll the FormItem container into view
         const fieldState = form.getFieldState(firstError.path as FieldPath<QuotationRequest>);
         let elementToScroll: HTMLElement | null = null;
 
         if (fieldState?.ref instanceof HTMLElement) {
           elementToScroll = fieldState.ref;
         } else {
-          // Fallback if ref is not a direct HTMLElement (e.g. for custom components or Select)
           const elementsByName = document.getElementsByName(firstError.path);
           if (elementsByName.length > 0 && elementsByName[0] instanceof HTMLElement) {
             elementToScroll = elementsByName[0];
@@ -229,40 +235,27 @@ export function QuotationRequestForm({ onSubmit, onCancel, defaultAgentId }: Quo
         }
         
         if (elementToScroll) {
-          let scrollTarget: HTMLElement | null = null;
-          // Prioritize scrolling to the specific country selection section if that's the first error
-          if (firstError.path === 'tripDetails.preferredCountryIds') {
-            scrollTarget = document.querySelector('div[data-testid="preferred-countries-form-item"]');
-          }
-          // If not country error or target not found, try to find the general form item container
+          let scrollTarget: HTMLElement | null = elementToScroll.closest('div[data-form-item-container]');
           if (!scrollTarget) {
-            scrollTarget = elementToScroll.closest('div[data-form-item-container]');
-          }
-          // Fallback if specific containers not found
-          if (!scrollTarget) {
-            scrollTarget = elementToScroll.closest('.space-y-2'); // A common parent for form items
+            scrollTarget = elementToScroll.closest('.space-y-2'); 
           }
           if (!scrollTarget) {
-            scrollTarget = elementToScroll; // Last resort: the element itself
+            scrollTarget = elementToScroll;
           }
-
           if (scrollTarget) {
             scrollTarget.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            console.log("[DEBUG] Scrolled element for path into view:", firstError.path, "Scrolled element:", scrollTarget);
           } else {
-            console.warn("[DEBUG] Could not get a specific DOM element container to scroll for field:", firstError.path);
             (document.querySelector('form') as HTMLFormElement)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
           }
         } else {
-          console.warn("[DEBUG] Could not get a DOM element reference to scroll for field:", firstError.path, ". Relying on setFocus(). The <FormMessage /> should display the error. Fallback scroll to form top.");
-          (document.querySelector('form') as HTMLFormElement)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            (document.querySelector('form') as HTMLFormElement)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
       } catch (focusError) {
         console.error("[DEBUG] Error trying to set focus or scroll:", focusError, "Path:", firstError.path);
         (document.querySelector('form') as HTMLFormElement)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
-    } else if (Object.keys(errors).length > 0) { // If no specific messages but still an error object (e.g. root error)
-      console.warn("[DEBUG] Validation failed but no specific field error messages extracted. This could indicate a root-level form error or an unhandled case. Scrolling to form top.");
+    } else if (Object.keys(errors).length > 0) {
+      console.warn("[DEBUG] Validation failed but no specific field error messages extracted. Scrolling to form top.");
       (document.querySelector('form') as HTMLFormElement)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
   };
@@ -347,7 +340,7 @@ export function QuotationRequestForm({ onSubmit, onCancel, defaultAgentId }: Quo
                           <p className="text-sm text-muted-foreground text-center py-4 border rounded-md bg-muted/50">No countries available for selection.</p>
                       )}
                       {selectedCountryNames.length > 0 && (<div className="pt-1 text-xs text-muted-foreground">Selected Countries: {selectedCountryNames.join(', ')}</div>)}
-                      <FormMessage /> {/* This should still display the Zod error if `countrySelectionError` is not set by `onFormSubmitError` */}
+                      <FormMessage /> 
                     </FormItem>
                   )}
                 />
@@ -524,4 +517,3 @@ export function QuotationRequestForm({ onSubmit, onCancel, defaultAgentId }: Quo
     </Form>
   );
 }
-
