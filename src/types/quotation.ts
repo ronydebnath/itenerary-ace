@@ -14,7 +14,7 @@ import { CURRENCIES, type CurrencyCode } from '@/types/itinerary';
 import { isValid, parseISO } from 'date-fns';
 
 export const TRIP_TYPES = ["Leisure", "Business", "Honeymoon", "Family", "Adventure", "Cultural", "Cruise", "Group Tour", "Backpacking", "Other"] as const;
-export const BUDGET_RANGES = ["Economy/Budget", "Mid-Range/Comfort", "Luxury/Premium", "Specific Amount (see notes)", "Flexible"] as const;
+export const BUDGET_RANGES = ["Economy/Budget", "Mid-Range/Comfort", "Luxury/Premium", "Specific Amount (see notes)"] as const;
 export const HOTEL_STAR_RATINGS = ["Any", "2 Stars", "3 Stars", "4 Stars", "5 Stars", "Boutique/Unrated"] as const;
 
 export const QuotationRequestClientInfoSchema = z.object({
