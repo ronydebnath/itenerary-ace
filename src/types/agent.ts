@@ -39,7 +39,11 @@ export const AgentProfileSchema = z.object({
   specializations: z.string().optional().describe("e.g., Luxury Travel, Adventure Tours, Corporate"),
   yearsOfExperience: z.coerce.number().int().min(0).optional(),
   bio: z.string().max(500, "Bio should not exceed 500 characters.").optional(),
-  profilePictureUrl: z.string().url("Invalid URL for profile picture.").optional(),
+  profilePictureUrl: z.string()
+    .url("Invalid URL for profile picture.")
+    .or(z.literal("")) // Allow empty string
+    .optional() // Allow undefined
+    .nullable(), // Allow null
 });
 
 export type AgentProfile = z.infer<typeof AgentProfileSchema>;
