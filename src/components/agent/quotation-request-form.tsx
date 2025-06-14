@@ -75,22 +75,22 @@ export function QuotationRequestForm({ onSubmit, onCancel, defaultAgentId }: Quo
         budgetCurrency: 'USD',
         preferredCountryIds: [],
         preferredProvinceNames: [],
-        tripType: undefined,
+        tripType: undefined, // Made optional
       },
       accommodationPrefs: {
-        hotelStarRating: "3 Stars",
+        hotelStarRating: "3 Stars", // Defaulted to "3 Stars"
         roomPreferences: "",
         specificHotelRequests: "",
       },
       activityPrefs: {
-        requestedActivities: "",
+        requestedActivities: "", // Consolidated into a single field
       },
-      flightPrefs: {
+      flightPrefs: { // Flights section simplified
         airportTransfersRequired: false,
-        activityTransfersRequired: false,
+        activityTransfersRequired: false, // Added new field
       },
-      mealPrefs: {
-        mealPlan: "Breakfast Only",
+      mealPrefs: { // Added meal preferences
+        mealPlan: "Breakfast Only", // Defaulted
       },
       otherRequirements: "",
       status: "Pending",
@@ -184,48 +184,68 @@ export function QuotationRequestForm({ onSubmit, onCancel, defaultAgentId }: Quo
       console.error("Could not stringify errors object for Quotation Form:", e);
     }
 
-    let firstErrorPath: FieldPath<QuotationRequest> | undefined;
+    // Check for root-level form error first
+    if (errors.root?.message) {
+      console.error(`---> ROOT FORM ERROR: ${errors.root.message}`);
+      // Optionally, display this global error to the user in an Alert component
+      const mainFormElement = (document.querySelector('form') as HTMLFormElement);
+      if (mainFormElement) mainFormElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      return;
+    }
 
-    // Function to recursively find the first error path and log all errors
-    const findAndLogErrors = (currentErrors: any, basePath = ""): string | undefined => {
-      let firstPathFound: string | undefined;
+    let firstErrorPath: FieldPath<QuotationRequest> | undefined;
+    let firstErrorMessage: string | undefined;
+
+    const findFirstFieldError = (currentErrors: any, pathPrefix = ""): boolean => {
       const keys = Object.keys(currentErrors);
       for (const key of keys) {
-        const fullPath = basePath ? `${basePath}.${key}` : key;
-        if (currentErrors[key] && typeof currentErrors[key] === 'object' && currentErrors[key].message && typeof currentErrors[key].message === 'string') {
-          console.error(`Validation Error: Field: ${fullPath}, Message: ${currentErrors[key].message}`);
-          if (!firstPathFound) firstPathFound = fullPath;
-        } else if (currentErrors[key] && typeof currentErrors[key] === 'object' && !currentErrors[key].message) {
-          const nestedErrorPath = findAndLogErrors(currentErrors[key], fullPath);
-          if (nestedErrorPath && !firstPathFound) firstPathFound = nestedErrorPath;
-        } else if (typeof currentErrors[key] === 'string') { // Sometimes error is just a string message (less common with Zod)
-          console.error(`Validation Error: Field: ${fullPath}, Message: ${currentErrors[key]}`);
-          if (!firstPathFound) firstPathFound = fullPath;
+        if (key === "root") continue; // Skip root, handled above
+
+        const errorDetail = currentErrors[key];
+        const currentPath = pathPrefix ? `${pathPrefix}.${key}` : key;
+
+        if (errorDetail && typeof errorDetail === 'object') {
+          if (typeof errorDetail.message === 'string') {
+            firstErrorPath = currentPath as FieldPath<QuotationRequest>;
+            firstErrorMessage = errorDetail.message;
+            console.error(`---> Specific Field Error Found: Path='${firstErrorPath}', Message='${firstErrorMessage}'`);
+            return true; // Found the first field error
+          } else {
+            // Recurse into nested error objects
+            if (findFirstFieldError(errorDetail, currentPath)) {
+              return true; // Propagate that error was found
+            }
+          }
         }
       }
-      return firstPathFound;
+      return false; // No error with a message found in this branch
     };
 
-    firstErrorPath = findAndLogErrors(errors) as FieldPath<QuotationRequest> | undefined;
+    findFirstFieldError(errors);
 
-    if (firstErrorPath) {
-      console.log("Attempting to focus on field for Quotation Form:", firstErrorPath);
-      form.setFocus(firstErrorPath);
-      // Attempt to scroll to the element, though setFocus often handles this.
-      // Using name attribute as fallback if setFocus doesn't scroll.
-      const fieldElement = document.getElementsByName(firstErrorPath)[0] || document.getElementById(firstErrorPath); // Also try ID
-      if (fieldElement) {
-        fieldElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        console.log("Scrolled to (Quotation Form):", firstErrorPath);
-      } else {
-        console.warn("Could not find field element to scroll for Quotation Form:", firstErrorPath, "Scrolling to top of form.");
-        const mainFormElement = (document.querySelector('form') as HTMLFormElement);
-        if(mainFormElement) mainFormElement.scrollIntoView({ behavior: 'smooth', block: 'start'});
+    if (firstErrorPath && firstErrorMessage) {
+      console.log(`Attempting to focus on field: '${firstErrorPath}' due to error: '${firstErrorMessage}'`);
+      try {
+        form.setFocus(firstErrorPath);
+        const fieldState = form.getFieldState(firstErrorPath);
+        if (fieldState && fieldState.ref && 'focus' in fieldState.ref && typeof fieldState.ref.focus === 'function') {
+           if (fieldState.ref instanceof HTMLElement) {
+             fieldState.ref.scrollIntoView({ behavior: 'smooth', block: 'center' });
+             console.log("Scrolled field into view:", firstErrorPath);
+           } else {
+             console.warn("Field ref is not an HTMLElement, cannot scroll automatically:", firstErrorPath);
+           }
+        } else {
+            console.warn("Could not get a focusable ref or HTMLElement to scroll for field:", firstErrorPath, ". Relying on setFocus(). Fallback scroll to form top.");
+            (document.querySelector('form') as HTMLFormElement)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      } catch (focusError) {
+        console.error("Error trying to set focus or scroll:", focusError, "Path:", firstErrorPath);
+        (document.querySelector('form') as HTMLFormElement)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
     } else {
-      console.warn("No specific error field found with a message in the errors object for Quotation Form, or error structure not as expected. Scrolling to top.");
-      const mainFormElement = (document.querySelector('form') as HTMLFormElement);
-      if(mainFormElement) mainFormElement.scrollIntoView({ behavior: 'smooth', block: 'start'});
+      console.warn("No specific field error with a message was parsed. This could mean the error structure is unexpected or there's an issue with a custom validation not attaching a message correctly. Scrolling to form top.");
+      (document.querySelector('form') as HTMLFormElement)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
   };
 
