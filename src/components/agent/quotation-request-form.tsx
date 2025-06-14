@@ -61,11 +61,38 @@ export function QuotationRequestForm({ onSubmit, onCancel, defaultAgentId }: Quo
     resolver: zodResolver(QuotationRequestSchema),
     defaultValues: {
       agentId: defaultAgentId,
-      clientInfo: { adults: 1, children: 0, clientReference: "" },
-      tripDetails: { budgetCurrency: 'USD', preferredCountryIds: [], preferredProvinceNames: [] },
-      flightPrefs: { includeFlights: "To be discussed", airportTransfersRequired: false },
+      clientInfo: {
+        adults: 1,
+        children: 0,
+        clientReference: "",
+        childAges: "",
+        groupOrFamilyName: "",
+      },
+      tripDetails: {
+        budgetCurrency: 'USD',
+        preferredCountryIds: [],
+        preferredProvinceNames: [],
+        approximateDatesOrSeason: "",
+      },
+      accommodationPrefs: {
+        hotelStarRating: "Any",
+        roomPreferences: "",
+        specificHotelRequests: "",
+      },
+      activityPrefs: {
+        interests: "",
+        mustDoActivities: "",
+      },
+      flightPrefs: {
+        includeFlights: "To be discussed",
+        airportTransfersRequired: false,
+        departureCity: "",
+        preferredAirlineClass: "",
+      },
+      otherRequirements: "",
       status: "Pending",
       requestDate: new Date().toISOString(),
+      quotationDeadline: undefined,
     },
   });
 
@@ -127,13 +154,13 @@ export function QuotationRequestForm({ onSubmit, onCancel, defaultAgentId }: Quo
                 <CardDescription>Details about the group requesting the quotation.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                 <FormField control={form.control} name="clientInfo.clientReference" render={({ field }) => (<FormItem><FormLabel>Client Reference (For your records - Optional)</FormLabel><FormControl><Input placeholder="e.g., Smith Family Summer Trip, Mr. J Q1" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                 <FormField control={form.control} name="clientInfo.clientReference" render={({ field }) => (<FormItem><FormLabel>Client Reference (For your records - Optional)</FormLabel><FormControl><Input placeholder="e.g., Smith Family Summer Trip, Mr. J Q1" {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem>)} />
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <FormField control={form.control} name="clientInfo.adults" render={({ field }) => (<FormItem><FormLabel>Adults *</FormLabel><FormControl><Input type="number" min="1" {...field} /></FormControl><FormMessage /></FormItem>)} />
                   <FormField control={form.control} name="clientInfo.children" render={({ field }) => (<FormItem><FormLabel>Children</FormLabel><FormControl><Input type="number" min="0" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                   <FormField control={form.control} name="clientInfo.childAges" render={({ field }) => (<FormItem><FormLabel>Child Ages {watchChildren > 0 && "*"}</FormLabel><FormControl><Input placeholder="e.g., 5, 8, 12" {...field} disabled={!(watchChildren > 0)} /></FormControl><FormDescription className="text-xs">Comma-separated if multiple.</FormDescription><FormMessage /></FormItem>)} />
+                   <FormField control={form.control} name="clientInfo.childAges" render={({ field }) => (<FormItem><FormLabel>Child Ages {watchChildren > 0 && "*"}</FormLabel><FormControl><Input placeholder="e.g., 5, 8, 12" {...field} value={field.value || ''} disabled={!(watchChildren > 0)} /></FormControl><FormDescription className="text-xs">Comma-separated if multiple.</FormDescription><FormMessage /></FormItem>)} />
                 </div>
-                <FormField control={form.control} name="clientInfo.groupOrFamilyName" render={({ field }) => (<FormItem><FormLabel>Group/Family Name (Optional)</FormLabel><FormControl><Input placeholder="e.g., The Adventure Seekers" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                <FormField control={form.control} name="clientInfo.groupOrFamilyName" render={({ field }) => (<FormItem><FormLabel>Group/Family Name (Optional)</FormLabel><FormControl><Input placeholder="e.g., The Adventure Seekers" {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem>)} />
               </CardContent>
             </Card>
 
@@ -258,7 +285,7 @@ export function QuotationRequestForm({ onSubmit, onCancel, defaultAgentId }: Quo
                   <FormField control={form.control} name="tripDetails.preferredStartDate" render={({ field }) => (<FormItem className="flex flex-col"><FormLabel>Preferred Start Date</FormLabel><Controller control={form.control} name="tripDetails.preferredStartDate" render={({ field: { onChange, value } }) => <DatePicker date={value ? parseISO(value) : undefined} onDateChange={(date) => onChange(date ? format(date, 'yyyy-MM-dd') : undefined)} placeholder="Select start date"/>} /><FormMessage /></FormItem>)} />
                   <FormField control={form.control} name="tripDetails.preferredEndDate" render={({ field }) => (<FormItem className="flex flex-col"><FormLabel>Preferred End Date</FormLabel><Controller control={form.control} name="tripDetails.preferredEndDate" render={({ field: { onChange, value } }) => <DatePicker date={value ? parseISO(value) : undefined} onDateChange={(date) => onChange(date ? format(date, 'yyyy-MM-dd') : undefined)} placeholder="Select end date" minDate={watchStartDate ? parseISO(watchStartDate) : undefined} />} /><FormMessage /></FormItem>)} />
                 </div>
-                 <FormField control={form.control} name="tripDetails.approximateDatesOrSeason" render={({ field }) => (<FormItem><FormLabel>Approximate Dates/Season (if specific dates unknown)</FormLabel><FormControl><Input placeholder="e.g., Mid-June for 2 weeks, Christmas 2024" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                 <FormField control={form.control} name="tripDetails.approximateDatesOrSeason" render={({ field }) => (<FormItem><FormLabel>Approximate Dates/Season (if specific dates unknown)</FormLabel><FormControl><Input placeholder="e.g., Mid-June for 2 weeks, Christmas 2024" {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem>)} />
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <FormField control={form.control} name="tripDetails.durationDays" render={({ field }) => (<FormItem><FormLabel>Trip Duration (Days)</FormLabel><FormControl><Input type="number" min="1" placeholder="e.g., 7" {...field} /></FormControl><FormMessage /></FormItem>)} />
                   <FormField control={form.control} name="tripDetails.durationNights" render={({ field }) => (<FormItem><FormLabel>Trip Duration (Nights)</FormLabel><FormControl><Input type="number" min="0" placeholder="e.g., 6" {...field} /></FormControl><FormMessage /></FormItem>)} />
@@ -278,16 +305,16 @@ export function QuotationRequestForm({ onSubmit, onCancel, defaultAgentId }: Quo
               <CardHeader><CardTitle>Accommodation Preferences (Optional)</CardTitle></CardHeader>
               <CardContent className="space-y-4">
                 <FormField control={form.control} name="accommodationPrefs.hotelStarRating" render={({ field }) => (<FormItem><FormLabel>Preferred Hotel Star Rating</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Any star rating" /></SelectTrigger></FormControl><SelectContent>{HOTEL_STAR_RATINGS.map(rating => <SelectItem key={rating} value={rating}>{rating}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
-                <FormField control={form.control} name="accommodationPrefs.roomPreferences" render={({ field }) => (<FormItem><FormLabel>Room Preferences</FormLabel><FormControl><Textarea placeholder="e.g., 1 King Bed, 2 Twin Beds + 1 Extra Bed, Connecting rooms, Ocean view" {...field} rows={2} /></FormControl><FormMessage /></FormItem>)} />
-                <FormField control={form.control} name="accommodationPrefs.specificHotelRequests" render={({ field }) => (<FormItem><FormLabel>Specific Hotel Names or Location Preferences</FormLabel><FormControl><Textarea placeholder="e.g., 'Near Eiffel Tower', 'XYZ Resort', 'Quiet area'" {...field} rows={2} /></FormControl><FormMessage /></FormItem>)} />
+                <FormField control={form.control} name="accommodationPrefs.roomPreferences" render={({ field }) => (<FormItem><FormLabel>Room Preferences</FormLabel><FormControl><Textarea placeholder="e.g., 1 King Bed, 2 Twin Beds + 1 Extra Bed, Connecting rooms, Ocean view" {...field} value={field.value || ''} rows={2} /></FormControl><FormMessage /></FormItem>)} />
+                <FormField control={form.control} name="accommodationPrefs.specificHotelRequests" render={({ field }) => (<FormItem><FormLabel>Specific Hotel Names or Location Preferences</FormLabel><FormControl><Textarea placeholder="e.g., 'Near Eiffel Tower', 'XYZ Resort', 'Quiet area'" {...field} value={field.value || ''} rows={2} /></FormControl><FormMessage /></FormItem>)} />
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader><CardTitle>Activity & Tour Preferences (Optional)</CardTitle></CardHeader>
               <CardContent className="space-y-4">
-                <FormField control={form.control} name="activityPrefs.interests" render={({ field }) => (<FormItem><FormLabel>Client Interests</FormLabel><FormControl><Textarea placeholder="e.g., History, Museums, Beaches, Hiking, Shopping, Nightlife, Local Cuisine" {...field} rows={3} /></FormControl><FormMessage /></FormItem>)} />
-                <FormField control={form.control} name="activityPrefs.mustDoActivities" render={({ field }) => (<FormItem><FormLabel>Must-do Activities or Sights</FormLabel><FormControl><Textarea placeholder="e.g., 'Visit the Colosseum', 'Snorkeling trip', 'Cooking class'" {...field} rows={3} /></FormControl><FormMessage /></FormItem>)} />
+                <FormField control={form.control} name="activityPrefs.interests" render={({ field }) => (<FormItem><FormLabel>Client Interests</FormLabel><FormControl><Textarea placeholder="e.g., History, Museums, Beaches, Hiking, Shopping, Nightlife, Local Cuisine" {...field} value={field.value || ''} rows={3} /></FormControl><FormMessage /></FormItem>)} />
+                <FormField control={form.control} name="activityPrefs.mustDoActivities" render={({ field }) => (<FormItem><FormLabel>Must-do Activities or Sights</FormLabel><FormControl><Textarea placeholder="e.g., 'Visit the Colosseum', 'Snorkeling trip', 'Cooking class'" {...field} value={field.value || ''} rows={3} /></FormControl><FormMessage /></FormItem>)} />
               </CardContent>
             </Card>
 
@@ -297,8 +324,8 @@ export function QuotationRequestForm({ onSubmit, onCancel, defaultAgentId }: Quo
                 <FormField control={form.control} name="flightPrefs.includeFlights" render={({ field }) => (<FormItem><FormLabel>Include Flights in Quotation?</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent>{["To be discussed", "Yes", "No"].map(opt => <SelectItem key={opt} value={opt}>{opt}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
                 {form.watch("flightPrefs.includeFlights") === "Yes" && (
                   <>
-                    <FormField control={form.control} name="flightPrefs.departureCity" render={({ field }) => (<FormItem><FormLabel>Departure City/Airport</FormLabel><FormControl><Input placeholder="e.g., London Heathrow (LHR)" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                    <FormField control={form.control} name="flightPrefs.preferredAirlineClass" render={({ field }) => (<FormItem><FormLabel>Preferred Airline/Class</FormLabel><FormControl><Input placeholder="e.g., Economy, Business, Any Major Carrier" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                    <FormField control={form.control} name="flightPrefs.departureCity" render={({ field }) => (<FormItem><FormLabel>Departure City/Airport</FormLabel><FormControl><Input placeholder="e.g., London Heathrow (LHR)" {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem>)} />
+                    <FormField control={form.control} name="flightPrefs.preferredAirlineClass" render={({ field }) => (<FormItem><FormLabel>Preferred Airline/Class</FormLabel><FormControl><Input placeholder="e.g., Economy, Business, Any Major Carrier" {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem>)} />
                   </>
                 )}
                 <FormField control={form.control} name="flightPrefs.airportTransfersRequired" render={({ field }) => (<FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4 shadow"><FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl><div className="space-y-1 leading-none"><FormLabel>Airport Transfers Required?</FormLabel><FormDescription>Include transfers to/from airports.</FormDescription></div><FormMessage /></FormItem>)} />
@@ -308,7 +335,7 @@ export function QuotationRequestForm({ onSubmit, onCancel, defaultAgentId }: Quo
             <Card>
               <CardHeader><CardTitle>Other Requirements</CardTitle></CardHeader>
               <CardContent className="space-y-4">
-                <FormField control={form.control} name="otherRequirements" render={({ field }) => (<FormItem><FormLabel>Special Requests or Notes</FormLabel><FormControl><Textarea placeholder="e.g., Dietary restrictions (vegetarian, gluten-free), accessibility needs, celebrating an anniversary, prefer non-smoking rooms, etc." {...field} rows={4} /></FormControl><FormMessage /></FormItem>)} />
+                <FormField control={form.control} name="otherRequirements" render={({ field }) => (<FormItem><FormLabel>Special Requests or Notes</FormLabel><FormControl><Textarea placeholder="e.g., Dietary restrictions (vegetarian, gluten-free), accessibility needs, celebrating an anniversary, prefer non-smoking rooms, etc." {...field} value={field.value || ''} rows={4} /></FormControl><FormMessage /></FormItem>)} />
                 <FormField control={form.control} name="quotationDeadline" render={({ field }) => (<FormItem className="flex flex-col"><FormLabel>Preferred Quotation Deadline (Optional)</FormLabel><Controller control={form.control} name="quotationDeadline" render={({ field: { onChange, value } }) => <DatePicker date={value ? parseISO(value) : undefined} onDateChange={(date) => onChange(date ? format(date, 'yyyy-MM-dd') : undefined)} placeholder="Select deadline"/>} /><FormMessage /></FormItem>)} />
               </CardContent>
             </Card>
