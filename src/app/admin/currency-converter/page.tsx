@@ -256,20 +256,23 @@ export default function CurrencyConverterPage() {
               </Alert>
             )}
             {conversionResult && (
-              <div className="mt-6 p-4 bg-green-50 border border-green-200 rounded-md space-y-1">
-                <p className="text-lg font-semibold text-green-800 text-center">Conversion Result</p>
-                <div className="text-sm text-green-700/90">
+              <div className="mt-6 p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700 rounded-md space-y-2">
+                <p className="text-lg font-semibold text-green-800 dark:text-green-300 text-center">Conversion Result</p>
+                <div className="text-sm text-green-700/90 dark:text-green-300/90 space-y-1">
                   <p><strong>Original:</strong> {formatCurrency(conversionResult.originalAmount, conversionResult.fromCurrency)} ({conversionResult.fromCurrency})</p>
                   <p><strong>To:</strong> {conversionResult.toCurrency}</p>
                   <p className="font-mono"><strong>Base Rate (1 {conversionResult.fromCurrency}):</strong> {conversionResult.baseRate.toFixed(6)} {conversionResult.toCurrency}</p>
-                  {conversionResult.markupApplied > 0 && (
+                  {conversionResult.markupApplied > 0 && conversionResult.fromCurrency !== conversionResult.toCurrency && (
                     <>
-                      <p><strong>Markup Applied:</strong> {conversionResult.markupApplied.toFixed(2)}%</p>
-                      <p className="font-mono"><strong>Markup Value:</strong> {formatCurrency(conversionResult.convertedAmount - (conversionResult.originalAmount * conversionResult.baseRate), conversionResult.toCurrency)}</p>
-                      <p className="font-mono"><strong>Final Rate (1 {conversionResult.fromCurrency}):</strong> {conversionResult.finalRate.toFixed(6)} {conversionResult.toCurrency}</p>
+                      <p className="font-semibold text-primary dark:text-blue-400">Markup Details:</p>
+                      <ul className="list-disc list-inside pl-4 text-xs">
+                        <li><strong>Applied Markup:</strong> {conversionResult.markupApplied.toFixed(2)}%</li>
+                        <li className="font-mono"><strong>Markup Value:</strong> {formatCurrency(conversionResult.convertedAmount - (conversionResult.originalAmount * conversionResult.baseRate), conversionResult.toCurrency)}</li>
+                        <li className="font-mono"><strong>Effective Rate (1 {conversionResult.fromCurrency}):</strong> {conversionResult.finalRate.toFixed(6)} {conversionResult.toCurrency}</li>
+                      </ul>
                     </>
                   )}
-                  <p className="text-xl font-bold text-green-800 mt-2">
+                  <p className="text-xl font-bold text-green-800 dark:text-green-200 mt-2 pt-2 border-t border-green-200 dark:border-green-600">
                     Converted Amount: {formatCurrency(conversionResult.convertedAmount, conversionResult.toCurrency)}
                   </p>
                 </div>
