@@ -15,8 +15,12 @@
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
-import { LayoutDashboard, Route, ListOrdered, DollarSign, MapPinned, Wand2, Globe, Repeat, Briefcase, Map, UserCog, FilePlus, BadgeDollarSign } from 'lucide-react';
+import { LayoutDashboard, Route, ListOrdered, DollarSign, Wand2, Briefcase, Map, Users, BadgeDollarSign, LogIn, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useSession, signIn } from "next-auth/react";
+import { useRouter } from 'next/navigation';
+import React from 'react';
+import { AuthButton } from '@/components/auth-button';
 
 interface DashboardCardProps {
   title: string;
@@ -51,12 +55,40 @@ function DashboardCard({ title, description, href, icon: Icon, buttonText = "Man
 }
 
 export default function AdminDashboardPage() {
+  const { data: session, status } = useSession();
+  const router = useRouter();
+
+  React.useEffect(() => {
+    if (status === 'unauthenticated') {
+      signIn(undefined, { callbackUrl: '/admin' }); // Redirect to login if not authenticated
+    } else if (status === 'authenticated' && (session?.user as any)?.role !== 'admin') {
+      router.replace('/'); // Redirect to home if not an admin
+      // Optionally, show a toast or message here
+    }
+  }, [status, session, router]);
+
+  if (status === "loading" || (status === 'authenticated' && (session?.user as any)?.role !== 'admin')) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center p-4">
+        <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
+        <p className="text-lg text-muted-foreground">Loading or Verifying Access...</p>
+      </div>
+    );
+  }
+  
+  // Render dashboard only if authenticated and admin
   return (
     <main className="min-h-screen bg-background flex flex-col items-center p-4 md:p-8">
       <div className="w-full max-w-5xl">
         <header className="mb-10 text-center">
-          <div className="inline-block p-4 bg-primary/10 rounded-full mb-4">
-            <LayoutDashboard className="h-12 w-12 text-primary" />
+          <div className="flex justify-between items-center w-full mb-4">
+            <div></div> {/* Spacer */}
+            <div className="inline-block p-4 bg-primary/10 rounded-full">
+              <LayoutDashboard className="h-12 w-12 text-primary" />
+            </div>
+            <div className="self-start">
+                <AuthButton />
+            </div>
           </div>
           <h1 className="text-4xl font-bold text-primary tracking-tight">Admin Dashboard</h1>
           <p className="mt-2 text-lg text-muted-foreground">
@@ -113,12 +145,20 @@ export default function AdminDashboardPage() {
             buttonText="Describe Image"
             className="lg:col-span-1"
           />
+          <DashboardCard
+            title="Manage Agencies & Agents"
+            description="Administer travel agencies and their affiliated agents."
+            href="/admin/agencies"
+            icon={Users}
+            buttonText="Manage Agencies"
+            className="lg:col-span-1"
+          />
            <DashboardCard
-            title="Agent Dashboard"
+            title="Agent Tools & Portal"
             description="Access the dashboard designed for travel agents to manage their specific tasks and clients."
             href="/agent"
             icon={Briefcase}
-            buttonText="Go to Agent View"
+            buttonText="Go to Agent Portal"
             className="lg:col-span-1 border-secondary"
           />
         </div>

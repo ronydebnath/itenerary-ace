@@ -1,3 +1,4 @@
+
 /**
  * @fileoverview This file defines the root layout for the Next.js application.
  * It wraps all pages, sets up global styles, and includes components like the Toaster
@@ -11,6 +12,7 @@
 import type { Metadata } from 'next';
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
+import { SessionProvider } from "next-auth/react";
 
 export const metadata: Metadata = {
   title: 'Itinerary Ace',
@@ -34,7 +36,9 @@ export default function RootLayout({
         */}
       </head>
       <body className="font-body antialiased" suppressHydrationWarning>
-        {children}
+        <SessionProvider>
+          {children}
+        </SessionProvider>
         <Toaster />
       </body>
     </html>
