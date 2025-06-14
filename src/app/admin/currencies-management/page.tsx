@@ -23,7 +23,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { LayoutDashboard, PlusCircle, Trash2, AlertCircle, Loader2, Settings, BadgeDollarSign, Edit, Repeat, RefreshCw } from 'lucide-react';
+import { LayoutDashboard, PlusCircle, Trash2, AlertCircle, Loader2, Settings, BadgeDollarSign, Edit, Repeat, RefreshCw, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import { useCustomCurrencies } from '@/hooks/useCustomCurrencies';
 import type { CurrencyCode, ManagedCurrency, ExchangeRate } from '@/types/itinerary';
 import { Badge } from '@/components/ui/badge';
@@ -49,6 +49,15 @@ const currencyCodeSchema = z.object({
 });
 type CurrencyCodeFormValues = z.infer<typeof currencyCodeSchema>;
 
+type SortableRateKey = keyof Pick<ExchangeRate, 'fromCurrency' | 'toCurrency' | 'rate'>;
+type SortableDerivedKey = 'effectiveFinalRate' | 'markupAdded';
+type SortKey = SortableRateKey | SortableDerivedKey;
+
+interface SortConfig {
+  key: SortKey;
+  direction: 'ascending' | 'descending';
+}
+
 export default function ManageCurrenciesPage() {
   const {
     isLoading: isLoadingCustomCurrencies,
@@ -56,7 +65,7 @@ export default function ManageCurrenciesPage() {
     addCustomCurrency,
     deleteCustomCurrency,
     refreshCustomCurrencies,
-    getAllCurrencyCodes: getAllManagedCurrencyCodesFromHook, // Renamed to avoid conflict
+    getAllCurrencyCodes: getAllManagedCurrencyCodesFromHook,
   } = useCustomCurrencies();
 
   const {
@@ -80,6 +89,8 @@ export default function ManageCurrenciesPage() {
   const [conversionError, setConversionError] = React.useState<string | null>(null);
   const [isRateFormOpen, setIsRateFormOpen] = React.useState(false);
   const [editingRate, setEditingRate] = React.useState<ExchangeRate | null>(null);
+  const [sortConfig, setSortConfig] = React.useState<SortConfig | null>({ key: 'fromCurrency', direction: 'ascending' });
+
 
   React.useEffect(() => {
     if (!isLoadingCustomCurrencies) {
@@ -236,6 +247,61 @@ export default function ManageCurrenciesPage() {
     return "N/A (Using local/default rates)";
   }, [lastApiFetchTimestamp]);
 
+  const requestSort = (key: SortKey) => {
+    let direction: 'ascending' | 'descending' = 'ascending';
+    if (sortConfig && sortConfig.key === key && sortConfig.direction === 'ascending') {
+      direction = 'descending';
+    }
+    setSortConfig({ key, direction });
+  };
+
+  const sortedExchangeRates = React.useMemo(() => {
+    let sortableItems = [...exchangeRates];
+    if (sortConfig !== null) {
+      sortableItems.sort((a, b) => {
+        let aValue: string | number | null | undefined;
+        let bValue: string | number | null | undefined;
+
+        if (sortConfig.key === 'effectiveFinalRate' || sortConfig.key === 'markupAdded') {
+          const aRateDetails = getRate(a.fromCurrency, a.toCurrency);
+          const bRateDetails = getRate(b.fromCurrency, b.toCurrency);
+          
+          if (sortConfig.key === 'effectiveFinalRate') {
+            aValue = aRateDetails?.finalRate;
+            bValue = bRateDetails?.finalRate;
+          } else { // markupAdded
+            aValue = aRateDetails ? aRateDetails.finalRate - aRateDetails.baseRate : undefined;
+            bValue = bRateDetails ? bRateDetails.finalRate - bRateDetails.baseRate : undefined;
+          }
+        } else {
+          aValue = a[sortConfig.key as keyof ExchangeRate];
+          bValue = b[sortConfig.key as keyof ExchangeRate];
+        }
+        
+        // Handle undefined or null values by sorting them to the end
+        if (aValue == null && bValue != null) return sortConfig.direction === 'ascending' ? 1 : -1;
+        if (aValue != null && bValue == null) return sortConfig.direction === 'ascending' ? -1 : 1;
+        if (aValue == null && bValue == null) return 0;
+
+
+        if (typeof aValue === 'number' && typeof bValue === 'number') {
+          return sortConfig.direction === 'ascending' ? aValue - bValue : bValue - aValue;
+        } else if (typeof aValue === 'string' && typeof bValue === 'string') {
+          return sortConfig.direction === 'ascending' ? aValue.localeCompare(bValue) : bValue.localeCompare(aValue);
+        }
+        return 0;
+      });
+    }
+    return sortableItems;
+  }, [exchangeRates, sortConfig, getRate]);
+
+  const getSortIcon = (key: SortKey) => {
+    if (!sortConfig || sortConfig.key !== key) {
+      return <ArrowUpDown className="ml-2 h-3 w-3 text-muted-foreground/70" />;
+    }
+    return sortConfig.direction === 'ascending' ? <ArrowUp className="ml-2 h-3 w-3" /> : <ArrowDown className="ml-2 h-3 w-3" />;
+  };
+
   const isLoading = isLoadingCustomCurrencies || isLoadingExchangeRates;
 
   return (
@@ -377,18 +443,44 @@ export default function ManageCurrenciesPage() {
               <div className="flex justify-center items-center py-8"><Loader2 className="h-8 w-8 animate-spin text-primary" /><p className="ml-2">Loading rates...</p></div>
             ) : exchangeRateError ? (
               <Alert variant="destructive"><AlertCircle className="h-4 w-4" /><AlertTitle>Error Loading Rates</AlertTitle><AlertDescription>{exchangeRateError}</AlertDescription></Alert>
-            ) : exchangeRates.length === 0 ? (
+            ) : sortedExchangeRates.length === 0 ? (
               <p className="text-muted-foreground text-center py-4">No exchange rates defined. Click "Add New Rate" or "Refresh from API".</p>
             ) : (
               <div className="overflow-x-auto">
                 <Table>
-                  <TableHeader><TableRow><TableHead>From</TableHead><TableHead>To</TableHead><TableHead className="text-right">Defined Base Rate</TableHead><TableHead className="text-right">Effective Final Rate (incl. Markup)</TableHead><TableHead className="text-right">Markup Added</TableHead><TableHead className="text-center">Actions</TableHead></TableRow></TableHeader>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead onClick={() => requestSort('fromCurrency')} className="cursor-pointer hover:bg-muted/50">
+                        <div className="flex items-center">From {getSortIcon('fromCurrency')}</div>
+                      </TableHead>
+                      <TableHead onClick={() => requestSort('toCurrency')} className="cursor-pointer hover:bg-muted/50">
+                        <div className="flex items-center">To {getSortIcon('toCurrency')}</div>
+                      </TableHead>
+                      <TableHead onClick={() => requestSort('rate')} className="text-right cursor-pointer hover:bg-muted/50">
+                        <div className="flex items-center justify-end">Defined Base Rate {getSortIcon('rate')}</div>
+                      </TableHead>
+                      <TableHead onClick={() => requestSort('effectiveFinalRate')} className="text-right cursor-pointer hover:bg-muted/50">
+                        <div className="flex items-center justify-end">Effective Final Rate (incl. Markup) {getSortIcon('effectiveFinalRate')}</div>
+                      </TableHead>
+                      <TableHead onClick={() => requestSort('markupAdded')} className="text-right cursor-pointer hover:bg-muted/50">
+                        <div className="flex items-center justify-end">Markup Added {getSortIcon('markupAdded')}</div>
+                      </TableHead>
+                      <TableHead className="text-center">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
                   <TableBody>
-                    {exchangeRates.map((rate) => {
+                    {sortedExchangeRates.map((rate) => {
                       const rateDetails = getRate(rate.fromCurrency, rate.toCurrency);
                       let effectiveFinalRateDisplay = "N/A";
                       let markupAddedDisplay = "N/A";
-                      if (rateDetails) { effectiveFinalRateDisplay = rateDetails.finalRate.toFixed(6); markupAddedDisplay = (rateDetails.finalRate - rateDetails.baseRate).toFixed(6); if (Math.abs(parseFloat(markupAddedDisplay)) < 0.0000001) markupAddedDisplay = "0.000000";} else { effectiveFinalRateDisplay = rate.rate.toFixed(6); markupAddedDisplay = "Calc Error"; }
+                      if (rateDetails) { 
+                        effectiveFinalRateDisplay = rateDetails.finalRate.toFixed(6); 
+                        markupAddedDisplay = (rateDetails.finalRate - rateDetails.baseRate).toFixed(6); 
+                        if (Math.abs(parseFloat(markupAddedDisplay)) < 0.0000001) markupAddedDisplay = "0.000000";
+                      } else { 
+                        effectiveFinalRateDisplay = rate.rate.toFixed(6); 
+                        markupAddedDisplay = "Calc Error"; 
+                      }
                       return (
                         <TableRow key={rate.id}>
                           <TableCell>{rate.fromCurrency}</TableCell><TableCell>{rate.toCurrency}</TableCell><TableCell className="text-right font-mono">{rate.rate.toFixed(6)}</TableCell><TableCell className="text-right font-mono">{effectiveFinalRateDisplay}</TableCell><TableCell className="text-right font-mono">{markupAddedDisplay}</TableCell>
@@ -420,3 +512,6 @@ export default function ManageCurrenciesPage() {
     </main>
   );
 }
+
+
+    
