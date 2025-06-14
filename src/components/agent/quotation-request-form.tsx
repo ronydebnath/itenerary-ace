@@ -183,21 +183,8 @@ export function QuotationRequestForm({ onSubmit, onCancel, defaultAgentId }: Quo
     if (errors.tripDetails) {
         console.error("[DEBUG] Details of tripDetails errors:", JSON.stringify(errors.tripDetails, null, 2));
     }
-    setCountrySelectionError(null); 
+    setCountrySelectionError(null); // Clear previous general error
 
-    // Check specifically for the preferredCountryIds error
-    const countryErrorObject = errors.tripDetails?.preferredCountryIds;
-    if (countryErrorObject && typeof (countryErrorObject as any).message === 'string') {
-      setCountrySelectionError((countryErrorObject as any).message);
-      const countrySectionElement = document.querySelector('div[data-testid="preferred-countries-form-item"]');
-      if (countrySectionElement) {
-        countrySectionElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        console.log("[DEBUG] Scrolled to preferred-countries-form-item due to specific error.");
-      }
-      return; // Prioritize showing this specific error and stop further general error processing
-    }
-
-    // Fallback to generic error handling if not the country error
     const allMessages: { path: string; message: string; type?: string }[] = [];
     const logAllMessages = (currentErrorObject: any, currentPathPrefix = "") => {
       if (!currentErrorObject) return;
@@ -215,27 +202,42 @@ export function QuotationRequestForm({ onSubmit, onCancel, defaultAgentId }: Quo
         }
       });
     };
+    logAllMessages(errors); // Populate allMessages
 
-    logAllMessages(errors);
+    // Prioritize preferredCountryIds error for specific UI alert
+    const countryErrorField = errors.tripDetails?.preferredCountryIds;
+    if (countryErrorField && typeof countryErrorField.message === 'string') {
+      setCountrySelectionError(countryErrorField.message);
+      const countrySectionElement = document.querySelector('div[data-testid="preferred-countries-form-item"]');
+      if (countrySectionElement) {
+        countrySectionElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        console.log("[DEBUG] Scrolled to preferred-countries-form-item due to specific error.");
+      }
+      return; // Stop further processing if country error is handled
+    }
+
+
+    // Fallback to generic error handling if not the country error
     if (allMessages.length > 0) {
         const firstError = allMessages[0];
-        console.error(`[DEBUG] First identified validation error: Path='${firstError.path}', Message='${firstError.message}', Type='${firstError.type}'`);
+        console.error(`[DEBUG] First identified validation error (after country check): Path='${firstError.path}', Message='${firstError.message}', Type='${firstError.type}'`);
         try {
             form.setFocus(firstError.path as FieldPath<QuotationRequest>);
-            // Try to scroll the parent FormItem into view for better visibility
-            const fieldElement = document.getElementsByName(firstError.path)[0];
+            const fieldElement = (form.getFieldState(firstError.path as FieldPath<QuotationRequest>).ref as any);
             const formItemContainer = fieldElement?.closest('div[data-form-item-container="true"]');
+
             if (formItemContainer) {
                 formItemContainer.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            } else if (fieldElement) {
+            } else if (fieldElement && typeof fieldElement.scrollIntoView === 'function') {
                 fieldElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
             }
         } catch (focusError) {
             console.error("[DEBUG] Error trying to set focus or scroll:", focusError, "Path:", firstError.path);
             (document.querySelector('form') as HTMLFormElement)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
-    } else if (errors.root?.message) {
+    } else if (errors.root?.message) { // Handle form-level errors (e.g., from superRefine)
         console.error(`[DEBUG] Root form error: ${errors.root.message}`);
+        setCountrySelectionError(errors.root.message); // Re-using state for general form error display
     } else {
         console.warn("[DEBUG] Validation failed but no specific field error messages extracted. Errors object:", errors);
     }
