@@ -36,9 +36,10 @@ import type { ParseActivityTextOutput } from '@/types/ai-contract-schemas';
 
 interface ActivityPriceFormProps {
   form: ReturnType<typeof useFormContext<ServicePriceFormValues>>;
+  isCreateMode?: boolean;
 }
 
-export function ActivityPriceForm({ form }: ActivityPriceFormProps) {
+export function ActivityPriceForm({ form, isCreateMode = false }: ActivityPriceFormProps) {
   const { getServicePrices, getServicePriceById, isLoading: isLoadingServices } = useServicePrices();
   const { countries } = useCountries();
   const [availableActivityServices, setAvailableActivityServices] = React.useState<any[]>([]);
@@ -126,7 +127,7 @@ export function ActivityPriceForm({ form }: ActivityPriceFormProps) {
 
   return (
     <div className="space-y-4 md:space-y-6">
-       {availableActivityServices.length > 0 && (
+       {!isCreateMode && availableActivityServices.length > 0 && (
         <div className="border border-border rounded-md p-3 sm:p-4 relative">
           <p className="text-xs sm:text-sm font-semibold -mt-5 sm:-mt-6 ml-2 px-1 bg-background inline-block absolute left-2 top-[-0.7rem] mb-4">Predefined Services</p>
           <ShadcnFormField

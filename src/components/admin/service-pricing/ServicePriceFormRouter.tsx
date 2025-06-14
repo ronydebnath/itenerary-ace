@@ -1,3 +1,4 @@
+
 /**
  * @fileoverview This component acts as a router for different service price forms.
  * Based on the selected service category (e.g., hotel, activity, transfer), it dynamically
@@ -412,7 +413,7 @@ export function ServicePriceFormRouter({ initialData, onSubmit, onCancel }: Serv
           <div className="space-y-6 p-1">
             <CommonPriceFields form={form} />
             {watchedCategory === 'hotel' && <HotelPriceForm form={form} />}
-            {watchedCategory === 'activity' && <ActivityPriceForm form={form} />}
+            {watchedCategory === 'activity' && <ActivityPriceForm form={form} isCreateMode={isCreateMode} />}
             {watchedCategory === 'transfer' && <TransferPriceForm form={form} />}
             {watchedCategory === 'meal' && <MealPriceForm form={form} isCreateMode={isCreateMode} />}
             {watchedCategory === 'misc' && <MiscellaneousPriceForm form={form} isCreateMode={isCreateMode} />}
