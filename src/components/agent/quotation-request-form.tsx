@@ -85,6 +85,7 @@ export function QuotationRequestForm({ onSubmit, onCancel, defaultAgentId }: Quo
       },
       flightPrefs: {
         airportTransfersRequired: false,
+        activityTransfersRequired: false,
       },
       otherRequirements: "",
       status: "Pending",
@@ -341,7 +342,7 @@ export function QuotationRequestForm({ onSubmit, onCancel, defaultAgentId }: Quo
           <Card>
             <CardHeader><CardTitle>Accommodation Preferences (Optional)</CardTitle></CardHeader>
             <CardContent className="space-y-4">
-              <FormField control={form.control} name="accommodationPrefs.hotelStarRating" render={({ field }) => (<FormItem><FormLabel>Preferred Hotel Star Rating</FormLabel><Select onValueChange={field.onChange} value={field.value || ""}><FormControl><SelectTrigger><SelectValue placeholder="Any star rating" /></SelectTrigger></FormControl><SelectContent>{HOTEL_STAR_RATINGS.map(rating => <SelectItem key={rating} value={rating}>{rating}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
+              <FormField control={form.control} name="accommodationPrefs.hotelStarRating" render={({ field }) => (<FormItem><FormLabel>Preferred Hotel Star Rating</FormLabel><Select onValueChange={field.onChange} value={field.value || "3 Stars"}><FormControl><SelectTrigger><SelectValue placeholder="Any star rating" /></SelectTrigger></FormControl><SelectContent>{HOTEL_STAR_RATINGS.map(rating => <SelectItem key={rating} value={rating}>{rating}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
               <FormField control={form.control} name="accommodationPrefs.roomPreferences" render={({ field }) => (<FormItem><FormLabel>Room Preferences</FormLabel><FormControl><Textarea placeholder="e.g., 1 King Bed, 2 Twin + Extra Bed, Connecting rooms" {...field} value={field.value || ''} rows={2} /></FormControl><FormMessage /></FormItem>)} />
               <FormField control={form.control} name="accommodationPrefs.specificHotelRequests" render={({ field }) => (<FormItem><FormLabel>Specific Hotel Names or Location Preferences</FormLabel><FormControl><Textarea placeholder="e.g., 'Near Eiffel Tower', 'XYZ Resort', 'Quiet area'" {...field} value={field.value || ''} rows={2} /></FormControl><FormMessage /></FormItem>)} />
             </CardContent>
@@ -375,6 +376,7 @@ export function QuotationRequestForm({ onSubmit, onCancel, defaultAgentId }: Quo
             <CardHeader><CardTitle>Transfer Preferences (Optional)</CardTitle></CardHeader>
             <CardContent className="space-y-4">
               <FormField control={form.control} name="flightPrefs.airportTransfersRequired" render={({ field }) => (<FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4 shadow"><FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl><div className="space-y-1 leading-none"><FormLabel>Airport Transfers Required?</FormLabel><FormDescription>Include transfers to/from airports.</FormDescription></div><FormMessage /></FormItem>)} />
+              <FormField control={form.control} name="flightPrefs.activityTransfersRequired" render={({ field }) => (<FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4 shadow"><FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl><div className="space-y-1 leading-none"><FormLabel>Include transfers for activities/tours?</FormLabel><FormDescription>Arrange transportation to/from scheduled activities and tours.</FormDescription></div><FormMessage /></FormItem>)} />
             </CardContent>
           </Card>
 

@@ -40,15 +40,15 @@ export const QuotationRequestTripDetailsSchema = z.object({
   budgetCurrency: z.custom<CurrencyCode>((val) => CURRENCIES.includes(val as CurrencyCode)).default('USD'),
 }).refine(data => {
   if (data.preferredStartDate && data.preferredEndDate) {
-    try { // Add try-catch for robustness against invalid date strings during validation
+    try { 
         const startDate = parseISO(data.preferredStartDate);
         const endDate = parseISO(data.preferredEndDate);
         if (isValid(startDate) && isValid(endDate)) {
             return endDate >= startDate;
         }
-        return true; // If dates are invalid at this stage, let individual field validation handle it
+        return true; 
     } catch (e) {
-        return true; // If parsing fails, let field validation handle it
+        return true; 
     }
   }
   return true;
@@ -62,7 +62,7 @@ export const QuotationRequestTripDetailsSchema = z.object({
 
 
 export const QuotationRequestAccommodationPrefsSchema = z.object({
-  hotelStarRating: z.enum(HOTEL_STAR_RATINGS).optional(),
+  hotelStarRating: z.enum(HOTEL_STAR_RATINGS).default("3 Stars"),
   roomPreferences: z.string().optional().describe("e.g., 1 King Bed, 2 Twin + Extra Bed, Connecting rooms"),
   specificHotelRequests: z.string().optional().describe("Preferred hotel names or location details"),
 });
@@ -73,12 +73,13 @@ export const QuotationRequestActivityPrefsSchema = z.object({
 
 export const QuotationRequestFlightPrefsSchema = z.object({
   airportTransfersRequired: z.boolean().default(false),
+  activityTransfersRequired: z.boolean().default(false).describe("Request transfers for scheduled activities/tours"),
 });
 
 export const QuotationRequestSchema = z.object({
   id: z.string().default(() => `QR-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`),
   requestDate: z.string().default(() => new Date().toISOString()),
-  agentId: z.string().optional(), // To be linked if agent auth is implemented
+  agentId: z.string().optional(), 
   clientInfo: QuotationRequestClientInfoSchema,
   tripDetails: QuotationRequestTripDetailsSchema,
   accommodationPrefs: QuotationRequestAccommodationPrefsSchema.optional(),
