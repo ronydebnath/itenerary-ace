@@ -2,13 +2,13 @@
 /**
  * @fileoverview This page component provides a user interface for currency conversion
  * and managing exchange rates. It allows users to convert amounts between different
- * currencies based on stored exchange rates, set a global conversion markup,
- * and add, edit, or delete base exchange rates. It utilizes the `useExchangeRates`
- * hook to manage exchange rate data and logic.
+ * currencies based on stored exchange rates (potentially fetched from an API), 
+ * set a global conversion markup, and add, edit, or delete base exchange rates. 
+ * It utilizes the `useExchangeRates` hook to manage exchange rate data and logic.
  *
  * @bangla এই পৃষ্ঠা কম্পোনেন্টটি মুদ্রা রূপান্তর এবং বিনিময় হার ব্যবস্থাপনার জন্য একটি
- * ব্যবহারকারী ইন্টারফেস সরবরাহ করে। এটি ব্যবহারকারীদের সংরক্ষিত বিনিময় হারের উপর ভিত্তি করে
- * বিভিন্ন মুদ্রার মধ্যে পরিমাণ রূপান্তর করতে, একটি গ্লোবাল রূপান্তর মার্কআপ সেট করতে, এবং
+ * ব্যবহারকারী ইন্টারফেস সরবরাহ করে। এটি ব্যবহারকারীদের সংরক্ষিত বিনিময় হারের (সম্ভবত API থেকে আনা)
+ * উপর ভিত্তি করে বিভিন্ন মুদ্রার মধ্যে পরিমাণ রূপান্তর করতে, একটি গ্লোবাল রূপান্তর মার্কআপ সেট করতে, এবং
  * বেস বিনিময় হার যোগ, সম্পাদনা বা মুছে ফেলতে দেয়। এটি বিনিময় হারের ডেটা এবং যুক্তি
  * পরিচালনা করার জন্য `useExchangeRates` হুক ব্যবহার করে।
  */
@@ -27,11 +27,12 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { LayoutDashboard, Repeat, PlusCircle, Edit, Trash2, AlertCircle, Loader2, Settings, Percent } from 'lucide-react';
+import { LayoutDashboard, Repeat, PlusCircle, Edit, Trash2, AlertCircle, Loader2, Settings, Percent, RefreshCw } from 'lucide-react';
 import { useExchangeRates, type ConversionRateDetails } from '@/hooks/useExchangeRates';
 import type { CurrencyCode, ExchangeRate } from '@/types/itinerary';
 import { CURRENCIES } from '@/types/itinerary';
 import { formatCurrency } from '@/lib/utils';
+import { format, parseISO, isValid } from 'date-fns';
 
 const conversionSchema = z.object({
   amount: z.coerce.number().positive("Amount must be positive"),
@@ -59,10 +60,10 @@ interface ConversionResultState {
   originalAmount: number;
   fromCurrency: CurrencyCode;
   toCurrency: CurrencyCode;
-  baseRate: number;       // Rate without markup (system calculated, possibly via USD)
-  finalRate: number;      // Rate with markup (system calculated)
-  markupApplied: number;  // Percentage of markup applied
-  convertedAmount: number;// Final converted amount
+  baseRate: number;
+  finalRate: number;
+  markupApplied: number;
+  convertedAmount: number;
 }
 
 export default function CurrencyConverterPage() {
@@ -76,7 +77,8 @@ export default function CurrencyConverterPage() {
     getRate, 
     refreshRates,
     markupPercentage,
-    setGlobalMarkup
+    setGlobalMarkup,
+    lastApiFetchTimestamp
   } = useExchangeRates();
 
   const [conversionResult, setConversionResult] = React.useState<ConversionResultState | null>(null);
@@ -143,7 +145,7 @@ export default function CurrencyConverterPage() {
 
   const handleRateFormSubmit = (data: RateFormValues) => {
     if (editingRate) {
-      updateRate({ ...editingRate, ...data });
+      updateRate({ ...editingRate, ...data, updatedAt: new Date().toISOString() });
     } else {
       addRate(data);
     }
@@ -167,6 +169,10 @@ export default function CurrencyConverterPage() {
     setIsRateFormOpen(true);
   };
 
+  const lastFetchedDate = lastApiFetchTimestamp && isValid(parseISO(lastApiFetchTimestamp)) 
+    ? format(parseISO(lastApiFetchTimestamp), "MMM d, yyyy HH:mm:ss") 
+    : "N/A (Using local/default rates)";
+
   return (
     <main className="min-h-screen bg-background p-4 md:p-8">
       <div className="container mx-auto py-8">
@@ -186,7 +192,7 @@ export default function CurrencyConverterPage() {
         <Card className="mb-8 shadow-lg">
           <CardHeader>
             <CardTitle className="text-xl flex items-center"><Settings className="mr-2 h-5 w-5"/>Conversion Markup Settings</CardTitle>
-            <CardDescription>Set a global markup percentage for conversions. This markup is applied when the 'From' and 'To' currencies are different, using USD as an intermediate. Currently applied markup: <strong>{markupPercentage}%</strong></CardDescription>
+            <CardDescription>Set a global markup percentage for conversions. This markup is applied when the 'From' and 'To' currencies are different, using USD as an intermediate. Current markup: <strong>{markupPercentage}%</strong></CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={markupForm.handleSubmit(handleMarkupFormSubmit)} className="flex items-end gap-3">
@@ -289,11 +295,16 @@ export default function CurrencyConverterPage() {
           <CardHeader className="flex flex-row justify-between items-center">
             <div>
               <CardTitle className="text-xl">Manage Base Exchange Rates</CardTitle>
-              <CardDescription>Define base rates. The "Effective Final Rate" column shows how the system (using USD intermediate & current markup of <strong>{markupPercentage}%</strong>) would calculate it.</CardDescription>
+              <CardDescription>Define base rates. The "Effective Final Rate" column shows how the system (using USD intermediate &amp; current markup of <strong>{markupPercentage}%</strong>) would calculate it. Last API fetch: {lastFetchedDate}</CardDescription>
             </div>
-            <Button onClick={openNewRateDialog} size="sm">
-              <PlusCircle className="mr-2 h-4 w-4" /> Add New Rate
-            </Button>
+            <div className="flex flex-col sm:flex-row gap-2">
+                <Button onClick={refreshRates} size="sm" variant="outline" className="border-primary text-primary hover:bg-primary/10">
+                    <RefreshCw className="mr-2 h-4 w-4" /> Refresh from API
+                </Button>
+                <Button onClick={openNewRateDialog} size="sm">
+                    <PlusCircle className="mr-2 h-4 w-4" /> Add New Rate
+                </Button>
+            </div>
           </CardHeader>
           <CardContent>
             {isLoading ? (
@@ -308,7 +319,7 @@ export default function CurrencyConverterPage() {
                 <AlertDescription>{error}</AlertDescription>
               </Alert>
             ) : exchangeRates.length === 0 ? (
-              <p className="text-muted-foreground text-center py-4">No exchange rates defined yet. Click "Add New Rate" to start. Ensure rates to/from USD are set for all currencies.</p>
+              <p className="text-muted-foreground text-center py-4">No exchange rates defined. Click "Add New Rate" or "Refresh from API".</p>
             ) : (
               <div className="overflow-x-auto">
                 <Table>
@@ -331,6 +342,11 @@ export default function CurrencyConverterPage() {
                       if (rateDetails) {
                         effectiveFinalRateDisplay = rateDetails.finalRate.toFixed(6);
                         markupAddedDisplay = (rateDetails.finalRate - rateDetails.baseRate).toFixed(6);
+                         if (Math.abs(parseFloat(markupAddedDisplay)) < 0.0000001) markupAddedDisplay = "0.000000"; // Display zero clearly
+                      } else {
+                        // Try to show defined rate even if full calc fails
+                        effectiveFinalRateDisplay = rate.rate.toFixed(6);
+                        markupAddedDisplay = "Calc Error";
                       }
                       
                       return (
@@ -371,7 +387,6 @@ export default function CurrencyConverterPage() {
                 </Table>
               </div>
             )}
-            <Button variant="outline" size="sm" onClick={refreshRates} className="mt-4">Refresh Rate List</Button>
           </CardContent>
         </Card>
 
@@ -382,7 +397,7 @@ export default function CurrencyConverterPage() {
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
               <DialogTitle>{editingRate ? 'Edit' : 'Add'} Base Exchange Rate</DialogTitle>
-              <AlertDescription>This is a direct base rate. The system may use USD as an intermediate for actual conversions if a direct path to USD is more optimal or this rate is missing.</AlertDescription>
+              <AlertDescription>This is a direct base rate. The system may use USD as an intermediate for actual conversions if a direct path to USD is more optimal or this rate is missing. API-fetched rates for USD pairs may override manual USD rates.</AlertDescription>
             </DialogHeader>
             <form onSubmit={rateForm.handleSubmit(handleRateFormSubmit)} className="space-y-4 py-4">
               <div>
