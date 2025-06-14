@@ -15,10 +15,8 @@
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
-import { LayoutDashboard, Route, ListOrdered, DollarSign, MapPinned, Wand2, Globe, Repeat, Briefcase, Map, UserCog, FilePlus, Users, Building, Mail, Phone, MapPin } from 'lucide-react';
+import { LayoutDashboard, Route, ListOrdered, DollarSign, MapPinned, Wand2, Globe, Repeat, Briefcase, Map, Users, Building, Mail, Phone, UserCog } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useAgents } from '@/hooks/useAgents';
-import { useCountries } from '@/hooks/useCountries';
 
 interface DashboardCardProps {
   title: string;
@@ -53,15 +51,6 @@ function DashboardCard({ title, description, href, icon: Icon, buttonText = "Man
 }
 
 export default function AdminDashboardPage() {
-  const { agencies, agents, isLoading: isLoadingAgents } = useAgents();
-  const { countries, isLoading: isLoadingCountries } = useCountries();
-
-  const getCountryName = (countryId?: string) => {
-    if (!countryId || isLoadingCountries) return 'N/A';
-    return countries.find(c => c.id === countryId)?.name || 'Unknown Country';
-  };
-
-
   return (
     <main className="min-h-screen bg-background flex flex-col items-center p-4 md:p-8">
       <div className="w-full max-w-5xl">
@@ -125,75 +114,23 @@ export default function AdminDashboardPage() {
             className="lg:col-span-1"
           />
            <DashboardCard
+            title="Manage Agencies & Agents"
+            description="Administer travel agencies and their affiliated agents."
+            href="/admin/agencies"
+            icon={Users}
+            buttonText="Manage Agencies"
+            className="lg:col-span-1"
+          />
+           <DashboardCard
             title="Agent Tools & Portal"
             description="Access the dashboard designed for travel agents to manage their specific tasks and clients."
-            href="/agent" // Main entry point for agent-related functions
+            href="/agent"
             icon={Briefcase}
             buttonText="Go to Agent Portal"
             className="lg:col-span-1 border-secondary"
           />
         </div>
-
-        {/* Agencies and Agents Overview Section */}
-        <Card className="lg:col-span-3 shadow-lg mb-8">
-          <CardHeader>
-            <CardTitle className="text-xl flex items-center"><Users className="mr-3 h-6 w-6 text-primary"/>Agencies & Agents Overview</CardTitle>
-            <CardDescription>View registered travel agencies and their affiliated agents.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {isLoadingAgents || isLoadingCountries ? (
-              <p className="text-muted-foreground">Loading agent and agency data...</p>
-            ) : agencies.length === 0 ? (
-              <p className="text-muted-foreground">No agencies registered yet.</p>
-            ) : (
-              <div className="space-y-6">
-                {agencies.map(agency => (
-                  <Card key={agency.id} className="bg-card border shadow-sm">
-                    <CardHeader className="p-4">
-                      <CardTitle className="text-lg flex items-center font-semibold text-accent">
-                        <Building className="mr-2 h-5 w-5"/>{agency.name}
-                      </CardTitle>
-                      {agency.mainAddress && (
-                        <p className="text-xs text-muted-foreground mt-1">
-                          <MapPin className="inline-block h-3 w-3 mr-1" />
-                          {agency.mainAddress.street}, {agency.mainAddress.city}, {getCountryName(agency.mainAddress.countryId)}
-                        </p>
-                      )}
-                      <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground mt-1">
-                        {agency.contactEmail && (
-                          <span className="flex items-center"><Mail className="inline-block h-3 w-3 mr-1" /> {agency.contactEmail}</span>
-                        )}
-                        {agency.contactPhone && (
-                          <span className="flex items-center"><Phone className="inline-block h-3 w-3 mr-1" /> {agency.contactPhone}</span>
-                        )}
-                      </div>
-                    </CardHeader>
-                    <CardContent className="p-4 pt-0">
-                      <h4 className="text-sm font-medium mb-2 text-foreground/90">Affiliated Agents:</h4>
-                      {agents.filter(agent => agent.agencyId === agency.id).length === 0 ? (
-                        <p className="text-xs text-muted-foreground italic">No agents currently listed for this agency.</p>
-                      ) : (
-                        <ul className="space-y-2">
-                          {agents.filter(agent => agent.agencyId === agency.id).map(agent => (
-                            <li key={agent.id} className="text-sm border-l-2 border-primary/30 pl-3 py-1 bg-background/50 rounded-r-md">
-                              <p className="font-semibold text-primary/90">{agent.fullName}</p>
-                              <p className="text-xs text-muted-foreground">{agent.email}</p>
-                              {agent.specializations && <p className="text-xs text-muted-foreground">Specializes in: {agent.specializations}</p>}
-                              {agent.agencyName && agent.agencyName !== agency.name && <p className="text-xs text-muted-foreground">Office: {agent.agencyName}</p>}
-                            </li>
-                          ))}
-                        </ul>
-                      )}
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
       </div>
     </main>
   );
 }
-

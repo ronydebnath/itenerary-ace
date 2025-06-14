@@ -1,3 +1,4 @@
+
 /**
  * @fileoverview This custom React hook manages agency and agent data for the application.
  * It loads information from localStorage, seeds default demo data if none exists,
@@ -7,6 +8,7 @@ import * as React from 'react';
 import type { Agency, AgentProfile, AgentAddress, CountryItem } from '@/types/agent';
 import { generateGUID } from '@/lib/utils';
 import { useCountries, DEFAULT_THAILAND_ID, DEFAULT_MALAYSIA_ID, DEFAULT_BANGLADESH_ID } from './useCountries'; // For seeding with valid country IDs
+import { useToast } from './use-toast';
 
 const AGENCIES_STORAGE_KEY = 'itineraryAceAgencies';
 const AGENTS_STORAGE_KEY = 'itineraryAceAgents';
@@ -85,7 +87,7 @@ const DEFAULT_AGENTS_DATA_SEED: Omit<AgentProfile, 'id'>[] = [
 
 const assignFixedAgencyIds = (data: Omit<Agency, 'id'>[]): Agency[] => {
   return data.map(agency => {
-    let id = `agency_${crypto.randomUUID()}`;
+    let id = generateGUID();
     if (agency.name === "Global Travel Experts") id = AGENCY_ID_GLOBAL_TRAVEL;
     else if (agency.name === "Local Adventures Inc.") id = AGENCY_ID_LOCAL_ADVENTURES;
     else if (agency.name === "Bengal Voyager") id = AGENCY_ID_BENGAL_VOYAGER;
@@ -100,15 +102,15 @@ export function useAgents() {
   const [agents, setAgents] = React.useState<AgentProfile[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
+  const { toast } = useToast();
 
   const fetchAndSeedData = React.useCallback(async () => {
-    if (isLoadingCountries) return; // Wait for countries to be loaded for correct seeding
+    if (isLoadingCountries) return; 
 
     setIsLoading(true);
     setError(null);
 
     try {
-      // Seed Agencies
       const storedAgencies = localStorage.getItem(AGENCIES_STORAGE_KEY);
       let agenciesToSet: Agency[] = [];
       if (storedAgencies) {
@@ -117,7 +119,6 @@ export function useAgents() {
         agenciesToSet = assignFixedAgencyIds(DEFAULT_AGENCIES_DATA_SEED);
         localStorage.setItem(AGENCIES_STORAGE_KEY, JSON.stringify(agenciesToSet));
       }
-      // Ensure default agencies exist with correct IDs
       const defaultAgenciesWithFixedIds = assignFixedAgencyIds(DEFAULT_AGENCIES_DATA_SEED);
       defaultAgenciesWithFixedIds.forEach(da => {
         const existing = agenciesToSet.find(a => a.id === da.id);
@@ -126,35 +127,32 @@ export function useAgents() {
       agenciesToSet.sort((a, b) => a.name.localeCompare(b.name));
       setAgencies(agenciesToSet);
 
-      // Seed Agents
       const storedAgents = localStorage.getItem(AGENTS_STORAGE_KEY);
       let agentsToSet: AgentProfile[] = [];
       if (storedAgents) {
         agentsToSet = JSON.parse(storedAgents);
       } else {
-        agentsToSet = DEFAULT_AGENTS_DATA_SEED.map(a => ({ ...a, id: `agent_${crypto.randomUUID()}` }));
+        agentsToSet = DEFAULT_AGENTS_DATA_SEED.map(a => ({ ...a, id: generateGUID() }));
         localStorage.setItem(AGENTS_STORAGE_KEY, JSON.stringify(agentsToSet));
       }
-      // Ensure default agents exist
       DEFAULT_AGENTS_DATA_SEED.forEach(da => {
         const existing = agentsToSet.find(a => a.email === da.email && a.agencyId === da.agencyId);
-        if (!existing) agentsToSet.push({ ...da, id: `agent_${crypto.randomUUID()}` });
+        if (!existing) agentsToSet.push({ ...da, id: generateGUID() });
       });
       setAgents(agentsToSet);
 
     } catch (e: any) {
       console.error("Error initializing agent/agency data from localStorage:", e);
       setError("Failed to load agent/agency data.");
-       // Fallback to defaults if any error
       const defaultAgencies = assignFixedAgencyIds(DEFAULT_AGENCIES_DATA_SEED);
       setAgencies(defaultAgencies.sort((a, b) => a.name.localeCompare(b.name)));
       localStorage.setItem(AGENCIES_STORAGE_KEY, JSON.stringify(defaultAgencies));
-      const defaultAgents = DEFAULT_AGENTS_DATA_SEED.map(a => ({ ...a, id: `agent_${crypto.randomUUID()}` }));
+      const defaultAgents = DEFAULT_AGENTS_DATA_SEED.map(a => ({ ...a, id: generateGUID() }));
       setAgents(defaultAgents);
       localStorage.setItem(AGENTS_STORAGE_KEY, JSON.stringify(defaultAgents));
     }
     setIsLoading(false);
-  }, [isLoadingCountries, countries]); // `countries` dependency ensures seeding happens after countries are available
+  }, [isLoadingCountries, countries]);
 
   React.useEffect(() => {
     fetchAndSeedData();
@@ -172,8 +170,36 @@ export function useAgents() {
     return agents;
   }, [agents]);
 
-  // Add, Update, Delete functions can be added here later if needed
-  // For now, this hook focuses on seeding and reading.
+  const addAgency = React.useCallback((agencyData: Omit<Agency, 'id'>) => {
+    const newAgency: Agency = { ...agencyData, id: generateGUID() };
+    const updatedAgencies = [...agencies, newAgency].sort((a, b) => a.name.localeCompare(b.name));
+    setAgencies(updatedAgencies);
+    localStorage.setItem(AGENCIES_STORAGE_KEY, JSON.stringify(updatedAgencies));
+    toast({ title: "Agency Added", description: `Agency "${newAgency.name}" has been successfully added.` });
+  }, [agencies, toast]);
+
+  const updateAgency = React.useCallback((updatedAgencyData: Agency) => {
+    const updatedAgencies = agencies.map(agency =>
+      agency.id === updatedAgencyData.id ? updatedAgencyData : agency
+    ).sort((a, b) => a.name.localeCompare(b.name));
+    setAgencies(updatedAgencies);
+    localStorage.setItem(AGENCIES_STORAGE_KEY, JSON.stringify(updatedAgencies));
+    toast({ title: "Agency Updated", description: `Agency "${updatedAgencyData.name}" has been successfully updated.` });
+  }, [agencies, toast]);
+
+  const deleteAgency = React.useCallback((agencyId: string) => {
+    const agencyToDelete = agencies.find(a => a.id === agencyId);
+    const updatedAgencies = agencies.filter(agency => agency.id !== agencyId);
+    setAgencies(updatedAgencies);
+    localStorage.setItem(AGENCIES_STORAGE_KEY, JSON.stringify(updatedAgencies));
+    // Optionally, handle deleting/unlinking agents associated with this agency
+    const updatedAgents = agents.filter(agent => agent.agencyId !== agencyId);
+    setAgents(updatedAgents); // Or update their agencyId to a default/unassigned
+    localStorage.setItem(AGENTS_STORAGE_KEY, JSON.stringify(updatedAgents));
+    if (agencyToDelete) {
+      toast({ title: "Agency Deleted", description: `Agency "${agencyToDelete.name}" and its agents have been removed.`, variant: "destructive" });
+    }
+  }, [agencies, agents, toast]);
 
   return {
     agencies,
@@ -183,6 +209,9 @@ export function useAgents() {
     getAgencies,
     getAgentsByAgencyId,
     getAllAgents,
-    refreshAgentData: fetchAndSeedData // Expose refresh if needed
+    addAgency,
+    updateAgency,
+    deleteAgency,
+    refreshAgentData: fetchAndSeedData
   };
 }
