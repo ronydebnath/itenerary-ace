@@ -1,3 +1,4 @@
+
 /**
  * @fileoverview This component provides a comprehensive form for travel agents to submit
  * new quotation requests. It captures client information, detailed trip preferences
@@ -74,10 +75,10 @@ export function QuotationRequestForm({ onSubmit, onCancel, defaultAgentId }: Quo
         budgetCurrency: 'USD',
         preferredCountryIds: [],
         preferredProvinceNames: [],
-        tripType: undefined, // Made optional
+        tripType: undefined, 
       },
       accommodationPrefs: {
-        hotelStarRating: "3 Stars", // Defaulted to "3 Stars"
+        hotelStarRating: "3 Stars", 
         roomPreferences: "",
         specificHotelRequests: "",
       },
@@ -85,19 +86,15 @@ export function QuotationRequestForm({ onSubmit, onCancel, defaultAgentId }: Quo
         requestedActivities: "",
       },
       flightPrefs: {
-        // includeFlights: "To be discussed", // Removed
-        // departureCity: "", // Removed
-        // preferredAirlineClass: "", // Removed
         airportTransfersRequired: false,
         activityTransfersRequired: false,
       },
       mealPrefs: {
-        mealPlan: "Breakfast Only", // Defaulted to "Breakfast Only"
+        mealPlan: "Breakfast Only", 
       },
       otherRequirements: "",
       status: "Pending",
       requestDate: new Date().toISOString(),
-      // quotationDeadline: undefined, // Removed
     },
   });
 
@@ -179,28 +176,48 @@ export function QuotationRequestForm({ onSubmit, onCancel, defaultAgentId }: Quo
   }, [displayableProvinces, isLoadingProvinces, isLoadingCountries, countries]);
 
   const onFormSubmitError = (errors: FieldErrors<QuotationRequest>) => {
-    console.error("Quotation Form Validation Errors:", errors);
-    // Attempt to focus on the first field with an error
-    const firstErrorField = Object.keys(errors)[0] as keyof QuotationRequest | keyof QuotationRequest['clientInfo'] | keyof QuotationRequest['tripDetails'] | string; // More general type
+    console.error("Quotation Form Validation Failure. Number of error keys:", Object.keys(errors).length);
+    console.error("Quotation Form Validation Errors (raw object):", errors);
+    try {
+      console.error("Quotation Form Validation Errors (stringified):", JSON.stringify(errors, null, 2));
+    } catch (e) {
+      console.error("Could not stringify errors object for Quotation Form:", e);
+    }
+    
+    const firstErrorField = Object.keys(errors)[0] as keyof QuotationRequest | string;
     
     if (firstErrorField) {
-      // Construct a full name path if it's a nested field
-      let fieldNameToFocus = firstErrorField;
+      let fieldNameToFocus: any = firstErrorField;
+      
       if (errors.clientInfo && firstErrorField in errors.clientInfo) {
         fieldNameToFocus = `clientInfo.${firstErrorField}`;
       } else if (errors.tripDetails && firstErrorField in errors.tripDetails) {
         fieldNameToFocus = `tripDetails.${firstErrorField}`;
-      } // Add other nested structures if they exist (accommodationPrefs, etc.)
+      } else if (errors.accommodationPrefs && firstErrorField in errors.accommodationPrefs) {
+        fieldNameToFocus = `accommodationPrefs.${firstErrorField}`;
+      } else if (errors.activityPrefs && firstErrorField in errors.activityPrefs) {
+        fieldNameToFocus = `activityPrefs.${firstErrorField}`;
+      } else if (errors.flightPrefs && firstErrorField in errors.flightPrefs) {
+        fieldNameToFocus = `flightPrefs.${firstErrorField}`;
+      } else if (errors.mealPrefs && firstErrorField in errors.mealPrefs) {
+        fieldNameToFocus = `mealPrefs.${firstErrorField}`;
+      }
       
+      console.log("Attempting to focus on field for Quotation Form:", fieldNameToFocus);
       const fieldElement = document.getElementsByName(fieldNameToFocus)[0];
       if (fieldElement) {
         fieldElement.focus({ preventScroll: true });
         fieldElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        console.log("Focused on (Quotation Form):", fieldNameToFocus);
       } else {
-        // Fallback if direct name match fails (e.g., for checkbox groups or complex fields)
+        console.warn("Could not find field element to focus for Quotation Form:", fieldNameToFocus);
         const mainFormElement = (document.querySelector('form') as HTMLFormElement);
         if(mainFormElement) mainFormElement.scrollIntoView({ behavior: 'smooth', block: 'start'});
       }
+    } else {
+      console.warn("No specific error field found in the errors object for Quotation Form. Scrolling to top.");
+      const mainFormElement = (document.querySelector('form') as HTMLFormElement);
+      if(mainFormElement) mainFormElement.scrollIntoView({ behavior: 'smooth', block: 'start'});
     }
   };
 
@@ -453,3 +470,4 @@ export function QuotationRequestForm({ onSubmit, onCancel, defaultAgentId }: Quo
     </Form>
   );
 }
+
