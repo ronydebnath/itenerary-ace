@@ -200,7 +200,11 @@ export default function ManageCurrenciesPage() {
     <main className="min-h-screen bg-background p-4 md:p-8"><div className="container mx-auto py-8">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-3">
         <div className="flex items-center gap-2">
-          <Link href="/"><Button variant="outline" size="icon" className="h-10 w-10"><LayoutDashboard className="h-5 w-5" /></Button></Link>
+          <Link href="/">
+            <Button variant="outline" size="icon" className="h-10 w-10">
+                <LayoutDashboard className="h-5 w-5" />
+            </Button>
+          </Link>
           <h1 className="text-2xl md:text-3xl font-bold text-primary flex items-center"><BadgeDollarSign className="mr-3 h-7 w-7 md:h-8 md:w-8" /> Manage Currencies &amp; Rates</h1>
         </div>
       </div>
@@ -208,7 +212,7 @@ export default function ManageCurrenciesPage() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <div className="space-y-8"> {/* Left Column */}
           <Card className="shadow-lg"><CardHeader><CardTitle className="text-xl flex items-center"><PlusCircle className="mr-2 h-5 w-5 text-accent"/>Add New Custom Currency Code</CardTitle><CardDescription>Add a new 3-letter uppercase currency code (e.g., CAD). After adding, define its exchange rates below.</CardDescription></CardHeader><CardContent><form onSubmit={currencyCodeForm.handleSubmit(handleAddCurrencyCode)} className="flex items-end gap-3"><div className="flex-grow"><Label htmlFor="currencyCode">New Currency Code</Label><Input id="currencyCode" maxLength={3} {...currencyCodeForm.register("code")} className="mt-1 uppercase" placeholder="e.g., CAD"/>{currencyCodeForm.formState.errors.code && <p className="text-xs text-destructive mt-1">{currencyCodeForm.formState.errors.code.message}</p>}</div><Button type="submit" className="bg-accent hover:bg-accent/90 text-accent-foreground" size="sm" disabled={isSubmittingCode || isLoadingCustomCurrencies}>{isSubmittingCode ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <PlusCircle className="mr-2 h-4 w-4" />}Add Code</Button></form></CardContent></Card>
-          <Card className="shadow-lg"><CardHeader><CardTitle className="text-xl">All Available Currency Codes</CardTitle><CardDescription>System default currencies cannot be deleted. Custom codes can be removed.</CardDescription></CardHeader><CardContent>{isLoadingCustomCurrencies ? (<div className="flex justify-center items-center py-8"><Loader2 className="h-8 w-8 animate-spin text-primary" /><p className="ml-2">Loading codes...</p></div>) : allCurrenciesList.length === 0 ? (<p className="text-muted-foreground text-center py-4">No currencies.</p>) : (<div className="overflow-x-auto"><Table><TableHeader><TableRow><TableHead>Code</TableHead><TableHead>Type</TableHead><TableHead className="text-center">Actions</TableHead></TableRow></TableHeader><TableBody>{allCurrenciesList.map((c) => (<TableRow key={c.code}><TableCell className="font-mono font-semibold">{c.code}</TableCell><TableCell><Badge variant={c.isCustom ? "outline" : "secondary"} className={c.isCustom ? "border-blue-500 text-blue-600" : ""}>{c.isCustom ? "Custom" : "System"}</Badge></TableCell><TableCell className="text-center">{c.isCustom ? (<Dialog><DialogTrigger asChild><Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10 h-8 w-8"><Trash2 className="h-4 w-4" /></Button></DialogTrigger><DialogContent><DialogHeader><DialogTitle>Confirm Deletion</DialogTitle><AlertDescription>Delete "{c.code}"?</AlertDescription></DialogHeader><DialogFooter><DialogClose asChild><Button variant="outline">Cancel</Button></DialogClose><Button variant="destructive" onClick={() => handleDeleteCurrencyCode(c.code)}>Delete</Button></DialogFooter></DialogContent></Dialog>) : (<span className="text-xs text-muted-foreground italic">N/A</span>)}</TableCell></TableRow>))}</TableBody></Table></div>)}</CardContent></Card>
+          <Card className="shadow-lg"><CardHeader><CardTitle className="text-xl">All Available Currency Codes</CardTitle><CardDescription>System default currencies cannot be deleted. Custom codes can be removed.</CardDescription></CardHeader><CardContent>{isLoadingCustomCurrencies ? (<div className="flex justify-center items-center py-8"><Loader2 className="h-8 w-8 animate-spin text-primary" /><p className="ml-2">Loading codes...</p></div>) : allCurrenciesList.length === 0 ? (<p className="text-muted-foreground text-center py-4">No currencies.</p>) : (<div className="overflow-x-auto"><Table><TableHeader><TableRow><TableHead>Code</TableHead><TableHead>Type</TableHead><TableHead className="text-center">Actions</TableHead></TableRow></TableHeader><TableBody>{allCurrenciesList.map((c) => (<TableRow key={c.code}><TableCell className="font-mono font-semibold">{c.code}</TableCell><TableCell><Badge variant={c.isCustom ? "outline" : "secondary"} className={c.isCustom ? "border-blue-500 text-blue-600" : ""}>{c.isCustom ? "Custom" : "System"}</Badge></TableCell><TableCell className="text-center">{c.isCustom ? (<Dialog><DialogTrigger asChild><Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10 h-8 w-8"><Trash2 className="h-4 w-4" /></Button></DialogTrigger><DialogContent><DialogHeader><DialogTitle>Confirm Deletion</DialogTitle><AlertDescription>Delete "{c.code}"?</AlertDescription></DialogHeader><DialogFooter><DialogClose asChild><Button variant="outline">Cancel</Button></DialogClose><Button variant="destructive" onClick={() => handleDeleteCurrencyCode(c.code as CurrencyCode)}>Delete</Button></DialogFooter></DialogContent></Dialog>) : (<span className="text-xs text-muted-foreground italic">N/A</span>)}</TableCell></TableRow>))}</TableBody></Table></div>)}</CardContent></Card>
           <Card className="shadow-lg"><CardHeader><CardTitle className="text-xl flex items-center"><Settings className="mr-2 h-5 w-5"/>Global Conversion Markup</CardTitle><CardDescription>Set a global markup percentage for conversions. This applies if no specific pair markup is set. Current global markup: <strong>{globalMarkupPercentage}%</strong></CardDescription></CardHeader><CardContent><form onSubmit={globalMarkupForm.handleSubmit(handleGlobalMarkupFormSubmit)} className="flex items-end gap-3"><div className="flex-grow"><Label htmlFor="markup">Markup (%)</Label><Input id="markup" type="number" step="0.01" {...globalMarkupForm.register("markup")} className="mt-1" placeholder="e.g., 2.5"/>{globalMarkupForm.formState.errors.markup && <p className="text-xs text-destructive mt-1">{globalMarkupForm.formState.errors.markup.message}</p>}</div><Button type="submit" className="bg-accent hover:bg-accent/90 text-accent-foreground" size="sm">Set Global Markup</Button></form></CardContent></Card>
         </div>
         
@@ -220,17 +224,17 @@ export default function ManageCurrenciesPage() {
       <Card className="shadow-lg mt-8"><CardHeader><CardTitle className="text-xl flex items-center"><Tag className="mr-2 h-5 w-5"/>Manage Specific Currency Markups</CardTitle><CardDescription>Define markup percentages for specific currency pairs. These override the global markup.</CardDescription></CardHeader><CardContent>{isLoading ? (<div className="flex justify-center items-center py-8"><Loader2 className="h-8 w-8 animate-spin text-primary" /><p className="ml-2">Loading specific markups...</p></div>) : (<div className="space-y-4"><div className="flex justify-end"><Button onClick={openNewSpecificMarkupDialog} size="sm" disabled={isLoadingCustomCurrencies || allManagedCurrencyCodes.length < 2}><PlusCircle className="mr-2 h-4 w-4" /> Add Specific Markup</Button></div>{specificMarkupRates.length === 0 ? (<p className="text-muted-foreground text-center py-4">No specific markups defined.</p>) : (<div className="overflow-x-auto"><Table><TableHeader><TableRow><TableHead onClick={() => requestSpecificMarkupSort('fromCurrency')} className="cursor-pointer hover:bg-muted/50"><div className="flex items-center">From {getSortIcon('fromCurrency', specificMarkupSortConfig)}</div></TableHead><TableHead onClick={() => requestSpecificMarkupSort('toCurrency')} className="cursor-pointer hover:bg-muted/50"><div className="flex items-center">To {getSortIcon('toCurrency', specificMarkupSortConfig)}</div></TableHead><TableHead onClick={() => requestSpecificMarkupSort('markupPercentage')} className="text-right cursor-pointer hover:bg-muted/50"><div className="flex items-center justify-end">Markup % {getSortIcon('markupPercentage', specificMarkupSortConfig)}</div></TableHead><TableHead className="text-center">Actions</TableHead></TableRow></TableHeader><TableBody>{sortedSpecificMarkups.map((sm) => (<TableRow key={sm.id}><TableCell>{sm.fromCurrency}</TableCell><TableCell>{sm.toCurrency}</TableCell><TableCell className="text-right font-mono">{sm.markupPercentage.toFixed(2)}%</TableCell><TableCell className="text-center"><Button variant="ghost" size="icon" onClick={() => openEditSpecificMarkupDialog(sm)} className="mr-2 text-primary hover:bg-primary/10 h-8 w-8"><Edit className="h-4 w-4" /></Button><Dialog><DialogTrigger asChild><Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10 h-8 w-8"><Trash2 className="h-4 w-4" /></Button></DialogTrigger><DialogContent><DialogHeader><DialogTitle>Confirm Deletion</DialogTitle><AlertDescription>Delete specific markup from {sm.fromCurrency} to {sm.toCurrency}?</AlertDescription></DialogHeader><DialogFooter><DialogClose asChild><Button variant="outline">Cancel</Button></DialogClose><Button variant="destructive" onClick={() => deleteSpecificMarkup(sm.id)}>Delete</Button></DialogFooter></DialogContent></Dialog></TableCell></TableRow>))}</TableBody></Table></div>)}</div>)}</CardContent></Card>
 
       <Card className="shadow-lg mt-8">
-        <CardHeader className="flex flex-row justify-between items-center">
+        <CardHeader className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
             <div>
                 <CardTitle className="text-xl">Manage Base Exchange Rates</CardTitle>
                 <CardDescription>
-                    Define base rates. "Effective Rate" includes calculation logic &amp; markup ({globalMarkupPercentage}% global, or specific if set).
+                    Define base rates. "Effective Final Rate" includes calculation logic &amp; markup (global or specific).
                     <br/>Last API fetch: <span className="font-semibold text-primary">{lastFetchedDate}</span>
                 </CardDescription>
             </div>
-            <div className="flex flex-col sm:flex-row gap-2">
-                <Button onClick={() => refreshRates()} size="sm" variant="outline" className="border-primary text-primary hover:bg-primary/10"><RefreshCw className="mr-2 h-4 w-4" /> Refresh from API</Button>
-                <Button onClick={openNewRateDialog} size="sm" disabled={isLoadingCustomCurrencies || allManagedCurrencyCodes.length < 2}><PlusCircle className="mr-2 h-4 w-4" /> Add New Rate</Button>
+            <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+                <Button onClick={() => refreshRates()} size="sm" variant="outline" className="border-primary text-primary hover:bg-primary/10 w-full sm:w-auto"><RefreshCw className="mr-2 h-4 w-4" /> Refresh from API</Button>
+                <Button onClick={openNewRateDialog} size="sm" disabled={isLoadingCustomCurrencies || allManagedCurrencyCodes.length < 2} className="w-full sm:w-auto"><PlusCircle className="mr-2 h-4 w-4" /> Add New Rate</Button>
             </div>
         </CardHeader>
         <CardContent>
@@ -247,8 +251,8 @@ export default function ManageCurrenciesPage() {
                             <TableHead onClick={() => requestRateTableSort('fromCurrency')} className="cursor-pointer hover:bg-muted/50"><div className="flex items-center">From {getSortIcon('fromCurrency', rateTableSortConfig)}</div></TableHead>
                             <TableHead onClick={() => requestRateTableSort('toCurrency')} className="cursor-pointer hover:bg-muted/50"><div className="flex items-center">To {getSortIcon('toCurrency', rateTableSortConfig)}</div></TableHead>
                             <TableHead onClick={() => requestRateTableSort('rate')} className="text-right cursor-pointer hover:bg-muted/50"><div className="flex items-center justify-end">Defined Base Rate {getSortIcon('rate', rateTableSortConfig)}</div></TableHead>
-                            <TableHead onClick={() => requestRateTableSort('effectiveFinalRate')} className="text-right cursor-pointer hover:bg-muted/50"><div className="flex items-center justify-end">Effective Final Rate {getSortIcon('effectiveFinalRate', rateTableSortConfig)}</div></TableHead>
                             <TableHead onClick={() => requestRateTableSort('markupAdded')} className="text-right cursor-pointer hover:bg-muted/50"><div className="flex items-center justify-end">Markup Added {getSortIcon('markupAdded', rateTableSortConfig)}</div></TableHead>
+                            <TableHead onClick={() => requestRateTableSort('effectiveFinalRate')} className="text-right cursor-pointer hover:bg-muted/50"><div className="flex items-center justify-end">Effective Final Rate {getSortIcon('effectiveFinalRate', rateTableSortConfig)}</div></TableHead>
                             <TableHead onClick={() => requestRateTableSort('source')} className="cursor-pointer hover:bg-muted/50 text-center"><div className="flex items-center justify-center">Source {getSortIcon('source', rateTableSortConfig)}</div></TableHead>
                             <TableHead className="text-center">Actions</TableHead>
                         </TableRow></TableHeader>
@@ -270,12 +274,12 @@ export default function ManageCurrenciesPage() {
                                 let displaySourceVariant: 'secondary' | 'outline';
                                 let displaySourceClassName: string;
 
-                                if (lastApiFetchTimestamp) { // API has been successfully fetched at least once
+                                if (lastApiFetchTimestamp) {
                                     displaySourceText = 'API';
                                     displaySourceVariant = 'secondary';
                                     displaySourceClassName = 'bg-blue-100 text-blue-700 border-blue-300';
-                                } else { // API has not been successfully fetched or failed, or no timestamp
-                                    displaySourceText = rate.source?.toUpperCase() || 'MANUAL'; // Default to MANUAL if source undefined
+                                } else {
+                                    displaySourceText = rate.source?.toUpperCase() || 'MANUAL';
                                     displaySourceVariant = rate.source === 'api' ? 'secondary' : 'outline';
                                     displaySourceClassName = rate.source === 'api' ? 'bg-blue-100 text-blue-700 border-blue-300' : 'bg-green-50 text-green-700 border-green-300';
                                 }
@@ -285,8 +289,8 @@ export default function ManageCurrenciesPage() {
                                         <TableCell>{rate.fromCurrency}</TableCell>
                                         <TableCell>{rate.toCurrency}</TableCell>
                                         <TableCell className="text-right font-mono">{rate.rate.toFixed(6)}</TableCell>
-                                        <TableCell className="text-right font-mono">{effectiveFinalRateDisplay}</TableCell>
                                         <TableCell className="text-right font-mono">{markupAddedDisplay}</TableCell>
+                                        <TableCell className="text-right font-mono">{effectiveFinalRateDisplay}</TableCell>
                                         <TableCell className="text-center">
                                             <TooltipProvider>
                                                 <Tooltip>
@@ -297,8 +301,9 @@ export default function ManageCurrenciesPage() {
                                                     </TooltipTrigger>
                                                     <TooltipContent>
                                                         <p>Defined Rate Source: {rate.source?.toUpperCase() || 'MANUAL'}</p>
-                                                        <p>Last Updated: {format(parseISO(rate.updatedAt), "dd MMM yy HH:mm")}</p>
-                                                        {lastApiFetchTimestamp && <p>System using API-derived rates from: {format(parseISO(lastApiFetchTimestamp), "dd MMM yy HH:mm")}</p>}
+                                                        <p>Last Updated: {rate.updatedAt ? format(parseISO(rate.updatedAt), "dd MMM yy HH:mm") : "N/A"}</p>
+                                                        {lastApiFetchTimestamp && <p>System rates influenced by API data from: {format(parseISO(lastApiFetchTimestamp), "dd MMM yy HH:mm")}</p>}
+                                                        {!lastApiFetchTimestamp && <p>System using local/default rates (API not recently fetched or unavailable).</p>}
                                                     </TooltipContent>
                                                 </Tooltip>
                                             </TooltipProvider>
