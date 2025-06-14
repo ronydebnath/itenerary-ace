@@ -18,9 +18,10 @@ import { CURRENCIES } from '@/types/itinerary';
 
 interface MiscellaneousPriceFormProps {
   form: ReturnType<typeof useFormContext<ServicePriceFormValues>>;
+  isCreateMode?: boolean;
 }
 
-export function MiscellaneousPriceForm({ form }: MiscellaneousPriceFormProps) {
+export function MiscellaneousPriceForm({ form, isCreateMode = false }: MiscellaneousPriceFormProps) {
   const { getServicePrices, getServicePriceById, isLoading: isLoadingServices } = useServicePrices();
   const [availableMiscServices, setAvailableMiscServices] = React.useState<any[]>([]);
 
@@ -62,7 +63,7 @@ export function MiscellaneousPriceForm({ form }: MiscellaneousPriceFormProps) {
 
   return (
     <div className="space-y-6">
-      {availableMiscServices.length > 0 && (
+      {!isCreateMode && availableMiscServices.length > 0 && (
         <div className="border border-border rounded-md p-4 relative">
           <p className="text-sm font-semibold -mt-6 ml-2 px-1 bg-background inline-block absolute left-2 top-[-0.7rem] mb-4">Predefined Miscellaneous Items</p>
           <ShadcnFormField
@@ -104,7 +105,7 @@ export function MiscellaneousPriceForm({ form }: MiscellaneousPriceFormProps) {
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Item Sub-Type (e.g., Visa Fee, Souvenir, Guide Fee)</FormLabel>
-                <FormControl><Input placeholder="Details..." {...field} value={field.value || ''} readOnly={isPriceReadOnly} className={isPriceReadOnly ? "bg-muted/50 cursor-not-allowed" : ""} /></FormControl>
+                <FormControl><Input placeholder="Details..." {...field} value={field.value || ''} readOnly={isPriceReadOnly && !isCreateMode} className={(isPriceReadOnly && !isCreateMode) ? "bg-muted/50 cursor-not-allowed" : ""} /></FormControl>
                 <FormMessage />
               </FormItem>
             )}
@@ -116,7 +117,7 @@ export function MiscellaneousPriceForm({ form }: MiscellaneousPriceFormProps) {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Unit Cost ({currency})</FormLabel>
-                  <FormControl><Input type="number" placeholder="0.00" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || 0)} value={field.value ?? ''} readOnly={isPriceReadOnly} className={isPriceReadOnly ? "bg-muted/50 cursor-not-allowed" : ""} /></FormControl>
+                  <FormControl><Input type="number" placeholder="0.00" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || 0)} value={field.value ?? ''} readOnly={isPriceReadOnly && !isCreateMode} className={(isPriceReadOnly && !isCreateMode) ? "bg-muted/50 cursor-not-allowed" : ""} /></FormControl>
                   <FormMessage />
                 </FormItem>
               )}
@@ -127,7 +128,7 @@ export function MiscellaneousPriceForm({ form }: MiscellaneousPriceFormProps) {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Secondary Cost ({currency}) (Optional)</FormLabel>
-                  <FormControl><Input type="number" placeholder="0.00" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)} value={field.value ?? ''} readOnly={isPriceReadOnly} className={isPriceReadOnly ? "bg-muted/50 cursor-not-allowed" : ""} /></FormControl>
+                  <FormControl><Input type="number" placeholder="0.00" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)} value={field.value ?? ''} readOnly={isPriceReadOnly && !isCreateMode} className={(isPriceReadOnly && !isCreateMode) ? "bg-muted/50 cursor-not-allowed" : ""} /></FormControl>
                   <FormMessage />
                 </FormItem>
               )}

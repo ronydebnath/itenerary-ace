@@ -212,7 +212,7 @@ const createDefaultSeasonalPrice = (rate: number = 0): RoomTypeSeasonalPrice => 
 const createDefaultRoomType = (name?: string): HotelRoomTypeDefinition => ({ id: generateGUID(), name: name || 'Standard Room', extraBedAllowed: false, notes: '', seasonalPrices: [createDefaultSeasonalPrice()], characteristics: [] });
 
 const transformInitialDataToFormValues = (initialData?: Partial<ServicePriceItem>, countries?: CountryItem[]): Partial<ServicePriceFormValues> => {
-  const defaultCategory: ItineraryItemType = "activity";
+  const defaultCategory: ItineraryItemType = "misc"; // Changed default to misc
   const today = new Date();
   
   let defaultCurrency: CurrencyCode = CURRENCIES.includes('USD') ? 'USD' : CURRENCIES[0];
@@ -315,6 +315,8 @@ export function ServicePriceFormRouter({ initialData, onSubmit, onCancel }: Serv
   const watchedCountryId = form.watch('countryId');
   const watchedProvince = form.watch('province');
   const isNewService = !initialData?.id;
+  const isCreateMode = !initialData?.id;
+
 
   React.useEffect(() => {
     if(!isLoadingCountries) {
@@ -413,7 +415,7 @@ export function ServicePriceFormRouter({ initialData, onSubmit, onCancel }: Serv
             {watchedCategory === 'activity' && <ActivityPriceForm form={form} />}
             {watchedCategory === 'transfer' && <TransferPriceForm form={form} />}
             {watchedCategory === 'meal' && <MealPriceForm form={form} />}
-            {watchedCategory === 'misc' && <MiscellaneousPriceForm form={form} />}
+            {watchedCategory === 'misc' && <MiscellaneousPriceForm form={form} isCreateMode={isCreateMode} />}
           </div>
         </ScrollArea>
         <div className="flex justify-end space-x-3 pt-4 border-t mt-4">
