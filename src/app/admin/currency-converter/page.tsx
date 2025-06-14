@@ -4,13 +4,15 @@
  * and managing exchange rates. It allows users to convert amounts between different
  * currencies based on stored exchange rates (potentially fetched from an API),
  * set a global conversion markup, and add, edit, or delete base exchange rates.
- * It utilizes the `useExchangeRates` hook to manage exchange rate data and logic.
+ * It utilizes the `useExchangeRates` hook to manage exchange rate data and logic,
+ * and `useCustomCurrencies` to populate currency dropdowns dynamically.
  *
  * @bangla এই পৃষ্ঠা কম্পোনেন্টটি মুদ্রা রূপান্তর এবং বিনিময় হার ব্যবস্থাপনার জন্য একটি
  * ব্যবহারকারী ইন্টারফেস সরবরাহ করে। এটি ব্যবহারকারীদের সংরক্ষিত বিনিময় হারের (সম্ভবত API থেকে আনা)
  * উপর ভিত্তি করে বিভিন্ন মুদ্রার মধ্যে পরিমাণ রূপান্তর করতে, একটি গ্লোবাল রূপান্তর মার্কআপ সেট করতে, এবং
  * বেস বিনিময় হার যোগ, সম্পাদনা বা মুছে ফেলতে দেয়। এটি বিনিময় হারের ডেটা এবং যুক্তি
- * পরিচালনা করার জন্য `useExchangeRates` হুক ব্যবহার করে।
+ * পরিচালনা করার জন্য `useExchangeRates` হুক এবং কারেন্সি ড্রপডাউনগুলি গতিশীলভাবে পূরণ
+ * করার জন্য `useCustomCurrencies` হুক ব্যবহার করে।
  */
 "use client";
 
@@ -30,31 +32,9 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { LayoutDashboard, Repeat, PlusCircle, Edit, Trash2, AlertCircle, Loader2, Settings, Percent, RefreshCw } from 'lucide-react';
 import { useExchangeRates, type ConversionRateDetails } from '@/hooks/useExchangeRates';
 import type { CurrencyCode, ExchangeRate } from '@/types/itinerary';
-import { CURRENCIES } from '@/types/itinerary';
+import { useCustomCurrencies } from '@/hooks/useCustomCurrencies'; // Import the new hook
 import { formatCurrency } from '@/lib/utils';
 import { format, parseISO, isValid } from 'date-fns';
-
-const conversionSchema = z.object({
-  amount: z.coerce.number().positive("Amount must be positive"),
-  fromCurrency: z.custom<CurrencyCode>((val) => CURRENCIES.includes(val as CurrencyCode), "Invalid from currency"),
-  toCurrency: z.custom<CurrencyCode>((val) => CURRENCIES.includes(val as CurrencyCode), "Invalid to currency"),
-});
-type ConversionFormValues = z.infer<typeof conversionSchema>;
-
-const rateSchema = z.object({
-  fromCurrency: z.custom<CurrencyCode>((val) => CURRENCIES.includes(val as CurrencyCode), "Invalid from currency"),
-  toCurrency: z.custom<CurrencyCode>((val) => CURRENCIES.includes(val as CurrencyCode), "Invalid to currency"),
-  rate: z.coerce.number().positive("Rate must be a positive number"),
-}).refine(data => data.fromCurrency !== data.toCurrency, {
-  message: "Cannot set an exchange rate from a currency to itself.",
-  path: ["toCurrency"],
-});
-type RateFormValues = z.infer<typeof rateSchema>;
-
-const markupSchema = z.object({
-  markup: z.coerce.number().min(0, "Markup must be non-negative").max(50, "Markup cannot exceed 50%"),
-});
-type MarkupFormValues = z.infer<typeof markupSchema>;
 
 interface ConversionResultState {
   originalAmount: number;
@@ -69,8 +49,8 @@ interface ConversionResultState {
 export default function CurrencyConverterPage() {
   const {
     exchangeRates,
-    isLoading,
-    error,
+    isLoading: isLoadingExchangeRates,
+    error: exchangeRateError,
     addRate,
     updateRate,
     deleteRate,
@@ -81,11 +61,51 @@ export default function CurrencyConverterPage() {
     lastApiFetchTimestamp
   } = useExchangeRates();
 
+  const { 
+    isLoading: isLoadingCurrencies, 
+    getAllCurrencyCodes,
+    refreshCustomCurrencies,
+  } = useCustomCurrencies();
+  
+  const [allManagedCurrencyCodes, setAllManagedCurrencyCodes] = React.useState<CurrencyCode[]>([]);
   const [conversionResult, setConversionResult] = React.useState<ConversionResultState | null>(null);
   const [conversionError, setConversionError] = React.useState<string | null>(null);
-
   const [isRateFormOpen, setIsRateFormOpen] = React.useState(false);
   const [editingRate, setEditingRate] = React.useState<ExchangeRate | null>(null);
+
+  React.useEffect(() => {
+    if (!isLoadingCurrencies) {
+      setAllManagedCurrencyCodes(getAllCurrencyCodes());
+    }
+  }, [isLoadingCurrencies, getAllCurrencyCodes]);
+  
+  React.useEffect(() => {
+    refreshCustomCurrencies(); // Ensure custom currencies are fresh when this page loads
+  }, [refreshCustomCurrencies]);
+
+
+  const conversionSchema = z.object({
+    amount: z.coerce.number().positive("Amount must be positive"),
+    fromCurrency: z.custom<CurrencyCode>((val) => allManagedCurrencyCodes.includes(val as CurrencyCode), "Invalid from currency"),
+    toCurrency: z.custom<CurrencyCode>((val) => allManagedCurrencyCodes.includes(val as CurrencyCode), "Invalid to currency"),
+  });
+  type ConversionFormValues = z.infer<typeof conversionSchema>;
+
+  const rateSchema = z.object({
+    fromCurrency: z.custom<CurrencyCode>((val) => allManagedCurrencyCodes.includes(val as CurrencyCode), "Invalid from currency"),
+    toCurrency: z.custom<CurrencyCode>((val) => allManagedCurrencyCodes.includes(val as CurrencyCode), "Invalid to currency"),
+    rate: z.coerce.number().positive("Rate must be a positive number"),
+  }).refine(data => data.fromCurrency !== data.toCurrency, {
+    message: "Cannot set an exchange rate from a currency to itself.",
+    path: ["toCurrency"],
+  });
+  type RateFormValues = z.infer<typeof rateSchema>;
+
+  const markupSchema = z.object({
+    markup: z.coerce.number().min(0, "Markup must be non-negative").max(50, "Markup cannot exceed 50%"),
+  });
+  type MarkupFormValues = z.infer<typeof markupSchema>;
+
 
   const conversionForm = useForm<ConversionFormValues>({
     resolver: zodResolver(conversionSchema),
@@ -113,10 +133,16 @@ export default function CurrencyConverterPage() {
         toCurrency: editingRate.toCurrency,
         rate: editingRate.rate,
       });
-    } else {
-      rateForm.reset({ fromCurrency: "USD", toCurrency: "EUR", rate: 0.92 });
+    } else if (allManagedCurrencyCodes.length >= 2) {
+      rateForm.reset({ fromCurrency: allManagedCurrencyCodes[0], toCurrency: allManagedCurrencyCodes[1] || allManagedCurrencyCodes[0], rate: 1 });
     }
-  }, [editingRate, rateForm]);
+  }, [editingRate, rateForm, allManagedCurrencyCodes]);
+  
+  React.useEffect(() => {
+     // To re-validate forms when currency list changes
+    if (conversionForm.formState.isSubmitted) conversionForm.trigger();
+    if (rateForm.formState.isSubmitted) rateForm.trigger();
+  }, [allManagedCurrencyCodes, conversionForm, rateForm]);
 
   React.useEffect(() => {
     console.log('CurrencyConverterPage: lastApiFetchTimestamp changed to:', lastApiFetchTimestamp);
@@ -155,7 +181,9 @@ export default function CurrencyConverterPage() {
     }
     setIsRateFormOpen(false);
     setEditingRate(null);
-    rateForm.reset({ fromCurrency: "USD", toCurrency: "EUR", rate: 0.92 });
+    if (allManagedCurrencyCodes.length >= 2) {
+        rateForm.reset({ fromCurrency: allManagedCurrencyCodes[0], toCurrency: allManagedCurrencyCodes[1] || allManagedCurrencyCodes[0], rate: 1 });
+    }
   };
 
   const handleMarkupFormSubmit = (data: MarkupFormValues) => {
@@ -169,7 +197,9 @@ export default function CurrencyConverterPage() {
 
   const openNewRateDialog = () => {
     setEditingRate(null);
-    rateForm.reset({ fromCurrency: "USD", toCurrency: "EUR", rate: 0.92 });
+    if (allManagedCurrencyCodes.length >= 2) {
+        rateForm.reset({ fromCurrency: allManagedCurrencyCodes[0], toCurrency: allManagedCurrencyCodes[1] || allManagedCurrencyCodes[0], rate: 1 });
+    }
     setIsRateFormOpen(true);
   };
 
@@ -179,6 +209,8 @@ export default function CurrencyConverterPage() {
     }
     return "N/A (Using local/default rates)";
   }, [lastApiFetchTimestamp]);
+
+  const isLoading = isLoadingExchangeRates || isLoadingCurrencies;
 
   return (
     <main className="min-h-screen bg-background p-4 md:p-8">
@@ -239,9 +271,9 @@ export default function CurrencyConverterPage() {
                     control={conversionForm.control}
                     name="fromCurrency"
                     render={({ field }) => (
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <SelectTrigger id="fromCurrency" className="mt-1"><SelectValue /></SelectTrigger>
-                        <SelectContent>{CURRENCIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
+                      <Select onValueChange={field.onChange} value={field.value} disabled={isLoadingCurrencies || allManagedCurrencyCodes.length === 0}>
+                        <SelectTrigger id="fromCurrency" className="mt-1"><SelectValue placeholder={isLoadingCurrencies ? "Loading..." : "Select"} /></SelectTrigger>
+                        <SelectContent>{allManagedCurrencyCodes.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
                       </Select>
                     )}
                   />
@@ -253,16 +285,16 @@ export default function CurrencyConverterPage() {
                     control={conversionForm.control}
                     name="toCurrency"
                     render={({ field }) => (
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <SelectTrigger id="toCurrency" className="mt-1"><SelectValue /></SelectTrigger>
-                        <SelectContent>{CURRENCIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
+                      <Select onValueChange={field.onChange} value={field.value} disabled={isLoadingCurrencies || allManagedCurrencyCodes.length === 0}>
+                        <SelectTrigger id="toCurrency" className="mt-1"><SelectValue placeholder={isLoadingCurrencies ? "Loading..." : "Select"} /></SelectTrigger>
+                        <SelectContent>{allManagedCurrencyCodes.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
                       </Select>
                     )}
                   />
                    {conversionForm.formState.errors.toCurrency && <p className="text-xs text-destructive mt-1">{conversionForm.formState.errors.toCurrency.message}</p>}
                 </div>
               </div>
-              <Button type="submit" className="bg-primary hover:bg-primary/90 text-primary-foreground w-full sm:w-auto">Convert</Button>
+              <Button type="submit" className="bg-primary hover:bg-primary/90 text-primary-foreground w-full sm:w-auto" disabled={isLoadingCurrencies || allManagedCurrencyCodes.length < 2}>Convert</Button>
             </form>
             {conversionError && (
               <Alert variant="destructive" className="mt-4">
@@ -305,10 +337,10 @@ export default function CurrencyConverterPage() {
               <CardDescription>Define base rates. The "Effective Final Rate" column shows how the system (using USD intermediate &amp; current markup of <strong>{markupPercentage}%</strong>) would calculate it. Last API fetch: <span className="font-semibold text-primary">{lastFetchedDate}</span></CardDescription>
             </div>
             <div className="flex flex-col sm:flex-row gap-2">
-                <Button onClick={refreshRates} size="sm" variant="outline" className="border-primary text-primary hover:bg-primary/10">
+                <Button onClick={() => refreshRates()} size="sm" variant="outline" className="border-primary text-primary hover:bg-primary/10">
                     <RefreshCw className="mr-2 h-4 w-4" /> Refresh from API
                 </Button>
-                <Button onClick={openNewRateDialog} size="sm">
+                <Button onClick={openNewRateDialog} size="sm" disabled={isLoadingCurrencies || allManagedCurrencyCodes.length < 2}>
                     <PlusCircle className="mr-2 h-4 w-4" /> Add New Rate
                 </Button>
             </div>
@@ -319,11 +351,11 @@ export default function CurrencyConverterPage() {
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
                 <p className="ml-2">Loading rates...</p>
               </div>
-            ) : error ? (
+            ) : exchangeRateError ? (
               <Alert variant="destructive">
                 <AlertCircle className="h-4 w-4" />
                 <AlertTitle>Error Loading Rates</AlertTitle>
-                <AlertDescription>{error}</AlertDescription>
+                <AlertDescription>{exchangeRateError}</AlertDescription>
               </Alert>
             ) : exchangeRates.length === 0 ? (
               <p className="text-muted-foreground text-center py-4">No exchange rates defined. Click "Add New Rate" or "Refresh from API".</p>
@@ -352,7 +384,7 @@ export default function CurrencyConverterPage() {
                          if (Math.abs(parseFloat(markupAddedDisplay)) < 0.0000001) markupAddedDisplay = "0.000000"; // Display zero clearly
                       } else {
                         // Try to show defined rate even if full calc fails
-                        effectiveFinalRateDisplay = rate.rate.toFixed(6);
+                        effectiveFinalRateDisplay = rate.rate.toFixed(6); // Show the raw rate with 6 decimals
                         markupAddedDisplay = "Calc Error";
                       }
 
@@ -360,7 +392,7 @@ export default function CurrencyConverterPage() {
                         <TableRow key={rate.id}>
                           <TableCell>{rate.fromCurrency}</TableCell>
                           <TableCell>{rate.toCurrency}</TableCell>
-                          <TableCell className="text-right font-mono">{rate.rate.toFixed(4)}</TableCell>
+                          <TableCell className="text-right font-mono">{rate.rate.toFixed(6)}</TableCell> {/* Show defined rate with 6 decimals */}
                           <TableCell className="text-right font-mono">{effectiveFinalRateDisplay}</TableCell>
                           <TableCell className="text-right font-mono">{markupAddedDisplay}</TableCell>
                           <TableCell className="text-center">
@@ -413,9 +445,9 @@ export default function CurrencyConverterPage() {
                     control={rateForm.control}
                     name="fromCurrency"
                     render={({ field }) => (
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <SelectTrigger id="rateFromCurrency" className="mt-1"><SelectValue /></SelectTrigger>
-                        <SelectContent>{CURRENCIES.map(c => <SelectItem key={`from-${c}`} value={c}>{c}</SelectItem>)}</SelectContent>
+                      <Select onValueChange={field.onChange} value={field.value} disabled={isLoadingCurrencies || allManagedCurrencyCodes.length === 0}>
+                        <SelectTrigger id="rateFromCurrency" className="mt-1"><SelectValue placeholder={isLoadingCurrencies ? "Loading..." : "Select"} /></SelectTrigger>
+                        <SelectContent>{allManagedCurrencyCodes.map(c => <SelectItem key={`from-${c}`} value={c}>{c}</SelectItem>)}</SelectContent>
                       </Select>
                     )}
                   />
@@ -427,9 +459,9 @@ export default function CurrencyConverterPage() {
                     control={rateForm.control}
                     name="toCurrency"
                     render={({ field }) => (
-                       <Select onValueChange={field.onChange} value={field.value}>
-                        <SelectTrigger id="rateToCurrency" className="mt-1"><SelectValue /></SelectTrigger>
-                        <SelectContent>{CURRENCIES.map(c => <SelectItem key={`to-${c}`} value={c}>{c}</SelectItem>)}</SelectContent>
+                       <Select onValueChange={field.onChange} value={field.value} disabled={isLoadingCurrencies || allManagedCurrencyCodes.length === 0}>
+                        <SelectTrigger id="rateToCurrency" className="mt-1"><SelectValue placeholder={isLoadingCurrencies ? "Loading..." : "Select"} /></SelectTrigger>
+                        <SelectContent>{allManagedCurrencyCodes.map(c => <SelectItem key={`to-${c}`} value={c}>{c}</SelectItem>)}</SelectContent>
                       </Select>
                     )}
                   />
@@ -444,7 +476,7 @@ export default function CurrencyConverterPage() {
                 <DialogClose asChild>
                   <Button type="button" variant="outline">Cancel</Button>
                 </DialogClose>
-                <Button type="submit" className="bg-primary hover:bg-primary/90 text-primary-foreground">{editingRate ? 'Update' : 'Add'} Rate</Button>
+                <Button type="submit" className="bg-primary hover:bg-primary/90 text-primary-foreground" disabled={isLoadingCurrencies || allManagedCurrencyCodes.length < 2}>{editingRate ? 'Update' : 'Add'} Rate</Button>
               </div>
             </form>
           </DialogContent>

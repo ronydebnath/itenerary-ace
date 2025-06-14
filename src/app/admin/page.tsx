@@ -1,3 +1,4 @@
+
 /**
  * @fileoverview This file serves as the main admin dashboard page for the application.
  * It displays various cards linking to different management sections like itinerary creation,
@@ -14,7 +15,7 @@
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
-import { Cog, MapPinned, ListPlus, LayoutDashboard, ListOrdered, DollarSign, Users, BarChart3, Wand2, Route, Globe, Repeat, Briefcase, Map } from 'lucide-react';
+import { LayoutDashboard, Route, ListOrdered, DollarSign, MapPinned, Wand2, Globe, Repeat, Briefcase, Map, UserCog, FilePlus, BadgeDollarSign } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface DashboardCardProps {
@@ -97,6 +98,22 @@ export default function AdminDashboardPage() {
             className="lg:col-span-1"
           />
           <DashboardCard
+            title="Currency Management"
+            description="Manage system default and custom currency codes. Add new currencies for use in pricing and conversion."
+            href="/admin/currencies-management"
+            icon={BadgeDollarSign}
+            buttonText="Manage Currencies"
+            className="lg:col-span-1"
+          />
+          <DashboardCard
+            title="Currency Converter"
+            description="Convert amounts between currencies, manage base exchange rates, and set conversion markups."
+            href="/admin/currency-converter"
+            icon={Repeat}
+            buttonText="Use Converter"
+            className="lg:col-span-1"
+          />
+           <DashboardCard
             title="AI Image Describer"
             description="Upload an image and let AI provide a detailed description. Useful for content creation."
             href="/image-describer"
@@ -104,19 +121,11 @@ export default function AdminDashboardPage() {
             buttonText="Describe Image"
             className="lg:col-span-1"
           />
-          <DashboardCard
-            title="Currency Converter"
-            description="Convert amounts between currencies using manually defined exchange rates."
-            href="/admin/currency-converter"
-            icon={Repeat}
-            buttonText="Use Converter"
-            className="lg:col-span-1"
-          />
-          <DashboardCard
+           <DashboardCard
             title="Agent Dashboard"
             description="Access the dashboard designed for travel agents to manage their specific tasks and clients."
             href="/agent"
-            icon={Briefcase} 
+            icon={Briefcase}
             buttonText="Go to Agent View"
             className="lg:col-span-1 border-secondary"
           />
@@ -125,3 +134,4 @@ export default function AdminDashboardPage() {
     </main>
   );
 }
+

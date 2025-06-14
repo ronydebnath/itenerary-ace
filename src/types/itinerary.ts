@@ -29,8 +29,9 @@ export interface Traveler {
   type: 'adult' | 'child';
 }
 
+// Base system currencies. Custom currencies can be added via localStorage.
 export const CURRENCIES = ['USD', 'EUR', 'GBP', 'THB', 'JPY', 'MYR', 'SGD', 'VND', 'AUD'] as const;
-export type CurrencyCode = typeof CURRENCIES[number];
+export type CurrencyCode = (typeof CURRENCIES)[number] | (string & {}); // Allows for custom string currency codes beyond the const array
 
 export interface PaxDetails {
   adults: number;
@@ -301,4 +302,10 @@ export interface ExchangeRate {
   toCurrency: CurrencyCode;
   rate: number;
   updatedAt: string; // ISO Date string
+}
+
+// Type for a managed currency (can be system or custom)
+export interface ManagedCurrency {
+  code: CurrencyCode;
+  isCustom: boolean;
 }
