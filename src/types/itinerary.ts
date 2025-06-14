@@ -302,6 +302,7 @@ export interface ExchangeRate {
   toCurrency: CurrencyCode;
   rate: number;
   updatedAt: string; // ISO Date string
+  source?: 'api' | 'manual'; // New field to track source
 }
 
 // Type for a managed currency (can be system or custom)
@@ -309,3 +310,13 @@ export interface ManagedCurrency {
   code: CurrencyCode;
   isCustom: boolean;
 }
+
+export interface SpecificMarkupRate {
+  id: string;
+  fromCurrency: CurrencyCode;
+  toCurrency: CurrencyCode;
+  markupPercentage: number;
+  updatedAt: string; // ISO Date string
+}
+
+    
