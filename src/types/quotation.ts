@@ -19,6 +19,17 @@ export const HOTEL_STAR_RATINGS = ["Any", "2 Stars", "3 Stars", "4 Stars", "5 St
 export const QUOTATION_STATUSES = ["Pending", "Quoted", "ConfirmedByAgent", "BookingInProgress", "Booked", "Cancelled"] as const;
 export const MEAL_PLAN_OPTIONS = ["No Meal", "Breakfast Only", "Breakfast and Lunch/Dinner", "Breakfast, Lunch and Dinner"] as const;
 
+const generateQuotationId = (): string => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  const hours = String(now.getHours()).padStart(2, '0');
+  const minutes = String(now.getMinutes()).padStart(2, '0');
+  const seconds = String(now.getSeconds()).padStart(2, '0');
+  const randomSuffix = String(Math.floor(Math.random() * 1000)).padStart(3, '0');
+  return `${year}${month}${day}-${hours}${minutes}${seconds}-${randomSuffix}`;
+};
 
 export const QuotationRequestClientInfoSchema = z.object({
   adults: z.coerce.number().int().min(1, "At least one adult is required."),
@@ -85,7 +96,7 @@ export type QuotationRequestMealPrefs = z.infer<typeof QuotationRequestMealPrefs
 
 
 export const QuotationRequestSchema = z.object({
-  id: z.string().default(() => `QR-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`),
+  id: z.string().default(generateQuotationId),
   requestDate: z.string().default(() => new Date().toISOString()),
   agentId: z.string().optional(),
   clientInfo: QuotationRequestClientInfoSchema,
@@ -107,3 +118,4 @@ export type QuotationRequestTripDetails = z.infer<typeof QuotationRequestTripDet
 export type QuotationRequestAccommodationPrefs = z.infer<typeof QuotationRequestAccommodationPrefsSchema>;
 export type QuotationRequestActivityPrefs = z.infer<typeof QuotationRequestActivityPrefsSchema>;
 export type QuotationRequestFlightPrefs = z.infer<typeof QuotationRequestFlightPrefsSchema>;
+
