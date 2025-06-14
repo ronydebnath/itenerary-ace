@@ -1,4 +1,15 @@
-
+/**
+ * @fileoverview This component renders a section for managing surcharge periods,
+ * typically for vehicle-based transfer services. It allows users to define multiple
+ * surcharge periods, each with a name, start date, end date, and surcharge amount.
+ * This helps in applying additional charges during specific times (e.g., holidays, peak seasons).
+ *
+ * @bangla এই কম্পোনেন্টটি সারচার্জের সময়কাল পরিচালনার জন্য একটি বিভাগ রেন্ডার করে,
+ * সাধারণত যান-ভিত্তিক ট্রান্সফার পরিষেবাগুলির জন্য। এটি ব্যবহারকারীদের একাধিক সারচার্জ
+ * সময়কাল নির্ধারণ করতে দেয়, যার প্রতিটির একটি নাম, শুরুর তারিখ, শেষের তারিখ এবং
+ * সারচার্জের পরিমাণ থাকে। এটি নির্দিষ্ট সময়ে (যেমন, ছুটির দিন, পিক সিজন) অতিরিক্ত
+ * চার্জ প্রয়োগ করতে সহায়তা করে।
+ */
 "use client";
 
 import * as React from 'react';

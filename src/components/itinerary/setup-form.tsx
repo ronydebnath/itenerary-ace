@@ -1,4 +1,14 @@
-
+/**
+ * @fileoverview This component renders the initial setup form for creating a new itinerary.
+ * It allows users to input the start date, number of days, number of adults/children,
+ * preferred currency, optional budget, and select specific provinces to focus on.
+ * Submitting this form triggers the creation of a new itinerary with these basic settings.
+ *
+ * @bangla এই কম্পোনেন্টটি একটি নতুন ভ্রমণপথ তৈরির জন্য প্রাথমিক সেটআপ ফর্ম রেন্ডার করে।
+ * এটি ব্যবহারকারীদের শুরুর তারিখ, দিনের সংখ্যা, প্রাপ্তবয়স্ক/শিশুর সংখ্যা, পছন্দের মুদ্রা,
+ * ঐচ্ছিক বাজেট এবং নির্দিষ্ট প্রদেশ নির্বাচন করার অনুমতি দেয়। এই ফর্ম জমা দিলে এই
+ * মৌলিক সেটিংস সহ একটি নতুন ভ্রমণপথ তৈরি হয়।
+ */
 "use client";
 
 import * as React from 'react';
@@ -73,7 +83,7 @@ export function SetupForm({ onStartPlanning }: SetupFormProps) {
     setError(null);
 
     onStartPlanning(
-      { numDays: parsedNumDays, startDate, budget: parsedBudget, selectedProvinces },
+      { numDays: parsedNumDays, startDate, budget: parsedBudget, selectedProvinces, selectedCountries: [] /* Initialize with empty selectedCountries, will be set in planner */ },
       { adults: parsedAdults, children: parsedChildren, currency }
     );
   };

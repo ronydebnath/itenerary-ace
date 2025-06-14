@@ -1,4 +1,14 @@
-
+/**
+ * @fileoverview This component renders a section for managing multiple activity packages
+ * within the activity service price form. It allows users to add, edit, and remove
+ * individual packages, each with its own name, pricing (adult/child), notes, and
+ * scheduling details (validity, closures) via the `ActivityPackageScheduler`.
+ *
+ * @bangla এই কম্পোনেন্টটি কার্যকলাপ পরিষেবা মূল্য ফর্মের মধ্যে একাধিক কার্যকলাপ প্যাকেজ
+ * পরিচালনার জন্য একটি বিভাগ রেন্ডার করে। এটি ব্যবহারকারীদের স্বতন্ত্র প্যাকেজ যোগ, সম্পাদনা
+ * এবং অপসারণ করতে দেয়, যার প্রতিটির নিজস্ব নাম, মূল্য (প্রাপ্তবয়স্ক/শিশু), নোট এবং
+ * সময়সূচী বিবরণ (`ActivityPackageScheduler` এর মাধ্যমে) থাকে।
+ */
 "use client";
 
 import * as React from 'react';

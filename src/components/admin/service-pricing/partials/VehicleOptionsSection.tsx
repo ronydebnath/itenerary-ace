@@ -1,4 +1,14 @@
-
+/**
+ * @fileoverview This component renders a section for managing multiple vehicle options
+ * within the transfer service price form, specifically for 'vehicle' mode transfers.
+ * It allows users to add, edit, and remove individual vehicle options, each with its own
+ * type (e.g., Sedan, Van), price, maximum passenger capacity, and optional notes.
+ *
+ * @bangla এই কম্পোনেন্টটি ট্রান্সফার পরিষেবা মূল্য ফর্মের মধ্যে একাধিক যান বিকল্প পরিচালনার
+ * জন্য একটি বিভাগ রেন্ডার করে, বিশেষত 'যান' মোড ট্রান্সফারের জন্য। এটি ব্যবহারকারীদের
+ * স্বতন্ত্র যান বিকল্প যোগ, সম্পাদনা এবং অপসারণ করতে দেয়, যার প্রতিটির নিজস্ব প্রকার
+ * (যেমন, সেডান, ভ্যান), মূল্য, সর্বোচ্চ যাত্রী ধারণক্ষমতা এবং ঐচ্ছিক নোট থাকে।
+ */
 "use client";
 
 import * as React from 'react';

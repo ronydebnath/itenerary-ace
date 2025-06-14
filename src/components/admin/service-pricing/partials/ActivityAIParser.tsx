@@ -1,4 +1,15 @@
-
+/**
+ * @fileoverview This component provides a user interface for parsing activity descriptions
+ * using AI. It includes a textarea for pasting activity text and a button to trigger
+ * the AI parsing process. It is designed to prefill activity package data based on the
+ * AI's output, simplifying the creation of new activity service prices.
+ *
+ * @bangla এই কম্পোনেন্টটি AI ব্যবহার করে কার্যকলাপের বিবরণ পার্স করার জন্য একটি ব্যবহারকারী
+ * ইন্টারফেস সরবরাহ করে। এটিতে কার্যকলাপের টেক্সট পেস্ট করার জন্য একটি টেক্সটএরিয়া এবং
+ * AI পার্সিং প্রক্রিয়া শুরু করার জন্য একটি বোতাম অন্তর্ভুক্ত রয়েছে। এটি AI-এর আউটপুটের
+ * উপর ভিত্তি করে কার্যকলাপ প্যাকেজ ডেটা প্রিফিল করার জন্য ডিজাইন করা হয়েছে, যা নতুন
+ * কার্যকলাপ পরিষেবা মূল্য তৈরি সহজ করে।
+ */
 "use client";
 
 import * as React from 'react';
