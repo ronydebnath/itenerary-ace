@@ -24,11 +24,8 @@ const generateQuotationId = (): string => {
   const year = now.getFullYear();
   const month = String(now.getMonth() + 1).padStart(2, '0');
   const day = String(now.getDate()).padStart(2, '0');
-  const hours = String(now.getHours()).padStart(2, '0');
-  const minutes = String(now.getMinutes()).padStart(2, '0');
-  const seconds = String(now.getSeconds()).padStart(2, '0');
-  const randomSuffix = String(Math.floor(Math.random() * 1000)).padStart(3, '0');
-  return `${year}${month}${day}-${hours}${minutes}${seconds}-${randomSuffix}`;
+  const randomSuffix = String(Math.floor(Math.random() * 10000)).padStart(4, '0'); // Changed to 4 digits
+  return `${year}${month}${day}-${randomSuffix}`; // Removed time component
 };
 
 export const QuotationRequestClientInfoSchema = z.object({
@@ -118,4 +115,5 @@ export type QuotationRequestTripDetails = z.infer<typeof QuotationRequestTripDet
 export type QuotationRequestAccommodationPrefs = z.infer<typeof QuotationRequestAccommodationPrefsSchema>;
 export type QuotationRequestActivityPrefs = z.infer<typeof QuotationRequestActivityPrefsSchema>;
 export type QuotationRequestFlightPrefs = z.infer<typeof QuotationRequestFlightPrefsSchema>;
+
 
