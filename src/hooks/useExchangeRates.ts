@@ -27,6 +27,7 @@ const SPECIFIC_MARKUP_RATES_STORAGE_KEY = 'itineraryAceSpecificMarkupRates';
 const API_RATES_LAST_FETCHED_KEY = 'itineraryAceApiRatesLastFetched';
 
 const DEFAULT_RATES_DATA: Omit<ExchangeRate, 'id' | 'updatedAt' | 'source'>[] = [
+  // Rates against USD (REFERENCE_CURRENCY)
   { fromCurrency: "USD", toCurrency: "THB", rate: 36.50 },
   { fromCurrency: "USD", toCurrency: "MYR", rate: 4.70 },
   { fromCurrency: "USD", toCurrency: "SGD", rate: 1.35 },
@@ -34,8 +35,14 @@ const DEFAULT_RATES_DATA: Omit<ExchangeRate, 'id' | 'updatedAt' | 'source'>[] = 
   { fromCurrency: "USD", toCurrency: "EUR", rate: 0.92 },
   { fromCurrency: "USD", toCurrency: "GBP", rate: 0.79 },
   { fromCurrency: "USD", toCurrency: "JPY", rate: 157.00 },
-  { fromCurrency: "USD", toCurrency: "AUD", rate: 1.50 }, // Adjusted default AUD for consistency
+  { fromCurrency: "USD", toCurrency: "AUD", rate: 1.50 },
   { fromCurrency: "USD", toCurrency: "INR", rate: 83.00 },
+  // Add a few non-USD defaults for initial manual display if API fails completely
+  { fromCurrency: "EUR", toCurrency: "THB", rate: 39.20 },
+  { fromCurrency: "GBP", toCurrency: "THB", rate: 45.80 },
+  { fromCurrency: "THB", toCurrency: "MYR", rate: 0.125 },
+  { fromCurrency: "THB", toCurrency: "SGD", rate: 0.037 },
+  { fromCurrency: "THB", toCurrency: "VND", rate: 680.00 },
 ];
 
 export interface ConversionRateDetails {
@@ -56,11 +63,11 @@ export function useExchangeRates() {
   const { getAllCurrencyCodes: getAllManagedCurrencyCodesFromHook, isLoading: isLoadingCustomCurrencies } = useCustomCurrencies();
   
   const allManagedCurrencyCodes = React.useMemo(() => {
-      if (isLoadingCustomCurrencies) return [...SYSTEM_DEFAULT_CURRENCIES, REFERENCE_CURRENCY]; // Include REFERENCE_CURRENCY
-      return Array.from(new Set([...getAllManagedCurrencyCodesFromHook(), REFERENCE_CURRENCY])); // Ensure REFERENCE_CURRENCY is always present
+      if (isLoadingCustomCurrencies) return [...SYSTEM_DEFAULT_CURRENCIES, REFERENCE_CURRENCY];
+      return Array.from(new Set([...getAllManagedCurrencyCodesFromHook(), REFERENCE_CURRENCY]));
   }, [getAllManagedCurrencyCodesFromHook, isLoadingCustomCurrencies]);
 
-  const fetchRatesFromAPI = async (): Promise<{rates: Partial<Record<CurrencyCode, number>>, timestamp: string } | null> => {
+  const fetchRatesFromAPI = React.useCallback(async (): Promise<{rates: Partial<Record<CurrencyCode, number>>, timestamp: string } | null> => {
     const apiKey = process.env.NEXT_PUBLIC_EXCHANGERATE_API_KEY || process.env.EXCHANGERATE_API_KEY;
     if (!apiKey || apiKey === 'YOUR_EXCHANGERATE_API_KEY_HERE' || apiKey.trim() === '') {
       console.warn("ExchangeRate-API key is not configured. Skipping API fetch.");
@@ -82,100 +89,106 @@ export function useExchangeRates() {
       }
     } catch (apiError: any) {
       console.error("Error fetching rates from ExchangeRate-API:", apiError);
-      setError(`API Error: ${apiError.message}.`);
+      setError(`API Error: ${apiError.message}. Using fallback data.`); // Informative error
       // Toast will be handled by fetchAndSeedData
       return null;
     }
-  };
+  }, [setError]); // Added setError to useCallback dependencies
 
   const fetchAndSeedData = React.useCallback(async (attemptApiFetch = true) => {
     setIsLoading(true);
     setError(null);
-    let localRates: ExchangeRate[] = [];
-    let localTimestamp: string | null = null;
-
-    // 1. Load from localStorage first
     try {
-      const storedRatesString = localStorage.getItem(EXCHANGE_RATES_STORAGE_KEY);
-      if (storedRatesString) localRates = JSON.parse(storedRatesString);
-      localTimestamp = localStorage.getItem(API_RATES_LAST_FETCHED_KEY);
-    } catch (e) {
-      console.warn("Could not parse localStorage rates/timestamp.", e);
-      localRates = [];
-      localTimestamp = null;
-    }
+      let localRates: ExchangeRate[] = [];
+      let localTimestamp: string | null = null;
 
-    let ratesToSet = [...localRates]; // Start with local rates
-    let finalTimestamp = localTimestamp;
+      // 1. Load from localStorage first
+      try {
+        const storedRatesString = localStorage.getItem(EXCHANGE_RATES_STORAGE_KEY);
+        if (storedRatesString) localRates = JSON.parse(storedRatesString);
+        localTimestamp = localStorage.getItem(API_RATES_LAST_FETCHED_KEY);
+      } catch (e) {
+        console.warn("Could not parse localStorage rates/timestamp.", e);
+        localRates = [];
+        localTimestamp = null;
+      }
 
-    if (attemptApiFetch) {
-      const apiResult = await fetchRatesFromAPI();
-      if (apiResult) { // API Success
-        const { rates: apiRates, timestamp: apiTimestamp } = apiResult;
-        const currenciesToUpdateFromApi = [...new Set([...SYSTEM_DEFAULT_CURRENCIES, ...allManagedCurrencyCodes])];
-        
-        const updatedRatesMap = new Map<string, ExchangeRate>(ratesToSet.map(r => [`${r.fromCurrency}-${r.toCurrency}`, r]));
+      let ratesToSet = [...localRates]; 
+      let finalTimestamp = localTimestamp;
 
-        currenciesToUpdateFromApi.forEach(currency => {
-          if (currency === REFERENCE_CURRENCY) return;
-          if (apiRates[currency] !== undefined) {
-            const pairKey = `${REFERENCE_CURRENCY}-${currency}`;
-            const existingRate = updatedRatesMap.get(pairKey);
-            const newApiRate: ExchangeRate = {
-              fromCurrency: REFERENCE_CURRENCY, toCurrency: currency, rate: apiRates[currency]!,
-              id: existingRate?.id || generateGUID(),
-              updatedAt: apiTimestamp, source: 'api',
-            };
-            updatedRatesMap.set(pairKey, newApiRate);
+      if (attemptApiFetch) {
+        const apiResult = await fetchRatesFromAPI();
+        if (apiResult) { 
+          const { rates: apiRates, timestamp: apiTimestamp } = apiResult;
+          const currenciesToUpdateFromApi = [...new Set([...SYSTEM_DEFAULT_CURRENCIES, ...allManagedCurrencyCodes])];
+          
+          const updatedRatesMap = new Map<string, ExchangeRate>(ratesToSet.map(r => [`${r.fromCurrency}-${r.toCurrency}`, r]));
+
+          currenciesToUpdateFromApi.forEach(currency => {
+            if (currency === REFERENCE_CURRENCY) return;
+            if (apiRates[currency] !== undefined) {
+              const pairKey = `${REFERENCE_CURRENCY}-${currency}`;
+              const existingRate = updatedRatesMap.get(pairKey);
+              const newApiRate: ExchangeRate = {
+                fromCurrency: REFERENCE_CURRENCY, toCurrency: currency, rate: apiRates[currency]!,
+                id: existingRate?.source === 'api' || !existingRate ? (existingRate?.id || generateGUID()) : generateGUID(), // Reuse ID if existing is API, else new ID
+                updatedAt: apiTimestamp, source: 'api',
+              };
+              updatedRatesMap.set(pairKey, newApiRate);
+            }
+          });
+          ratesToSet = Array.from(updatedRatesMap.values());
+          finalTimestamp = apiTimestamp;
+          localStorage.setItem(API_RATES_LAST_FETCHED_KEY, apiTimestamp); 
+          toast({ title: "Rates Updated", description: "Successfully fetched latest exchange rates from API.", variant: "default" });
+        } else { 
+          if (ratesToSet.length > 0 && finalTimestamp) {
+            toast({ title: "API Fetch Failed", description: `Using last saved rates from ${new Date(finalTimestamp).toLocaleString()}.`, variant: "default" });
+          } else if (ratesToSet.length > 0) {
+            toast({ title: "API Fetch Failed", description: "Using manually entered/stored rates.", variant: "default" });
           }
-        });
-        ratesToSet = Array.from(updatedRatesMap.values());
-        finalTimestamp = apiTimestamp;
-        localStorage.setItem(API_RATES_LAST_FETCHED_KEY, apiTimestamp); // Save successful API timestamp
-        toast({ title: "Rates Updated", description: "Successfully fetched latest exchange rates from API.", variant: "default" });
-      } else { // API Failed
-        if (ratesToSet.length > 0 && finalTimestamp) {
-          toast({ title: "API Fetch Failed", description: `Using last saved rates from ${new Date(finalTimestamp).toLocaleString()}.`, variant: "default" });
-        } else if (ratesToSet.length > 0) {
-          toast({ title: "API Fetch Failed", description: "Using manually entered/stored rates.", variant: "default" });
         }
-        // If API failed and ratesToSet is empty, defaults will be applied below.
       }
-    }
 
-    // If still no rates (e.g., first run and API failed, or localStorage was empty)
-    if (ratesToSet.length === 0) {
-      DEFAULT_RATES_DATA.forEach(defaultRate => {
-        ratesToSet.push({ ...defaultRate, id: generateGUID(), updatedAt: new Date().toISOString(), source: 'manual' });
-      });
-      finalTimestamp = null; // No API success to report for timestamp
-      if (attemptApiFetch) { // Only show this if an API attempt was made and failed leading to defaults
-          toast({ title: "Using Default Rates", description: "API fetch failed and no saved rates found. Using pre-defined default exchange rates.", variant: "default" });
-      } else { // If !attemptApiFetch and localStorage was empty
-          toast({ title: "Using Default Rates", description: "No saved rates found. Using pre-defined default exchange rates.", variant: "default" });
+      if (ratesToSet.length === 0) {
+        DEFAULT_RATES_DATA.forEach(defaultRate => {
+          ratesToSet.push({ ...defaultRate, id: generateGUID(), updatedAt: new Date().toISOString(), source: 'manual' });
+        });
+        finalTimestamp = null; 
+        if (attemptApiFetch) { 
+            toast({ title: "Using Default Rates", description: "API fetch failed and no saved rates found. Using pre-defined default exchange rates.", variant: "default" });
+        } else { 
+            toast({ title: "Using Default Rates", description: "No saved rates found. Using pre-defined default exchange rates.", variant: "default" });
+        }
       }
+      
+      ratesToSet = ratesToSet.map(r => ({ ...r, source: r.source || 'manual' }));
+
+      saveRates(ratesToSet); 
+      setLastApiFetchTimestampState(finalTimestamp);
+
+      try {
+        const storedGlobalMarkup = localStorage.getItem(GLOBAL_MARKUP_STORAGE_KEY);
+        setGlobalMarkupPercentageState(storedGlobalMarkup ? parseFloat(storedGlobalMarkup) : 0);
+        const storedSpecificMarkups = localStorage.getItem(SPECIFIC_MARKUP_RATES_STORAGE_KEY);
+        setSpecificMarkupRates(storedSpecificMarkups ? JSON.parse(storedSpecificMarkups) : []);
+      } catch (e) {
+        console.error("Error loading markup settings:", e);
+        setGlobalMarkupPercentageState(0);
+        setSpecificMarkupRates([]);
+      }
+    } catch (criticalError: any) {
+        console.error("Critical error in fetchAndSeedData:", criticalError);
+        setError("An unexpected critical error occurred while loading rate data.");
+        // Attempt to set some failsafe state
+        setExchangeRates(DEFAULT_RATES_DATA.map(dr => ({...dr, id: generateGUID(), updatedAt: new Date().toISOString(), source: 'manual'})));
+        setLastApiFetchTimestampState(null);
+        setGlobalMarkupPercentageState(0);
+        setSpecificMarkupRates([]);
+    } finally {
+        setIsLoading(false);
     }
-    
-    // Ensure all rates have a source
-    ratesToSet = ratesToSet.map(r => ({ ...r, source: r.source || 'manual' }));
-
-    saveRates(ratesToSet); // This also calls setExchangeRates
-    setLastApiFetchTimestampState(finalTimestamp);
-
-    // Load markups (should be independent of rate fetching success/failure)
-    try {
-      const storedGlobalMarkup = localStorage.getItem(GLOBAL_MARKUP_STORAGE_KEY);
-      setGlobalMarkupPercentageState(storedGlobalMarkup ? parseFloat(storedGlobalMarkup) : 0);
-      const storedSpecificMarkups = localStorage.getItem(SPECIFIC_MARKUP_RATES_STORAGE_KEY);
-      setSpecificMarkupRates(storedSpecificMarkups ? JSON.parse(storedSpecificMarkups) : []);
-    } catch (e) {
-      console.error("Error loading markup settings:", e);
-      setGlobalMarkupPercentageState(0);
-      setSpecificMarkupRates([]);
-    }
-
-    setIsLoading(false);
-  }, [toast, allManagedCurrencyCodes]); // allManagedCurrencyCodes will trigger re-evaluation if custom currencies change
+  }, [toast, allManagedCurrencyCodes, fetchRatesFromAPI]); // Added fetchRatesFromAPI
 
   React.useEffect(() => {
     if (!isLoadingCustomCurrencies) {
@@ -273,7 +286,7 @@ export function useExchangeRates() {
   const getRate = React.useCallback((fromCurrency: CurrencyCode, toCurrency: CurrencyCode): ConversionRateDetails | null => {
     if (isLoadingCustomCurrencies) { /* console.warn("getRate called while custom currencies loading."); */ }
     if (!allManagedCurrencyCodes.includes(fromCurrency as any) || !allManagedCurrencyCodes.includes(toCurrency as any)) {
-      console.error("Invalid currency code to getRate:", fromCurrency, toCurrency, "Available:", allManagedCurrencyCodes); return null;
+      // console.error("Invalid currency code to getRate:", fromCurrency, toCurrency, "Available:", allManagedCurrencyCodes); return null;
     }
 
     if (fromCurrency === toCurrency) return { baseRate: 1, finalRate: 1, markupApplied: 0, markupType: 'none' };
@@ -314,9 +327,10 @@ export function useExchangeRates() {
     getRate, 
     globalMarkupPercentage, setGlobalMarkup,
     specificMarkupRates, addSpecificMarkup, updateSpecificMarkup, deleteSpecificMarkup,
-    refreshRates: () => fetchAndSeedData(true), // Explicitly pass true to attempt API fetch
+    refreshRates: () => fetchAndSeedData(true), 
     lastApiFetchTimestamp
   };
 }
 
     
+
