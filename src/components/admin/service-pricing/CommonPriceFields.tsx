@@ -24,7 +24,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useProvinces } from '@/hooks/useProvinces';
 import { useCountries } from '@/hooks/useCountries';
-import { CURRENCIES, SERVICE_CATEGORIES, type CountryItem, type ProvinceItem, type CurrencyCode } from '@/types/itinerary';
+import { CURRENCIES, SERVICE_CATEGORIES, type CountryItem, type ProvinceItem, type CurrencyCode, ItineraryItemType } from '@/types/itinerary';
 import type { ServicePriceFormValues } from './ServicePriceFormRouter';
 import { Loader2 } from 'lucide-react';
 
@@ -38,15 +38,18 @@ export function CommonPriceFields({ form }: CommonPriceFieldsProps) {
 
   const selectedCountryId = useWatch({ control: form.control, name: "countryId" });
   const [filteredProvinces, setFilteredProvinces] = React.useState<ProvinceItem[]>([]);
-  const selectedCategory = form.watch("category");
+  const selectedCategory = form.watch("category") as ItineraryItemType;
 
   React.useEffect(() => {
     if (selectedCountryId && !isLoadingProvinces) {
       setFilteredProvinces(getProvincesByCountry(selectedCountryId));
       const selectedCountryDetails = getCountryById(selectedCountryId);
-      if (selectedCountryDetails && selectedCountryDetails.defaultCurrency) {
-        if (selectedCategory !== 'misc') { // Only auto-set if not misc
-            form.setValue('currency', selectedCountryDetails.defaultCurrency, { shouldValidate: true });
+      if (selectedCountryDetails?.defaultCurrency) {
+        // Auto-set currency if category is not 'misc' and country has a default
+        if (selectedCategory !== 'misc') {
+            if (form.getValues('currency') !== selectedCountryDetails.defaultCurrency) {
+              form.setValue('currency', selectedCountryDetails.defaultCurrency, { shouldValidate: true });
+            }
         }
       }
     } else if (!selectedCountryId) {
@@ -68,39 +71,54 @@ export function CommonPriceFields({ form }: CommonPriceFieldsProps) {
 
 
   React.useEffect(() => {
-    if (selectedCategory === 'hotel' && !form.getValues('countryId') && !isLoadingCountries) {
+    // If creating a new hotel and no country is selected, default to Thailand if available
+    if (selectedCategory === 'hotel' && !form.getValues('countryId') && !isLoadingCountries && countries.length > 0) {
       const thailand = countries.find(c => c.name === "Thailand");
       if (thailand) {
         form.setValue('countryId', thailand.id, { shouldValidate: true });
-        if (thailand.defaultCurrency) {
+        if (thailand.defaultCurrency && selectedCategory !== 'misc') { // Check category again
           form.setValue('currency', thailand.defaultCurrency, { shouldValidate: true });
         }
       }
     }
   }, [selectedCategory, form, countries, isLoadingCountries]);
 
+  const isCurrencyAutoSet = !!getCountryById(selectedCountryId)?.defaultCurrency &&
+                           (selectedCategory === 'hotel' ||
+                            selectedCategory === 'activity' ||
+                            selectedCategory === 'transfer' ||
+                            selectedCategory === 'meal');
+
   return (
     <div className="border border-border rounded-md p-3 sm:p-4 relative">
       <p className="text-xs sm:text-sm font-semibold -mt-5 sm:-mt-6 ml-2 px-1 bg-background inline-block absolute left-2 top-[-0.7rem] mb-4">Basic Service Details</p>
       <div className="space-y-3 sm:space-y-4 pt-2">
         <FormField
-          control={form.control}
-          name="category"
-          render={({ field }) => (
+            control={form.control}
+            name="category"
+            render={({ field }) => (
             <FormItem>
-              <FormLabel className="text-xs sm:text-sm">Category</FormLabel>
-              <Select
-                onValueChange={field.onChange}
+                <FormLabel className="text-xs sm:text-sm">Category</FormLabel>
+                <Select
+                onValueChange={(value) => {
+                    field.onChange(value);
+                    // When category changes, if a country is selected and the new category is not 'misc',
+                    // re-apply the country's default currency.
+                    const country = getCountryById(form.getValues('countryId'));
+                    if (country?.defaultCurrency && value !== 'misc') {
+                    form.setValue('currency', country.defaultCurrency, { shouldValidate: true });
+                    }
+                }}
                 value={field.value}
-              >
+                >
                 <FormControl><SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Select category" /></SelectTrigger></FormControl>
                 <SelectContent>
-                  {SERVICE_CATEGORIES.map(cat => <SelectItem key={cat} value={cat}>{cat.charAt(0).toUpperCase() + cat.slice(1)}</SelectItem>)}
+                    {SERVICE_CATEGORIES.map(cat => <SelectItem key={cat} value={cat}>{cat.charAt(0).toUpperCase() + cat.slice(1)}</SelectItem>)}
                 </SelectContent>
-              </Select>
-              <FormMessage />
+                </Select>
+                <FormMessage />
             </FormItem>
-          )}
+            )}
         />
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
             <FormField
@@ -111,8 +129,13 @@ export function CommonPriceFields({ form }: CommonPriceFieldsProps) {
                 <FormLabel className="text-xs sm:text-sm">Country {selectedCategory === 'hotel' ? '(Required)' : '(Optional)'}</FormLabel>
                 <Select
                     onValueChange={(value) => {
-                    field.onChange(value === "none" ? undefined : value);
-                    form.setValue('province', undefined);
+                        const newCountryId = value === "none" ? undefined : value;
+                        field.onChange(newCountryId);
+                        form.setValue('province', undefined); // Reset province when country changes
+                        const country = getCountryById(newCountryId);
+                        if (country?.defaultCurrency && selectedCategory !== 'misc') {
+                            form.setValue('currency', country.defaultCurrency, {shouldValidate: true});
+                        }
                     }}
                     value={field.value || "none"}
                     disabled={isLoadingCountries}
@@ -182,9 +205,9 @@ export function CommonPriceFields({ form }: CommonPriceFieldsProps) {
           render={({ field }) => (
             <FormItem>
               <FormLabel className="text-xs sm:text-sm">Currency</FormLabel>
-              <Select onValueChange={field.onChange} value={field.value} disabled={!!getCountryById(selectedCountryId)?.defaultCurrency && selectedCategory !== 'misc'}>
+              <Select onValueChange={field.onChange} value={field.value} disabled={isCurrencyAutoSet}>
                 <FormControl>
-                    <SelectTrigger className={`h-9 text-sm ${!!getCountryById(selectedCountryId)?.defaultCurrency && selectedCategory !== 'misc' ? "bg-muted/50 cursor-not-allowed" : ""}`}>
+                    <SelectTrigger className={`h-9 text-sm ${isCurrencyAutoSet ? "bg-muted/50 cursor-not-allowed" : ""}`}>
                         <SelectValue placeholder="Select currency" />
                     </SelectTrigger>
                 </FormControl>
@@ -192,7 +215,7 @@ export function CommonPriceFields({ form }: CommonPriceFieldsProps) {
                   {CURRENCIES.map(curr => <SelectItem key={curr} value={curr}>{curr}</SelectItem>)}
                 </SelectContent>
               </Select>
-              {!!getCountryById(selectedCountryId)?.defaultCurrency && selectedCategory !== 'misc' && <p className="text-xs text-muted-foreground mt-1">Currency auto-set by country. Editable for 'Miscellaneous' items.</p>}
+              {isCurrencyAutoSet && <p className="text-xs text-muted-foreground mt-1">Currency auto-set by country. Editable for 'Miscellaneous' items.</p>}
               <FormMessage />
             </FormItem>
           )}
@@ -212,4 +235,3 @@ export function CommonPriceFields({ form }: CommonPriceFieldsProps) {
     </div>
   );
 }
-
