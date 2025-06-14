@@ -19,7 +19,7 @@ export const HOTEL_STAR_RATINGS = ["Any", "2 Stars", "3 Stars", "4 Stars", "5 St
 export const QUOTATION_STATUSES = ["Pending", "Quoted", "ConfirmedByAgent", "BookingInProgress", "Booked", "Cancelled"] as const;
 export const MEAL_PLAN_OPTIONS = ["No Meal", "Breakfast Only", "Breakfast and Lunch/Dinner", "Breakfast, Lunch and Dinner"] as const;
 
-const generateQuotationId = (): string => {
+const generateQuotationIdNumericPart = (): string => {
   const now = new Date();
   const year = String(now.getFullYear()).slice(-2); // YY
   const month = String(now.getMonth() + 1).padStart(2, '0'); // MM
@@ -93,7 +93,7 @@ export type QuotationRequestMealPrefs = z.infer<typeof QuotationRequestMealPrefs
 
 
 export const QuotationRequestSchema = z.object({
-  id: z.string().default(generateQuotationId),
+  id: z.string().default(generateQuotationIdNumericPart), // Default uses numeric part, will be overridden
   requestDate: z.string().default(() => new Date().toISOString()),
   agentId: z.string().optional(),
   clientInfo: QuotationRequestClientInfoSchema,
@@ -117,4 +117,8 @@ export type QuotationRequestActivityPrefs = z.infer<typeof QuotationRequestActiv
 export type QuotationRequestFlightPrefs = z.infer<typeof QuotationRequestFlightPrefsSchema>;
 
 
-
+// Helper function (not exported by schema, but can be used by implementing code)
+export const generateQuotationId = (agencyInitials?: string): string => {
+  const numericPart = generateQuotationIdNumericPart();
+  return agencyInitials ? `${agencyInitials.toUpperCase()}-${numericPart}` : numericPart;
+};

@@ -17,19 +17,58 @@ import { useRouter } from 'next/navigation';
 import { Button } from "@/components/ui/button";
 import { QuotationRequestForm } from '@/components/agent/quotation-request-form';
 import type { QuotationRequest } from '@/types/quotation';
+import { generateQuotationId } from '@/types/quotation'; // Import the generator
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { ArrowLeft, FilePlus, LayoutDashboard } from 'lucide-react';
+import { ArrowLeft, FilePlus, LayoutDashboard, Loader2 } from 'lucide-react';
+import { useAgents } from '@/hooks/useAgents'; // Import useAgents
 
 const AGENT_QUOTATION_REQUESTS_KEY = 'itineraryAce_agentQuotationRequests';
 
 export default function AgentQuotationRequestPage() {
   const router = useRouter();
   const { toast } = useToast();
+  const { agents, agencies, isLoading: isLoadingAgentsData, getAgencyById } = useAgents();
   const placeholderAgentId = "agent_default_user"; 
 
-  const handleFormSubmit = (data: QuotationRequest) => {
-    const newRequest = { ...data, agentId: placeholderAgentId };
+  const getAgencyInitials = React.useCallback(() => {
+    if (isLoadingAgentsData || !agents.length || !agencies.length) {
+      return undefined;
+    }
+    // For this demo, we'll use a placeholder agent. In a real app, this would be the logged-in agent.
+    // const currentAgent = agents.find(agent => agent.id === placeholderAgentId);
+    // if (currentAgent && currentAgent.agencyId) {
+    //   const agency = getAgencyById(currentAgent.agencyId);
+    //   if (agency && agency.name) {
+    //     const words = agency.name.split(' ').filter(Boolean);
+    //     if (words.length === 1) return words[0].substring(0, Math.min(3, words[0].length)).toUpperCase();
+    //     return words.map(word => word[0]).slice(0, 3).join("").toUpperCase();
+    //   }
+    // }
+    // Fallback to a generic initial if agent or agency name is not found or structure is different
+    // For now, let's use a fixed one for the placeholder agent.
+    const defaultAgency = agencies.find(a => a.name === "Global Travel Experts"); // Example
+    if (defaultAgency && defaultAgency.name) {
+        const words = defaultAgency.name.split(' ').filter(Boolean);
+        if (words.length === 1) return words[0].substring(0, Math.min(3, words[0].length)).toUpperCase();
+        return words.map(word => word[0]).slice(0, 3).join("").toUpperCase();
+    }
+    return "AGY"; // Default initials if not found
+  }, [agents, agencies, isLoadingAgentsData, getAgencyById, placeholderAgentId]);
+
+
+  const handleFormSubmit = (data: Omit<QuotationRequest, 'id'>) => {
+    const agencyInitials = getAgencyInitials();
+    const newId = generateQuotationId(agencyInitials); // Use the new ID generator
+
+    const newRequest: QuotationRequest = {
+      ...data,
+      id: newId, // Assign the newly generated ID
+      agentId: placeholderAgentId, // Already set in form's defaultValues, but ensure it's here
+      requestDate: new Date().toISOString(), // Ensure requestDate is set at submission
+      updatedAt: new Date().toISOString(), // Ensure updatedAt is set
+      status: data.status || "Pending", // Ensure status is set
+    };
     console.log("Processing quotation request to be sent (saved for admin):", newRequest);
 
     try {
@@ -40,10 +79,10 @@ export default function AgentQuotationRequestPage() {
 
       toast({
         title: "Request Sent to Admin!",
-        description: "Your quotation request has been successfully saved and is now pending admin review for a proposal.",
+        description: `Your quotation request (ID: ${newRequest.id}) has been successfully saved.`,
         variant: "default",
       });
-      router.push('/agent'); 
+      router.push('/agent/my-quotation-requests'); // Navigate to the list of requests
     } catch (error) {
       console.error("Error saving quotation request:", error);
       toast({
@@ -57,6 +96,15 @@ export default function AgentQuotationRequestPage() {
   const handleCancel = () => {
     router.push('/agent');
   };
+
+  if (isLoadingAgentsData && !agencies.length) {
+    return (
+      <main className="min-h-screen bg-background p-4 md:p-8 flex justify-center items-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary mr-2" />
+        <p className="text-muted-foreground">Loading agent and agency data...</p>
+      </main>
+    );
+  }
 
   return (
     <main className="min-h-screen bg-background p-4 md:p-8">
