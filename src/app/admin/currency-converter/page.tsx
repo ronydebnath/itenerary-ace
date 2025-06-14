@@ -1,13 +1,14 @@
+
 /**
  * @fileoverview This page component provides a user interface for currency conversion
  * and managing exchange rates. It allows users to convert amounts between different
- * currencies based on stored exchange rates, set a global conversion buffer,
+ * currencies based on stored exchange rates, set a global conversion markup (for THB/MYR based tours),
  * and add, edit, or delete base exchange rates. It utilizes the `useExchangeRates`
  * hook to manage exchange rate data and logic.
  *
  * @bangla এই পৃষ্ঠা কম্পোনেন্টটি মুদ্রা রূপান্তর এবং বিনিময় হার ব্যবস্থাপনার জন্য একটি
  * ব্যবহারকারী ইন্টারফেস সরবরাহ করে। এটি ব্যবহারকারীদের সংরক্ষিত বিনিময় হারের উপর ভিত্তি করে
- * বিভিন্ন মুদ্রার মধ্যে পরিমাণ রূপান্তর করতে, একটি গ্লোবাল রূপান্তর বাফার সেট করতে, এবং
+ * বিভিন্ন মুদ্রার মধ্যে পরিমাণ রূপান্তর করতে, একটি গ্লোবাল রূপান্তর মার্কআপ (THB/MYR ভিত্তিক ট্যুরের জন্য) সেট করতে, এবং
  * বেস বিনিময় হার যোগ, সম্পাদনা বা মুছে ফেলতে দেয়। এটি বিনিময় হারের ডেটা এবং যুক্তি
  * পরিচালনা করার জন্য `useExchangeRates` হুক ব্যবহার করে।
  */
@@ -49,10 +50,10 @@ const rateSchema = z.object({
 });
 type RateFormValues = z.infer<typeof rateSchema>;
 
-const bufferSchema = z.object({
-  buffer: z.coerce.number().min(0, "Buffer must be non-negative").max(50, "Buffer cannot exceed 50%"),
+const markupSchema = z.object({ // Renamed from bufferSchema
+  markup: z.coerce.number().min(0, "Markup must be non-negative").max(50, "Markup cannot exceed 50%"), // Renamed field
 });
-type BufferFormValues = z.infer<typeof bufferSchema>;
+type MarkupFormValues = z.infer<typeof markupSchema>; // Renamed from BufferFormValues
 
 export default function CurrencyConverterPage() {
   const { 
@@ -64,8 +65,8 @@ export default function CurrencyConverterPage() {
     deleteRate, 
     getRate, 
     refreshRates,
-    bufferPercentage,
-    setGlobalBuffer
+    markupPercentage, // Renamed from bufferPercentage
+    setGlobalMarkup   // Renamed from setGlobalBuffer
   } = useExchangeRates();
 
   const [convertedAmount, setConvertedAmount] = React.useState<number | null>(null);
@@ -81,17 +82,17 @@ export default function CurrencyConverterPage() {
 
   const rateForm = useForm<RateFormValues>({
     resolver: zodResolver(rateSchema),
-    defaultValues: { fromCurrency: "USD", toCurrency: "EUR", rate: 0.90 },
+    defaultValues: { fromCurrency: "USD", toCurrency: "EUR", rate: 0.92 },
   });
 
-  const bufferForm = useForm<BufferFormValues>({
-    resolver: zodResolver(bufferSchema),
-    defaultValues: { buffer: bufferPercentage },
+  const markupForm = useForm<MarkupFormValues>({ // Renamed from bufferForm
+    resolver: zodResolver(markupSchema),
+    defaultValues: { markup: markupPercentage }, // Renamed field
   });
 
   React.useEffect(() => {
-    bufferForm.reset({ buffer: bufferPercentage });
-  }, [bufferPercentage, bufferForm]);
+    markupForm.reset({ markup: markupPercentage }); // Renamed field and form
+  }, [markupPercentage, markupForm]);
 
   React.useEffect(() => {
     if (editingRate) {
@@ -101,7 +102,7 @@ export default function CurrencyConverterPage() {
         rate: editingRate.rate,
       });
     } else {
-      rateForm.reset({ fromCurrency: "USD", toCurrency: "EUR", rate: 0.90 });
+      rateForm.reset({ fromCurrency: "USD", toCurrency: "EUR", rate: 0.92 });
     }
   }, [editingRate, rateForm]);
 
@@ -110,7 +111,7 @@ export default function CurrencyConverterPage() {
     setConvertedAmount(null);
     const rate = getRate(data.fromCurrency, data.toCurrency);
     if (rate === null) {
-      setConversionError(`Exchange rate from ${data.fromCurrency} to ${data.toCurrency} is not defined or calculable.`);
+      setConversionError(`Exchange rate from ${data.fromCurrency} to ${data.toCurrency} is not defined or calculable. Ensure base rates to/from USD are set.`);
       return;
     }
     setConvertedAmount(data.amount * rate);
@@ -124,11 +125,11 @@ export default function CurrencyConverterPage() {
     }
     setIsRateFormOpen(false);
     setEditingRate(null);
-    rateForm.reset({ fromCurrency: "USD", toCurrency: "EUR", rate: 0.90 });
+    rateForm.reset({ fromCurrency: "USD", toCurrency: "EUR", rate: 0.92 });
   };
 
-  const handleBufferFormSubmit = (data: BufferFormValues) => {
-    setGlobalBuffer(data.buffer);
+  const handleMarkupFormSubmit = (data: MarkupFormValues) => { // Renamed from handleBufferFormSubmit
+    setGlobalMarkup(data.markup); // Renamed field and function
   };
 
   const openEditRateDialog = (rateToEdit: ExchangeRate) => {
@@ -138,7 +139,7 @@ export default function CurrencyConverterPage() {
   
   const openNewRateDialog = () => {
     setEditingRate(null);
-    rateForm.reset({ fromCurrency: "USD", toCurrency: "EUR", rate: 0.90 });
+    rateForm.reset({ fromCurrency: "USD", toCurrency: "EUR", rate: 0.92 });
     setIsRateFormOpen(true);
   };
 
@@ -158,30 +159,30 @@ export default function CurrencyConverterPage() {
           </div>
         </div>
 
-        {/* Conversion Settings Section */}
+        {/* Conversion Markup Settings Section */}
         <Card className="mb-8 shadow-lg">
           <CardHeader>
-            <CardTitle className="text-xl flex items-center"><Settings className="mr-2 h-5 w-5"/>Conversion Settings</CardTitle>
-            <CardDescription>Set a global buffer for conversions. Currently applied buffer: <strong>{bufferPercentage}%</strong></CardDescription>
+            <CardTitle className="text-xl flex items-center"><Settings className="mr-2 h-5 w-5"/>Conversion Markup Settings</CardTitle>
+            <CardDescription>Set a global markup for conversions from THB or MYR. Currently applied markup: <strong>{markupPercentage}%</strong></CardDescription>
           </CardHeader>
           <CardContent>
-            <form onSubmit={bufferForm.handleSubmit(handleBufferFormSubmit)} className="flex items-end gap-3">
+            <form onSubmit={markupForm.handleSubmit(handleMarkupFormSubmit)} className="flex items-end gap-3"> {/* Renamed form */}
               <div className="flex-grow">
-                <Label htmlFor="buffer">Buffer Percentage (%)</Label>
+                <Label htmlFor="markup">Markup Percentage (%)</Label> {/* Renamed field */}
                 <Input 
-                  id="buffer" 
+                  id="markup" 
                   type="number" 
                   step="0.01" 
-                  {...bufferForm.register("buffer")} 
+                  {...markupForm.register("markup")} // Renamed field
                   className="mt-1"
-                  placeholder="e.g., 0.5 for 0.5%"
+                  placeholder="e.g., 2.5 for 2.5%"
                 />
-                {bufferForm.formState.errors.buffer && <p className="text-xs text-destructive mt-1">{bufferForm.formState.errors.buffer.message}</p>}
+                {markupForm.formState.errors.markup && <p className="text-xs text-destructive mt-1">{markupForm.formState.errors.markup.message}</p>} {/* Renamed field */}
               </div>
-              <Button type="submit" className="bg-accent hover:bg-accent/90 text-accent-foreground" size="sm">Set Buffer</Button>
+              <Button type="submit" className="bg-accent hover:bg-accent/90 text-accent-foreground" size="sm">Set Markup</Button>
             </form>
             <p className="text-xs text-muted-foreground mt-2">
-              This buffer is applied to make the target currency amount slightly less favorable. For example, with a 1% buffer, 1 USD might convert to 36.135 THB instead of 36.50 THB.
+              This markup is applied when the tour's base price is in THB or MYR and it's displayed in a different currency. The conversion goes via USD. For example, with a 3% markup, an item costing 100 THB (base rate 1 THB = 0.027 USD) would convert to 0.02781 USD per THB for calculation purposes.
             </p>
           </CardContent>
         </Card>
@@ -190,7 +191,7 @@ export default function CurrencyConverterPage() {
         <Card className="mb-8 shadow-lg">
           <CardHeader>
             <CardTitle className="text-xl">Convert Currency</CardTitle>
-            <CardDescription>Enter amount and select currencies to convert. Buffer of <strong>{bufferPercentage}%</strong> will be applied.</CardDescription>
+            <CardDescription>Enter amount and select currencies to convert. Markup of <strong>{markupPercentage}%</strong> will be applied if converting from THB/MYR.</CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={conversionForm.handleSubmit(handleConversionSubmit)} className="space-y-4">
@@ -240,7 +241,7 @@ export default function CurrencyConverterPage() {
             )}
             {convertedAmount !== null && (
               <div className="mt-6 p-4 bg-green-50 border border-green-200 rounded-md text-center">
-                <p className="text-sm text-green-700">Converted Amount (with {bufferPercentage}% buffer):</p>
+                <p className="text-sm text-green-700">Converted Amount (with {markupPercentage}% markup if applicable):</p>
                 <p className="text-2xl font-bold text-green-800">
                   {formatCurrency(convertedAmount, conversionForm.getValues("toCurrency"))}
                 </p>
@@ -254,7 +255,7 @@ export default function CurrencyConverterPage() {
           <CardHeader className="flex flex-row justify-between items-center">
             <div>
               <CardTitle className="text-xl">Manage Base Exchange Rates</CardTitle>
-              <CardDescription>Define and update base exchange rates (buffer is applied on top during conversion).</CardDescription>
+              <CardDescription>Define and update base exchange rates (markup is applied on top during conversion if applicable). USD is used as an intermediate currency for all conversions.</CardDescription>
             </div>
             <Button onClick={openNewRateDialog} size="sm">
               <PlusCircle className="mr-2 h-4 w-4" /> Add New Rate
@@ -273,7 +274,7 @@ export default function CurrencyConverterPage() {
                 <AlertDescription>{error}</AlertDescription>
               </Alert>
             ) : exchangeRates.length === 0 ? (
-              <p className="text-muted-foreground text-center py-4">No exchange rates defined yet. Click "Add New Rate" to start.</p>
+              <p className="text-muted-foreground text-center py-4">No exchange rates defined yet. Click "Add New Rate" to start. Ensure rates to/from USD are set for all currencies.</p>
             ) : (
               <div className="overflow-x-auto">
                 <Table>
@@ -305,7 +306,7 @@ export default function CurrencyConverterPage() {
                               <DialogHeader>
                                 <DialogTitle>Confirm Deletion</DialogTitle>
                                 <AlertDescription>
-                                  Are you sure you want to delete the rate {rate.fromCurrency} to {rate.toCurrency}?
+                                  Are you sure you want to delete the rate {rate.fromCurrency} to {rate.toCurrency}? This is a base rate.
                                 </AlertDescription>
                               </DialogHeader>
                               <DialogFooter>
@@ -365,7 +366,7 @@ export default function CurrencyConverterPage() {
               </div>
               <div>
                 <Label htmlFor="rateValue">Rate (1 From = X To)</Label>
-                <Input id="rateValue" type="number" step="0.0001" {...rateForm.register("rate")} className="mt-1" />
+                <Input id="rateValue" type="number" step="0.000001" {...rateForm.register("rate")} className="mt-1" />
                 {rateForm.formState.errors.rate && <p className="text-xs text-destructive mt-1">{rateForm.formState.errors.rate.message}</p>}
               </div>
               <div className="flex justify-end space-x-2 pt-2">

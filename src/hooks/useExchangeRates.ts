@@ -1,4 +1,16 @@
 
+/**
+ * @fileoverview This custom React hook manages exchange rates for currency conversion.
+ * It loads rates from localStorage, seeds default USD-centric rates, and provides functions
+ * to add, update, delete, and retrieve exchange rates. It includes logic for applying a
+ * configurable markup when converting from specific base currencies (THB, MYR) through USD.
+ *
+ * @bangla এই কাস্টম রিঅ্যাক্ট হুক মুদ্রা রূপান্তরের জন্য বিনিময় হার পরিচালনা করে।
+ * এটি localStorage থেকে হার লোড করে, ডিফল্ট USD-কেন্দ্রিক হার বীজ করে, এবং বিনিময় হার
+ * যোগ, আপডেট, মুছে ফেলা এবং পুনরুদ্ধার করার জন্য ফাংশন সরবরাহ করে। এটি নির্দিষ্ট বেস
+ * মুদ্রা (THB, MYR) থেকে USD-এর মাধ্যমে রূপান্তর করার সময় একটি কনফিগারযোগ্য মার্কআপ
+ * প্রয়োগ করার যুক্তি অন্তর্ভুক্ত করে।
+ */
 import * as React from 'react';
 import type { ExchangeRate, CurrencyCode } from '@/types/itinerary';
 import { CURRENCIES } from '@/types/itinerary'; // Import CURRENCIES
@@ -6,24 +18,23 @@ import { generateGUID } from '@/lib/utils';
 import { useToast } from './use-toast';
 
 const EXCHANGE_RATES_STORAGE_KEY = 'itineraryAceExchangeRates';
-const EXCHANGE_BUFFER_STORAGE_KEY = 'itineraryAceExchangeBuffer';
+const EXCHANGE_MARKUP_STORAGE_KEY = 'itineraryAceExchangeMarkup'; // Renamed from BUFFER
 const REFERENCE_CURRENCY: CurrencyCode = "USD";
 
+// Ensure DEFAULT_RATES_DATA is USD-centric
 const DEFAULT_RATES_DATA: Omit<ExchangeRate, 'id' | 'updatedAt'>[] = [
   { fromCurrency: "USD", toCurrency: "THB", rate: 36.50 },
-  { fromCurrency: "EUR", toCurrency: "THB", rate: 39.20 },
-  { fromCurrency: "GBP", toCurrency: "THB", rate: 45.80 },
+  { fromCurrency: "USD", toCurrency: "MYR", rate: 4.70 },
+  { fromCurrency: "USD", toCurrency: "SGD", rate: 1.35 },
+  { fromCurrency: "USD", toCurrency: "VND", rate: 25000 },
   { fromCurrency: "USD", toCurrency: "EUR", rate: 0.92 },
-  { fromCurrency: "USD", toCurrency: "GBP", rate: 0.79 }, // Added for better USD hub
+  { fromCurrency: "USD", toCurrency: "GBP", rate: 0.79 },
   { fromCurrency: "USD", toCurrency: "JPY", rate: 157.00 },
-  { fromCurrency: "THB", toCurrency: "MYR", rate: 0.125 },
-  { fromCurrency: "THB", toCurrency: "SGD", rate: 0.037 },
-  { fromCurrency: "THB", toCurrency: "VND", rate: 680 },
 ];
 
 export function useExchangeRates() {
   const [exchangeRates, setExchangeRates] = React.useState<ExchangeRate[]>([]);
-  const [bufferPercentage, setBufferPercentageState] = React.useState<number>(0);
+  const [markupPercentage, setMarkupPercentageState] = React.useState<number>(0); // Renamed from bufferPercentage
   const [isLoading, setIsLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
   const { toast } = useToast();
@@ -38,7 +49,7 @@ export function useExchangeRates() {
       if (storedRatesString) {
         try {
           ratesToSet = JSON.parse(storedRatesString);
-          // Ensure all default rates are present, add if missing
+          // Ensure all default USD-centric rates are present, add if missing
           DEFAULT_RATES_DATA.forEach(defaultRate => {
             const existing = ratesToSet.find(r => r.fromCurrency === defaultRate.fromCurrency && r.toCurrency === defaultRate.toCurrency);
             if (!existing) {
@@ -60,24 +71,24 @@ export function useExchangeRates() {
       localStorage.setItem(EXCHANGE_RATES_STORAGE_KEY, JSON.stringify(ratesToSet));
       setExchangeRates(ratesToSet.sort((a,b) => `${a.fromCurrency}-${a.toCurrency}`.localeCompare(`${b.fromCurrency}-${b.toCurrency}`)));
 
-      // Load Buffer
-      const storedBuffer = localStorage.getItem(EXCHANGE_BUFFER_STORAGE_KEY);
-      if (storedBuffer) {
-        const parsedBuffer = parseFloat(storedBuffer);
-        if (!isNaN(parsedBuffer) && parsedBuffer >= 0) {
-          setBufferPercentageState(parsedBuffer);
+      // Load Markup Percentage
+      const storedMarkup = localStorage.getItem(EXCHANGE_MARKUP_STORAGE_KEY);
+      if (storedMarkup) {
+        const parsedMarkup = parseFloat(storedMarkup);
+        if (!isNaN(parsedMarkup) && parsedMarkup >= 0) {
+          setMarkupPercentageState(parsedMarkup);
         } else {
-          setBufferPercentageState(0); 
+          setMarkupPercentageState(0); 
         }
       } else {
-        setBufferPercentageState(0); 
+        setMarkupPercentageState(0); 
       }
 
     } catch (e: any) {
-      console.error("Error initializing exchange rates/buffer from localStorage:", e);
-      setError("Failed to load exchange rates or buffer.");
+      console.error("Error initializing exchange rates/markup from localStorage:", e);
+      setError("Failed to load exchange rates or markup.");
       setExchangeRates([]);
-      setBufferPercentageState(0);
+      setMarkupPercentageState(0);
     }
     setIsLoading(false);
   }, []);
@@ -97,18 +108,18 @@ export function useExchangeRates() {
     }
   };
 
-  const setGlobalBuffer = (newBuffer: number) => {
-    if (isNaN(newBuffer) || newBuffer < 0) {
-      toast({ title: "Invalid Buffer", description: "Buffer percentage must be a non-negative number.", variant: "destructive"});
+  const setGlobalMarkup = (newMarkup: number) => { // Renamed from setGlobalBuffer
+    if (isNaN(newMarkup) || newMarkup < 0) {
+      toast({ title: "Invalid Markup", description: "Markup percentage must be a non-negative number.", variant: "destructive"});
       return;
     }
     try {
-      localStorage.setItem(EXCHANGE_BUFFER_STORAGE_KEY, String(newBuffer));
-      setBufferPercentageState(newBuffer);
-      toast({ title: "Success", description: `Conversion buffer set to ${newBuffer}%.` });
+      localStorage.setItem(EXCHANGE_MARKUP_STORAGE_KEY, String(newMarkup));
+      setMarkupPercentageState(newMarkup);
+      toast({ title: "Success", description: `Conversion markup set to ${newMarkup}%.` });
     } catch (e: any) {
-      console.error("Error saving buffer to localStorage:", e);
-      toast({ title: "Error Setting Buffer", description: e.message, variant: "destructive" });
+      console.error("Error saving markup to localStorage:", e);
+      toast({ title: "Error Setting Markup", description: e.message, variant: "destructive" });
     }
   };
 
@@ -146,7 +157,6 @@ export function useExchangeRates() {
     }
   };
 
-  // Internal helper to find a base rate (direct or inverse) without buffer or intermediaries
   const findBaseRate = React.useCallback((from: CurrencyCode, to: CurrencyCode): number | null => {
     if (from === to) return 1;
 
@@ -167,27 +177,44 @@ export function useExchangeRates() {
       console.error("Invalid currency code provided to getRate", fromCurrency, toCurrency);
       return null;
     }
-    
-    let baseRate = findBaseRate(fromCurrency, toCurrency);
+    if (fromCurrency === toCurrency) return 1;
 
-    if (baseRate === null) {
-      // Attempt conversion via REFERENCE_CURRENCY if not already involving it
-      if (fromCurrency !== REFERENCE_CURRENCY && toCurrency !== REFERENCE_CURRENCY) {
-        const rateFromToRef = findBaseRate(fromCurrency, REFERENCE_CURRENCY);
-        const rateRefToTo = findBaseRate(REFERENCE_CURRENCY, toCurrency);
-
-        if (rateFromToRef !== null && rateRefToTo !== null) {
-          baseRate = rateFromToRef * rateRefToTo;
-        }
-      }
+    // Step 1: Convert fromCurrency to USD (REFERENCE_CURRENCY)
+    let rateFromToUSD: number | null;
+    if (fromCurrency === REFERENCE_CURRENCY) {
+      rateFromToUSD = 1;
+    } else {
+      rateFromToUSD = findBaseRate(fromCurrency, REFERENCE_CURRENCY);
     }
 
-    if (baseRate === null) return null;
+    if (rateFromToUSD === null) {
+      console.warn(`Cannot find base rate from ${fromCurrency} to ${REFERENCE_CURRENCY}. Ensure a direct or inverse rate to USD is defined.`);
+      return null;
+    }
 
-    // Apply buffer: user gets less of the target currency
-    const effectiveRate = baseRate * (1 - (bufferPercentage / 100));
-    return Math.max(0.000001, effectiveRate); // Prevent zero or negative rates
-  }, [findBaseRate, bufferPercentage]);
+    // Step 2: Convert USD (REFERENCE_CURRENCY) to toCurrency
+    let rateUSDToTo: number | null;
+    if (toCurrency === REFERENCE_CURRENCY) {
+      rateUSDToTo = 1;
+    } else {
+      rateUSDToTo = findBaseRate(REFERENCE_CURRENCY, toCurrency);
+    }
+    
+    if (rateUSDToTo === null) {
+      console.warn(`Cannot find base rate from ${REFERENCE_CURRENCY} to ${toCurrency}. Ensure a direct or inverse rate from USD is defined.`);
+      return null;
+    }
+
+    const combinedBaseRate = rateFromToUSD * rateUSDToTo;
+
+    // Apply markup if fromCurrency is THB or MYR and it's different from toCurrency
+    if ((fromCurrency === 'THB' || fromCurrency === 'MYR') && fromCurrency !== toCurrency) {
+      const markedUpRate = combinedBaseRate * (1 + (markupPercentage / 100));
+      return Math.max(0.000001, markedUpRate);
+    }
+
+    return Math.max(0.000001, combinedBaseRate);
+  }, [findBaseRate, markupPercentage, REFERENCE_CURRENCY]);
 
   return { 
     exchangeRates, 
@@ -197,8 +224,8 @@ export function useExchangeRates() {
     updateRate, 
     deleteRate, 
     getRate, 
-    bufferPercentage,
-    setGlobalBuffer,
+    markupPercentage, // Renamed from bufferPercentage
+    setGlobalMarkup,  // Renamed from setGlobalBuffer
     refreshRates: fetchAndSeedData
   };
 }
