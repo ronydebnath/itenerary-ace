@@ -85,10 +85,7 @@ export function QuotationRequestForm({ onSubmit, onCancel, defaultAgentId }: Quo
         mustDoActivities: "",
       },
       flightPrefs: {
-        includeFlights: "To be discussed",
         airportTransfersRequired: false,
-        departureCity: "",
-        preferredAirlineClass: "",
       },
       otherRequirements: "",
       status: "Pending",
@@ -324,11 +321,13 @@ export function QuotationRequestForm({ onSubmit, onCancel, defaultAgentId }: Quo
                 <FormField control={form.control} name="tripDetails.preferredStartDate" render={({ field }) => (<FormItem className="flex flex-col"><FormLabel>Preferred Start Date</FormLabel><Controller control={form.control} name="tripDetails.preferredStartDate" render={({ field: { onChange, value } }) => <DatePicker date={value ? parseISO(value) : undefined} onDateChange={(date) => onChange(date ? format(date, 'yyyy-MM-dd') : undefined)} placeholder="Select start date"/>} /><FormMessage /></FormItem>)} />
                 <FormField control={form.control} name="tripDetails.preferredEndDate" render={({ field }) => (<FormItem className="flex flex-col"><FormLabel>Preferred End Date</FormLabel><Controller control={form.control} name="tripDetails.preferredEndDate" render={({ field: { onChange, value } }) => <DatePicker date={value ? parseISO(value) : undefined} onDateChange={(date) => onChange(date ? format(date, 'yyyy-MM-dd') : undefined)} placeholder="Select end date" minDate={watchStartDate ? parseISO(watchStartDate) : undefined} />} /><FormMessage /></FormItem>)} />
               </div>
-              <p className="text-base text-muted-foreground pt-2">
-                {typeof durationNights === 'number' && typeof durationDays === 'number'
-                  ? `Duration: ${durationNights} night(s) / ${durationDays} day(s)`
-                  : 'Duration: Auto-calculated based on dates'}
-              </p>
+              <div>
+                <p className="text-base text-muted-foreground pt-2">
+                  {typeof durationNights === 'number' && typeof durationDays === 'number'
+                    ? `Duration: ${durationNights} night(s) / ${durationDays} day(s)`
+                    : 'Duration: Auto-calculated based on dates'}
+                </p>
+              </div>
                 <FormField control={form.control} name="tripDetails.tripType" render={({ field }) => (<FormItem><FormLabel>Type of Trip</FormLabel><Select onValueChange={field.onChange} value={field.value || ""}><FormControl><SelectTrigger><SelectValue placeholder="Select trip type (Optional)" /></SelectTrigger></FormControl><SelectContent>{TRIP_TYPES.map(type => <SelectItem key={type} value={type}>{type}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
               <FormField control={form.control} name="tripDetails.budgetRange" render={({ field }) => (<FormItem><FormLabel>Budget Expectation</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select budget range" /></SelectTrigger></FormControl><SelectContent>{BUDGET_RANGES.map(range => <SelectItem key={range} value={range}>{range}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
               {watchBudgetRange === "Specific Amount (see notes)" && (
@@ -358,15 +357,8 @@ export function QuotationRequestForm({ onSubmit, onCancel, defaultAgentId }: Quo
           </Card>
 
           <Card>
-            <CardHeader><CardTitle>Flight & Transfer Preferences (Optional)</CardTitle></CardHeader>
+            <CardHeader><CardTitle>Transfer Preferences (Optional)</CardTitle></CardHeader>
             <CardContent className="space-y-4">
-              <FormField control={form.control} name="flightPrefs.includeFlights" render={({ field }) => (<FormItem><FormLabel>Include Flights in Quotation?</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent>{["To be discussed", "Yes", "No"].map(opt => <SelectItem key={opt} value={opt}>{opt}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
-              {form.watch("flightPrefs.includeFlights") === "Yes" && (
-                <>
-                  <FormField control={form.control} name="flightPrefs.departureCity" render={({ field }) => (<FormItem><FormLabel>Departure City/Airport</FormLabel><FormControl><Input placeholder="e.g., London Heathrow (LHR)" {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem>)} />
-                  <FormField control={form.control} name="flightPrefs.preferredAirlineClass" render={({ field }) => (<FormItem><FormLabel>Preferred Airline/Class</FormLabel><FormControl><Input placeholder="e.g., Economy, Business, Any Major Carrier" {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem>)} />
-                </>
-              )}
               <FormField control={form.control} name="flightPrefs.airportTransfersRequired" render={({ field }) => (<FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4 shadow"><FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl><div className="space-y-1 leading-none"><FormLabel>Airport Transfers Required?</FormLabel><FormDescription>Include transfers to/from airports.</FormDescription></div><FormMessage /></FormItem>)} />
             </CardContent>
           </Card>

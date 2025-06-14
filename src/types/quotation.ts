@@ -73,9 +73,6 @@ export const QuotationRequestActivityPrefsSchema = z.object({
 });
 
 export const QuotationRequestFlightPrefsSchema = z.object({
-  includeFlights: z.enum(["Yes", "No", "To be discussed"]).default("To be discussed"),
-  departureCity: z.string().optional(),
-  preferredAirlineClass: z.string().optional().describe("e.g., Economy, Business, Specific Airline"),
   airportTransfersRequired: z.boolean().default(false),
 });
 
