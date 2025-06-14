@@ -27,6 +27,7 @@ import { formatCurrency } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';
 import { useServicePrices } from '@/hooks/useServicePrices';
 import { useCountries } from '@/hooks/useCountries';
+import { useExchangeRates } from '@/hooks/useExchangeRates';
 
 interface TransferItemFormProps {
   item: TransferItemType;
@@ -45,7 +46,7 @@ interface TransferItemFormProps {
 function TransferItemFormComponent({
   item,
   travelers,
-  currency: billingCurrency, // Renamed for clarity
+  currency: billingCurrency, 
   tripSettings,
   dayNumber,
   onUpdate,
@@ -55,11 +56,29 @@ function TransferItemFormComponent({
   isCurrentlyExpanded,
   onToggleExpand
 }: TransferItemFormProps) {
-  const { allServicePrices: hookServicePrices, isLoading: isLoadingServices } = useServicePrices();
+  const { allServicePrices: hookServicePrices, isLoading: isLoadingServicesHook } = useServicePrices();
   const currentAllServicePrices = passedInAllServicePrices || hookServicePrices;
   const { countries, getCountryById } = useCountries();
+  const { getRate, isLoading: isLoadingExchangeRates } = useExchangeRates();
   const [transferServices, setTransferServices] = React.useState<ServicePriceItem[]>([]);
-  const [itemSourceCurrency, setItemSourceCurrency] = React.useState<CurrencyCode>(billingCurrency);
+  
+  const determineItemSourceCurrency = React.useCallback((): CurrencyCode => {
+    const service = item.selectedServicePriceId ? currentAllServicePrices.find(sp => sp.id === item.selectedServicePriceId) : undefined;
+    if (service) return service.currency;
+
+    const itemCountryDef = item.countryId ? getCountryById(item.countryId) : 
+                           (tripSettings.selectedCountries.length === 1 ? getCountryById(tripSettings.selectedCountries[0]) : undefined);
+    if (itemCountryDef?.defaultCurrency) return itemCountryDef.defaultCurrency;
+    
+    return billingCurrency; // Fallback
+  }, [item.selectedServicePriceId, item.countryId, currentAllServicePrices, getCountryById, tripSettings.selectedCountries, billingCurrency]);
+  
+  const [itemSourceCurrency, setItemSourceCurrency] = React.useState<CurrencyCode>(determineItemSourceCurrency());
+
+  React.useEffect(() => {
+    setItemSourceCurrency(determineItemSourceCurrency());
+  }, [determineItemSourceCurrency]);
+
 
   const getServicePriceById = React.useCallback((id: string) => {
     return currentAllServicePrices.find(sp => sp.id === id);
@@ -72,23 +91,16 @@ function TransferItemFormComponent({
     return undefined;
   }, [item.selectedServicePriceId, getServicePriceById]);
   
-  React.useEffect(() => {
-    if (selectedService) {
-      setItemSourceCurrency(selectedService.currency);
-    } else {
-      setItemSourceCurrency(billingCurrency);
-    }
-  }, [selectedService, billingCurrency]);
+  const isLoadingServices = passedInAllServicePrices ? false : isLoadingServicesHook;
 
   React.useEffect(() => {
-    if (isLoadingServices && !passedInAllServicePrices) {
+    if (isLoadingServices) {
       setTransferServices([]);
       return;
     }
     let filteredServices = currentAllServicePrices.filter(s => s.category === 'transfer');
     
-    // Determine the currency to filter by: service's own currency if selected, else billing currency
-    const currencyToFilterBy = selectedService?.currency || billingCurrency;
+    const currencyToFilterBy = itemSourceCurrency;
     filteredServices = filteredServices.filter(s => s.currency === currencyToFilterBy);
 
 
@@ -112,11 +124,13 @@ function TransferItemFormComponent({
     }
 
     setTransferServices(filteredServices.sort((a,b) => a.name.localeCompare(b.name)));
-  }, [currentAllServicePrices, billingCurrency, item.mode, item.countryId, item.province, tripSettings.selectedCountries, tripSettings.selectedProvinces, isLoadingServices, passedInAllServicePrices, selectedService]);
+  }, [currentAllServicePrices, itemSourceCurrency, item.mode, item.countryId, item.province, tripSettings.selectedCountries, tripSettings.selectedProvinces, isLoadingServices]);
 
 
   const handleInputChange = (field: keyof TransferItemType, value: any) => {
     if (field === 'mode') {
+        const newSourceCurrency = item.countryId ? getCountryById(item.countryId)?.defaultCurrency || billingCurrency : 
+                               (tripSettings.selectedCountries.length === 1 ? getCountryById(tripSettings.selectedCountries[0])?.defaultCurrency || billingCurrency : billingCurrency);
         onUpdate({
             ...item,
             [field]: value,
@@ -129,6 +143,7 @@ function TransferItemFormComponent({
             selectedVehicleOptionId: undefined,
             note: undefined,
         });
+        setItemSourceCurrency(newSourceCurrency); // Reset source currency if mode changes and no service selected
     } else {
         onUpdate({
           ...item,
@@ -144,13 +159,15 @@ function TransferItemFormComponent({
     onUpdate({
       ...item,
       [field]: numValue,
-      selectedServicePriceId: undefined, // Custom price implies deselecting predefined service
+      selectedServicePriceId: undefined, 
       selectedVehicleOptionId: undefined
     });
   };
 
   const handlePredefinedServiceSelect = (selectedValue: string) => {
     if (selectedValue === "none") {
+      const newSourceCurrency = item.countryId ? getCountryById(item.countryId)?.defaultCurrency || billingCurrency : 
+                               (tripSettings.selectedCountries.length === 1 ? getCountryById(tripSettings.selectedCountries[0])?.defaultCurrency || billingCurrency : billingCurrency);
       onUpdate({
         ...item,
         name: `New transfer`,
@@ -166,7 +183,7 @@ function TransferItemFormComponent({
         countryId: item.countryId,
         countryName: item.countryId ? countries.find(c => c.id === item.countryId)?.name : undefined,
       });
-      setItemSourceCurrency(billingCurrency);
+      setItemSourceCurrency(newSourceCurrency);
     } else {
       const service = getServicePriceById(selectedValue);
       if (service) {
@@ -205,7 +222,9 @@ function TransferItemFormComponent({
         onUpdate({ ...item, ...updatedItemPartial });
         setItemSourceCurrency(service.currency);
       } else {
-         onUpdate({
+         const fallbackSourceCurrency = item.countryId ? getCountryById(item.countryId)?.defaultCurrency || billingCurrency : 
+                                     (tripSettings.selectedCountries.length === 1 ? getCountryById(tripSettings.selectedCountries[0])?.defaultCurrency || billingCurrency : billingCurrency);
+        onUpdate({
           ...item,
           name: `New transfer`,
           selectedServicePriceId: selectedValue,
@@ -217,7 +236,7 @@ function TransferItemFormComponent({
           vehicles: item.mode === 'vehicle' ? (item.vehicles || 1) : undefined,
           note: undefined,
         });
-        setItemSourceCurrency(billingCurrency);
+        setItemSourceCurrency(fallbackSourceCurrency);
       }
     }
   };
@@ -233,9 +252,9 @@ function TransferItemFormComponent({
         vehicleType: option.vehicleType,
         note: option.notes || selectedService.notes || item.note || undefined,
       });
-    } else {
+    } else { // "None" option or fallback
       const baseCost = (selectedService.vehicleOptions && selectedService.vehicleOptions.length > 0)
-                       ? undefined
+                       ? undefined // If options exist but "none" is selected, don't set a base cost from service.price1
                        : selectedService.price1 ?? 0;
       const baseType = (selectedService.vehicleOptions && selectedService.vehicleOptions.length > 0)
                        ? undefined
@@ -252,13 +271,15 @@ function TransferItemFormComponent({
     }
   };
 
-  const actualLoadingState = passedInAllServicePrices ? false : isLoadingServices;
-  const serviceDefinitionNotFound = item.selectedServicePriceId && !selectedService && !actualLoadingState;
+  const serviceDefinitionNotFound = item.selectedServicePriceId && !selectedService && !isLoadingServices;
 
   let isVehicleCostTypeReadOnly = false;
-  if (item.mode === 'vehicle' && selectedService && (selectedService.vehicleOptions && selectedService.vehicleOptions.length > 0 || item.selectedVehicleOptionId)) {
+  if (item.mode === 'vehicle' && selectedService && (selectedService.vehicleOptions && selectedService.vehicleOptions.length > 0 && item.selectedVehicleOptionId)) {
     isVehicleCostTypeReadOnly = true;
+  } else if (item.mode === 'vehicle' && selectedService && (!selectedService.vehicleOptions || selectedService.vehicleOptions.length === 0)) {
+    isVehicleCostTypeReadOnly = true; // If service has no options, its base price/type is used
   }
+
 
   const displayedVehicleType = item.mode === 'vehicle'
     ? (item.selectedVehicleOptionId && selectedService?.vehicleOptions?.find(vo => vo.id === item.selectedVehicleOptionId)?.vehicleType) ||
@@ -283,6 +304,12 @@ function TransferItemFormComponent({
   } else if (tripSettings.selectedProvinces.length > 0) {
     locationContext = tripSettings.selectedProvinces.join('/');
   }
+  
+  const conversionDetails = (itemSourceCurrency !== billingCurrency && getRate && !isLoadingExchangeRates) ? getRate(itemSourceCurrency, billingCurrency) : null;
+  const adultTicketPriceConverted = item.adultTicketPrice !== undefined && conversionDetails ? item.adultTicketPrice * conversionDetails.finalRate : null;
+  const childTicketPriceConverted = item.childTicketPrice !== undefined && conversionDetails ? item.childTicketPrice * conversionDetails.finalRate : null;
+  const costPerVehicleConverted = displayedCostPerVehicle !== undefined && conversionDetails ? displayedCostPerVehicle * conversionDetails.finalRate : null;
+
 
   return (
     <BaseItemForm
@@ -313,7 +340,7 @@ function TransferItemFormComponent({
       {item.mode && (
         <div className="mt-4">
           <FormField label={`Select Predefined Route (${locationContext} - ${itemSourceCurrency})`} id={`predefined-transfer-${item.id}`}>
-              {actualLoadingState && (!item.selectedServicePriceId && transferServices.length === 0) ? (
+              {isLoadingServices && !passedInAllServicePrices && (!item.selectedServicePriceId && transferServices.length === 0) ? (
                  <div className="flex items-center h-10 border rounded-md px-3 bg-muted/50">
                     <Loader2 className="h-4 w-4 animate-spin mr-2 text-muted-foreground" />
                     <span className="text-sm text-muted-foreground">Loading routes...</span>
@@ -322,11 +349,11 @@ function TransferItemFormComponent({
                 <Select
                     value={item.selectedServicePriceId || "none"}
                     onValueChange={handlePredefinedServiceSelect}
-                    disabled={!item.selectedServicePriceId && transferServices.length === 0 && !actualLoadingState}
+                    disabled={!item.selectedServicePriceId && transferServices.length === 0 && !isLoadingServices}
                 >
                     <SelectTrigger>
                         <SelectValue placeholder={
-                            actualLoadingState && transferServices.length === 0 ? "Loading routes..." :
+                            isLoadingServices && transferServices.length === 0 ? "Loading routes..." :
                             (transferServices.length === 0 && !item.selectedServicePriceId ? "No routes match criteria" : `Choose ${item.mode} service...`)} />
                     </SelectTrigger>
                     <SelectContent>
@@ -378,8 +405,8 @@ function TransferItemFormComponent({
           </AlertDescription>
         </Alert>
       )}
-       {itemSourceCurrency !== billingCurrency && selectedService && (
-        <p className="text-xs text-blue-600 mb-2">Note: Prices shown in {itemSourceCurrency}. Final cost will be converted to {billingCurrency}.</p>
+       {itemSourceCurrency !== billingCurrency && selectedService && conversionDetails && !isLoadingExchangeRates && (
+        <p className="text-xs text-blue-600 mb-2">Note: Prices shown in {itemSourceCurrency}. Totals converted to {billingCurrency} using rate ~{conversionDetails.finalRate.toFixed(4)}.</p>
       )}
 
       <div className="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-1 gap-3 sm:gap-4 mt-4">
@@ -421,6 +448,9 @@ function TransferItemFormComponent({
               readOnly={!!selectedService}
               className={!!selectedService ? "bg-muted/50 cursor-not-allowed" : ""}
             />
+            {conversionDetails && adultTicketPriceConverted !== null && !isPriceReadOnly && !isLoadingExchangeRates && (
+               <p className="text-xs text-muted-foreground mt-1">Approx. {formatCurrency(adultTicketPriceConverted, billingCurrency)}</p>
+            )}
           </FormField>
           <FormField label={`Child Ticket Price (${itemSourceCurrency}) (Optional)`} id={`childTicketPrice-${item.id}`}>
             <Input
@@ -433,6 +463,9 @@ function TransferItemFormComponent({
               readOnly={!!selectedService}
               className={!!selectedService ? "bg-muted/50 cursor-not-allowed" : ""}
             />
+            {conversionDetails && childTicketPriceConverted !== null && !isPriceReadOnly && !isLoadingExchangeRates && (
+                <p className="text-xs text-muted-foreground mt-1">Approx. {formatCurrency(childTicketPriceConverted, billingCurrency)}</p>
+            )}
           </FormField>
         </div>
       )}
@@ -467,6 +500,9 @@ function TransferItemFormComponent({
                 readOnly={isVehicleCostTypeReadOnly}
                 className={isVehicleCostTypeReadOnly ? "bg-muted/50 cursor-not-allowed" : ""}
               />
+              {conversionDetails && costPerVehicleConverted !== null && !isVehicleCostTypeReadOnly && !isLoadingExchangeRates && (
+                <p className="text-xs text-muted-foreground mt-1">Approx. {formatCurrency(costPerVehicleConverted, billingCurrency)}</p>
+              )}
             </FormField>
             <FormField label="# of Vehicles" id={`numVehicles-${item.id}`}>
               <Input
@@ -504,3 +540,4 @@ function TransferItemFormComponent({
   );
 }
 export const TransferItemForm = React.memo(TransferItemFormComponent);
+

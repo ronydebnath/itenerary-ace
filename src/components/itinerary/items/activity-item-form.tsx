@@ -56,13 +56,13 @@ function ActivityItemFormComponent({
   isCurrentlyExpanded,
   onToggleExpand
 }: ActivityItemFormProps) {
-  const { allServicePrices: hookServicePrices, isLoading: isLoadingServices } = useServicePrices();
+  const { allServicePrices: hookServicePrices, isLoading: isLoadingServicesHook } = useServicePrices();
   const currentAllServicePrices = passedInAllServicePrices || hookServicePrices;
   const { countries, getCountryById } = useCountries();
-  const { getRate } = useExchangeRates();
+  const { getRate, isLoading: isLoadingExchangeRates } = useExchangeRates();
   const [activityServices, setActivityServices] = React.useState<ServicePriceItem[]>([]);
   
-  const determineItemSourceCurrency = React.useCallback(() => {
+  const determineItemSourceCurrency = React.useCallback((): CurrencyCode => {
     const service = item.selectedServicePriceId ? currentAllServicePrices.find(sp => sp.id === item.selectedServicePriceId) : undefined;
     if (service) return service.currency;
 
@@ -98,14 +98,16 @@ function ActivityItemFormComponent({
     return undefined;
   }, [selectedActivityService, item.selectedPackageId]);
 
+  const isLoadingServices = passedInAllServicePrices ? false : isLoadingServicesHook;
+
   React.useEffect(() => {
-    if (isLoadingServices && !passedInAllServicePrices) {
+    if (isLoadingServices) {
       setActivityServices([]);
       return;
     }
     let filteredServices = currentAllServicePrices.filter(s => s.category === 'activity');
     
-    const currencyToFilterBy = itemSourceCurrency; // Filter by current item source for selection
+    const currencyToFilterBy = itemSourceCurrency;
     filteredServices = filteredServices.filter(s => s.currency === currencyToFilterBy);
 
     const countryIdToFilterBy = item.countryId || (tripSettings.selectedCountries.length === 1 ? tripSettings.selectedCountries[0] : undefined);
@@ -121,7 +123,7 @@ function ActivityItemFormComponent({
          filteredServices = filteredServices.filter(s => !s.province || provincesToFilterBy.includes(s.province));
     }
     setActivityServices(filteredServices.sort((a,b) => a.name.localeCompare(b.name)));
-  }, [currentAllServicePrices, itemSourceCurrency, item.countryId, item.province, tripSettings.selectedCountries, tripSettings.selectedProvinces, isLoadingServices, passedInAllServicePrices]);
+  }, [currentAllServicePrices, itemSourceCurrency, item.countryId, item.province, tripSettings.selectedCountries, tripSettings.selectedProvinces, isLoadingServices]);
 
 
   const handleNumericInputChange = (field: keyof ActivityItemType, value: string) => {
@@ -179,7 +181,7 @@ function ActivityItemFormComponent({
         onUpdate({
           ...item,
           name: `New activity`,
-          selectedServicePriceId: selectedValue,
+          selectedServicePriceId: selectedValue, // Keep the ID even if service not found, for error display
           selectedPackageId: undefined,
           adultPrice: 0,
           childPrice: undefined,
@@ -221,8 +223,7 @@ function ActivityItemFormComponent({
   const isPriceReadOnly = !!(item.selectedPackageId && selectedActivityService?.activityPackages?.length && selectedPackage) ||
                          !!(item.selectedServicePriceId && selectedActivityService && (!selectedActivityService.activityPackages || selectedActivityService.activityPackages.length === 0));
 
-  const actualLoadingState = passedInAllServicePrices ? false : isLoadingServices;
-  const serviceDefinitionNotFound = item.selectedServicePriceId && !selectedActivityService && !actualLoadingState;
+  const serviceDefinitionNotFound = item.selectedServicePriceId && !selectedActivityService && !isLoadingServices;
 
   const itemCountryName = item.countryId ? countries.find(c => c.id === item.countryId)?.name : undefined;
   const globalCountryNames = tripSettings.selectedCountries.map(id => countries.find(c => c.id === id)?.name).filter(Boolean) as string[];
@@ -237,7 +238,7 @@ function ActivityItemFormComponent({
     locationContext = tripSettings.selectedProvinces.join('/');
   }
 
-  const conversionDetails = (itemSourceCurrency !== billingCurrency && getRate) ? getRate(itemSourceCurrency, billingCurrency) : null;
+  const conversionDetails = (itemSourceCurrency !== billingCurrency && getRate && !isLoadingExchangeRates) ? getRate(itemSourceCurrency, billingCurrency) : null;
   const adultPriceConverted = item.adultPrice !== undefined && conversionDetails ? item.adultPrice * conversionDetails.finalRate : null;
   const childPriceConverted = item.childPrice !== undefined && conversionDetails ? item.childPrice * conversionDetails.finalRate : null;
 
@@ -256,10 +257,10 @@ function ActivityItemFormComponent({
       isCurrentlyExpanded={isCurrentlyExpanded}
       onToggleExpand={onToggleExpand}
     >
-        {(activityServices.length > 0 || item.selectedServicePriceId || actualLoadingState) && (
+        {(activityServices.length > 0 || item.selectedServicePriceId || isLoadingServices) && (
             <div className="mb-4">
             <FormField label={`Select Predefined Activity (${locationContext} - ${itemSourceCurrency})`} id={`predefined-activity-${item.id}`}>
-                {actualLoadingState ? (
+                {isLoadingServices && !passedInAllServicePrices ? (
                     <div className="flex items-center h-10 border rounded-md px-3 bg-muted/50">
                         <Loader2 className="h-4 w-4 animate-spin mr-2 text-muted-foreground" />
                         <span className="text-sm text-muted-foreground">Loading activities...</span>
@@ -325,8 +326,8 @@ function ActivityItemFormComponent({
           </AlertDescription>
         </Alert>
       )}
-      {itemSourceCurrency !== billingCurrency && (selectedActivityService || selectedPackage) && (
-        <p className="text-xs text-blue-600 mb-2">Note: Prices shown in {itemSourceCurrency}. Final cost will be converted to {billingCurrency}.</p>
+      {itemSourceCurrency !== billingCurrency && (selectedActivityService || selectedPackage) && conversionDetails && !isLoadingExchangeRates && (
+        <p className="text-xs text-blue-600 mb-2">Note: Prices shown in {itemSourceCurrency}. Totals converted to {billingCurrency} using rate ~{conversionDetails.finalRate.toFixed(4)}.</p>
       )}
 
       <div className="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-1 gap-3 sm:gap-4 mb-4">
@@ -397,7 +398,7 @@ function ActivityItemFormComponent({
             readOnly={isPriceReadOnly}
             className={isPriceReadOnly ? "bg-muted/50 cursor-not-allowed" : ""}
           />
-           {conversionDetails && adultPriceConverted !== null && !isPriceReadOnly && (
+           {conversionDetails && adultPriceConverted !== null && !isPriceReadOnly && !isLoadingExchangeRates && (
             <p className="text-xs text-muted-foreground mt-1">Approx. {formatCurrency(adultPriceConverted, billingCurrency)}</p>
           )}
         </FormField>
@@ -412,7 +413,7 @@ function ActivityItemFormComponent({
             readOnly={isPriceReadOnly}
             className={isPriceReadOnly ? "bg-muted/50 cursor-not-allowed" : ""}
           />
-          {conversionDetails && childPriceConverted !== null && !isPriceReadOnly && (
+          {conversionDetails && childPriceConverted !== null && !isPriceReadOnly && !isLoadingExchangeRates && (
             <p className="text-xs text-muted-foreground mt-1">Approx. {formatCurrency(childPriceConverted, billingCurrency)}</p>
           )}
         </FormField>

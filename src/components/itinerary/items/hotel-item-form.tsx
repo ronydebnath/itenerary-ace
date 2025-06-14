@@ -28,6 +28,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
 import { useHotelDefinitions } from '@/hooks/useHotelDefinitions';
 import { useCountries } from '@/hooks/useCountries';
+import { useExchangeRates } from '@/hooks/useExchangeRates';
 import { addDays, format, parseISO, isValid, startOfDay, isWithinInterval } from 'date-fns';
 import { cn } from '@/lib/utils';
 
@@ -49,7 +50,7 @@ interface HotelItemFormProps {
 function HotelItemFormComponent({
   item,
   travelers,
-  currency: billingCurrency, // Renamed for clarity
+  currency: billingCurrency, 
   dayNumber,
   tripSettings,
   onUpdate,
@@ -65,6 +66,7 @@ function HotelItemFormComponent({
   const isLoadingHotelDefs = passedInHotelDefinitions ? false : isLoadingHookHotelDefs;
 
   const { countries, getCountryById } = useCountries();
+  const { getRate, isLoading: isLoadingExchangeRates } = useExchangeRates();
   const [availableHotels, setAvailableHotels] = React.useState<HotelDefinition[]>([]);
   const [selectedHotelDef, setSelectedHotelDef] = React.useState<HotelDefinition | undefined>(undefined);
   const [itemSourceCurrency, setItemSourceCurrency] = React.useState<CurrencyCode>(billingCurrency);
@@ -98,7 +100,7 @@ function HotelItemFormComponent({
   }, [item.countryId, item.province, currentAllHotelDefinitions, isLoadingHotelDefs, tripSettings.selectedCountries, tripSettings.selectedProvinces, starFilter]);
 
   React.useEffect(() => {
-    let determinedSourceCurrency = billingCurrency; // Fallback to billing currency
+    let determinedSourceCurrency = billingCurrency; 
     if (item.hotelDefinitionId) {
       const hotelDef = currentAllHotelDefinitions.find(hd => hd.id === item.hotelDefinitionId);
       setSelectedHotelDef(hotelDef);
@@ -108,13 +110,19 @@ function HotelItemFormComponent({
         );
         if (servicePriceForHotel) {
           determinedSourceCurrency = servicePriceForHotel.currency;
+        } else {
+            const hotelCountry = countries.find(c => c.id === hotelDef.countryId);
+            if(hotelCountry?.defaultCurrency) determinedSourceCurrency = hotelCountry.defaultCurrency;
         }
       }
     } else {
       setSelectedHotelDef(undefined);
+       const itemCountryDef = item.countryId ? countries.find(c => c.id === item.countryId) : 
+                           (tripSettings.selectedCountries.length === 1 ? countries.find(c => c.id === tripSettings.selectedCountries[0]) : undefined);
+      if (itemCountryDef?.defaultCurrency) determinedSourceCurrency = itemCountryDef.defaultCurrency;
     }
     setItemSourceCurrency(determinedSourceCurrency);
-  }, [item.hotelDefinitionId, currentAllHotelDefinitions, allServicePrices, billingCurrency]);
+  }, [item.hotelDefinitionId, item.countryId, currentAllHotelDefinitions, allServicePrices, billingCurrency, countries, tripSettings.selectedCountries]);
 
   const handleHotelDefinitionChange = (hotelDefId: string) => {
     const newHotelDef = currentAllHotelDefinitions.find(hd => hd.id === hotelDefId);
@@ -247,7 +255,9 @@ function HotelItemFormComponent({
         </FormField>
       </div>
       {selectedHotelDef && (<Card className="text-xs bg-muted/30 p-2 mb-4 border-dashed"><p><strong>Selected Hotel:</strong> {selectedHotelDef.name}</p><p><strong>Location:</strong> {selectedHotelDef.province || "N/A"}, {countries.find(c => c.id === selectedHotelDef.countryId)?.name || "N/A"}{selectedHotelDef.starRating && <span className="ml-1">({selectedHotelDef.starRating} <Star className="inline-block h-3 w-3 -mt-0.5 fill-yellow-400 text-yellow-500" />)</span>} <span className="font-semibold">(Rates in {itemSourceCurrency})</span></p></Card>)}
-      {itemSourceCurrency !== billingCurrency && selectedHotelDef && (<p className="text-xs text-blue-600 mb-2">Note: Hotel prices are in {itemSourceCurrency}. Final cost will be converted to {billingCurrency}.</p>)}
+      {itemSourceCurrency !== billingCurrency && selectedHotelDef && getRate && !isLoadingExchangeRates && (
+        <p className="text-xs text-blue-600 mb-2">Note: Hotel prices are in {itemSourceCurrency}. Final cost will be converted to {billingCurrency} (Rate approx. {getRate(itemSourceCurrency, billingCurrency)?.finalRate.toFixed(4) || 'N/A'}).</p>
+      )}
       <div className="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-1 gap-3 sm:gap-4 mb-4">
         <FormField label="Hotel Stay Name / Reference" id={`itemName-${item.id}`} className="md:col-span-1">
             <Input id={`itemName-${item.id}`} value={item.name} onChange={(e) => onUpdate({ ...item, name: e.target.value })} placeholder={`e.g., City Center Stay, Beach Resort`} className="h-9 text-sm"/>
@@ -286,13 +296,13 @@ function HotelItemFormComponent({
             let effectiveRateDisplay = null;
             if (currentRoomTypeDef && tripSettings.startDate && isValid(parseISO(tripSettings.startDate))) {
               try {
-                const checkInDateOfStay = startOfDay(addDays(parseISO(tripSettings.startDate), item.day - 1));
+                const checkInDateOfStay = startOfDay(addDays(parseISO(tripSettings.startDate as string), item.day - 1));
                 let foundRate: number | undefined = undefined;
                 let foundExtraBedRate: number | undefined = undefined;
                 let seasonName: string | undefined = undefined;
 
                 for (const seasonalPrice of currentRoomTypeDef.seasonalPrices) {
-                  if (seasonalPrice.startDate && seasonalPrice.endDate && typeof seasonalPrice.startDate === 'string' && typeof seasonalPrice.endDate === 'string') {
+                   if (seasonalPrice.startDate && seasonalPrice.endDate && typeof seasonalPrice.startDate === 'string' && typeof seasonalPrice.endDate === 'string') {
                     const seasonStartDate = startOfDay(parseISO(seasonalPrice.startDate));
                     const seasonEndDate = startOfDay(parseISO(seasonalPrice.endDate));
                     if (isValid(seasonStartDate) && isValid(seasonEndDate) && isWithinInterval(checkInDateOfStay, { start: seasonStartDate, end: seasonEndDate })) {
@@ -306,7 +316,24 @@ function HotelItemFormComponent({
                   }
                 }
                 if (foundRate !== undefined) {
-                  effectiveRateDisplay = (<div className="mt-2 text-xs text-muted-foreground bg-green-50 border border-green-200 p-2 rounded-md space-y-0.5"><p className="flex items-center"><DollarSign className="h-3 w-3 mr-1 text-green-600"/>Effective Nightly Rate ({seasonName || 'Current'}): <strong className="ml-1 text-green-700">{formatCurrency(foundRate, itemSourceCurrency)}</strong></p>{currentRoomTypeDef.extraBedAllowed && foundExtraBedRate !== undefined && (<p className="flex items-center"><DollarSign className="h-3 w-3 mr-1 text-green-600"/>Effective Extra Bed: <strong className="ml-1 text-green-700">{formatCurrency(foundExtraBedRate, itemSourceCurrency)}</strong></p>)}{currentRoomTypeDef.extraBedAllowed && foundExtraBedRate === undefined && (<p className="italic text-orange-600">Extra bed allowed, but no specific rate for this season.</p>)}</div>);
+                    let rateDisplay = formatCurrency(foundRate, itemSourceCurrency);
+                    let extraBedRateDisplay = foundExtraBedRate !== undefined ? formatCurrency(foundExtraBedRate, itemSourceCurrency) : null;
+                    let conversionNote = "";
+
+                    if (itemSourceCurrency !== billingCurrency && getRate && !isLoadingExchangeRates) {
+                        const convDetails = getRate(itemSourceCurrency, billingCurrency);
+                        if (convDetails) {
+                            const convertedRate = foundRate * convDetails.finalRate;
+                            rateDisplay += ` (≈ ${formatCurrency(convertedRate, billingCurrency)})`;
+                            if (foundExtraBedRate !== undefined) {
+                                const convertedExtraBedRate = foundExtraBedRate * convDetails.finalRate;
+                                extraBedRateDisplay = `${extraBedRateDisplay} (≈ ${formatCurrency(convertedExtraBedRate, billingCurrency)})`;
+                            }
+                            conversionNote = ` (Converted from ${itemSourceCurrency})`;
+                        }
+                    }
+
+                    effectiveRateDisplay = (<div className="mt-2 text-xs text-muted-foreground bg-green-50 border border-green-200 p-2 rounded-md space-y-0.5"><p className="flex items-center"><DollarSign className="h-3 w-3 mr-1 text-green-600"/>Effective Nightly Rate ({seasonName || 'Current'}): <strong className="ml-1 text-green-700">{rateDisplay}</strong></p>{currentRoomTypeDef.extraBedAllowed && foundExtraBedRate !== undefined && (<p className="flex items-center"><DollarSign className="h-3 w-3 mr-1 text-green-600"/>Effective Extra Bed: <strong className="ml-1 text-green-700">{extraBedRateDisplay}</strong></p>)}{conversionNote && <p className="italic text-xs">{conversionNote}</p>}{currentRoomTypeDef.extraBedAllowed && foundExtraBedRate === undefined && (<p className="italic text-orange-600">Extra bed allowed, but no specific rate for this season.</p>)}</div>);
                 } else {
                   effectiveRateDisplay = (<div className="mt-2 text-xs text-orange-600 bg-orange-50 border border-orange-200 p-2 rounded-md">Rate not available for check-in date ({format(checkInDateOfStay, 'dd-MMM-yy')}). Check hotel's seasonal pricing.</div>);
                 }
@@ -349,7 +376,7 @@ function HotelItemFormComponent({
             </Card>
             );
           })}
-           {currentSelectedRoomsForRender.length > 0 && (<p className="text-xs text-muted-foreground text-center pt-2">Hotel costs are calculated night-by-night based on room types and seasonal rates from the hotel's master data (defined in {itemSourceCurrency}).</p>)}
+           {currentSelectedRoomsForRender.length > 0 && (<p className="text-xs text-muted-foreground text-center pt-2">Hotel costs are calculated night-by-night based on room types and seasonal rates from the hotel's master data (defined in {itemSourceCurrency}). Final sum is converted to {billingCurrency}.</p>)}
         </div>
         </>
       )}

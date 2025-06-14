@@ -51,13 +51,13 @@ function MealItemFormComponent({
   isCurrentlyExpanded,
   onToggleExpand
 }: MealItemFormProps) {
-  const { allServicePrices: hookServicePrices, isLoading: isLoadingServices } = useServicePrices();
+  const { allServicePrices: hookServicePrices, isLoading: isLoadingServicesHook } = useServicePrices();
   const currentAllServicePrices = passedInAllServicePrices || hookServicePrices;
   const { countries, getCountryById } = useCountries();
-  const { getRate } = useExchangeRates();
+  const { getRate, isLoading: isLoadingExchangeRates } = useExchangeRates();
   const [mealServices, setMealServices] = React.useState<ServicePriceItem[]>([]);
 
-  const determineItemSourceCurrency = React.useCallback(() => {
+  const determineItemSourceCurrency = React.useCallback((): CurrencyCode => {
     const service = item.selectedServicePriceId ? currentAllServicePrices.find(sp => sp.id === item.selectedServicePriceId) : undefined;
     if (service) return service.currency;
 
@@ -85,9 +85,10 @@ function MealItemFormComponent({
     return undefined;
   }, [item.selectedServicePriceId, getServicePriceById]);
   
+  const isLoadingServices = passedInAllServicePrices ? false : isLoadingServicesHook;
 
   React.useEffect(() => {
-    if (isLoadingServices && !passedInAllServicePrices) {
+    if (isLoadingServices) {
       setMealServices([]);
       return;
     }
@@ -109,7 +110,7 @@ function MealItemFormComponent({
       filteredServices = filteredServices.filter(s => !s.province || provincesToFilterBy.includes(s.province));
     }
     setMealServices(filteredServices.sort((a,b) => a.name.localeCompare(b.name)));
-  }, [currentAllServicePrices, itemSourceCurrency, item.countryId, item.province, tripSettings.selectedCountries, tripSettings.selectedProvinces, isLoadingServices, passedInAllServicePrices]);
+  }, [currentAllServicePrices, itemSourceCurrency, item.countryId, item.province, tripSettings.selectedCountries, tripSettings.selectedProvinces, isLoadingServices]);
 
 
   const handleNumericInputChange = (field: keyof MealItemType, value: string) => {
@@ -168,8 +169,7 @@ function MealItemFormComponent({
     }
   };
 
-  const actualLoadingState = passedInAllServicePrices ? false : isLoadingServices;
-  const serviceDefinitionNotFound = item.selectedServicePriceId && !selectedService && !actualLoadingState;
+  const serviceDefinitionNotFound = item.selectedServicePriceId && !selectedService && !isLoadingServices;
   const isPriceReadOnly = !!item.selectedServicePriceId && !!selectedService;
 
   const itemCountryName = item.countryId ? countries.find(c => c.id === item.countryId)?.name : undefined;
@@ -185,7 +185,7 @@ function MealItemFormComponent({
     locationContext = tripSettings.selectedProvinces.join('/');
   }
 
-  const conversionDetails = (itemSourceCurrency !== billingCurrency && getRate) ? getRate(itemSourceCurrency, billingCurrency) : null;
+  const conversionDetails = (itemSourceCurrency !== billingCurrency && getRate && !isLoadingExchangeRates) ? getRate(itemSourceCurrency, billingCurrency) : null;
   const adultPriceConverted = item.adultMealPrice !== undefined && conversionDetails ? item.adultMealPrice * conversionDetails.finalRate : null;
   const childPriceConverted = item.childMealPrice !== undefined && conversionDetails ? item.childMealPrice * conversionDetails.finalRate : null;
 
@@ -203,10 +203,10 @@ function MealItemFormComponent({
       isCurrentlyExpanded={isCurrentlyExpanded}
       onToggleExpand={onToggleExpand}
     >
-      {(mealServices.length > 0 || item.selectedServicePriceId || actualLoadingState) && (
+      {(mealServices.length > 0 || item.selectedServicePriceId || isLoadingServices) && (
         <div className="mb-4">
           <FormField label={`Select Predefined Meal (${locationContext} - ${itemSourceCurrency})`} id={`predefined-meal-${item.id}`}>
-            {actualLoadingState ? (
+            {isLoadingServices && !passedInAllServicePrices ? (
                  <div className="flex items-center h-10 border rounded-md px-3 bg-muted/50">
                     <Loader2 className="h-4 w-4 animate-spin mr-2 text-muted-foreground" />
                     <span className="text-sm text-muted-foreground">Loading meals...</span>
@@ -246,8 +246,8 @@ function MealItemFormComponent({
           </AlertDescription>
         </Alert>
       )}
-       {itemSourceCurrency !== billingCurrency && selectedService && (
-        <p className="text-xs text-blue-600 mb-2">Note: Prices shown in {itemSourceCurrency}. Final cost will be converted to {billingCurrency}.</p>
+       {itemSourceCurrency !== billingCurrency && selectedService && conversionDetails && !isLoadingExchangeRates && (
+        <p className="text-xs text-blue-600 mb-2">Note: Prices shown in {itemSourceCurrency}. Totals converted to {billingCurrency} using rate ~{conversionDetails.finalRate.toFixed(4)}.</p>
       )}
 
       <div className="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-1 gap-3 sm:gap-4 mb-4">
@@ -288,7 +288,7 @@ function MealItemFormComponent({
             readOnly={isPriceReadOnly}
             className={isPriceReadOnly ? "bg-muted/50 cursor-not-allowed" : ""}
           />
-          {conversionDetails && adultPriceConverted !== null && !isPriceReadOnly && (
+          {conversionDetails && adultPriceConverted !== null && !isPriceReadOnly && !isLoadingExchangeRates && (
             <p className="text-xs text-muted-foreground mt-1">Approx. {formatCurrency(adultPriceConverted, billingCurrency)}</p>
           )}
         </FormField>
@@ -303,7 +303,7 @@ function MealItemFormComponent({
             readOnly={isPriceReadOnly}
             className={isPriceReadOnly ? "bg-muted/50 cursor-not-allowed" : ""}
           />
-           {conversionDetails && childPriceConverted !== null && !isPriceReadOnly && (
+           {conversionDetails && childPriceConverted !== null && !isPriceReadOnly && !isLoadingExchangeRates && (
             <p className="text-xs text-muted-foreground mt-1">Approx. {formatCurrency(childPriceConverted, billingCurrency)}</p>
           )}
         </FormField>
