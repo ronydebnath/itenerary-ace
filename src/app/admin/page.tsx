@@ -99,18 +99,10 @@ export default function AdminDashboardPage() {
           />
           <DashboardCard
             title="Currency Management"
-            description="Manage system default and custom currency codes. Add new currencies for use in pricing and conversion."
+            description="Manage currency codes, exchange rates, conversion markups, and perform currency conversions."
             href="/admin/currencies-management"
             icon={BadgeDollarSign}
-            buttonText="Manage Currencies"
-            className="lg:col-span-1"
-          />
-          <DashboardCard
-            title="Currency Converter"
-            description="Convert amounts between currencies, manage base exchange rates, and set conversion markups."
-            href="/admin/currency-converter"
-            icon={Repeat}
-            buttonText="Use Converter"
+            buttonText="Manage Currencies & Rates"
             className="lg:col-span-1"
           />
            <DashboardCard
@@ -134,4 +126,3 @@ export default function AdminDashboardPage() {
     </main>
   );
 }
-
