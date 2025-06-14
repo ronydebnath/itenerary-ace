@@ -13,7 +13,7 @@
 import * as React from 'react';
 import type { ServicePriceItem, ItineraryItemType, HotelDefinition, CountryItem, ActivityPackageDefinition, VehicleOption, SurchargePeriod } from '@/types/itinerary';
 import { generateGUID } from '@/lib/utils';
-import { useCountries, DEFAULT_THAILAND_ID, DEFAULT_MALAYSIA_ID, DEFAULT_SINGAPORE_ID, DEFAULT_VIETNAM_ID } from './useCountries';
+import { useCountries, DEFAULT_THAILAND_ID, DEFAULT_MALAYSIA_ID, DEFAULT_BANGLADESH_ID } from './useCountries';
 import { useHotelDefinitions } from './useHotelDefinitions'; 
 import { addDays, format } from 'date-fns';
 
@@ -27,8 +27,8 @@ const createDemoServicePrices = (
 ): ServicePriceItem[] => {
   const thailand = countries.find(c => c.id === DEFAULT_THAILAND_ID);
   const malaysia = countries.find(c => c.id === DEFAULT_MALAYSIA_ID);
-  const singapore = countries.find(c => c.id === DEFAULT_SINGAPORE_ID);
-  const vietnam = countries.find(c => c.id === DEFAULT_VIETNAM_ID);
+  const bangladesh = countries.find(c => c.id === DEFAULT_BANGLADESH_ID);
+
 
   const demoPrices: ServicePriceItem[] = [];
 
@@ -59,45 +59,14 @@ const createDemoServicePrices = (
           {id: generateGUID(), name: "Standard Cruise", price1: 1800, price2: 1000, notes: "International buffet, live music."},
           {id: generateGUID(), name: "Luxury Cruise (Window Seat)", price1: 2800, price2: 1600, notes: "Guaranteed window seat, premium buffet."}
         ], currency: "THB", unitDescription: "per person", notes: "Evening cruise with city views." },
-      { id: generateGUID(), name: "Ayutthaya Ancient Capital Day Trip", countryId: thailand.id, province: "Bangkok", category: 'activity', price1: 2200, price2: 1500, currency: "THB", unitDescription: "per person", notes: "Full day trip from Bangkok to Ayutthaya by coach." },
       
       { id: "transfer-bkk-airport-sedan-demo", name: "Suvarnabhumi Airport (BKK) to Bangkok City (Sedan)", countryId: thailand.id, province: "Bangkok", category: 'transfer', transferMode: 'vehicle', currency: "THB", unitDescription: "per service", vehicleOptions: [{ id: generateGUID(), vehicleType: 'Sedan', price: 900, maxPassengers: 3, notes: "Comfortable sedan for up to 3 pax with luggage." }], surchargePeriods: [{ id: generateGUID(), name: "Late Night Surcharge (00:00-05:00)", startDate: format(new Date(currentYear, 0, 1), 'yyyy-MM-dd'), endDate: format(new Date(nextYear, 11, 31), 'yyyy-MM-dd'), surchargeAmount: 200 }] },
-      { 
-        id: generateGUID(), 
-        name: "Bangkok Hotel to Grand Palace (Various)", 
-        countryId: thailand.id, 
-        province: "Bangkok", 
-        category: 'transfer', 
-        transferMode: 'vehicle', 
-        currency: "THB", 
-        unitDescription: "per service", 
-        vehicleOptions: [
-          { id: generateGUID(), vehicleType: 'Sedan', price: 500, maxPassengers: 3, notes: "One-way hotel to Grand Palace area." },
-          { id: generateGUID(), vehicleType: 'MPV', price: 800, maxPassengers: 5, notes: "One-way hotel to Grand Palace area." }
-        ],
-        notes: "City transfer to major attraction."
-      },
-      { 
-        id: generateGUID(), 
-        name: "Bangkok City Tour (8 hours Van with Driver)", 
-        countryId: thailand.id, 
-        province: "Bangkok", 
-        category: 'transfer', 
-        transferMode: 'vehicle', 
-        currency: "THB", 
-        unitDescription: "per service (8 hours)", 
-        vehicleOptions: [{ id: generateGUID(), vehicleType: 'Van', price: 3500, maxPassengers: 8, notes: "Includes driver, fuel. Excludes entrance fees." }],
-        surchargePeriods: [{id: generateGUID(), name: "Songkran Festival Peak", startDate: format(new Date(currentYear, 3, 12), 'yyyy-MM-dd'), endDate: format(new Date(currentYear, 3, 16), 'yyyy-MM-dd'), surchargeAmount: 500}]
-      },
       { id: generateGUID(), name: "Suvarnabhumi Airport (BKK) to Bangkok City (Shared Van Ticket)", countryId: thailand.id, province: "Bangkok", category: 'transfer', transferMode: 'ticket', price1: 150, currency: "THB", unitDescription: "per person", subCategory: "ticket", notes: "Seat in shared van, drops at major hotels." },
 
       { id: generateGUID(), name: "Phuket Phi Phi Islands & Maya Bay (Speedboat)", countryId: thailand.id, province: "Phuket", category: 'activity', activityPackages: [
           {id: generateGUID(), name: "Shared Speedboat Tour", price1: 2200, price2: 1500, notes: "Full day, includes lunch, snorkeling."},
-          {id: generateGUID(), name: "Private Longtail (4 hrs, Islands near Phuket)", price1: 3500, notes: "Price per boat, max 6 pax. Does not go to Phi Phi."}
         ], currency: "THB", unitDescription: "per person/service", notes: "Explore iconic islands." },
-      { id: generateGUID(), name: "Phuket Fantasea Show & Dinner", countryId: thailand.id, province: "Phuket", category: 'activity', price1: 2200, price2: 2000, currency: "THB", unitDescription: "per person", notes: "Gold seat, includes buffet dinner." },
-      { id: generateGUID(), name: "James Bond Island Canoe Trip", countryId: thailand.id, province: "Phuket", category: 'activity', price1: 1800, currency: "THB", unitDescription: "per person", notes: "Full day, includes sea canoeing and lunch." },
-
+      
       { 
         id: generateGUID(), 
         name: "Phuket Airport (HKT) to Patong Beach (Various)", 
@@ -112,20 +81,16 @@ const createDemoServicePrices = (
           { id: generateGUID(), vehicleType: 'Minibus', price: 1200, maxPassengers: 10, notes: "Private minibus transfer." }
         ]
       },
-      { id: generateGUID(), name: "Patong to Phi Phi Pier (Ferry Ticket)", countryId: thailand.id, province: "Phuket", category: 'transfer', transferMode: 'ticket', price1: 700, currency: "THB", unitDescription: "per person (one-way)", subCategory: "ticket" },
       
-      { id: generateGUID(), name: "Rooftop Bar Sky-High Dinner Set (Bangkok)", countryId: thailand.id, province: "Bangkok", category: 'meal', price1: 2500, currency: "THB", subCategory: "Set Menu", unitDescription: "per person", notes: "Includes 3-course Western set dinner, excludes drinks." },
       { id: generateGUID(), name: "Hotel International Buffet Lunch (Bangkok)", countryId: thailand.id, province: "Bangkok", category: 'meal', price1: 950, price2: 475, currency: "THB", subCategory: "Buffet", unitDescription: "per person" },
       { id: generateGUID(), name: "Seafood BBQ Dinner on the Beach (Phuket)", countryId: thailand.id, province: "Phuket", category: 'meal', price1: 1500, currency: "THB", subCategory: "Special Dinner", unitDescription: "per person", notes: "Fresh seafood buffet." },
 
       { id: generateGUID(), name: "Thai Cooking Class Materials Fee (Bangkok)", countryId: thailand.id, province: "Bangkok", category: 'misc', unitCost: 500, quantity: 1, costAssignment: 'perPerson', currency: "THB", unitDescription: "per person", subCategory: "Class Fee", notes: "Ingredients for cooking class." },
-      { id: generateGUID(), name: "Snorkeling Gear Rental - Full Day (Phuket)", countryId: thailand.id, province: "Phuket", category: 'misc', unitCost: 250, quantity: 1, costAssignment: 'perPerson', currency: "THB", unitDescription: "per set", subCategory: "Rental", notes: "Mask, snorkel, fins." },
-      { id: generateGUID(), name: "Travel Insurance - Basic (Thailand)", countryId: thailand.id, category: 'misc', unitCost: 400, quantity: 1, costAssignment: 'perPerson', currency: "THB", unitDescription: "per person", subCategory: "Insurance", notes: "Basic coverage for duration of stay in Thailand." },
       { id: generateGUID(), name: "VIP Airport Fast Track (Bangkok BKK)", countryId: thailand.id, province: "Bangkok", category: 'misc', unitCost: 1500, quantity: 1, costAssignment: 'perPerson', currency: "THB", unitDescription: "per person", subCategory: "Airport Service", notes: "Arrival or Departure fast track service." }
     );
   }
 
-  // Malaysia Services (Keeping these simpler for now)
+  // Malaysia Services
   if (malaysia) {
     demoPrices.push(
       { id: generateGUID(), name: "Kuala Lumpur City Highlights Tour", countryId: malaysia.id, province: "Kuala Lumpur", category: 'activity', price1: 120, price2: 80, currency: "MYR", unitDescription: "per person" },
@@ -133,19 +98,15 @@ const createDemoServicePrices = (
       { id: generateGUID(), name: "Buffet Lunch at Revolving Tower KL", countryId: malaysia.id, province: "Kuala Lumpur", category: 'meal', price1: 90, price2: 50, currency: "MYR", subCategory: "Buffet", unitDescription: "per person" }
     );
   }
-  // Singapore Services
-  if (singapore) {
+  // Bangladesh Services
+  if (bangladesh) {
     demoPrices.push(
-      { id: generateGUID(), name: "Singapore Night Safari Admission", countryId: singapore.id, province: "Singapore", category: 'activity', price1: 55, price2: 38, currency: "SGD", unitDescription: "per person" },
-      { id: generateGUID(), name: "Changi Airport to City (Taxi Estimate)", countryId: singapore.id, province: "Singapore", category: 'transfer', transferMode: 'vehicle', currency: "SGD", unitDescription: "per service (approx)", vehicleOptions: [{id: generateGUID(), vehicleType: "Sedan", price: 30, maxPassengers: 4, notes: "Metered fare estimate"}]}
+      { id: generateGUID(), name: "Dhaka City Rickshaw Tour", countryId: bangladesh.id, province: "Dhaka", category: 'activity', price1: 1000, currency: "BDT", unitDescription: "per person", notes: "Half-day guided tour." },
+      { id: generateGUID(), name: "Hazrat Shahjalal Airport (DAC) to Dhaka City (Sedan)", countryId: bangladesh.id, province: "Dhaka", category: 'transfer', transferMode: 'vehicle', currency: "BDT", vehicleOptions: [{id: generateGUID(), vehicleType: "Sedan", price: 2500, maxPassengers: 3}], unitDescription: "per service" },
+      { id: generateGUID(), name: "Traditional Bengali Thali Dinner", countryId: bangladesh.id, province: "Dhaka", category: 'meal', price1: 800, currency: "BDT", subCategory: "Set Menu", unitDescription: "per person" }
     );
   }
-  // Vietnam Services
-  if (vietnam) {
-    demoPrices.push(
-      { id: generateGUID(), name: "Ha Long Bay Day Cruise from Hanoi", countryId: vietnam.id, province: "Hanoi", category: 'activity', price1: 1200000, price2: 900000, currency: "VND", unitDescription: "per person", notes: "Includes lunch and cave visit." }
-    );
-  }
+
 
   return demoPrices;
 };

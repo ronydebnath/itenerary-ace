@@ -13,7 +13,7 @@
 import * as React from 'react';
 import type { ProvinceItem, CountryItem } from '@/types/itinerary';
 import { generateGUID } from '@/lib/utils';
-import { useCountries, DEFAULT_THAILAND_ID, DEFAULT_MALAYSIA_ID, DEFAULT_SINGAPORE_ID, DEFAULT_VIETNAM_ID } from './useCountries';
+import { useCountries, DEFAULT_THAILAND_ID, DEFAULT_MALAYSIA_ID, DEFAULT_BANGLADESH_ID } from './useCountries';
 
 const PROVINCES_STORAGE_KEY = 'itineraryAceProvinces';
 
@@ -30,15 +30,11 @@ const DEFAULT_PROVINCE_DATA: Omit<ProvinceItem, 'id'>[] = [
   { name: "Penang", countryId: DEFAULT_MALAYSIA_ID },
   { name: "Langkawi", countryId: DEFAULT_MALAYSIA_ID },
   { name: "Malacca", countryId: DEFAULT_MALAYSIA_ID },
-  { name: "Sabah (Kota Kinabalu)", countryId: DEFAULT_MALAYSIA_ID },
-  { name: "Johor Bahru", countryId: DEFAULT_MALAYSIA_ID },
-  // Singapore
-  { name: "Singapore", countryId: DEFAULT_SINGAPORE_ID },
-  // Vietnam
-  { name: "Hanoi", countryId: DEFAULT_VIETNAM_ID },
-  { name: "Ho Chi Minh City", countryId: DEFAULT_VIETNAM_ID },
-  { name: "Da Nang", countryId: DEFAULT_VIETNAM_ID },
-  { name: "Hoi An", countryId: DEFAULT_VIETNAM_ID },
+  // Bangladesh
+  { name: "Dhaka", countryId: DEFAULT_BANGLADESH_ID },
+  { name: "Chittagong", countryId: DEFAULT_BANGLADESH_ID },
+  { name: "Sylhet", countryId: DEFAULT_BANGLADESH_ID },
+  { name: "Cox's Bazar", countryId: DEFAULT_BANGLADESH_ID },
 ];
 
 

@@ -13,7 +13,7 @@
 import * as React from 'react';
 import type { HotelDefinition, CountryItem, HotelRoomTypeDefinition, RoomTypeSeasonalPrice } from '@/types/itinerary';
 import { generateGUID } from '@/lib/utils';
-import { useCountries, DEFAULT_THAILAND_ID, DEFAULT_MALAYSIA_ID, DEFAULT_SINGAPORE_ID, DEFAULT_VIETNAM_ID } from './useCountries';
+import { useCountries, DEFAULT_THAILAND_ID, DEFAULT_MALAYSIA_ID, DEFAULT_BANGLADESH_ID } from './useCountries';
 import { addDays, format, getYear, setYear } from 'date-fns';
 
 const HOTEL_DEFINITIONS_STORAGE_KEY = 'itineraryAceHotelDefinitions';
@@ -37,8 +37,7 @@ const createGenericSeasonalPrices = (baseRate: number, baseExtraBed: number | un
 const createDemoHotelDefinitions = (countries: CountryItem[]): HotelDefinition[] => {
   const thailand = countries.find(c => c.id === DEFAULT_THAILAND_ID);
   const malaysia = countries.find(c => c.id === DEFAULT_MALAYSIA_ID);
-  const singapore = countries.find(c => c.id === DEFAULT_SINGAPORE_ID);
-  const vietnam = countries.find(c => c.id === DEFAULT_VIETNAM_ID);
+  const bangladesh = countries.find(c => c.id === DEFAULT_BANGLADESH_ID);
 
   // --- Shared Room Type Definitions ---
   const standardCityRoom: HotelRoomTypeDefinition = {
@@ -118,16 +117,13 @@ const createDemoHotelDefinitions = (countries: CountryItem[]): HotelDefinition[]
       { id: generateGUID(), name: "Langkawi Beachfront Villa Basic", countryId: malaysia.id, province: "Langkawi", starRating: 3, roomTypes: [deluxeRiverRoom] }
     );
   }
-  if (singapore) {
+  if (bangladesh) {
     demoHotels.push(
-      { id: generateGUID(), name: "Singapore Marina View Basic", countryId: singapore.id, province: "Singapore", starRating: 5, roomTypes: [deluxeRiverRoom] }
+      { id: generateGUID(), name: "Dhaka Regency Hotel & Resort", countryId: bangladesh.id, province: "Dhaka", starRating: 5, roomTypes: [standardCityRoom, deluxeRiverRoom] },
+      { id: generateGUID(), name: "Cox's Bazar Seagull Hotel", countryId: bangladesh.id, province: "Cox's Bazar", starRating: 4, roomTypes: [standardCityRoom] }
     );
   }
-  if (vietnam) {
-     demoHotels.push(
-      { id: generateGUID(), name: "Hanoi Old Quarter Inn Basic", countryId: vietnam.id, province: "Hanoi", starRating: 3, roomTypes: [standardCityRoom] }
-    );
-  }
+
   return demoHotels;
 };
 

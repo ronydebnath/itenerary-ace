@@ -20,15 +20,13 @@ const COUNTRIES_STORAGE_KEY = 'itineraryAceCountries';
 const DEFAULT_COUNTRY_DATA: Omit<CountryItem, 'id'>[] = [
   { name: "Thailand", defaultCurrency: "THB" },
   { name: "Malaysia", defaultCurrency: "MYR" },
-  { name: "Singapore", defaultCurrency: "SGD" },
-  { name: "Vietnam", defaultCurrency: "VND" },
+  { name: "Bangladesh", defaultCurrency: "BDT" },
 ];
 
 // Fixed IDs for default countries for consistent demo data generation
 export const DEFAULT_THAILAND_ID = "f47ac10b-58cc-4372-a567-0e02b2c3d479";
 export const DEFAULT_MALAYSIA_ID = "986a76d0-9490-4e0f-806a-1a3e9728a708";
-export const DEFAULT_SINGAPORE_ID = "a1b2c3d4-e5f6-7890-1234-567890abcdef";
-export const DEFAULT_VIETNAM_ID = "b2c3d4e5-f6a7-8901-2345-67890abcdeff";
+export const DEFAULT_BANGLADESH_ID = "bd010101-0000-0000-0000-000000000001";
 
 
 const assignFixedIds = (data: Omit<CountryItem, 'id'>[]): CountryItem[] => {
@@ -36,8 +34,7 @@ const assignFixedIds = (data: Omit<CountryItem, 'id'>[]): CountryItem[] => {
     let id = generateGUID();
     if (country.name === "Thailand") id = DEFAULT_THAILAND_ID;
     else if (country.name === "Malaysia") id = DEFAULT_MALAYSIA_ID;
-    else if (country.name === "Singapore") id = DEFAULT_SINGAPORE_ID;
-    else if (country.name === "Vietnam") id = DEFAULT_VIETNAM_ID;
+    else if (country.name === "Bangladesh") id = DEFAULT_BANGLADESH_ID;
     return { ...country, id };
   });
 };

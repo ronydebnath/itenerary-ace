@@ -30,7 +30,7 @@ export interface Traveler {
 }
 
 // Base system currencies. Custom currencies can be added via localStorage.
-export const CURRENCIES = ['EUR', 'GBP', 'THB', 'JPY', 'MYR', 'SGD', 'VND', 'AUD', 'INR'] as const; // USD removed as it's the reference
+export const CURRENCIES = ['THB', 'MYR', 'BDT'] as const;
 export const REFERENCE_CURRENCY: CurrencyCode = "USD"; // Explicitly define USD as reference
 export type CurrencyCode = (typeof CURRENCIES)[number] | 'USD' | (string & {}); // Allows for custom string currency codes
 

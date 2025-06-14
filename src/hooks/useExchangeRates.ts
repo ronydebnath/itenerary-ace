@@ -30,19 +30,11 @@ const DEFAULT_RATES_DATA: Omit<ExchangeRate, 'id' | 'updatedAt' | 'source'>[] = 
   // Rates against USD (REFERENCE_CURRENCY)
   { fromCurrency: "USD", toCurrency: "THB", rate: 36.50 },
   { fromCurrency: "USD", toCurrency: "MYR", rate: 4.70 },
-  { fromCurrency: "USD", toCurrency: "SGD", rate: 1.35 },
-  { fromCurrency: "USD", toCurrency: "VND", rate: 25000 },
-  { fromCurrency: "USD", toCurrency: "EUR", rate: 0.92 },
-  { fromCurrency: "USD", toCurrency: "GBP", rate: 0.79 },
-  { fromCurrency: "USD", toCurrency: "JPY", rate: 157.00 },
-  { fromCurrency: "USD", toCurrency: "AUD", rate: 1.50 },
-  { fromCurrency: "USD", toCurrency: "INR", rate: 83.00 },
+  { fromCurrency: "USD", toCurrency: "BDT", rate: 110.00 },
   // Add a few non-USD defaults for initial manual display if API fails completely
-  { fromCurrency: "EUR", toCurrency: "THB", rate: 39.20 },
-  { fromCurrency: "GBP", toCurrency: "THB", rate: 45.80 },
   { fromCurrency: "THB", toCurrency: "MYR", rate: 0.125 },
-  { fromCurrency: "THB", toCurrency: "SGD", rate: 0.037 },
-  { fromCurrency: "THB", toCurrency: "VND", rate: 680.00 },
+  { fromCurrency: "THB", toCurrency: "BDT", rate: 3.00 },
+  { fromCurrency: "MYR", toCurrency: "BDT", rate: 23.00 },
 ];
 
 export interface ConversionRateDetails {
@@ -333,4 +325,3 @@ export function useExchangeRates() {
 }
 
     
-
