@@ -1,3 +1,4 @@
+
 /**
  * @fileoverview This file contains common utility functions used throughout the application.
  * It includes functions for class name concatenation (cn), currency formatting, and GUID generation.
@@ -13,17 +14,20 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
-export function formatCurrency(amount: number, currencyCode: CurrencyCode = 'THB'): string {
+export function formatCurrency(amount: number, currencyCode: CurrencyCode = 'THB', precision?: number): string {
   try {
+    const minDigits = precision !== undefined ? precision : 2;
+    const maxDigits = precision !== undefined ? precision : 2;
     return new Intl.NumberFormat(undefined, { 
       style: 'currency',
       currency: currencyCode,
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
+      minimumFractionDigits: minDigits,
+      maximumFractionDigits: maxDigits,
     }).format(amount);
   } catch (error) {
-    
-    return `${currencyCode} ${amount.toFixed(2)}`;
+    // Fallback for environments where Intl might not support the currency or other issues
+    // console.warn(`Currency formatting error for ${currencyCode}, falling back. Error: ${error}`);
+    return `${currencyCode} ${amount.toFixed(precision !== undefined ? precision : 2)}`;
   }
 }
 

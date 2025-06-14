@@ -28,7 +28,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { LayoutDashboard, Repeat, PlusCircle, Edit, Trash2, AlertCircle, Loader2, Settings, Percent } from 'lucide-react';
-import { useExchangeRates } from '@/hooks/useExchangeRates';
+import { useExchangeRates, type ConversionRateDetails } from '@/hooks/useExchangeRates';
 import type { CurrencyCode, ExchangeRate } from '@/types/itinerary';
 import { CURRENCIES } from '@/types/itinerary';
 import { formatCurrency } from '@/lib/utils';
@@ -55,6 +55,13 @@ const markupSchema = z.object({
 });
 type MarkupFormValues = z.infer<typeof markupSchema>;
 
+interface ConversionResultState extends ConversionRateDetails {
+  originalAmount: number;
+  fromCurrency: CurrencyCode;
+  toCurrency: CurrencyCode;
+  convertedAmount: number;
+}
+
 export default function CurrencyConverterPage() {
   const { 
     exchangeRates, 
@@ -69,7 +76,7 @@ export default function CurrencyConverterPage() {
     setGlobalMarkup
   } = useExchangeRates();
 
-  const [convertedAmount, setConvertedAmount] = React.useState<number | null>(null);
+  const [conversionResult, setConversionResult] = React.useState<ConversionResultState | null>(null);
   const [conversionError, setConversionError] = React.useState<string | null>(null);
   
   const [isRateFormOpen, setIsRateFormOpen] = React.useState(false);
@@ -108,13 +115,22 @@ export default function CurrencyConverterPage() {
 
   const handleConversionSubmit = (data: ConversionFormValues) => {
     setConversionError(null);
-    setConvertedAmount(null);
-    const rate = getRate(data.fromCurrency, data.toCurrency);
-    if (rate === null) {
+    setConversionResult(null);
+    const rateDetails = getRate(data.fromCurrency, data.toCurrency);
+    if (rateDetails === null) {
       setConversionError(`Exchange rate from ${data.fromCurrency} to ${data.toCurrency} is not defined or calculable. Ensure base rates to/from USD are set.`);
       return;
     }
-    setConvertedAmount(data.amount * rate);
+    const finalConvertedAmount = data.amount * rateDetails.finalRate;
+    setConversionResult({
+      originalAmount: data.amount,
+      fromCurrency: data.fromCurrency,
+      toCurrency: data.toCurrency,
+      baseRate: rateDetails.baseRate,
+      finalRate: rateDetails.finalRate,
+      markupApplied: rateDetails.markupApplied,
+      convertedAmount: finalConvertedAmount,
+    });
   };
 
   const handleRateFormSubmit = (data: RateFormValues) => {
@@ -182,7 +198,7 @@ export default function CurrencyConverterPage() {
               <Button type="submit" className="bg-accent hover:bg-accent/90 text-accent-foreground" size="sm">Set Markup</Button>
             </form>
             <p className="text-xs text-muted-foreground mt-2">
-              This markup is applied when a tour's price, listed in a base currency, is converted to a different currency for display or transaction. The conversion always uses USD as an intermediate step. For instance, if the markup is 3%, and an item costs 100 units in its base currency which converts to 0.027 USD per unit (base rate), the effective rate used for further conversion will be 0.02781 USD per unit of the base currency.
+              This markup is applied when a tour's price, listed in a base currency, is converted to a different currency for display or transaction. The conversion always uses USD as an intermediate step. For example, if the markup is {markupPercentage}%, the rate from Base Currency to USD is first determined, then USD to Target Currency. The markup is applied to the final calculated rate.
             </p>
           </CardContent>
         </Card>
@@ -239,12 +255,24 @@ export default function CurrencyConverterPage() {
                 <AlertDescription>{conversionError}</AlertDescription>
               </Alert>
             )}
-            {convertedAmount !== null && (
-              <div className="mt-6 p-4 bg-green-50 border border-green-200 rounded-md text-center">
-                <p className="text-sm text-green-700">Converted Amount ({markupPercentage > 0 && conversionForm.getValues("fromCurrency") !== conversionForm.getValues("toCurrency") ? `with ${markupPercentage}% markup` : 'no markup applied'}):</p>
-                <p className="text-2xl font-bold text-green-800">
-                  {formatCurrency(convertedAmount, conversionForm.getValues("toCurrency"))}
-                </p>
+            {conversionResult && (
+              <div className="mt-6 p-4 bg-green-50 border border-green-200 rounded-md space-y-1">
+                <p className="text-lg font-semibold text-green-800 text-center">Conversion Result</p>
+                <div className="text-sm text-green-700/90">
+                  <p><strong>Original:</strong> {formatCurrency(conversionResult.originalAmount, conversionResult.fromCurrency)} ({conversionResult.fromCurrency})</p>
+                  <p><strong>To:</strong> {conversionResult.toCurrency}</p>
+                  <p className="font-mono"><strong>Base Rate (1 {conversionResult.fromCurrency}):</strong> {conversionResult.baseRate.toFixed(6)} {conversionResult.toCurrency}</p>
+                  {conversionResult.markupApplied > 0 && (
+                    <>
+                      <p><strong>Markup Applied:</strong> {conversionResult.markupApplied.toFixed(2)}%</p>
+                      <p className="font-mono"><strong>Markup Value:</strong> {formatCurrency(conversionResult.convertedAmount - (conversionResult.originalAmount * conversionResult.baseRate), conversionResult.toCurrency)}</p>
+                      <p className="font-mono"><strong>Final Rate (1 {conversionResult.fromCurrency}):</strong> {conversionResult.finalRate.toFixed(6)} {conversionResult.toCurrency}</p>
+                    </>
+                  )}
+                  <p className="text-xl font-bold text-green-800 mt-2">
+                    Converted Amount: {formatCurrency(conversionResult.convertedAmount, conversionResult.toCurrency)}
+                  </p>
+                </div>
               </div>
             )}
           </CardContent>
@@ -382,4 +410,3 @@ export default function CurrencyConverterPage() {
     </main>
   );
 }
-

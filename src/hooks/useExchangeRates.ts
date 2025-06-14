@@ -32,6 +32,12 @@ const DEFAULT_RATES_DATA: Omit<ExchangeRate, 'id' | 'updatedAt'>[] = [
   { fromCurrency: "USD", toCurrency: "JPY", rate: 157.00 },
 ];
 
+export interface ConversionRateDetails {
+  baseRate: number;
+  finalRate: number;
+  markupApplied: number; // The percentage of markup that was applied
+}
+
 export function useExchangeRates() {
   const [exchangeRates, setExchangeRates] = React.useState<ExchangeRate[]>([]);
   const [markupPercentage, setMarkupPercentageState] = React.useState<number>(0);
@@ -129,7 +135,7 @@ export function useExchangeRates() {
       toast({ title: "Rate Exists", description: `Rate from ${newRateData.fromCurrency} to ${newRateData.toCurrency} already exists. Please edit it.`, variant: "default" });
       return;
     }
-    if (newRateData.fromCurrency === newRateData.toCurrency) {
+     if (newRateData.fromCurrency === newRateData.toCurrency) {
         toast({ title: "Invalid Pair", description: "Cannot set an exchange rate from a currency to itself.", variant: "destructive"});
         return;
     }
@@ -172,12 +178,14 @@ export function useExchangeRates() {
     return null;
   }, [exchangeRates]);
 
-  const getRate = React.useCallback((fromCurrency: CurrencyCode, toCurrency: CurrencyCode): number | null => {
+  const getRate = React.useCallback((fromCurrency: CurrencyCode, toCurrency: CurrencyCode): ConversionRateDetails | null => {
     if (!CURRENCIES.includes(fromCurrency) || !CURRENCIES.includes(toCurrency)) {
       console.error("Invalid currency code provided to getRate", fromCurrency, toCurrency);
       return null;
     }
-    if (fromCurrency === toCurrency) return 1;
+    if (fromCurrency === toCurrency) {
+      return { baseRate: 1, finalRate: 1, markupApplied: 0 };
+    }
 
     // Step 1: Convert fromCurrency to USD (REFERENCE_CURRENCY)
     let rateFromToUSD: number | null;
@@ -205,15 +213,18 @@ export function useExchangeRates() {
       return null;
     }
 
-    const combinedBaseRate = rateFromToUSD * rateUSDToTo;
+    const baseCombinedRate = Math.max(0.000001, rateFromToUSD * rateUSDToTo);
+    let finalCombinedRate = baseCombinedRate;
+    let actualMarkupApplied = 0;
 
     // Apply markup if fromCurrency is different from toCurrency and markup is set
     if (fromCurrency !== toCurrency && markupPercentage > 0) {
-      const markedUpRate = combinedBaseRate * (1 + (markupPercentage / 100));
-      return Math.max(0.000001, markedUpRate);
+      finalCombinedRate = baseCombinedRate * (1 + (markupPercentage / 100));
+      actualMarkupApplied = markupPercentage;
     }
+    finalCombinedRate = Math.max(0.000001, finalCombinedRate);
 
-    return Math.max(0.000001, combinedBaseRate);
+    return { baseRate: baseCombinedRate, finalRate: finalCombinedRate, markupApplied: actualMarkupApplied };
   }, [findBaseRate, markupPercentage, REFERENCE_CURRENCY]);
 
   return { 
@@ -229,4 +240,3 @@ export function useExchangeRates() {
     refreshRates: fetchAndSeedData
   };
 }
-
