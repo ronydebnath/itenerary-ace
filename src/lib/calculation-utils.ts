@@ -338,17 +338,13 @@ export function calculateAllCosts(
           sourceCurrency = serviceDefinition.currency;
         }
       } else if (item.type === 'hotel' && item.hotelDefinitionId) {
-        // For hotels, find the ServicePriceItem linked to the HotelDefinition
         const hotelServicePriceDef = allServicePrices.find(sp => sp.category === 'hotel' && sp.hotelDetails?.id === item.hotelDefinitionId);
         if (hotelServicePriceDef) {
           sourceCurrency = hotelServicePriceDef.currency;
-          // serviceDefinition might be useful for hotel too, e.g. for notes, if not directly using hotelDef's notes
-          // For now, we'll primarily use hotelDefinition data, but source currency comes from its service price entry.
         } else {
           console.warn(`No ServicePriceItem found for HotelDefinition ID: ${item.hotelDefinitionId}. Assuming prices are in billing currency.`);
         }
       }
-      // If no serviceDefinition and not a hotel with a findable SP, assume item prices are entered in billingCurrency
 
       let calcResult;
       switch (item.type) {
@@ -380,7 +376,7 @@ export function calculateAllCosts(
           conversionFactor = conversionDetails.finalRate;
         } else {
           console.error(`FATAL: Cannot convert item "${item.name}" from ${sourceCurrency} to ${billingCurrency}. Cost will be inaccurate.`);
-          conversionFactor = 0; // Or handle error more gracefully
+          conversionFactor = 0; 
         }
       }
 
@@ -406,11 +402,11 @@ export function calculateAllCosts(
         note: item.note,
         countryName: item.countryName,
         province: otherDetails.province,
-        configurationDetails: otherDetails.specificDetails, // Details are formatted with sourceCurrency prices
+        configurationDetails: otherDetails.specificDetails, 
         excludedTravelers: otherDetails.excludedTravelerLabels.join(', ') || 'None',
-        adultCost, // Now in billing currency
-        childCost, // Now in billing currency
-        totalCost, // Now in billing currency
+        adultCost, 
+        childCost, 
+        totalCost, 
         occupancyDetails: (item.type === 'hotel' ? (otherDetails as any).occupancyDetails : undefined) as HotelOccupancyDetail[] | undefined,
       });
     });
@@ -420,36 +416,41 @@ export function calculateAllCosts(
   Object.keys(perPersonTotals).forEach(id => {
     perPersonTotals[id] = parseFloat(perPersonTotals[id].toFixed(2));
   });
+
   detailedItems.forEach(dItem => {
     dItem.adultCost = parseFloat(dItem.adultCost.toFixed(2));
     dItem.childCost = parseFloat(dItem.childCost.toFixed(2));
     dItem.totalCost = parseFloat(dItem.totalCost.toFixed(2));
-    if (dItem.occupancyDetails) {
+
+    if (dItem.occupancyDetails && dItem.type === 'Hotels') {
+      let hotelSourceCurrency = billingCurrency; // Default for the parent hotel item
+      const parentHotelItem = dItem.day ? tripData.days[dItem.day]?.items.find(i => i.id === dItem.id && i.type === 'hotel') as HotelItem | undefined : undefined;
+      
+      if (parentHotelItem) {
+        if (parentHotelItem.selectedServicePriceId) {
+          const hotelSp = allServicePrices.find(sp => sp.id === parentHotelItem.selectedServicePriceId);
+          if (hotelSp) hotelSourceCurrency = hotelSp.currency;
+        } else if (parentHotelItem.hotelDefinitionId) {
+          const hotelSpFromDef = allServicePrices.find(sp => sp.category === 'hotel' && sp.hotelDetails?.id === parentHotelItem.hotelDefinitionId);
+          if (hotelSpFromDef) hotelSourceCurrency = hotelSpFromDef.currency;
+        }
+      } else {
+        // Fallback if parentHotelItem not found, though this shouldn't ideally happen if dItem.day is valid
+        // This might occur if hotel is directly defined as a service price item without full hotel def linkage in itinerary item
+        const directServicePriceForHotel = allServicePrices.find(sp => sp.id === dItem.id && sp.category === 'hotel');
+        if (directServicePriceForHotel) {
+            hotelSourceCurrency = directServicePriceForHotel.currency;
+        }
+      }
+
       dItem.occupancyDetails.forEach(od => {
-        // Occupancy details costs are calculated as part of hotel cost, which is then converted.
-        // To show them in billing currency, they also need conversion if displayed separately.
-        // For now, let's assume `totalRoomBlockCost` in `HotelOccupancyDetail` is still in source currency from `calculateHotelCostInternal`.
-        // We'll convert it here for display in `DetailsSummaryTable`.
-        if (sourceCurrency !== billingCurrency && od.totalRoomBlockCost) { // Find the sourceCurrency of the parent hotel item
-             const parentHotelItem = tripData.days[dItem.day!]?.items.find(i => i.id === dItem.id && i.type === 'hotel') as HotelItem | undefined;
-             let hotelSourceCurrency = billingCurrency;
-             if (parentHotelItem) {
-                if (parentHotelItem.selectedServicePriceId) {
-                    const hotelSp = allServicePrices.find(sp => sp.id === parentHotelItem.selectedServicePriceId);
-                    if (hotelSp) hotelSourceCurrency = hotelSp.currency;
-                } else if (parentHotelItem.hotelDefinitionId) {
-                    const hotelSpFromDef = allServicePrices.find(sp => sp.category === 'hotel' && sp.hotelDetails?.id === parentHotelItem.hotelDefinitionId);
-                    if (hotelSpFromDef) hotelSourceCurrency = hotelSpFromDef.currency;
-                }
-             }
-             if (hotelSourceCurrency !== billingCurrency && getRateForConversion) {
-                const conv = getRateForConversion(hotelSourceCurrency, billingCurrency);
-                od.totalRoomBlockCost = parseFloat((od.totalRoomBlockCost * (conv?.finalRate || 0)).toFixed(2));
-             } else {
-                od.totalRoomBlockCost = parseFloat(od.totalRoomBlockCost.toFixed(2));
-             }
-        } else if (od.totalRoomBlockCost) {
+        if (od.totalRoomBlockCost) {
+          if (hotelSourceCurrency !== billingCurrency && getRateForConversion) {
+            const conv = getRateForConversion(hotelSourceCurrency, billingCurrency);
+            od.totalRoomBlockCost = parseFloat((od.totalRoomBlockCost * (conv?.finalRate || 0)).toFixed(2));
+          } else {
             od.totalRoomBlockCost = parseFloat(od.totalRoomBlockCost.toFixed(2));
+          }
         }
       });
     }
