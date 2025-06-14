@@ -1,3 +1,4 @@
+
 /**
  * @fileoverview This component provides a form for adding or editing transfer items
  * within an itinerary. It handles different transfer modes (ticket vs. vehicle),
@@ -46,7 +47,7 @@ interface TransferItemFormProps {
 function TransferItemFormComponent({
   item,
   travelers,
-  currency: billingCurrency, 
+  currency: billingCurrency,
   tripSettings,
   dayNumber,
   onUpdate,
@@ -61,18 +62,18 @@ function TransferItemFormComponent({
   const { countries, getCountryById } = useCountries();
   const { getRate, isLoading: isLoadingExchangeRates } = useExchangeRates();
   const [transferServices, setTransferServices] = React.useState<ServicePriceItem[]>([]);
-  
+
   const determineItemSourceCurrency = React.useCallback((): CurrencyCode => {
     const service = item.selectedServicePriceId ? currentAllServicePrices.find(sp => sp.id === item.selectedServicePriceId) : undefined;
     if (service) return service.currency;
 
-    const itemCountryDef = item.countryId ? getCountryById(item.countryId) : 
+    const itemCountryDef = item.countryId ? getCountryById(item.countryId) :
                            (tripSettings.selectedCountries.length === 1 ? getCountryById(tripSettings.selectedCountries[0]) : undefined);
     if (itemCountryDef?.defaultCurrency) return itemCountryDef.defaultCurrency;
-    
+
     return billingCurrency; // Fallback
   }, [item.selectedServicePriceId, item.countryId, currentAllServicePrices, getCountryById, tripSettings.selectedCountries, billingCurrency]);
-  
+
   const [itemSourceCurrency, setItemSourceCurrency] = React.useState<CurrencyCode>(determineItemSourceCurrency());
 
   React.useEffect(() => {
@@ -90,7 +91,7 @@ function TransferItemFormComponent({
     }
     return undefined;
   }, [item.selectedServicePriceId, getServicePriceById]);
-  
+
   const isLoadingServices = passedInAllServicePrices ? false : isLoadingServicesHook;
 
   React.useEffect(() => {
@@ -99,7 +100,7 @@ function TransferItemFormComponent({
       return;
     }
     let filteredServices = currentAllServicePrices.filter(s => s.category === 'transfer');
-    
+
     const currencyToFilterBy = itemSourceCurrency;
     filteredServices = filteredServices.filter(s => s.currency === currencyToFilterBy);
 
@@ -129,7 +130,7 @@ function TransferItemFormComponent({
 
   const handleInputChange = (field: keyof TransferItemType, value: any) => {
     if (field === 'mode') {
-        const newSourceCurrency = item.countryId ? getCountryById(item.countryId)?.defaultCurrency || billingCurrency : 
+        const newSourceCurrency = item.countryId ? getCountryById(item.countryId)?.defaultCurrency || billingCurrency :
                                (tripSettings.selectedCountries.length === 1 ? getCountryById(tripSettings.selectedCountries[0])?.defaultCurrency || billingCurrency : billingCurrency);
         onUpdate({
             ...item,
@@ -159,14 +160,14 @@ function TransferItemFormComponent({
     onUpdate({
       ...item,
       [field]: numValue,
-      selectedServicePriceId: undefined, 
+      selectedServicePriceId: undefined,
       selectedVehicleOptionId: undefined
     });
   };
 
   const handlePredefinedServiceSelect = (selectedValue: string) => {
     if (selectedValue === "none") {
-      const newSourceCurrency = item.countryId ? getCountryById(item.countryId)?.defaultCurrency || billingCurrency : 
+      const newSourceCurrency = item.countryId ? getCountryById(item.countryId)?.defaultCurrency || billingCurrency :
                                (tripSettings.selectedCountries.length === 1 ? getCountryById(tripSettings.selectedCountries[0])?.defaultCurrency || billingCurrency : billingCurrency);
       onUpdate({
         ...item,
@@ -222,7 +223,7 @@ function TransferItemFormComponent({
         onUpdate({ ...item, ...updatedItemPartial });
         setItemSourceCurrency(service.currency);
       } else {
-         const fallbackSourceCurrency = item.countryId ? getCountryById(item.countryId)?.defaultCurrency || billingCurrency : 
+         const fallbackSourceCurrency = item.countryId ? getCountryById(item.countryId)?.defaultCurrency || billingCurrency :
                                      (tripSettings.selectedCountries.length === 1 ? getCountryById(tripSettings.selectedCountries[0])?.defaultCurrency || billingCurrency : billingCurrency);
         onUpdate({
           ...item,
@@ -273,13 +274,16 @@ function TransferItemFormComponent({
 
   const serviceDefinitionNotFound = item.selectedServicePriceId && !selectedService && !isLoadingServices;
 
-  let isVehicleCostTypeReadOnly = false;
-  if (item.mode === 'vehicle' && selectedService && (selectedService.vehicleOptions && selectedService.vehicleOptions.length > 0 && item.selectedVehicleOptionId)) {
-    isVehicleCostTypeReadOnly = true;
-  } else if (item.mode === 'vehicle' && selectedService && (!selectedService.vehicleOptions || selectedService.vehicleOptions.length === 0)) {
-    isVehicleCostTypeReadOnly = true; // If service has no options, its base price/type is used
+  let isPriceReadOnly = false;
+  if (item.mode === 'ticket') {
+    isPriceReadOnly = !!selectedService;
+  } else if (item.mode === 'vehicle') {
+    if (selectedService && item.selectedVehicleOptionId && selectedService.vehicleOptions?.find(vo => vo.id === item.selectedVehicleOptionId)) {
+      isPriceReadOnly = true; // Price and type from selected option
+    } else if (selectedService && (!selectedService.vehicleOptions || selectedService.vehicleOptions.length === 0)) {
+      isPriceReadOnly = true; // Price and type from service's base definition (price1/subCategory)
+    }
   }
-
 
   const displayedVehicleType = item.mode === 'vehicle'
     ? (item.selectedVehicleOptionId && selectedService?.vehicleOptions?.find(vo => vo.id === item.selectedVehicleOptionId)?.vehicleType) ||
@@ -304,7 +308,7 @@ function TransferItemFormComponent({
   } else if (tripSettings.selectedProvinces.length > 0) {
     locationContext = tripSettings.selectedProvinces.join('/');
   }
-  
+
   const conversionDetails = (itemSourceCurrency !== billingCurrency && getRate && !isLoadingExchangeRates) ? getRate(itemSourceCurrency, billingCurrency) : null;
   const adultTicketPriceConverted = item.adultTicketPrice !== undefined && conversionDetails ? item.adultTicketPrice * conversionDetails.finalRate : null;
   const childTicketPriceConverted = item.childTicketPrice !== undefined && conversionDetails ? item.childTicketPrice * conversionDetails.finalRate : null;
@@ -445,8 +449,8 @@ function TransferItemFormComponent({
               onChange={(e) => handleNumericInputChange('adultTicketPrice', e.target.value)}
               min="0"
               placeholder="0.00"
-              readOnly={!!selectedService}
-              className={!!selectedService ? "bg-muted/50 cursor-not-allowed" : ""}
+              readOnly={isPriceReadOnly}
+              className={isPriceReadOnly ? "bg-muted/50 cursor-not-allowed" : ""}
             />
             {conversionDetails && adultTicketPriceConverted !== null && !isPriceReadOnly && !isLoadingExchangeRates && (
                <p className="text-xs text-muted-foreground mt-1">Approx. {formatCurrency(adultTicketPriceConverted, billingCurrency)}</p>
@@ -460,8 +464,8 @@ function TransferItemFormComponent({
               onChange={(e) => handleNumericInputChange('childTicketPrice', e.target.value)}
               min="0"
               placeholder="Defaults to adult price"
-              readOnly={!!selectedService}
-              className={!!selectedService ? "bg-muted/50 cursor-not-allowed" : ""}
+              readOnly={isPriceReadOnly}
+              className={isPriceReadOnly ? "bg-muted/50 cursor-not-allowed" : ""}
             />
             {conversionDetails && childTicketPriceConverted !== null && !isPriceReadOnly && !isLoadingExchangeRates && (
                 <p className="text-xs text-muted-foreground mt-1">Approx. {formatCurrency(childTicketPriceConverted, billingCurrency)}</p>
@@ -477,9 +481,9 @@ function TransferItemFormComponent({
               <Select
                 value={displayedVehicleType}
                 onValueChange={(value: VehicleType) => handleInputChange('vehicleType', value)}
-                disabled={isVehicleCostTypeReadOnly}
+                disabled={isPriceReadOnly}
               >
-                <SelectTrigger className={isVehicleCostTypeReadOnly ? "bg-muted/50 cursor-not-allowed" : ""}>
+                <SelectTrigger className={isPriceReadOnly ? "bg-muted/50 cursor-not-allowed" : ""}>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -497,10 +501,10 @@ function TransferItemFormComponent({
                 onChange={(e) => handleNumericInputChange('costPerVehicle', e.target.value)}
                 min="0"
                 placeholder="0.00"
-                readOnly={isVehicleCostTypeReadOnly}
-                className={isVehicleCostTypeReadOnly ? "bg-muted/50 cursor-not-allowed" : ""}
+                readOnly={isPriceReadOnly}
+                className={isPriceReadOnly ? "bg-muted/50 cursor-not-allowed" : ""}
               />
-              {conversionDetails && costPerVehicleConverted !== null && !isVehicleCostTypeReadOnly && !isLoadingExchangeRates && (
+              {conversionDetails && costPerVehicleConverted !== null && !isPriceReadOnly && !isLoadingExchangeRates && (
                 <p className="text-xs text-muted-foreground mt-1">Approx. {formatCurrency(costPerVehicleConverted, billingCurrency)}</p>
               )}
             </FormField>
@@ -540,4 +544,5 @@ function TransferItemFormComponent({
   );
 }
 export const TransferItemForm = React.memo(TransferItemFormComponent);
+
 
