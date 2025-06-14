@@ -75,22 +75,22 @@ export function QuotationRequestForm({ onSubmit, onCancel, defaultAgentId }: Quo
         budgetCurrency: 'USD',
         preferredCountryIds: [],
         preferredProvinceNames: [],
-        tripType: undefined, 
+        tripType: undefined,
       },
       accommodationPrefs: {
-        hotelStarRating: "3 Stars", 
+        hotelStarRating: "3 Stars",
         roomPreferences: "",
         specificHotelRequests: "",
       },
       activityPrefs: {
         requestedActivities: "",
       },
-      flightPrefs: { 
+      flightPrefs: {
         airportTransfersRequired: false,
         activityTransfersRequired: false,
       },
-      mealPrefs: { 
-        mealPlan: "Breakfast Only", 
+      mealPrefs: {
+        mealPlan: "Breakfast Only",
       },
       otherRequirements: "",
       status: "Pending",
@@ -153,7 +153,7 @@ export function QuotationRequestForm({ onSubmit, onCancel, defaultAgentId }: Quo
   const groupedProvinces = React.useMemo(() => {
     if (isLoadingProvinces || isLoadingCountries) return {};
     const groups: Record<string, { countryName: string; provinces: ProvinceItem[] }> = {};
-    
+
     displayableProvinces.forEach(province => {
       const country = countries.find(c => c.id === province.countryId);
       const countryKey = province.countryId || 'unknown';
@@ -189,7 +189,6 @@ export function QuotationRequestForm({ onSubmit, onCancel, defaultAgentId }: Quo
           if (typeof fieldError.message === 'string') {
             allMessages.push({ path: fieldPath, message: fieldError.message, type: fieldError.type });
           }
-          // If fieldError is an object but not the final error with a message (e.g., it's a nested group of errors)
           if (typeof fieldError === 'object' && !fieldError.message && Object.keys(fieldError).length > 0) {
             logAllMessages(fieldError, fieldPath);
           }
@@ -198,18 +197,9 @@ export function QuotationRequestForm({ onSubmit, onCancel, defaultAgentId }: Quo
     };
 
     logAllMessages(errors);
+    console.log('[DEBUG] Extracted validation messages:', allMessages);
 
-    if (allMessages.length > 0) {
-      console.error("[DEBUG] All validation messages found:", allMessages);
-    } else {
-      console.error("[DEBUG] No specific error messages extracted. Raw errors object:", errors);
-      try {
-        console.error("[DEBUG] Stringified errors (may be more informative):", JSON.stringify(errors, null, 2));
-      } catch (e) {
-        console.error("[DEBUG] Could not stringify the errors object.");
-      }
-    }
-    
+
     if (errors.root?.message) {
       console.error(`---> ROOT FORM ERROR: ${errors.root.message}`);
       const mainFormElement = (document.querySelector('form') as HTMLFormElement);
@@ -217,52 +207,36 @@ export function QuotationRequestForm({ onSubmit, onCancel, defaultAgentId }: Quo
       return;
     }
 
-    let firstErrorPath: FieldPath<QuotationRequest> | undefined = allMessages.length > 0 ? allMessages[0].path as FieldPath<QuotationRequest> : undefined;
-    let firstErrorMessage: string | undefined = allMessages.length > 0 ? allMessages[0].message : undefined;
-    
-    if (!firstErrorPath) { // Fallback if logAllMessages didn't populate (shouldn't happen if Object.keys(errors).length > 0)
-        const findFirstFieldError = (currentErrorsRecursive: any, pathPrefix = ""): boolean => {
-            const keys = Object.keys(currentErrorsRecursive);
-            for (const key of keys) {
-                if (key === "root") continue;
-                const errorDetail = currentErrorsRecursive[key];
-                const currentPath = pathPrefix ? `${pathPrefix}.${key}` : key;
-                if (errorDetail && typeof errorDetail === 'object') {
-                    if (typeof errorDetail.message === 'string') {
-                        firstErrorPath = currentPath as FieldPath<QuotationRequest>;
-                        firstErrorMessage = errorDetail.message;
-                        return true;
-                    } else if (findFirstFieldError(errorDetail, currentPath)) {
-                        return true;
-                    }
-                }
-            }
-            return false;
-        };
-        findFirstFieldError(errors);
-    }
-
-
-    if (firstErrorPath && firstErrorMessage) {
-      console.log(`[DEBUG] Attempting to focus on field: '${firstErrorPath}' due to error: '${firstErrorMessage}'`);
+    if (allMessages.length > 0) {
+      const firstError = allMessages[0];
+      console.error(`[DEBUG] First specific error: Path='${firstError.path}', Message='${firstError.message}', Type='${firstError.type}'`);
       try {
-        form.setFocus(firstErrorPath);
-        const fieldState = form.getFieldState(firstErrorPath);
-        const element = fieldState?.ref instanceof HTMLElement ? fieldState.ref : document.getElementsByName(firstErrorPath)[0] || document.getElementById(firstErrorPath);
-        
-        if (element instanceof HTMLElement) {
-          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          console.log("[DEBUG] Scrolled field into view:", firstErrorPath);
+        form.setFocus(firstError.path as FieldPath<QuotationRequest>);
+        const fieldState = form.getFieldState(firstError.path as FieldPath<QuotationRequest>);
+        let elementToScroll: HTMLElement | null = null;
+
+        if (fieldState?.ref instanceof HTMLElement) {
+          elementToScroll = fieldState.ref;
         } else {
-          console.warn("[DEBUG] Could not get a focusable HTMLElement to scroll for field:", firstErrorPath, ". Relying on setFocus(). Fallback scroll to form top.");
+          const elementsByName = document.getElementsByName(firstError.path);
+          if (elementsByName.length > 0 && elementsByName[0] instanceof HTMLElement) {
+            elementToScroll = elementsByName[0];
+          }
+        }
+
+        if (elementToScroll) {
+          elementToScroll.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          console.log("[DEBUG] Scrolled field element into view:", firstError.path);
+        } else {
+          console.warn("[DEBUG] Could not get a specific DOM element to scroll for field:", firstError.path, ". Relying on setFocus(). The <FormMessage /> should display the error. Fallback scroll to form top.");
           (document.querySelector('form') as HTMLFormElement)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
       } catch (focusError) {
-        console.error("[DEBUG] Error trying to set focus or scroll:", focusError, "Path:", firstErrorPath);
+        console.error("[DEBUG] Error trying to set focus or scroll:", focusError, "Path:", firstError.path);
         (document.querySelector('form') as HTMLFormElement)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
     } else {
-      console.warn("[DEBUG] No specific field error path or message was parsed for focusing. This could mean the error structure is unexpected or a custom validation is not attaching messages correctly. Scrolling to form top.");
+      console.warn("[DEBUG] No specific field error messages extracted. This could mean a custom validation issue or unexpected error structure. Scrolling to form top.");
       (document.querySelector('form') as HTMLFormElement)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
   };
@@ -321,7 +295,7 @@ export function QuotationRequestForm({ onSubmit, onCancel, defaultAgentId }: Quo
                                             : (countryField.value || []).filter((id) => id !== country.id);
                                           countryField.onChange(newValue);
                                           const currentProvinces = form.getValues("tripDetails.preferredProvinceNames") || [];
-                                          const validProvincesForNewCountries = currentProvinces.filter(provName => 
+                                          const validProvincesForNewCountries = currentProvinces.filter(provName =>
                                               allProvinces.find(p => p.name === provName && newValue.includes(p.countryId))
                                           );
                                           form.setValue("tripDetails.preferredProvinceNames", validProvincesForNewCountries);
@@ -474,7 +448,7 @@ export function QuotationRequestForm({ onSubmit, onCancel, defaultAgentId }: Quo
               <FormField control={form.control} name="flightPrefs.activityTransfersRequired" render={({ field }) => (<FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4 shadow"><FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl><div className="space-y-1 leading-none"><FormLabel>Include transfers for activities/tours?</FormLabel><FormDescription>Arrange transportation to/from scheduled activities and tours.</FormDescription></div><FormMessage /></FormItem>)} />
             </CardContent>
           </Card>
-          
+
           <Card>
             <CardHeader><CardTitle>Meal Preferences (Optional)</CardTitle></CardHeader>
             <CardContent className="space-y-4">
