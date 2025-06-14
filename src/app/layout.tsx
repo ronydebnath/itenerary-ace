@@ -12,7 +12,6 @@
 import type { Metadata } from 'next';
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
-import { SessionProvider } from "next-auth/react";
 
 export const metadata: Metadata = {
   title: 'Itinerary Ace',
@@ -36,11 +35,10 @@ export default function RootLayout({
         */}
       </head>
       <body className="font-body antialiased" suppressHydrationWarning>
-        <SessionProvider>
-          {children}
-        </SessionProvider>
+        {children}
         <Toaster />
       </body>
     </html>
   );
 }
+
