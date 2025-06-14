@@ -328,21 +328,13 @@ export function QuotationRequestForm({ onSubmit, onCancel, defaultAgentId }: Quo
                   <FormField control={form.control} name="tripDetails.preferredStartDate" render={({ field }) => (<FormItem className="flex flex-col"><FormLabel>Preferred Start Date</FormLabel><Controller control={form.control} name="tripDetails.preferredStartDate" render={({ field: { onChange, value } }) => <DatePicker date={value ? parseISO(value) : undefined} onDateChange={(date) => onChange(date ? format(date, 'yyyy-MM-dd') : undefined)} placeholder="Select start date"/>} /><FormMessage /></FormItem>)} />
                   <FormField control={form.control} name="tripDetails.preferredEndDate" render={({ field }) => (<FormItem className="flex flex-col"><FormLabel>Preferred End Date</FormLabel><Controller control={form.control} name="tripDetails.preferredEndDate" render={({ field: { onChange, value } }) => <DatePicker date={value ? parseISO(value) : undefined} onDateChange={(date) => onChange(date ? format(date, 'yyyy-MM-dd') : undefined)} placeholder="Select end date" minDate={watchStartDate ? parseISO(watchStartDate) : undefined} />} /><FormMessage /></FormItem>)} />
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <FormItem>
-                    <FormLabel>Trip Duration (Days)</FormLabel>
-                    <p className="h-10 flex items-center px-3 py-2 text-sm bg-muted/50 rounded-md text-muted-foreground">
-                        {typeof durationDays === 'number' ? `${durationDays} day(s)` : 'Auto-calculated'}
-                    </p>
-                    <FormMessage />
-                  </FormItem>
-                  <FormItem>
-                    <FormLabel>Trip Duration (Nights)</FormLabel>
-                     <p className="h-10 flex items-center px-3 py-2 text-sm bg-muted/50 rounded-md text-muted-foreground">
-                        {typeof durationNights === 'number' ? `${durationNights} night(s)` : 'Auto-calculated'}
-                    </p>
-                    <FormMessage />
-                  </FormItem>
+                <div>
+                  <FormLabel>Trip Duration</FormLabel>
+                  <p className="h-10 flex items-center px-3 py-2 text-sm bg-muted/50 rounded-md text-muted-foreground">
+                    {typeof durationNights === 'number' && typeof durationDays === 'number'
+                      ? `${durationNights} night(s) / ${durationDays} day(s)`
+                      : 'Auto-calculated based on dates'}
+                  </p>
                 </div>
                  <FormField control={form.control} name="tripDetails.tripType" render={({ field }) => (<FormItem><FormLabel>Type of Trip</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select trip type" /></SelectTrigger></FormControl><SelectContent>{TRIP_TYPES.map(type => <SelectItem key={type} value={type}>{type}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
                 <FormField control={form.control} name="tripDetails.budgetRange" render={({ field }) => (<FormItem><FormLabel>Budget Expectation</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select budget range" /></SelectTrigger></FormControl><SelectContent>{BUDGET_RANGES.map(range => <SelectItem key={range} value={range}>{range}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
