@@ -26,8 +26,8 @@ export default function OldCurrencyConverterPage() {
         <Repeat className="h-16 w-16 text-primary mx-auto mb-4" />
         <p className="text-sm">
           Currency Converter has been merged with Currency Management. If you are not redirected, please
-          <Link href="/admin/currencies-management" legacyBehavior>
-            <a className="text-primary hover:underline ml-1">click here</a>
+          <Link href="/admin/currencies-management" className="text-primary hover:underline ml-1">
+            click here
           </Link>.
         </p>
          <Link href="/admin" passHref className="mt-6 inline-block">
@@ -37,3 +37,4 @@ export default function OldCurrencyConverterPage() {
     </main>
   );
 }
+
