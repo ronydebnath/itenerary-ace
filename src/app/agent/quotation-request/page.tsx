@@ -16,12 +16,13 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Button } from "@/components/ui/button";
 import { QuotationRequestForm } from '@/components/agent/quotation-request-form';
-import type { QuotationRequest } from '@/types/quotation';
-import { generateQuotationId } from '@/types/quotation'; // Import the generator
+import type { QuotationRequest, Agency } from '@/types/quotation';
+import { generateQuotationIdNumericPart } from '@/types/quotation'; // Import the numeric part generator
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { ArrowLeft, FilePlus, LayoutDashboard, Loader2 } from 'lucide-react';
-import { useAgents } from '@/hooks/useAgents'; // Import useAgents
+import { Badge } from '@/components/ui/badge';
+import { ArrowLeft, FilePlus, LayoutDashboard, Loader2, Ticket } from 'lucide-react';
+import { useAgents } from '@/hooks/useAgents'; 
 
 const AGENT_QUOTATION_REQUESTS_KEY = 'itineraryAce_agentQuotationRequests';
 
@@ -30,44 +31,58 @@ export default function AgentQuotationRequestPage() {
   const { toast } = useToast();
   const { agents, agencies, isLoading: isLoadingAgentsData, getAgencyById } = useAgents();
   const placeholderAgentId = "agent_default_user"; 
+  const [displayQuotationId, setDisplayQuotationId] = React.useState<string | null>(null);
 
-  const getAgencyInitials = React.useCallback(() => {
-    if (isLoadingAgentsData || !agents.length || !agencies.length) {
-      return undefined;
+  const getAgencyInitials = React.useCallback((): string => {
+    if (isLoadingAgentsData || !agencies.length) {
+      return "AGY"; // Default if data is not ready
     }
-    // For this demo, we'll use a placeholder agent. In a real app, this would be the logged-in agent.
-    // const currentAgent = agents.find(agent => agent.id === placeholderAgentId);
-    // if (currentAgent && currentAgent.agencyId) {
-    //   const agency = getAgencyById(currentAgent.agencyId);
-    //   if (agency && agency.name) {
-    //     const words = agency.name.split(' ').filter(Boolean);
-    //     if (words.length === 1) return words[0].substring(0, Math.min(3, words[0].length)).toUpperCase();
-    //     return words.map(word => word[0]).slice(0, 3).join("").toUpperCase();
-    //   }
-    // }
-    // Fallback to a generic initial if agent or agency name is not found or structure is different
-    // For now, let's use a fixed one for the placeholder agent.
-    const defaultAgency = agencies.find(a => a.name === "Global Travel Experts"); // Example
-    if (defaultAgency && defaultAgency.name) {
-        const words = defaultAgency.name.split(' ').filter(Boolean);
+    const currentAgent = agents.find(agent => agent.id === placeholderAgentId);
+    let agency: Agency | undefined;
+
+    if (currentAgent && currentAgent.agencyId) {
+      agency = getAgencyById(currentAgent.agencyId);
+    }
+
+    if (!agency && agencies.length > 0) {
+      // Fallback to a known agency or the first one if specific link isn't found
+      agency = agencies.find(a => a.name.includes("Global Travel Experts")) || agencies[0];
+    }
+
+    if (agency && agency.name) {
+        const words = agency.name.split(' ').filter(Boolean);
         if (words.length === 1) return words[0].substring(0, Math.min(3, words[0].length)).toUpperCase();
         return words.map(word => word[0]).slice(0, 3).join("").toUpperCase();
     }
-    return "AGY"; // Default initials if not found
+    return "AGY"; // Final fallback
   }, [agents, agencies, isLoadingAgentsData, getAgencyById, placeholderAgentId]);
+
+  React.useEffect(() => {
+    if (!isLoadingAgentsData && agencies.length > 0 && !displayQuotationId) { 
+      const initials = getAgencyInitials();
+      const numericPart = generateQuotationIdNumericPart();
+      setDisplayQuotationId(`${initials}-${numericPart}`);
+    }
+  }, [isLoadingAgentsData, agencies, getAgencyInitials, displayQuotationId]);
 
 
   const handleFormSubmit = (data: Omit<QuotationRequest, 'id'>) => {
-    const agencyInitials = getAgencyInitials();
-    const newId = generateQuotationId(agencyInitials); // Use the new ID generator
+    if (!displayQuotationId) {
+      toast({
+        title: "Error Generating ID",
+        description: "Could not generate a Quotation ID. Please try refreshing the page.",
+        variant: "destructive",
+      });
+      return;
+    }
 
     const newRequest: QuotationRequest = {
       ...data,
-      id: newId, // Assign the newly generated ID
-      agentId: placeholderAgentId, // Already set in form's defaultValues, but ensure it's here
-      requestDate: new Date().toISOString(), // Ensure requestDate is set at submission
-      updatedAt: new Date().toISOString(), // Ensure updatedAt is set
-      status: data.status || "Pending", // Ensure status is set
+      id: displayQuotationId,
+      agentId: placeholderAgentId, 
+      requestDate: new Date().toISOString(), 
+      updatedAt: new Date().toISOString(), 
+      status: data.status || "Pending", 
     };
     console.log("Processing quotation request to be sent (saved for admin):", newRequest);
 
@@ -82,7 +97,7 @@ export default function AgentQuotationRequestPage() {
         description: `Your quotation request (ID: ${newRequest.id}) has been successfully saved.`,
         variant: "default",
       });
-      router.push('/agent/my-quotation-requests'); // Navigate to the list of requests
+      router.push('/agent/my-quotation-requests'); 
     } catch (error) {
       console.error("Error saving quotation request:", error);
       toast({
@@ -97,7 +112,7 @@ export default function AgentQuotationRequestPage() {
     router.push('/agent');
   };
 
-  if (isLoadingAgentsData && !agencies.length) {
+  if (isLoadingAgentsData && !agencies.length && !displayQuotationId) {
     return (
       <main className="min-h-screen bg-background p-4 md:p-8 flex justify-center items-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary mr-2" />
@@ -131,6 +146,18 @@ export default function AgentQuotationRequestPage() {
                 </Button>
               </Link>
             </div>
+            {displayQuotationId ? (
+                <div className="mt-2 text-center sm:text-left">
+                    <Badge variant="secondary" className="text-md px-3 py-1.5 font-mono bg-primary/10 text-primary border-primary/30">
+                       <Ticket className="mr-2 h-4 w-4"/> Quotation ID: {displayQuotationId}
+                    </Badge>
+                </div>
+            ) : (
+                <div className="mt-2 text-center sm:text-left flex items-center justify-center sm:justify-start">
+                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground mr-2"/> 
+                    <span className="text-sm text-muted-foreground">Generating Quotation ID...</span>
+                </div>
+            )}
           </CardHeader>
           <CardContent>
             <QuotationRequestForm
@@ -144,3 +171,4 @@ export default function AgentQuotationRequestPage() {
     </main>
   );
 }
+
