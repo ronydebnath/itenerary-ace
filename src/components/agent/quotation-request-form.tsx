@@ -15,7 +15,7 @@
 
 import * as React from 'react';
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm, Controller } from "react-hook-form";
+import { useForm, Controller, type FieldErrors } from "react-hook-form";
 import {
   QuotationRequestSchema,
   type QuotationRequest,
@@ -74,10 +74,10 @@ export function QuotationRequestForm({ onSubmit, onCancel, defaultAgentId }: Quo
         budgetCurrency: 'USD',
         preferredCountryIds: [],
         preferredProvinceNames: [],
-        tripType: undefined,
+        tripType: undefined, // Made optional
       },
       accommodationPrefs: {
-        hotelStarRating: "3 Stars",
+        hotelStarRating: "3 Stars", // Defaulted to "3 Stars"
         roomPreferences: "",
         specificHotelRequests: "",
       },
@@ -85,15 +85,19 @@ export function QuotationRequestForm({ onSubmit, onCancel, defaultAgentId }: Quo
         requestedActivities: "",
       },
       flightPrefs: {
+        // includeFlights: "To be discussed", // Removed
+        // departureCity: "", // Removed
+        // preferredAirlineClass: "", // Removed
         airportTransfersRequired: false,
         activityTransfersRequired: false,
       },
       mealPrefs: {
-        mealPlan: "Breakfast Only",
+        mealPlan: "Breakfast Only", // Defaulted to "Breakfast Only"
       },
       otherRequirements: "",
       status: "Pending",
       requestDate: new Date().toISOString(),
+      // quotationDeadline: undefined, // Removed
     },
   });
 
@@ -174,10 +178,36 @@ export function QuotationRequestForm({ onSubmit, onCancel, defaultAgentId }: Quo
     return Object.fromEntries(sortedGroupEntries);
   }, [displayableProvinces, isLoadingProvinces, isLoadingCountries, countries]);
 
+  const onFormSubmitError = (errors: FieldErrors<QuotationRequest>) => {
+    console.error("Quotation Form Validation Errors:", errors);
+    // Attempt to focus on the first field with an error
+    const firstErrorField = Object.keys(errors)[0] as keyof QuotationRequest | keyof QuotationRequest['clientInfo'] | keyof QuotationRequest['tripDetails'] | string; // More general type
+    
+    if (firstErrorField) {
+      // Construct a full name path if it's a nested field
+      let fieldNameToFocus = firstErrorField;
+      if (errors.clientInfo && firstErrorField in errors.clientInfo) {
+        fieldNameToFocus = `clientInfo.${firstErrorField}`;
+      } else if (errors.tripDetails && firstErrorField in errors.tripDetails) {
+        fieldNameToFocus = `tripDetails.${firstErrorField}`;
+      } // Add other nested structures if they exist (accommodationPrefs, etc.)
+      
+      const fieldElement = document.getElementsByName(fieldNameToFocus)[0];
+      if (fieldElement) {
+        fieldElement.focus({ preventScroll: true });
+        fieldElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      } else {
+        // Fallback if direct name match fails (e.g., for checkbox groups or complex fields)
+        const mainFormElement = (document.querySelector('form') as HTMLFormElement);
+        if(mainFormElement) mainFormElement.scrollIntoView({ behavior: 'smooth', block: 'start'});
+      }
+    }
+  };
+
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+      <form onSubmit={form.handleSubmit(onSubmit, onFormSubmitError)} className="space-y-6">
         <div className="space-y-6">
           <Card>
             <CardHeader>
@@ -325,13 +355,11 @@ export function QuotationRequestForm({ onSubmit, onCancel, defaultAgentId }: Quo
                 <FormField control={form.control} name="tripDetails.preferredStartDate" render={({ field }) => (<FormItem className="flex flex-col"><FormLabel>Preferred Start Date</FormLabel><Controller control={form.control} name="tripDetails.preferredStartDate" render={({ field: { onChange, value } }) => <DatePicker date={value ? parseISO(value) : undefined} onDateChange={(date) => onChange(date ? format(date, 'yyyy-MM-dd') : undefined)} placeholder="Select start date"/>} /><FormMessage /></FormItem>)} />
                 <FormField control={form.control} name="tripDetails.preferredEndDate" render={({ field }) => (<FormItem className="flex flex-col"><FormLabel>Preferred End Date</FormLabel><Controller control={form.control} name="tripDetails.preferredEndDate" render={({ field: { onChange, value } }) => <DatePicker date={value ? parseISO(value) : undefined} onDateChange={(date) => onChange(date ? format(date, 'yyyy-MM-dd') : undefined)} placeholder="Select end date" minDate={watchStartDate ? parseISO(watchStartDate) : undefined} />} /><FormMessage /></FormItem>)} />
               </div>
-              <div>
-                <p className="text-base text-muted-foreground pt-2">
-                  {typeof durationNights === 'number' && typeof durationDays === 'number'
-                    ? `Duration: ${durationNights} night(s) / ${durationDays} day(s)`
-                    : 'Duration: Auto-calculated based on dates'}
-                </p>
-              </div>
+              <p className="text-base text-muted-foreground pt-2">
+                {typeof durationNights === 'number' && typeof durationDays === 'number'
+                  ? `Duration: ${durationNights} night(s) / ${durationDays} day(s)`
+                  : 'Duration: Auto-calculated based on dates'}
+              </p>
                 <FormField control={form.control} name="tripDetails.tripType" render={({ field }) => (<FormItem><FormLabel>Type of Trip (Optional)</FormLabel><Select onValueChange={field.onChange} value={field.value || ""}><FormControl><SelectTrigger><SelectValue placeholder="Select trip type (Optional)" /></SelectTrigger></FormControl><SelectContent>{TRIP_TYPES.map(type => <SelectItem key={type} value={type}>{type}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
               <FormField control={form.control} name="tripDetails.budgetRange" render={({ field }) => (<FormItem><FormLabel>Budget Expectation</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select budget range" /></SelectTrigger></FormControl><SelectContent>{BUDGET_RANGES.map(range => <SelectItem key={range} value={range}>{range}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
               {watchBudgetRange === "Specific Amount (see notes)" && (
