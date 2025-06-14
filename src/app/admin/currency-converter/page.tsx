@@ -118,7 +118,7 @@ export default function CurrencyConverterPage() {
 
   const handleConversionSubmit = (data: ConversionFormValues) => {
     setConversionError(null);
-    setConversionResult(null);
+    setConversionResult(null); // Clear previous result
     const rateDetails = getRate(data.fromCurrency, data.toCurrency);
     console.log("CurrencyConverterPage: rateDetails from getRate:", rateDetails);
 
