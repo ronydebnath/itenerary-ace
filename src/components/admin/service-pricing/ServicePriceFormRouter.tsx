@@ -414,7 +414,7 @@ export function ServicePriceFormRouter({ initialData, onSubmit, onCancel }: Serv
             {watchedCategory === 'hotel' && <HotelPriceForm form={form} />}
             {watchedCategory === 'activity' && <ActivityPriceForm form={form} />}
             {watchedCategory === 'transfer' && <TransferPriceForm form={form} />}
-            {watchedCategory === 'meal' && <MealPriceForm form={form} />}
+            {watchedCategory === 'meal' && <MealPriceForm form={form} isCreateMode={isCreateMode} />}
             {watchedCategory === 'misc' && <MiscellaneousPriceForm form={form} isCreateMode={isCreateMode} />}
           </div>
         </ScrollArea>

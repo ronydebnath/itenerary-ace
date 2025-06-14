@@ -26,9 +26,10 @@ import { CURRENCIES } from '@/types/itinerary';
 
 interface MealPriceFormProps {
   form: ReturnType<typeof useFormContext<ServicePriceFormValues>>;
+  isCreateMode?: boolean;
 }
 
-export function MealPriceForm({ form }: MealPriceFormProps) {
+export function MealPriceForm({ form, isCreateMode = false }: MealPriceFormProps) {
   const { getServicePrices, getServicePriceById, isLoading: isLoadingServices } = useServicePrices();
   const [availableMealServices, setAvailableMealServices] = React.useState<any[]>([]);
 
@@ -70,7 +71,7 @@ export function MealPriceForm({ form }: MealPriceFormProps) {
 
   return (
     <div className="space-y-6">
-      {availableMealServices.length > 0 && (
+      {!isCreateMode && availableMealServices.length > 0 && (
         <div className="border border-border rounded-md p-4 relative">
           <p className="text-sm font-semibold -mt-6 ml-2 px-1 bg-background inline-block absolute left-2 top-[-0.7rem] mb-4">Predefined Meal Services</p>
           <ShadcnFormField
@@ -113,7 +114,7 @@ export function MealPriceForm({ form }: MealPriceFormProps) {
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Meal Type (e.g., Set Menu, Buffet, A La Carte Credit)</FormLabel>
-                <FormControl><Input placeholder="Details..." {...field} value={field.value || ''} readOnly={isPriceReadOnly} className={isPriceReadOnly ? "bg-muted/50 cursor-not-allowed" : ""} /></FormControl>
+                <FormControl><Input placeholder="Details..." {...field} value={field.value || ''} readOnly={isPriceReadOnly && !isCreateMode} className={(isPriceReadOnly && !isCreateMode) ? "bg-muted/50 cursor-not-allowed" : ""} /></FormControl>
                 <FormMessage />
               </FormItem>
             )}
@@ -125,7 +126,7 @@ export function MealPriceForm({ form }: MealPriceFormProps) {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Adult Meal Price ({currency})</FormLabel>
-                  <FormControl><Input type="number" placeholder="0.00" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || 0)} value={field.value ?? ''} readOnly={isPriceReadOnly} className={isPriceReadOnly ? "bg-muted/50 cursor-not-allowed" : ""} /></FormControl>
+                  <FormControl><Input type="number" placeholder="0.00" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || 0)} value={field.value ?? ''} readOnly={isPriceReadOnly && !isCreateMode} className={(isPriceReadOnly && !isCreateMode) ? "bg-muted/50 cursor-not-allowed" : ""} /></FormControl>
                   <FormMessage />
                 </FormItem>
               )}
@@ -136,7 +137,7 @@ export function MealPriceForm({ form }: MealPriceFormProps) {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Child Meal Price ({currency}) (Optional)</FormLabel>
-                  <FormControl><Input type="number" placeholder="0.00" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)} value={field.value ?? ''} readOnly={isPriceReadOnly} className={isPriceReadOnly ? "bg-muted/50 cursor-not-allowed" : ""} /></FormControl>
+                  <FormControl><Input type="number" placeholder="0.00" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)} value={field.value ?? ''} readOnly={isPriceReadOnly && !isCreateMode} className={(isPriceReadOnly && !isCreateMode) ? "bg-muted/50 cursor-not-allowed" : ""} /></FormControl>
                   <FormMessage />
                 </FormItem>
               )}
