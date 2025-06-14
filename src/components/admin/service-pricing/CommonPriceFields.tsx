@@ -1,3 +1,4 @@
+
 /**
  * @fileoverview This component renders the common input fields shared across various
  * service price forms, such as country, province, category, name, currency, and notes.
@@ -82,6 +83,25 @@ export function CommonPriceFields({ form }: CommonPriceFieldsProps) {
     <div className="border border-border rounded-md p-3 sm:p-4 relative">
       <p className="text-xs sm:text-sm font-semibold -mt-5 sm:-mt-6 ml-2 px-1 bg-background inline-block absolute left-2 top-[-0.7rem] mb-4">Basic Service Details</p>
       <div className="space-y-3 sm:space-y-4 pt-2">
+        <FormField
+          control={form.control}
+          name="category"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel className="text-xs sm:text-sm">Category</FormLabel>
+              <Select
+                onValueChange={field.onChange}
+                value={field.value}
+              >
+                <FormControl><SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Select category" /></SelectTrigger></FormControl>
+                <SelectContent>
+                  {SERVICE_CATEGORIES.map(cat => <SelectItem key={cat} value={cat}>{cat.charAt(0).toUpperCase() + cat.slice(1)}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
             <FormField
             control={form.control}
@@ -147,25 +167,6 @@ export function CommonPriceFields({ form }: CommonPriceFieldsProps) {
         </div>
         <FormField
           control={form.control}
-          name="category"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel className="text-xs sm:text-sm">Category</FormLabel>
-              <Select
-                onValueChange={field.onChange}
-                value={field.value}
-              >
-                <FormControl><SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Select category" /></SelectTrigger></FormControl>
-                <SelectContent>
-                  {SERVICE_CATEGORIES.map(cat => <SelectItem key={cat} value={cat}>{cat.charAt(0).toUpperCase() + cat.slice(1)}</SelectItem>)}
-                </SelectContent>
-              </Select>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
           name="name"
           render={({ field }) => (
             <FormItem>
@@ -211,3 +212,4 @@ export function CommonPriceFields({ form }: CommonPriceFieldsProps) {
     </div>
   );
 }
+
