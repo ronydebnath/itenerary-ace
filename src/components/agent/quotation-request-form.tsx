@@ -1,3 +1,4 @@
+
 /**
  * @fileoverview This component provides a comprehensive form for travel agents to submit
  * new quotation requests. It captures client information, detailed trip preferences
@@ -73,10 +74,10 @@ export function QuotationRequestForm({ onSubmit, onCancel, defaultAgentId }: Quo
         budgetCurrency: 'USD',
         preferredCountryIds: [],
         preferredProvinceNames: [],
-        tripType: undefined, 
+        tripType: undefined,
       },
       accommodationPrefs: {
-        hotelStarRating: "3 Stars", 
+        hotelStarRating: "3 Stars",
         roomPreferences: "",
         specificHotelRequests: "",
       },
@@ -344,7 +345,7 @@ export function QuotationRequestForm({ onSubmit, onCancel, defaultAgentId }: Quo
             <CardContent className="space-y-4">
               <FormField control={form.control} name="accommodationPrefs.hotelStarRating" render={({ field }) => (<FormItem><FormLabel>Preferred Hotel Star Rating</FormLabel><Select onValueChange={field.onChange} value={field.value || "3 Stars"}><FormControl><SelectTrigger><SelectValue placeholder="Any star rating" /></SelectTrigger></FormControl><SelectContent>{HOTEL_STAR_RATINGS.map(rating => <SelectItem key={rating} value={rating}>{rating}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
               <FormField control={form.control} name="accommodationPrefs.roomPreferences" render={({ field }) => (<FormItem><FormLabel>Room Preferences</FormLabel><FormControl><Textarea placeholder="e.g., 1 King Bed, 2 Twin + Extra Bed, Connecting rooms" {...field} value={field.value || ''} rows={2} /></FormControl><FormMessage /></FormItem>)} />
-              <FormField control={form.control} name="accommodationPrefs.specificHotelRequests" render={({ field }) => (<FormItem><FormLabel>Specific Hotel Names or Location Preferences</FormLabel><FormControl><Textarea placeholder="e.g., 'Near Eiffel Tower', 'XYZ Resort', 'Quiet area'" {...field} value={field.value || ''} rows={2} /></FormControl><FormMessage /></FormItem>)} />
+              <FormField control={form.control} name="accommodationPrefs.specificHotelRequests" render={({ field }) => (<FormItem><FormLabel>Specific Hotel Names or Location Preferences</FormLabel><FormControl><Textarea placeholder="e.g., 'Riverside hotel in Bangkok', 'Beachfront resort in Phuket', 'Quiet hotel near Old City Chiang Mai'" {...field} value={field.value || ''} rows={2} /></FormControl><FormMessage /></FormItem>)} />
             </CardContent>
           </Card>
 
@@ -399,3 +400,4 @@ export function QuotationRequestForm({ onSubmit, onCancel, defaultAgentId }: Quo
     </Form>
   );
 }
+
