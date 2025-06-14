@@ -151,7 +151,7 @@ export function useExchangeRates() {
       setMarkupPercentageState(0);
     }
     setIsLoading(false);
-  }, [toast]); // Removed apiRates from dependency array as it's fetched inside
+  }, [toast]);
 
   React.useEffect(() => {
     fetchAndSeedData(true); // Attempt API fetch on initial load
@@ -270,6 +270,7 @@ export function useExchangeRates() {
     let finalCombinedRate = baseCombinedRate;
     let actualMarkupApplied = 0;
 
+    // Apply markup if the currencies are different and markup is configured
     if (fromCurrency !== toCurrency && markupPercentage > 0) {
       finalCombinedRate = baseCombinedRate * (1 + (markupPercentage / 100));
       actualMarkupApplied = markupPercentage;
@@ -293,4 +294,3 @@ export function useExchangeRates() {
     lastApiFetchTimestamp
   };
 }
-
