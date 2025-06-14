@@ -18,12 +18,14 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from '@/components/ui/badge';
-import { format, parseISO, isValid } from 'date-fns';
+import { format as formatDateFns, parseISO, isValid } from 'date-fns';
 import { CalendarDays, Info, Tag, AlertCircle, Loader2 } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
 import { useServicePrices } from '@/hooks/useServicePrices';
 import { useCountries } from '@/hooks/useCountries';
+import { useExchangeRates } from '@/hooks/useExchangeRates';
+import { formatCurrency } from '@/lib/utils';
 
 interface ActivityItemFormProps {
   item: ActivityItemType;
@@ -44,7 +46,7 @@ const WEEKDAYS_MAP = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 function ActivityItemFormComponent({
   item,
   travelers,
-  currency: billingCurrency, // Renamed for clarity
+  currency: billingCurrency, 
   dayNumber,
   tripSettings,
   onUpdate,
@@ -57,8 +59,26 @@ function ActivityItemFormComponent({
   const { allServicePrices: hookServicePrices, isLoading: isLoadingServices } = useServicePrices();
   const currentAllServicePrices = passedInAllServicePrices || hookServicePrices;
   const { countries, getCountryById } = useCountries();
+  const { getRate } = useExchangeRates();
   const [activityServices, setActivityServices] = React.useState<ServicePriceItem[]>([]);
-  const [itemSourceCurrency, setItemSourceCurrency] = React.useState<CurrencyCode>(billingCurrency);
+  
+  const determineItemSourceCurrency = React.useCallback(() => {
+    const service = item.selectedServicePriceId ? currentAllServicePrices.find(sp => sp.id === item.selectedServicePriceId) : undefined;
+    if (service) return service.currency;
+
+    const itemCountryDef = item.countryId ? getCountryById(item.countryId) : 
+                           (tripSettings.selectedCountries.length === 1 ? getCountryById(tripSettings.selectedCountries[0]) : undefined);
+    if (itemCountryDef?.defaultCurrency) return itemCountryDef.defaultCurrency;
+    
+    return billingCurrency; // Fallback
+  }, [item.selectedServicePriceId, item.countryId, currentAllServicePrices, getCountryById, tripSettings.selectedCountries, billingCurrency]);
+
+  const [itemSourceCurrency, setItemSourceCurrency] = React.useState<CurrencyCode>(determineItemSourceCurrency());
+
+  React.useEffect(() => {
+    setItemSourceCurrency(determineItemSourceCurrency());
+  }, [determineItemSourceCurrency]);
+
 
   const getServicePriceById = React.useCallback((id: string) => {
     return currentAllServicePrices.find(sp => sp.id === id);
@@ -83,12 +103,10 @@ function ActivityItemFormComponent({
       setActivityServices([]);
       return;
     }
-    let filteredServices = currentAllServicePrices.filter(s => s.category === 'activity'); // Initial filter by category
+    let filteredServices = currentAllServicePrices.filter(s => s.category === 'activity');
     
-    // Determine the currency to filter by: service's own currency if selected, else billing currency
-    const currencyToFilterBy = selectedActivityService?.currency || billingCurrency;
+    const currencyToFilterBy = itemSourceCurrency; // Filter by current item source for selection
     filteredServices = filteredServices.filter(s => s.currency === currencyToFilterBy);
-
 
     const countryIdToFilterBy = item.countryId || (tripSettings.selectedCountries.length === 1 ? tripSettings.selectedCountries[0] : undefined);
     const provincesToFilterBy = item.province ? [item.province] : tripSettings.selectedProvinces;
@@ -103,15 +121,7 @@ function ActivityItemFormComponent({
          filteredServices = filteredServices.filter(s => !s.province || provincesToFilterBy.includes(s.province));
     }
     setActivityServices(filteredServices.sort((a,b) => a.name.localeCompare(b.name)));
-  }, [currentAllServicePrices, billingCurrency, item.countryId, item.province, tripSettings.selectedCountries, tripSettings.selectedProvinces, isLoadingServices, passedInAllServicePrices, selectedActivityService]);
-
-  React.useEffect(() => {
-    if (selectedActivityService) {
-      setItemSourceCurrency(selectedActivityService.currency);
-    } else {
-      setItemSourceCurrency(billingCurrency);
-    }
-  }, [selectedActivityService, billingCurrency]);
+  }, [currentAllServicePrices, itemSourceCurrency, item.countryId, item.province, tripSettings.selectedCountries, tripSettings.selectedProvinces, isLoadingServices, passedInAllServicePrices]);
 
 
   const handleNumericInputChange = (field: keyof ActivityItemType, value: string) => {
@@ -131,6 +141,8 @@ function ActivityItemFormComponent({
 
   const handlePredefinedServiceSelect = (selectedValue: string) => {
     if (selectedValue === "none") {
+      const newSourceCurrency = item.countryId ? getCountryById(item.countryId)?.defaultCurrency || billingCurrency : 
+                               (tripSettings.selectedCountries.length === 1 ? getCountryById(tripSettings.selectedCountries[0])?.defaultCurrency || billingCurrency : billingCurrency);
       onUpdate({
         ...item,
         name: `New activity`,
@@ -143,7 +155,7 @@ function ActivityItemFormComponent({
         countryId: item.countryId,
         countryName: item.countryId ? countries.find(c => c.id === item.countryId)?.name : undefined,
       });
-      setItemSourceCurrency(billingCurrency);
+      setItemSourceCurrency(newSourceCurrency);
     } else {
       const service = getServicePriceById(selectedValue);
       if (service) {
@@ -162,6 +174,8 @@ function ActivityItemFormComponent({
         });
         setItemSourceCurrency(service.currency);
       } else {
+        const fallbackSourceCurrency = item.countryId ? getCountryById(item.countryId)?.defaultCurrency || billingCurrency : 
+                                     (tripSettings.selectedCountries.length === 1 ? getCountryById(tripSettings.selectedCountries[0])?.defaultCurrency || billingCurrency : billingCurrency);
         onUpdate({
           ...item,
           name: `New activity`,
@@ -171,7 +185,7 @@ function ActivityItemFormComponent({
           childPrice: undefined,
           note: undefined,
         });
-        setItemSourceCurrency(billingCurrency);
+        setItemSourceCurrency(fallbackSourceCurrency);
       }
     }
   };
@@ -222,6 +236,11 @@ function ActivityItemFormComponent({
   } else if (tripSettings.selectedProvinces.length > 0) {
     locationContext = tripSettings.selectedProvinces.join('/');
   }
+
+  const conversionDetails = (itemSourceCurrency !== billingCurrency && getRate) ? getRate(itemSourceCurrency, billingCurrency) : null;
+  const adultPriceConverted = item.adultPrice !== undefined && conversionDetails ? item.adultPrice * conversionDetails.finalRate : null;
+  const childPriceConverted = item.childPrice !== undefined && conversionDetails ? item.childPrice * conversionDetails.finalRate : null;
+
 
   return (
     <BaseItemForm
@@ -347,13 +366,13 @@ function ActivityItemFormComponent({
               <CalendarDays className="h-4 w-4 mr-2 mt-0.5 text-muted-foreground flex-shrink-0"/>
               <div className="text-xs text-muted-foreground">
                 {selectedPackage.validityStartDate && selectedPackage.validityEndDate && isValid(parseISO(selectedPackage.validityStartDate)) && isValid(parseISO(selectedPackage.validityEndDate)) && (
-                  <p>Valid: {format(parseISO(selectedPackage.validityStartDate), 'dd MMM yyyy')} - {format(parseISO(selectedPackage.validityEndDate), 'dd MMM yyyy')}</p>
+                  <p>Valid: {formatDateFns(parseISO(selectedPackage.validityStartDate), 'dd MMM yyyy')} - {formatDateFns(parseISO(selectedPackage.validityEndDate), 'dd MMM yyyy')}</p>
                 )}
                 {selectedPackage.closedWeekdays && selectedPackage.closedWeekdays.length > 0 && (
                   <p>Closed on: {selectedPackage.closedWeekdays.map(d => WEEKDAYS_MAP[d]).join(', ')}</p>
                 )}
                 {selectedPackage.specificClosedDates && selectedPackage.specificClosedDates.length > 0 && (
-                  <p>Specific Closures: {selectedPackage.specificClosedDates.map(d => isValid(parseISO(d)) ? format(parseISO(d), 'dd MMM') : d).join(', ')}</p>
+                  <p>Specific Closures: {selectedPackage.specificClosedDates.map(d => isValid(parseISO(d)) ? formatDateFns(parseISO(d), 'dd MMM') : d).join(', ')}</p>
                 )}
               </div>
             </div>
@@ -378,6 +397,9 @@ function ActivityItemFormComponent({
             readOnly={isPriceReadOnly}
             className={isPriceReadOnly ? "bg-muted/50 cursor-not-allowed" : ""}
           />
+           {conversionDetails && adultPriceConverted !== null && !isPriceReadOnly && (
+            <p className="text-xs text-muted-foreground mt-1">Approx. {formatCurrency(adultPriceConverted, billingCurrency)}</p>
+          )}
         </FormField>
         <FormField label={`Child Price (${itemSourceCurrency}) (Optional)`} id={`childPrice-${item.id}`}>
           <Input
@@ -390,6 +412,9 @@ function ActivityItemFormComponent({
             readOnly={isPriceReadOnly}
             className={isPriceReadOnly ? "bg-muted/50 cursor-not-allowed" : ""}
           />
+          {conversionDetails && childPriceConverted !== null && !isPriceReadOnly && (
+            <p className="text-xs text-muted-foreground mt-1">Approx. {formatCurrency(childPriceConverted, billingCurrency)}</p>
+          )}
         </FormField>
         <FormField label="End Day (Optional)" id={`endDay-${item.id}`}>
           <Input

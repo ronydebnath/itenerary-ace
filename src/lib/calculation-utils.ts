@@ -28,7 +28,8 @@ import type {
   ServicePriceItem,
   TripSettings,
   HotelDefinition,
-  CurrencyCode
+  CurrencyCode,
+  CountryItem
 } from '@/types/itinerary';
 import { formatCurrency } from './utils';
 import { addDays, isWithinInterval, parseISO, format, isValid, startOfDay } from 'date-fns';
@@ -96,8 +97,8 @@ function calculateTransferCostInternal(
         const transferDate = addDays(parseISO(tripSettings.startDate), item.day - 1);
         for (const period of serviceDefinition.surchargePeriods) {
           if (period.startDate && period.endDate) {
-            const periodStartDate = parseISO(period.startDate);
-            const periodEndDate = parseISO(period.endDate);
+             const periodStartDate = typeof period.startDate === 'string' ? parseISO(period.startDate) : period.startDate;
+             const periodEndDate = typeof period.endDate === 'string' ? parseISO(period.endDate) : period.endDate;
             if (isValid(periodStartDate) && isValid(periodEndDate) && isWithinInterval(transferDate, { start: periodStartDate, end: periodEndDate })) {
               appliedSurcharge = period.surchargeAmount;
               surchargeName = period.name;
@@ -314,6 +315,7 @@ function calculateMiscCostInternal(item: MiscItem, allTravelers: Traveler[], sou
 // --- Main Cost Calculation Function ---
 export function calculateAllCosts(
   tripData: TripData,
+  countries: CountryItem[], // Now required
   allServicePricesInput?: ServicePriceItem[],
   allHotelDefinitionsInput?: HotelDefinition[],
   getRateForConversion?: (from: CurrencyCode, to: CurrencyCode) => ConversionRateDetails | null
@@ -329,22 +331,37 @@ export function calculateAllCosts(
 
   Object.values(tripData.days).forEach(dayItinerary => {
     dayItinerary.items.forEach(item => {
-      let sourceCurrency: CurrencyCode = billingCurrency; // Default to billing currency if not otherwise specified
+      let sourceCurrency: CurrencyCode = billingCurrency; 
       let serviceDefinition: ServicePriceItem | undefined = undefined;
+      const itemCountryForContext = item.countryId || (tripData.settings.selectedCountries.length === 1 ? tripData.settings.selectedCountries[0] : undefined);
 
       if (item.selectedServicePriceId) {
-        serviceDefinition = allServicePrices.find(sp => sp.id === item.selectedServicePriceId);
-        if (serviceDefinition) {
-          sourceCurrency = serviceDefinition.currency;
-        }
+          serviceDefinition = allServicePrices.find(sp => sp.id === item.selectedServicePriceId);
+          if (serviceDefinition) {
+              sourceCurrency = serviceDefinition.currency;
+          } else {
+              // console.warn(`Service definition not found for ID: ${item.selectedServicePriceId} on item ${item.name}. Falling back on currency.`);
+              const itemCountryDef = itemCountryForContext ? countries.find(c => c.id === itemCountryForContext) : undefined;
+              if (itemCountryDef?.defaultCurrency) sourceCurrency = itemCountryDef.defaultCurrency;
+          }
       } else if (item.type === 'hotel' && item.hotelDefinitionId) {
-        const hotelServicePriceDef = allServicePrices.find(sp => sp.category === 'hotel' && sp.hotelDetails?.id === item.hotelDefinitionId);
-        if (hotelServicePriceDef) {
-          sourceCurrency = hotelServicePriceDef.currency;
-        } else {
-          console.warn(`No ServicePriceItem found for HotelDefinition ID: ${item.hotelDefinitionId}. Assuming prices are in billing currency.`);
-        }
+          const hotelServicePriceDef = allServicePrices.find(sp => sp.category === 'hotel' && sp.hotelDetails?.id === item.hotelDefinitionId);
+          if (hotelServicePriceDef) {
+              sourceCurrency = hotelServicePriceDef.currency;
+          } else {
+              const hotelItemCountryDef = itemCountryForContext ? countries.find(c => c.id === itemCountryForContext) : undefined;
+              if (hotelItemCountryDef?.defaultCurrency) {
+                  sourceCurrency = hotelItemCountryDef.defaultCurrency;
+              }
+              // console.warn(`No ServicePriceItem found for HotelDefinition ID: ${item.hotelDefinitionId}. Using ${sourceCurrency}.`);
+          }
+      } else { 
+          const itemCountryDef = itemCountryForContext ? countries.find(c => c.id === itemCountryForContext) : undefined;
+          if (itemCountryDef?.defaultCurrency) {
+              sourceCurrency = itemCountryDef.defaultCurrency;
+          }
       }
+
 
       let calcResult;
       switch (item.type) {
@@ -422,25 +439,26 @@ export function calculateAllCosts(
     dItem.childCost = parseFloat(dItem.childCost.toFixed(2));
     dItem.totalCost = parseFloat(dItem.totalCost.toFixed(2));
 
-    if (dItem.occupancyDetails && dItem.type === 'Hotels') {
-      let hotelSourceCurrency = billingCurrency; // Default for the parent hotel item
-      const parentHotelItem = dItem.day ? tripData.days[dItem.day]?.items.find(i => i.id === dItem.id && i.type === 'hotel') as HotelItem | undefined : undefined;
-      
+    if (dItem.occupancyDetails && dItem.type === 'Hotels' && dItem.day !== undefined) {
+      const parentHotelItem = tripData.days[dItem.day]?.items.find(i => i.id === dItem.id && i.type === 'hotel') as HotelItem | undefined;
+      let hotelSourceCurrency = billingCurrency;
+
       if (parentHotelItem) {
-        if (parentHotelItem.selectedServicePriceId) {
-          const hotelSp = allServicePrices.find(sp => sp.id === parentHotelItem.selectedServicePriceId);
-          if (hotelSp) hotelSourceCurrency = hotelSp.currency;
-        } else if (parentHotelItem.hotelDefinitionId) {
-          const hotelSpFromDef = allServicePrices.find(sp => sp.category === 'hotel' && sp.hotelDetails?.id === parentHotelItem.hotelDefinitionId);
-          if (hotelSpFromDef) hotelSourceCurrency = hotelSpFromDef.currency;
-        }
-      } else {
-        // Fallback if parentHotelItem not found, though this shouldn't ideally happen if dItem.day is valid
-        // This might occur if hotel is directly defined as a service price item without full hotel def linkage in itinerary item
-        const directServicePriceForHotel = allServicePrices.find(sp => sp.id === dItem.id && sp.category === 'hotel');
-        if (directServicePriceForHotel) {
-            hotelSourceCurrency = directServicePriceForHotel.currency;
-        }
+          if (parentHotelItem.selectedServicePriceId) {
+              const hotelSp = allServicePrices.find(sp => sp.id === parentHotelItem.selectedServicePriceId);
+              if (hotelSp) hotelSourceCurrency = hotelSp.currency;
+          } else if (parentHotelItem.hotelDefinitionId) {
+              const hotelSpFromDef = allServicePrices.find(sp => sp.category === 'hotel' && sp.hotelDetails?.id === parentHotelItem.hotelDefinitionId);
+              if (hotelSpFromDef) {
+                  hotelSourceCurrency = hotelSpFromDef.currency;
+              } else {
+                  const hotelItemCountryDef = parentHotelItem.countryId ? countries.find(c => c.id === parentHotelItem.countryId) : undefined;
+                  if (hotelItemCountryDef?.defaultCurrency) hotelSourceCurrency = hotelItemCountryDef.defaultCurrency;
+              }
+          } else { // Custom hotel item pricing
+              const hotelItemCountryDef = parentHotelItem.countryId ? countries.find(c => c.id === parentHotelItem.countryId) : undefined;
+              if (hotelItemCountryDef?.defaultCurrency) hotelSourceCurrency = hotelItemCountryDef.defaultCurrency;
+          }
       }
 
       dItem.occupancyDetails.forEach(od => {

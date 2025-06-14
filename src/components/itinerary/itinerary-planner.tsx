@@ -25,7 +25,8 @@ import { DetailsSummaryTable } from '../itinerary/details-summary-table';
 import { calculateAllCosts } from '@/lib/calculation-utils';
 import { useServicePrices } from '@/hooks/useServicePrices';
 import { useHotelDefinitions } from '@/hooks/useHotelDefinitions';
-import { useExchangeRates } from '@/hooks/useExchangeRates'; // Import useExchangeRates
+import { useExchangeRates } from '@/hooks/useExchangeRates';
+import { useCountries } from '@/hooks/useCountries'; // Import useCountries
 import { addDays, format, parseISO } from 'date-fns';
 import { PlannerHeader } from './planner-header';
 import { DayNavigation } from './day-navigation';
@@ -61,16 +62,17 @@ export function ItineraryPlanner({
   const [showCosts, setShowCosts] = React.useState<boolean>(true);
   const { allServicePrices, isLoading: isLoadingServices } = useServicePrices();
   const { allHotelDefinitions, isLoading: isLoadingHotelDefinitions } = useHotelDefinitions();
-  const { getRate, isLoading: isLoadingExchangeRates, exchangeRates, globalMarkupPercentage, specificMarkupRates } = useExchangeRates(); // Use the hook
+  const { getRate, isLoading: isLoadingExchangeRates, exchangeRates, globalMarkupPercentage, specificMarkupRates } = useExchangeRates();
+  const { countries, isLoading: isLoadingCountries } = useCountries(); // Get countries for passing to calculateAllCosts
 
   React.useEffect(() => {
-    if (tripData && !isLoadingServices && !isLoadingHotelDefinitions && !isLoadingExchangeRates) {
-      const summary = calculateAllCosts(tripData, allServicePrices, allHotelDefinitions, getRate);
+    if (tripData && !isLoadingServices && !isLoadingHotelDefinitions && !isLoadingExchangeRates && !isLoadingCountries) {
+      const summary = calculateAllCosts(tripData, countries, allServicePrices, allHotelDefinitions, getRate);
       setCostSummary(summary);
     } else {
       setCostSummary(null);
     }
-  }, [tripData, isLoadingServices, isLoadingHotelDefinitions, isLoadingExchangeRates, allServicePrices, allHotelDefinitions, getRate, exchangeRates, globalMarkupPercentage, specificMarkupRates]); // Add exchange rate related dependencies
+  }, [tripData, isLoadingServices, isLoadingHotelDefinitions, isLoadingExchangeRates, isLoadingCountries, allServicePrices, allHotelDefinitions, getRate, countries, exchangeRates, globalMarkupPercentage, specificMarkupRates]);
 
   React.useEffect(() => {
     if (tripData.settings.numDays < currentDayView) {
@@ -163,7 +165,7 @@ export function ItineraryPlanner({
     return <PrintLayout tripData={tripData} costSummary={costSummary} showCosts={showCosts} />;
   }
 
-  const isLoadingAnything = isLoadingServices || isLoadingHotelDefinitions || isLoadingExchangeRates;
+  const isLoadingAnything = isLoadingServices || isLoadingHotelDefinitions || isLoadingExchangeRates || isLoadingCountries;
 
   return (
     <div className="w-full max-w-[1600px] mx-auto p-2 sm:p-4 md:p-6 lg:p-8">
@@ -199,7 +201,7 @@ export function ItineraryPlanner({
                     dayNumber={dayNum}
                     items={tripData.days[dayNum]?.items || []}
                     travelers={tripData.travelers}
-                    currency={tripData.pax.currency}
+                    currency={tripData.pax.currency} // This is billingCurrency
                     onAddItem={handleAddItem}
                     onUpdateItem={handleUpdateItem}
                     onDeleteItem={handleDeleteItem}
