@@ -14,9 +14,10 @@
  */
 import * as React from 'react';
 import type { ExchangeRate, CurrencyCode } from '@/types/itinerary';
-import { CURRENCIES } from '@/types/itinerary';
+import { CURRENCIES as SYSTEM_DEFAULT_CURRENCIES } from '@/types/itinerary'; // Renamed for clarity
 import { generateGUID } from '@/lib/utils';
 import { useToast } from './use-toast';
+import { useCustomCurrencies } from './useCustomCurrencies'; // Import the hook for custom currencies
 
 const EXCHANGE_RATES_STORAGE_KEY = 'itineraryAceExchangeRates';
 const EXCHANGE_MARKUP_STORAGE_KEY = 'itineraryAceExchangeMarkup';
@@ -31,7 +32,7 @@ const DEFAULT_RATES_DATA: Omit<ExchangeRate, 'id' | 'updatedAt'>[] = [
   { fromCurrency: "USD", toCurrency: "EUR", rate: 0.92 },
   { fromCurrency: "USD", toCurrency: "GBP", rate: 0.79 },
   { fromCurrency: "USD", toCurrency: "JPY", rate: 157.00 },
-  { fromCurrency: "USD", toCurrency: "AUD", rate: 1.50 }, // Added AUD
+  { fromCurrency: "USD", toCurrency: "AUD", rate: 1.50 },
 ];
 
 export interface ConversionRateDetails {
@@ -47,6 +48,13 @@ export function useExchangeRates() {
   const [error, setError] = React.useState<string | null>(null);
   const [lastApiFetchTimestamp, setLastApiFetchTimestamp] = React.useState<string | null>(null);
   const { toast } = useToast();
+  const { getAllCurrencyCodes: getAllManagedCurrencyCodesFromHook, isLoading: isLoadingCustomCurrencies } = useCustomCurrencies();
+  
+  const allManagedCurrencyCodes = React.useMemo(() => {
+      if (isLoadingCustomCurrencies) return [...SYSTEM_DEFAULT_CURRENCIES]; // Fallback during custom currency loading
+      return getAllManagedCurrencyCodesFromHook();
+  }, [getAllManagedCurrencyCodesFromHook, isLoadingCustomCurrencies]);
+
 
   const fetchRatesFromAPI = async (): Promise<Partial<Record<CurrencyCode, number>> | null> => {
     const apiKey = process.env.NEXT_PUBLIC_EXCHANGERATE_API_KEY || process.env.EXCHANGERATE_API_KEY;
@@ -74,7 +82,7 @@ export function useExchangeRates() {
       console.error("Error fetching rates from ExchangeRate-API:", apiError);
       setError(`API Error: ${apiError.message}. Using fallback rates.`);
       toast({ title: "API Fetch Failed", description: `Could not fetch live rates: ${apiError.message}. Using stored/default rates.`, variant: "destructive" });
-      setLastApiFetchTimestamp(localStorage.getItem(API_RATES_LAST_FETCHED_KEY)); // Keep last known good fetch time
+      setLastApiFetchTimestamp(localStorage.getItem(API_RATES_LAST_FETCHED_KEY)); 
       return null;
     }
   };
@@ -99,10 +107,13 @@ export function useExchangeRates() {
         } catch (e) { /* ignore parse error, will re-seed */ }
       }
 
-      // Update USD-based rates from API if available
       if (apiRates) {
-        CURRENCIES.forEach(currency => {
-          if (currency === REFERENCE_CURRENCY) return; // Skip USD to USD
+        // Use allManagedCurrencyCodes for iterating to potentially catch new system defaults
+        // if SYSTEM_DEFAULT_CURRENCIES was somehow outdated (though less likely for this part)
+        const currenciesToUpdateFromApi = [...new Set([...SYSTEM_DEFAULT_CURRENCIES, ...allManagedCurrencyCodes])];
+
+        currenciesToUpdateFromApi.forEach(currency => {
+          if (currency === REFERENCE_CURRENCY) return; 
           if (apiRates && apiRates[currency] !== undefined) {
             const existingRateIndex = ratesToSet.findIndex(r => r.fromCurrency === REFERENCE_CURRENCY && r.toCurrency === currency);
             const newApiRate = {
@@ -120,8 +131,7 @@ export function useExchangeRates() {
           }
         });
         toast({ title: "Rates Updated", description: "Successfully fetched latest exchange rates.", variant: "default" });
-      } else if (!storedRatesString || ratesToSet.filter(r => r.fromCurrency === REFERENCE_CURRENCY).length < (CURRENCIES.length -1) ) {
-        // If API failed AND no stored rates OR not all USD rates in storage, use hardcoded defaults for USD pairs
+      } else if (!storedRatesString || ratesToSet.filter(r => r.fromCurrency === REFERENCE_CURRENCY).length < (SYSTEM_DEFAULT_CURRENCIES.length -1) ) {
         DEFAULT_RATES_DATA.forEach(defaultRate => {
           if (!ratesToSet.some(r => r.fromCurrency === defaultRate.fromCurrency && r.toCurrency === defaultRate.toCurrency)) {
             ratesToSet.push({ ...defaultRate, id: generateGUID(), updatedAt: new Date().toISOString() });
@@ -152,11 +162,13 @@ export function useExchangeRates() {
       setMarkupPercentageState(0);
     }
     setIsLoading(false);
-  }, [toast]);
+  }, [toast, allManagedCurrencyCodes]); // Added allManagedCurrencyCodes
 
   React.useEffect(() => {
-    fetchAndSeedData(true); // Attempt API fetch on initial load
-  }, [fetchAndSeedData]);
+    if (!isLoadingCustomCurrencies) { // Ensure custom currencies are loaded before fetching rates
+        fetchAndSeedData(true); 
+    }
+  }, [fetchAndSeedData, isLoadingCustomCurrencies]);
 
 
   const saveRates = (rates: ExchangeRate[]) => {
@@ -235,10 +247,14 @@ export function useExchangeRates() {
   }, [exchangeRates]);
 
   const getRate = React.useCallback((fromCurrency: CurrencyCode, toCurrency: CurrencyCode): ConversionRateDetails | null => {
-    if (!CURRENCIES.includes(fromCurrency) || !CURRENCIES.includes(toCurrency)) {
-      console.error("Invalid currency code provided to getRate", fromCurrency, toCurrency);
+    if (isLoadingCustomCurrencies) {
+      console.warn("getRate called while custom currencies are still loading. Results might be inaccurate if custom codes are involved.");
+    }
+    if (!allManagedCurrencyCodes.includes(fromCurrency as any) || !allManagedCurrencyCodes.includes(toCurrency as any)) {
+      console.error("Invalid or unknown currency code provided to getRate:", fromCurrency, "or", toCurrency, "Known codes:", allManagedCurrencyCodes);
       return null;
     }
+
     if (fromCurrency === toCurrency) {
       return { baseRate: 1, finalRate: 1, markupApplied: 0 };
     }
@@ -271,7 +287,6 @@ export function useExchangeRates() {
     let finalCombinedRate = baseCombinedRate;
     let actualMarkupApplied = 0;
 
-    // Apply markup if the currencies are different and markup is configured
     if (fromCurrency !== toCurrency && markupPercentage > 0) {
       finalCombinedRate = baseCombinedRate * (1 + (markupPercentage / 100));
       actualMarkupApplied = markupPercentage;
@@ -279,11 +294,11 @@ export function useExchangeRates() {
     finalCombinedRate = Math.max(0.000001, finalCombinedRate);
 
     return { baseRate: baseCombinedRate, finalRate: finalCombinedRate, markupApplied: actualMarkupApplied };
-  }, [findBaseRate, markupPercentage]);
+  }, [findBaseRate, markupPercentage, allManagedCurrencyCodes, isLoadingCustomCurrencies]);
 
   return { 
     exchangeRates, 
-    isLoading, 
+    isLoading: isLoading || isLoadingCustomCurrencies, 
     error, 
     addRate, 
     updateRate, 
@@ -291,7 +306,9 @@ export function useExchangeRates() {
     getRate, 
     markupPercentage,
     setGlobalMarkup,
-    refreshRates: () => fetchAndSeedData(true), // Ensure API fetch on manual refresh
+    refreshRates: () => fetchAndSeedData(true),
     lastApiFetchTimestamp
   };
 }
+
+
