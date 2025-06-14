@@ -30,9 +30,10 @@ export interface Traveler {
 }
 
 // Base system currencies. Custom currencies can be added via localStorage.
-export const CURRENCIES = ['THB', 'MYR', 'BDT'] as const;
-export const REFERENCE_CURRENCY: CurrencyCode = "USD"; // Explicitly define USD as reference
-export type CurrencyCode = (typeof CURRENCIES)[number] | 'USD' | (string & {}); // Allows for custom string currency codes
+export const CURRENCIES = ['USD', 'THB', 'MYR', 'BDT'] as const; // Added USD
+export const REFERENCE_CURRENCY: CurrencyCode = "USD";
+// Updated CurrencyCode to reflect that (typeof CURRENCIES)[number] now includes USD
+export type CurrencyCode = (typeof CURRENCIES)[number] | (string & {}); // Allows for custom string currency codes
 
 export interface PaxDetails {
   adults: number;

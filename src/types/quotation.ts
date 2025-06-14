@@ -39,7 +39,7 @@ export const QuotationRequestTripDetailsSchema = z.object({
   tripType: z.enum(TRIP_TYPES).optional(),
   budgetRange: z.enum(BUDGET_RANGES).optional(),
   budgetAmount: z.coerce.number().positive("Budget amount must be positive.").optional(),
-  budgetCurrency: z.custom<CurrencyCode>((val) => CURRENCIES.includes(val as CurrencyCode)).default('USD'),
+  budgetCurrency: z.custom<CurrencyCode>((val) => CURRENCIES.includes(val as CurrencyCode), "Invalid budget currency.").default('USD'),
 }).refine(data => {
   if (data.preferredStartDate && data.preferredEndDate) {
     try {
