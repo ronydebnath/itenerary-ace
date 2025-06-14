@@ -1,3 +1,4 @@
+
 /**
  * @fileoverview This component provides a form for adding or editing hotel stay items
  * within an itinerary. It allows selection of predefined hotel definitions,
@@ -126,18 +127,51 @@ function HotelItemFormComponent({
 
   const handleHotelDefinitionChange = (hotelDefId: string) => {
     const newHotelDef = currentAllHotelDefinitions.find(hd => hd.id === hotelDefId);
+    const previousHotelDefId = item.hotelDefinitionId;
+
     if (newHotelDef) {
+      let newSelectedRooms: SelectedHotelRoomConfiguration[] = [...(item.selectedRooms || [])];
+      let nameChanged = false;
+
+      if (previousHotelDefId !== newHotelDef.id) { // Hotel is changing or being selected for the first time
+        newSelectedRooms = []; // Always clear rooms when hotel definition changes
+        if (newHotelDef.roomTypes && newHotelDef.roomTypes.length > 0) {
+          const defaultRoomType = newHotelDef.roomTypes[0];
+          newSelectedRooms.push({
+            id: generateGUID(),
+            roomTypeDefinitionId: defaultRoomType.id,
+            roomTypeNameCache: defaultRoomType.name,
+            numRooms: 1,
+            assignedTravelerIds: [],
+            addExtraBed: false,
+          });
+        }
+        nameChanged = item.name === 'New hotel' || !item.name || !previousHotelDefId;
+      } else if (newSelectedRooms.length === 0 && newHotelDef.roomTypes && newHotelDef.roomTypes.length > 0) {
+        // Same hotel selected (e.g. after filter change), but no rooms were configured yet. Add default.
+        const defaultRoomType = newHotelDef.roomTypes[0];
+        newSelectedRooms.push({
+            id: generateGUID(),
+            roomTypeDefinitionId: defaultRoomType.id,
+            roomTypeNameCache: defaultRoomType.name,
+            numRooms: 1,
+            assignedTravelerIds: [],
+            addExtraBed: false,
+        });
+      }
+
+
       onUpdate({
         ...item,
         hotelDefinitionId: hotelDefId,
-        name: item.name === 'New hotel' || !item.name || !item.hotelDefinitionId ? newHotelDef.name : item.name,
-        selectedRooms: [],
-        note: undefined,
-        province: newHotelDef.province || item.province,
-        countryId: newHotelDef.countryId || item.countryId,
+        name: nameChanged ? newHotelDef.name : item.name,
+        selectedRooms: newSelectedRooms,
+        // note: previousHotelDefId !== newHotelDef.id ? undefined : item.note, // Optionally clear note on hotel change
+        province: newHotelDef.province || item.province, // Prefer new hotel's province
+        countryId: newHotelDef.countryId || item.countryId, // Prefer new hotel's country
         countryName: newHotelDef.countryId ? countries.find(c => c.id === newHotelDef.countryId)?.name : item.countryName,
       });
-    } else {
+    } else { // "none" selected or hotelDef not found
        onUpdate({ ...item, hotelDefinitionId: '', name: 'New hotel', selectedRooms: [], note: undefined });
     }
   };
@@ -385,3 +419,4 @@ function HotelItemFormComponent({
 }
 export const HotelItemForm = React.memo(HotelItemFormComponent);
     
+
