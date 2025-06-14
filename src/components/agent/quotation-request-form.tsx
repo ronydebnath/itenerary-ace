@@ -181,18 +181,6 @@ export function QuotationRequestForm({ onSubmit, onCancel, defaultAgentId }: Quo
     console.error(`[DEBUG] Quotation Form Validation Failure. Top-level error keys: ${Object.keys(errors).join(', ')}`);
     setCountrySelectionError(null); // Clear previous general error
 
-    if (errors.tripDetails && errors.tripDetails.preferredCountryIds && typeof errors.tripDetails.preferredCountryIds.message === 'string') {
-      console.error(`[DEBUG] Specific Validation Error: tripDetails.preferredCountryIds - ${errors.tripDetails.preferredCountryIds.message}`);
-      setCountrySelectionError(errors.tripDetails.preferredCountryIds.message); // Set specific error message
-      const countrySelectionElement = document.querySelector('div[data-testid="preferred-countries-form-item"]');
-      if (countrySelectionElement) {
-        countrySelectionElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        console.log("[DEBUG] Scrolled to preferred countries section via data-testid.");
-      }
-      return;
-    }
-
-    // Fallback for other errors
     const allMessages: { path: string; message: string; type?: string }[] = [];
     const logAllMessages = (currentErrorObject: any, currentPathPrefix = "") => {
       if (!currentErrorObject) return;
@@ -204,7 +192,8 @@ export function QuotationRequestForm({ onSubmit, onCancel, defaultAgentId }: Quo
           if (typeof fieldError.message === 'string') {
             allMessages.push({ path: fieldPath, message: fieldError.message, type: fieldError.type });
           }
-          if (typeof fieldError === 'object' && !fieldError.message && Object.keys(fieldError).length > 0) {
+          // Recursively check nested objects that are not actual ZodError types (like the 'ref' or 'types' properties)
+          if (typeof fieldError === 'object' && !fieldError.message && key !== 'ref' && key !== 'types' && Object.keys(fieldError).length > 0) {
             logAllMessages(fieldError, fieldPath);
           }
         }
@@ -214,12 +203,10 @@ export function QuotationRequestForm({ onSubmit, onCancel, defaultAgentId }: Quo
     logAllMessages(errors);
     console.log('[DEBUG] Extracted validation messages:', allMessages);
 
-
-    if (errors.root?.message) {
-      console.error(`---> ROOT FORM ERROR: ${errors.root.message}`);
-      const mainFormElement = (document.querySelector('form') as HTMLFormElement);
-      if (mainFormElement) mainFormElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      return;
+    // Check if the specific country selection error exists
+    const countryError = allMessages.find(msg => msg.path === 'tripDetails.preferredCountryIds');
+    if (countryError) {
+      setCountrySelectionError(countryError.message);
     }
 
     if (allMessages.length > 0) {
@@ -227,38 +214,55 @@ export function QuotationRequestForm({ onSubmit, onCancel, defaultAgentId }: Quo
       console.error(`[DEBUG] First specific error: Path='${firstError.path}', Message='${firstError.message}', Type='${firstError.type}'`);
       try {
         form.setFocus(firstError.path as FieldPath<QuotationRequest>);
+        // Attempt to scroll the FormItem container into view
         const fieldState = form.getFieldState(firstError.path as FieldPath<QuotationRequest>);
         let elementToScroll: HTMLElement | null = null;
 
         if (fieldState?.ref instanceof HTMLElement) {
           elementToScroll = fieldState.ref;
         } else {
+          // Fallback if ref is not a direct HTMLElement (e.g. for custom components or Select)
           const elementsByName = document.getElementsByName(firstError.path);
           if (elementsByName.length > 0 && elementsByName[0] instanceof HTMLElement) {
             elementToScroll = elementsByName[0];
           }
         }
-
+        
         if (elementToScroll) {
-          let scrollTarget: HTMLElement | null = elementToScroll.closest('div[data-form-item-container]');
+          let scrollTarget: HTMLElement | null = null;
+          // Prioritize scrolling to the specific country selection section if that's the first error
+          if (firstError.path === 'tripDetails.preferredCountryIds') {
+            scrollTarget = document.querySelector('div[data-testid="preferred-countries-form-item"]');
+          }
+          // If not country error or target not found, try to find the general form item container
           if (!scrollTarget) {
-            scrollTarget = elementToScroll.closest('.space-y-2'); // Fallback selector
+            scrollTarget = elementToScroll.closest('div[data-form-item-container]');
+          }
+          // Fallback if specific containers not found
+          if (!scrollTarget) {
+            scrollTarget = elementToScroll.closest('.space-y-2'); // A common parent for form items
           }
           if (!scrollTarget) {
-            scrollTarget = elementToScroll; // Last resort
+            scrollTarget = elementToScroll; // Last resort: the element itself
           }
-          scrollTarget.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          console.log("[DEBUG] Scrolled element for path into view:", firstError.path, "Scrolled element:", scrollTarget);
+
+          if (scrollTarget) {
+            scrollTarget.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            console.log("[DEBUG] Scrolled element for path into view:", firstError.path, "Scrolled element:", scrollTarget);
+          } else {
+            console.warn("[DEBUG] Could not get a specific DOM element container to scroll for field:", firstError.path);
+            (document.querySelector('form') as HTMLFormElement)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }
         } else {
-          console.warn("[DEBUG] Could not get a specific DOM element to scroll for field:", firstError.path, ". Relying on setFocus(). The <FormMessage /> should display the error. Fallback scroll to form top.");
+          console.warn("[DEBUG] Could not get a DOM element reference to scroll for field:", firstError.path, ". Relying on setFocus(). The <FormMessage /> should display the error. Fallback scroll to form top.");
           (document.querySelector('form') as HTMLFormElement)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
       } catch (focusError) {
         console.error("[DEBUG] Error trying to set focus or scroll:", focusError, "Path:", firstError.path);
         (document.querySelector('form') as HTMLFormElement)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
-    } else {
-      console.warn("[DEBUG] No specific field error messages extracted. This could mean a custom validation issue or unexpected error structure. Scrolling to form top.");
+    } else if (Object.keys(errors).length > 0) { // If no specific messages but still an error object (e.g. root error)
+      console.warn("[DEBUG] Validation failed but no specific field error messages extracted. This could indicate a root-level form error or an unhandled case. Scrolling to form top.");
       (document.querySelector('form') as HTMLFormElement)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
   };
@@ -286,7 +290,7 @@ export function QuotationRequestForm({ onSubmit, onCancel, defaultAgentId }: Quo
           <Card>
             <CardHeader><CardTitle>Trip Details</CardTitle></CardHeader>
             <CardContent className="space-y-4">
-              <div>
+              <div data-form-item-container>
                 <FormField
                   control={form.control}
                   name="tripDetails.preferredCountryIds"
@@ -349,7 +353,7 @@ export function QuotationRequestForm({ onSubmit, onCancel, defaultAgentId }: Quo
                 />
               </div>
 
-              <div>
+              <div data-form-item-container>
                 <FormField
                   control={form.control}
                   name="tripDetails.preferredProvinceNames"
@@ -419,20 +423,20 @@ export function QuotationRequestForm({ onSubmit, onCancel, defaultAgentId }: Quo
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormField control={form.control} name="tripDetails.preferredStartDate" render={({ field }) => (<FormItem className="flex flex-col"><FormLabel>Preferred Start Date</FormLabel><Controller control={form.control} name="tripDetails.preferredStartDate" render={({ field: { onChange, value } }) => <DatePicker date={value ? parseISO(value) : undefined} onDateChange={(date) => onChange(date ? format(date, 'yyyy-MM-dd') : undefined)} placeholder="Select start date"/>} /><FormMessage /></FormItem>)} />
-                <FormField control={form.control} name="tripDetails.preferredEndDate" render={({ field }) => (<FormItem className="flex flex-col"><FormLabel>Preferred End Date</FormLabel><Controller control={form.control} name="tripDetails.preferredEndDate" render={({ field: { onChange, value } }) => <DatePicker date={value ? parseISO(value) : undefined} onDateChange={(date) => onChange(date ? format(date, 'yyyy-MM-dd') : undefined)} placeholder="Select end date" minDate={watchStartDate ? parseISO(watchStartDate) : undefined} />} /><FormMessage /></FormItem>)} />
+                <FormField control={form.control} name="tripDetails.preferredStartDate" render={({ field }) => (<FormItem data-form-item-container className="flex flex-col"><FormLabel>Preferred Start Date</FormLabel><Controller control={form.control} name="tripDetails.preferredStartDate" render={({ field: { onChange, value } }) => <DatePicker date={value ? parseISO(value) : undefined} onDateChange={(date) => onChange(date ? format(date, 'yyyy-MM-dd') : undefined)} placeholder="Select start date"/>} /><FormMessage /></FormItem>)} />
+                <FormField control={form.control} name="tripDetails.preferredEndDate" render={({ field }) => (<FormItem data-form-item-container className="flex flex-col"><FormLabel>Preferred End Date</FormLabel><Controller control={form.control} name="tripDetails.preferredEndDate" render={({ field: { onChange, value } }) => <DatePicker date={value ? parseISO(value) : undefined} onDateChange={(date) => onChange(date ? format(date, 'yyyy-MM-dd') : undefined)} placeholder="Select end date" minDate={watchStartDate ? parseISO(watchStartDate) : undefined} />} /><FormMessage /></FormItem>)} />
               </div>
               <p className="text-base text-muted-foreground pt-2">
                 {typeof durationNights === 'number' && typeof durationDays === 'number'
                   ? `Duration: ${durationNights} night(s) / ${durationDays} day(s)`
                   : 'Duration: Auto-calculated based on dates'}
               </p>
-                <FormField control={form.control} name="tripDetails.tripType" render={({ field }) => (<FormItem><FormLabel>Type of Trip (Optional)</FormLabel><Select onValueChange={field.onChange} value={field.value || ""}><FormControl><SelectTrigger><SelectValue placeholder="Select trip type (Optional)" /></SelectTrigger></FormControl><SelectContent>{TRIP_TYPES.map(type => <SelectItem key={type} value={type}>{type}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
-              <FormField control={form.control} name="tripDetails.budgetRange" render={({ field }) => (<FormItem><FormLabel>Budget Expectation</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select budget range" /></SelectTrigger></FormControl><SelectContent>{BUDGET_RANGES.map(range => <SelectItem key={range} value={range}>{range}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
+                <FormField control={form.control} name="tripDetails.tripType" render={({ field }) => (<FormItem data-form-item-container><FormLabel>Type of Trip (Optional)</FormLabel><Select onValueChange={field.onChange} value={field.value || ""}><FormControl><SelectTrigger><SelectValue placeholder="Select trip type (Optional)" /></SelectTrigger></FormControl><SelectContent>{TRIP_TYPES.map(type => <SelectItem key={type} value={type}>{type}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
+              <FormField control={form.control} name="tripDetails.budgetRange" render={({ field }) => (<FormItem data-form-item-container><FormLabel>Budget Expectation</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select budget range" /></SelectTrigger></FormControl><SelectContent>{BUDGET_RANGES.map(range => <SelectItem key={range} value={range}>{range}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
               {watchBudgetRange === "Specific Amount (see notes)" && (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
-                      <FormField control={form.control} name="tripDetails.budgetAmount" render={({ field }) => (<FormItem><FormLabel>Specific Budget Amount *</FormLabel><FormControl><Input type="number" placeholder="e.g., 5000" {...field} value={field.value ?? ""} /></FormControl><FormMessage /></FormItem>)} />
-                      <FormField control={form.control} name="tripDetails.budgetCurrency" render={({ field }) => (<FormItem><FormLabel>Currency for Budget</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent>{CURRENCIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
+                      <FormField control={form.control} name="tripDetails.budgetAmount" render={({ field }) => (<FormItem data-form-item-container><FormLabel>Specific Budget Amount *</FormLabel><FormControl><Input type="number" placeholder="e.g., 5000" {...field} value={field.value ?? ""} /></FormControl><FormMessage /></FormItem>)} />
+                      <FormField control={form.control} name="tripDetails.budgetCurrency" render={({ field }) => (<FormItem data-form-item-container><FormLabel>Currency for Budget</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent>{CURRENCIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
                   </div>
               )}
             </CardContent>
@@ -441,9 +445,9 @@ export function QuotationRequestForm({ onSubmit, onCancel, defaultAgentId }: Quo
           <Card>
             <CardHeader><CardTitle>Accommodation Preferences (Optional)</CardTitle></CardHeader>
             <CardContent className="space-y-4">
-              <FormField control={form.control} name="accommodationPrefs.hotelStarRating" render={({ field }) => (<FormItem><FormLabel>Preferred Hotel Star Rating</FormLabel><Select onValueChange={field.onChange} value={field.value || "3 Stars"}><FormControl><SelectTrigger><SelectValue placeholder="Any star rating" /></SelectTrigger></FormControl><SelectContent>{HOTEL_STAR_RATINGS.map(rating => <SelectItem key={rating} value={rating}>{rating}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
-              <FormField control={form.control} name="accommodationPrefs.roomPreferences" render={({ field }) => (<FormItem><FormLabel>Room Preferences</FormLabel><FormControl><Textarea placeholder="e.g., 1 King Bed, 2 Twin + Extra Bed, Connecting rooms" {...field} value={field.value || ''} rows={2} /></FormControl><FormMessage /></FormItem>)} />
-              <FormField control={form.control} name="accommodationPrefs.specificHotelRequests" render={({ field }) => (<FormItem><FormLabel>Specific Hotel Names or Location Preferences</FormLabel><FormControl><Textarea placeholder="e.g., 'Riverside hotel in Bangkok', 'Beachfront resort in Phuket', 'Quiet hotel near Old City Chiang Mai'" {...field} value={field.value || ''} rows={2} /></FormControl><FormMessage /></FormItem>)} />
+              <FormField control={form.control} name="accommodationPrefs.hotelStarRating" render={({ field }) => (<FormItem data-form-item-container><FormLabel>Preferred Hotel Star Rating</FormLabel><Select onValueChange={field.onChange} value={field.value || "3 Stars"}><FormControl><SelectTrigger><SelectValue placeholder="Any star rating" /></SelectTrigger></FormControl><SelectContent>{HOTEL_STAR_RATINGS.map(rating => <SelectItem key={rating} value={rating}>{rating}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
+              <FormField control={form.control} name="accommodationPrefs.roomPreferences" render={({ field }) => (<FormItem data-form-item-container><FormLabel>Room Preferences</FormLabel><FormControl><Textarea placeholder="e.g., 1 King Bed, 2 Twin + Extra Bed, Connecting rooms" {...field} value={field.value || ''} rows={2} /></FormControl><FormMessage /></FormItem>)} />
+              <FormField control={form.control} name="accommodationPrefs.specificHotelRequests" render={({ field }) => (<FormItem data-form-item-container><FormLabel>Specific Hotel Names or Location Preferences</FormLabel><FormControl><Textarea placeholder="e.g., 'Riverside hotel in Bangkok', 'Beachfront resort in Phuket', 'Quiet hotel near Old City Chiang Mai'" {...field} value={field.value || ''} rows={2} /></FormControl><FormMessage /></FormItem>)} />
             </CardContent>
           </Card>
 
@@ -454,7 +458,7 @@ export function QuotationRequestForm({ onSubmit, onCancel, defaultAgentId }: Quo
                 control={form.control}
                 name="activityPrefs.requestedActivities"
                 render={({ field }) => (
-                  <FormItem>
+                  <FormItem data-form-item-container>
                     <FormLabel>Requested Activities / Tours / Interests</FormLabel>
                     <FormControl>
                       <Textarea
@@ -474,8 +478,8 @@ export function QuotationRequestForm({ onSubmit, onCancel, defaultAgentId }: Quo
           <Card>
             <CardHeader><CardTitle>Transfer Preferences (Optional)</CardTitle></CardHeader>
             <CardContent className="space-y-4">
-              <FormField control={form.control} name="flightPrefs.airportTransfersRequired" render={({ field }) => (<FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4 shadow"><FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl><div className="space-y-1 leading-none"><FormLabel>Airport Transfers Required?</FormLabel><FormDescription>Include transfers to/from airports.</FormDescription></div><FormMessage /></FormItem>)} />
-              <FormField control={form.control} name="flightPrefs.activityTransfersRequired" render={({ field }) => (<FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4 shadow"><FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl><div className="space-y-1 leading-none"><FormLabel>Include transfers for activities/tours?</FormLabel><FormDescription>Arrange transportation to/from scheduled activities and tours.</FormDescription></div><FormMessage /></FormItem>)} />
+              <FormField control={form.control} name="flightPrefs.airportTransfersRequired" render={({ field }) => (<FormItem data-form-item-container className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4 shadow"><FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl><div className="space-y-1 leading-none"><FormLabel>Airport Transfers Required?</FormLabel><FormDescription>Include transfers to/from airports.</FormDescription></div><FormMessage /></FormItem>)} />
+              <FormField control={form.control} name="flightPrefs.activityTransfersRequired" render={({ field }) => (<FormItem data-form-item-container className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4 shadow"><FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl><div className="space-y-1 leading-none"><FormLabel>Include transfers for activities/tours?</FormLabel><FormDescription>Arrange transportation to/from scheduled activities and tours.</FormDescription></div><FormMessage /></FormItem>)} />
             </CardContent>
           </Card>
 
@@ -486,7 +490,7 @@ export function QuotationRequestForm({ onSubmit, onCancel, defaultAgentId }: Quo
                 control={form.control}
                 name="mealPrefs.mealPlan"
                 render={({ field }) => (
-                  <FormItem>
+                  <FormItem data-form-item-container>
                     <FormLabel>Preferred Meal Plan</FormLabel>
                     <Select onValueChange={field.onChange} value={field.value || "Breakfast Only"}>
                       <FormControl><SelectTrigger><SelectValue placeholder="Select meal plan" /></SelectTrigger></FormControl>
@@ -504,7 +508,7 @@ export function QuotationRequestForm({ onSubmit, onCancel, defaultAgentId }: Quo
           <Card>
             <CardHeader><CardTitle>Other Requirements</CardTitle></CardHeader>
             <CardContent className="space-y-4">
-              <FormField control={form.control} name="otherRequirements" render={({ field }) => (<FormItem><FormLabel>Special Requests or Notes</FormLabel><FormControl><Textarea placeholder="e.g., Dietary restrictions (vegetarian, gluten-free), accessibility needs, celebrating an anniversary, prefer non-smoking rooms, etc." {...field} value={field.value || ''} rows={4} /></FormControl><FormMessage /></FormItem>)} />
+              <FormField control={form.control} name="otherRequirements" render={({ field }) => (<FormItem data-form-item-container><FormLabel>Special Requests or Notes</FormLabel><FormControl><Textarea placeholder="e.g., Dietary restrictions (vegetarian, gluten-free), accessibility needs, celebrating an anniversary, prefer non-smoking rooms, etc." {...field} value={field.value || ''} rows={4} /></FormControl><FormMessage /></FormItem>)} />
             </CardContent>
           </Card>
         </div>
