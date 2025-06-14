@@ -1,3 +1,4 @@
+
 /**
  * @fileoverview This component provides a form for adding or editing meal items
  * within an itinerary. It allows selection of predefined meal services and setting
@@ -65,7 +66,7 @@ function MealItemFormComponent({
                            (tripSettings.selectedCountries.length === 1 ? getCountryById(tripSettings.selectedCountries[0]) : undefined);
     if (itemCountryDef?.defaultCurrency) return itemCountryDef.defaultCurrency;
     
-    return billingCurrency; // Fallback
+    return billingCurrency; 
   }, [item.selectedServicePriceId, item.countryId, currentAllServicePrices, getCountryById, tripSettings.selectedCountries, billingCurrency]);
 
   const [itemSourceCurrency, setItemSourceCurrency] = React.useState<CurrencyCode>(determineItemSourceCurrency());
@@ -288,7 +289,7 @@ function MealItemFormComponent({
             readOnly={isPriceReadOnly}
             className={isPriceReadOnly ? "bg-muted/50 cursor-not-allowed" : ""}
           />
-          {conversionDetails && adultPriceConverted !== null && !isPriceReadOnly && !isLoadingExchangeRates && (
+          {conversionDetails && adultPriceConverted !== null && !isLoadingExchangeRates && (
             <p className="text-xs text-muted-foreground mt-1">Approx. {formatCurrency(adultPriceConverted, billingCurrency)}</p>
           )}
         </FormField>
@@ -303,7 +304,7 @@ function MealItemFormComponent({
             readOnly={isPriceReadOnly}
             className={isPriceReadOnly ? "bg-muted/50 cursor-not-allowed" : ""}
           />
-           {conversionDetails && childPriceConverted !== null && !isPriceReadOnly && !isLoadingExchangeRates && (
+           {conversionDetails && childPriceConverted !== null && !isLoadingExchangeRates && (
             <p className="text-xs text-muted-foreground mt-1">Approx. {formatCurrency(childPriceConverted, billingCurrency)}</p>
           )}
         </FormField>
@@ -324,3 +325,4 @@ function MealItemFormComponent({
 
 export const MealItemForm = React.memo(MealItemFormComponent);
     
+

@@ -1,3 +1,4 @@
+
 /**
  * @fileoverview This component provides a form for adding or editing miscellaneous items
  * within an itinerary, such as visa fees, souvenirs, or guide fees. It allows selection
@@ -67,7 +68,7 @@ function MiscItemFormComponent({
                            (tripSettings.selectedCountries.length === 1 ? getCountryById(tripSettings.selectedCountries[0]) : undefined);
     if (itemCountryDef?.defaultCurrency) return itemCountryDef.defaultCurrency;
     
-    return billingCurrency; // Fallback
+    return billingCurrency; 
   }, [item.selectedServicePriceId, item.countryId, currentAllServicePrices, getCountryById, tripSettings.selectedCountries, billingCurrency]);
 
   const [itemSourceCurrency, setItemSourceCurrency] = React.useState<CurrencyCode>(determineItemSourceCurrency());
@@ -293,7 +294,7 @@ function MiscItemFormComponent({
             readOnly={isPriceReadOnly}
             className={isPriceReadOnly ? "bg-muted/50 cursor-not-allowed" : ""}
           />
-          {conversionDetails && unitCostConverted !== null && !isPriceReadOnly && !isLoadingExchangeRates && (
+          {conversionDetails && unitCostConverted !== null && !isLoadingExchangeRates && (
             <p className="text-xs text-muted-foreground mt-1">Approx. {formatCurrency(unitCostConverted, billingCurrency)}</p>
           )}
         </FormField>
@@ -325,3 +326,4 @@ function MiscItemFormComponent({
 }
 export const MiscItemForm = React.memo(MiscItemFormComponent);
     
+

@@ -1,3 +1,4 @@
+
 /**
  * @fileoverview This component provides a form for adding or editing activity items
  * within an itinerary. It allows selection of predefined activity services, management
@@ -70,7 +71,7 @@ function ActivityItemFormComponent({
                            (tripSettings.selectedCountries.length === 1 ? getCountryById(tripSettings.selectedCountries[0]) : undefined);
     if (itemCountryDef?.defaultCurrency) return itemCountryDef.defaultCurrency;
     
-    return billingCurrency; // Fallback
+    return billingCurrency; 
   }, [item.selectedServicePriceId, item.countryId, currentAllServicePrices, getCountryById, tripSettings.selectedCountries, billingCurrency]);
 
   const [itemSourceCurrency, setItemSourceCurrency] = React.useState<CurrencyCode>(determineItemSourceCurrency());
@@ -181,7 +182,7 @@ function ActivityItemFormComponent({
         onUpdate({
           ...item,
           name: `New activity`,
-          selectedServicePriceId: selectedValue, // Keep the ID even if service not found, for error display
+          selectedServicePriceId: selectedValue, 
           selectedPackageId: undefined,
           adultPrice: 0,
           childPrice: undefined,
@@ -398,7 +399,7 @@ function ActivityItemFormComponent({
             readOnly={isPriceReadOnly}
             className={isPriceReadOnly ? "bg-muted/50 cursor-not-allowed" : ""}
           />
-           {conversionDetails && adultPriceConverted !== null && !isPriceReadOnly && !isLoadingExchangeRates && (
+           {conversionDetails && adultPriceConverted !== null && !isLoadingExchangeRates && (
             <p className="text-xs text-muted-foreground mt-1">Approx. {formatCurrency(adultPriceConverted, billingCurrency)}</p>
           )}
         </FormField>
@@ -413,7 +414,7 @@ function ActivityItemFormComponent({
             readOnly={isPriceReadOnly}
             className={isPriceReadOnly ? "bg-muted/50 cursor-not-allowed" : ""}
           />
-          {conversionDetails && childPriceConverted !== null && !isPriceReadOnly && !isLoadingExchangeRates && (
+          {conversionDetails && childPriceConverted !== null && !isLoadingExchangeRates && (
             <p className="text-xs text-muted-foreground mt-1">Approx. {formatCurrency(childPriceConverted, billingCurrency)}</p>
           )}
         </FormField>
@@ -449,3 +450,4 @@ function ActivityItemFormComponent({
 }
 export const ActivityItemForm = React.memo(ActivityItemFormComponent);
     
+
