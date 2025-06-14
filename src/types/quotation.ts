@@ -22,7 +22,7 @@ export const QuotationRequestClientInfoSchema = z.object({
   adults: z.coerce.number().int().min(1, "At least one adult is required."),
   children: z.coerce.number().int().min(0, "Number of children must be 0 or more.").default(0),
   childAges: z.string().optional().describe("Comma-separated ages, e.g., 5, 8, 12. Required if children > 0."),
-  groupOrFamilyName: z.string().optional(),
+  // groupOrFamilyName: z.string().optional(), // Removed as per user request
 }).refine(data => !(data.children > 0 && (!data.childAges || data.childAges.trim() === "")), {
   message: "Please provide ages for children if number of children is greater than 0.",
   path: ["childAges"],
@@ -35,13 +35,22 @@ export const QuotationRequestTripDetailsSchema = z.object({
   preferredEndDate: z.string().refine(val => val ? isValid(parseISO(val)) : true, { message: "Invalid end date."}).optional(),
   durationDays: z.coerce.number().int().min(1, "Trip duration must be at least 1 day.").optional(),
   durationNights: z.coerce.number().int().min(0).optional(),
-  tripType: z.enum(TRIP_TYPES).optional(),
+  tripType: z.enum(TRIP_TYPES).optional(), // Made optional
   budgetRange: z.enum(BUDGET_RANGES).optional(),
   budgetAmount: z.coerce.number().positive("Budget amount must be positive.").optional(),
   budgetCurrency: z.custom<CurrencyCode>((val) => CURRENCIES.includes(val as CurrencyCode)).default('USD'),
 }).refine(data => {
   if (data.preferredStartDate && data.preferredEndDate) {
-    return parseISO(data.preferredEndDate) >= parseISO(data.preferredStartDate);
+    try { // Add try-catch for robustness against invalid date strings during validation
+        const startDate = parseISO(data.preferredStartDate);
+        const endDate = parseISO(data.preferredEndDate);
+        if (isValid(startDate) && isValid(endDate)) {
+            return endDate >= startDate;
+        }
+        return true; // If dates are invalid at this stage, let individual field validation handle it
+    } catch (e) {
+        return true; // If parsing fails, let field validation handle it
+    }
   }
   return true;
 }, {
@@ -91,3 +100,4 @@ export type QuotationRequestTripDetails = z.infer<typeof QuotationRequestTripDet
 export type QuotationRequestAccommodationPrefs = z.infer<typeof QuotationRequestAccommodationPrefsSchema>;
 export type QuotationRequestActivityPrefs = z.infer<typeof QuotationRequestActivityPrefsSchema>;
 export type QuotationRequestFlightPrefs = z.infer<typeof QuotationRequestFlightPrefsSchema>;
+
