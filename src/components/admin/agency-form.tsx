@@ -60,7 +60,7 @@ export function AgencyForm({ initialData, onSubmit, onCancel }: AgencyFormProps)
         ...initialData,
         mainAddress: initialData.mainAddress || { street: "", city: "", postalCode: "", countryId: "" }
       });
-    } else if (!isLoadingCountries && countries.length > 0 && !form.getValues('mainAddress.countryId')) {
+    } else if (!isLoadingCountries && countries.length > 0 && !form.getValues('mainAddress.countryId') && !initialData) {
         // Pre-select first country if creating new and no country is set
         form.setValue('mainAddress.countryId', countries[0].id);
     }

@@ -20,7 +20,7 @@ import { PlusCircle, Building, Mail, Phone, MapPin, Edit, Trash2, User, Briefcas
 import type { Agency, AgentProfile } from '@/types/agent';
 import { AgencyForm } from './agency-form';
 import { useToast } from "@/hooks/use-toast";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useAgents } from '@/hooks/useAgents';
 import { useCountries } from '@/hooks/useCountries';
 import { Separator } from '@/components/ui/separator';
