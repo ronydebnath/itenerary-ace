@@ -21,6 +21,8 @@ import {
   ArrowLeft, Globe, Printer, EyeOff, Eye, Coins, PackageIcon, MessageSquare
 } from 'lucide-react';
 import { formatCurrency, cn } from '@/lib/utils';
+import { CostBreakdownTable } from '@/components/itinerary/cost-breakdown-table'; // Ensure this is correctly imported
+import { DetailsSummaryTable } from '@/components/itinerary/details-summary-table'; // Ensure this is correctly imported
 
 const ITINERARY_DATA_PREFIX = 'itineraryAce_data_';
 
@@ -50,7 +52,7 @@ export default function ItineraryClientViewPage() {
   const [costSummary, setCostSummary] = React.useState<CostSummary | null>(null);
   const [isLoading, setIsLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
-  const [showCosts, setShowCosts] = React.useState(true);
+  const [showCosts, setShowCosts] = React.useState(false); // Default to false to hide individual costs
 
   const { allServicePrices, isLoading: isLoadingServices } = useServicePrices();
   const { allHotelDefinitions, isLoading: isLoadingHotelDefs } = useHotelDefinitions();
@@ -151,7 +153,7 @@ export default function ItineraryClientViewPage() {
             <div className="flex gap-2 self-start sm:self-center no-print">
                 <Button onClick={() => setShowCosts(!showCosts)} variant="outline" size="sm" className="h-8 text-xs">
                     {showCosts ? <EyeOff className="mr-1.5 h-3.5 w-3.5" /> : <Eye className="mr-1.5 h-3.5 w-3.5" />}
-                    {showCosts ? 'Hide' : 'Show'} Costs
+                    {showCosts ? 'Hide Detailed Costs' : 'Show Detailed Costs'}
                 </Button>
                 <Button onClick={() => router.back()} variant="outline" size="sm" className="h-8 text-xs">
                     <ArrowLeft className="mr-1.5 h-3.5 w-3.5" /> Back
@@ -260,36 +262,35 @@ export default function ItineraryClientViewPage() {
             );
           })}
 
-          {showCosts && (
-            <section className="mt-6 pt-5 border-t print:mt-4 print:pt-3 print:border-gray-300 page-break-before-avoid">
-              <h2 className="text-lg sm:text-xl font-semibold text-primary mb-3 sm:mb-4 print:text-base">Cost Summary</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
-                <div className="bg-muted/20 dark:bg-muted/10 p-3 sm:p-4 rounded-md border">
-                  <h3 className="text-sm sm:text-md font-semibold mb-1.5 print:text-sm text-foreground/90">Per Person Total:</h3>
-                  <ul className="list-disc list-inside pl-1 space-y-0.5 text-xs sm:text-sm print:text-xs text-muted-foreground">
-                    {travelers.map(traveler => (
-                      <li key={traveler.id}>
-                        {traveler.label}: <span className="font-semibold text-foreground/90">{formatCurrency(costSummary.perPersonTotals[traveler.id] || 0, pax.currency)}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-                <div className="text-left md:text-right bg-muted/20 dark:bg-muted/10 p-3 sm:p-4 rounded-md border">
-                  <h3 className="text-sm sm:text-md font-semibold mb-0.5 print:text-sm text-foreground/90">Grand Total:</h3>
-                  <p className="text-xl sm:text-2xl font-bold text-accent print:text-lg">{formatCurrency(costSummary.grandTotal, pax.currency)}</p>
-                  {settings.budget && (
-                    <p className="text-xs text-muted-foreground print:text-gray-600">
-                      Budget: {formatCurrency(settings.budget, pax.currency)}
-                      {costSummary.grandTotal > settings.budget && <Badge variant="destructive" className="ml-1.5 text-xs">Over Budget</Badge>}
-                    </p>
-                  )}
-                </div>
+          {/* Main Cost Summary Section - Always Visible */}
+          <section className="mt-6 pt-5 border-t print:mt-4 print:pt-3 print:border-gray-300 page-break-before-avoid">
+            <h2 className="text-lg sm:text-xl font-semibold text-primary mb-3 sm:mb-4 print:text-base">Cost Summary</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+              <div className="bg-muted/20 dark:bg-muted/10 p-3 sm:p-4 rounded-md border">
+                <h3 className="text-sm sm:text-md font-semibold mb-1.5 print:text-sm text-foreground/90">Per Person Total:</h3>
+                <CostBreakdownTable summary={costSummary} currency={pax.currency} travelers={travelers} showCosts={true} />
               </div>
-            </section>
-          )}
-           {!showCosts && (
-             <p className="text-sm text-muted-foreground text-center mt-6 py-4 border-t print:hidden">Cost details are currently hidden.</p>
-           )}
+              <div className="text-left md:text-right bg-muted/20 dark:bg-muted/10 p-3 sm:p-4 rounded-md border">
+                <h3 className="text-sm sm:text-md font-semibold mb-0.5 print:text-sm text-foreground/90">Grand Total:</h3>
+                <p className="text-xl sm:text-2xl font-bold text-accent print:text-lg">{formatCurrency(costSummary.grandTotal, pax.currency)}</p>
+                {settings.budget && (
+                  <p className="text-xs text-muted-foreground print:text-gray-600">
+                    Budget: {formatCurrency(settings.budget, pax.currency)}
+                    {costSummary.grandTotal > settings.budget && <Badge variant="destructive" className="ml-1.5 text-xs">Over Budget</Badge>}
+                  </p>
+                )}
+              </div>
+            </div>
+          </section>
+          
+          {/* Full Itinerary Details Table - Individual costs depend on showCosts state */}
+          <section className="mt-6 pt-5 border-t print:mt-4 print:pt-3 print:border-gray-300 page-break-before-avoid">
+            <h2 className="text-lg sm:text-xl font-semibold text-primary mb-3 sm:mb-4 print:text-base">Full Itinerary Breakdown</h2>
+            <DetailsSummaryTable summary={costSummary} currency={pax.currency} showCosts={showCosts} />
+            {!showCosts && (
+              <p className="text-sm text-muted-foreground text-center mt-4 print:hidden">Detailed item costs are currently hidden. Click "Show Detailed Costs" to view.</p>
+            )}
+          </section>
         </CardContent>
          <div className="p-4 sm:p-6 pt-0 text-center no-print">
             <Button onClick={() => window.print()} variant="default" size="sm" className="h-9 text-sm">
@@ -300,6 +301,3 @@ export default function ItineraryClientViewPage() {
     </div>
   );
 }
-
-
-    
