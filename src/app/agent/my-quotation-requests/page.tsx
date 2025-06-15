@@ -1,3 +1,4 @@
+
 /**
  * @fileoverview This page allows travel agents to view their submitted quotation requests.
  * It lists requests filtered by the agent's ID (placeholder for actual login), showing key details,
@@ -162,7 +163,7 @@ export default function MyQuotationRequestsPage() {
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => router.push(`/planner?itineraryId=${req.linkedItineraryId}&quotationRequestId=${req.id}`)}
+                          onClick={() => router.push(`/itinerary/view/${req.linkedItineraryId}?displayCosts=true&quotationRequestId=${req.id}`)}
                           className="text-xs h-7"
                           title="View Proposal"
                         >
@@ -184,3 +185,4 @@ export default function MyQuotationRequestsPage() {
     </main>
   );
 }
+
