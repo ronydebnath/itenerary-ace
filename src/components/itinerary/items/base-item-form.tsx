@@ -294,7 +294,7 @@ function BaseItemFormComponent<T extends ItineraryItem>({
         >
           <IconComponent className="h-5 w-5 mr-1.5 sm:mr-2 flex-shrink-0 text-primary" />
           <div className="flex-grow min-w-0">
-            <CardTitle className="text-sm sm:text-base font-semibold text-primary truncate" title={`${itemTypeLabel}: ${itemNameDisplay}`}>
+            <CardTitle className="text-sm sm:text-base font-semibold text-primary" title={`${itemTypeLabel}: ${itemNameDisplay}`}>
               <BookingStatusIcon className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1 sm:mr-1.5 inline-block relative -top-px text-muted-foreground" />
               {itemTypeLabel}: {itemNameDisplay}
             </CardTitle>
