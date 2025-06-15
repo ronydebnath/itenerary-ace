@@ -4,7 +4,7 @@
 import * as React from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import type { TripData, ItineraryItem, CostSummary, DetailedSummaryItem, HotelOccupancyDetail, CurrencyCode, Traveler, CountryItem } from '@/types/itinerary';
-import type { QuotationRequest, QuotationRequestStatus } from '@/types/quotation'; // Import QuotationRequest types
+import type { QuotationRequest, QuotationRequestStatus } from '@/types/quotation';
 import { calculateAllCosts } from '@/lib/calculation-utils';
 import { useServicePrices } from '@/hooks/useServicePrices';
 import { useHotelDefinitions } from '@/hooks/useHotelDefinitions';
@@ -21,15 +21,17 @@ import {
   Hotel, Car, Ticket, Utensils, ShoppingBag, FileText,
   ArrowLeft, Globe, Printer, Coins, PackageIcon, MessageSquare, Send, Edit3
 } from 'lucide-react';
-import { formatCurrency, cn } from '@/lib/utils';
+import { formatCurrency, cn, generateGUID } from '@/lib/utils';
 import { CostBreakdownTable } from '@/components/itinerary/cost-breakdown-table';
 import { DetailsSummaryTable } from '@/components/itinerary/details-summary-table';
 import { useToast } from "@/hooks/use-toast";
 import { useSession } from "next-auth/react"; 
 
 const ITINERARY_DATA_PREFIX = 'itineraryAce_data_';
-const AGENT_QUOTATION_REQUESTS_KEY = 'itineraryAce_agentQuotationRequests'; // For updating quote status
+const AGENT_QUOTATION_REQUESTS_KEY = 'itineraryAce_agentQuotationRequests';
 const VIEW_MODE_TOKEN = 'full_details_v1';
+const ITINERARY_INDEX_KEY = 'itineraryAce_index';
+
 
 const ITEM_TYPE_ICONS: { [key in ItineraryItem['type']]: React.ElementType } = {
   transfer: Car,
@@ -70,6 +72,39 @@ export default function ItineraryClientViewPage() {
   const { countries, isLoading: isLoadingCountries, getCountryById } = useCountries();
   const { getRate, isLoading: isLoadingExchangeRates } = useExchangeRates();
 
+  const saveCurrentItineraryToStorage = React.useCallback((itineraryToSave: TripData) => {
+    try {
+        const now = new Date().toISOString();
+        const dataWithTimestamps: TripData = {
+            ...itineraryToSave,
+            createdAt: itineraryToSave.createdAt || now,
+            updatedAt: now,
+        };
+        localStorage.setItem(`${ITINERARY_DATA_PREFIX}${dataWithTimestamps.id}`, JSON.stringify(dataWithTimestamps));
+        const indexString = localStorage.getItem(ITINERARY_INDEX_KEY);
+        let index: any[] = indexString ? JSON.parse(indexString) : [];
+        const existingEntryIndex = index.findIndex(entry => entry.id === dataWithTimestamps.id);
+        const newEntry = {
+            id: dataWithTimestamps.id,
+            itineraryName: dataWithTimestamps.itineraryName,
+            clientName: dataWithTimestamps.clientName,
+            createdAt: dataWithTimestamps.createdAt,
+            updatedAt: dataWithTimestamps.updatedAt,
+        };
+        if (existingEntryIndex > -1) {
+            index[existingEntryIndex] = newEntry;
+        } else {
+            index.push(newEntry);
+        }
+        localStorage.setItem(ITINERARY_INDEX_KEY, JSON.stringify(index));
+        return dataWithTimestamps;
+    } catch (saveError: any) {
+        console.error("Failed to save itinerary from view page to storage:", saveError);
+        toast({ title: "Save Error", description: `Could not save itinerary: ${saveError.message}`, variant: "destructive" });
+        return itineraryToSave;
+    }
+  }, [toast]);
+
   React.useEffect(() => {
     if (itineraryId) {
       try {
@@ -104,34 +139,49 @@ export default function ItineraryClientViewPage() {
     }
   }, [tripData, isLoadingServices, isLoadingHotelDefs, isLoadingCountries, isLoadingExchangeRates, countries, allServicePrices, allHotelDefinitions, getRate, isLoading, error, showCosts]);
 
-  const handleSendQuotationToAgent = () => {
+  const handleSendQuotationToAgentFromViewPage = () => {
     if (!tripData || !tripData.quotationRequestId) {
       toast({ title: "Error", description: "This itinerary is not linked to a quotation request.", variant: "destructive" });
       return;
     }
-
+  
     try {
       const requestsString = localStorage.getItem(AGENT_QUOTATION_REQUESTS_KEY);
       if (requestsString) {
         let allRequests: QuotationRequest[] = JSON.parse(requestsString);
         const requestIndex = allRequests.findIndex(q => q.id === tripData.quotationRequestId);
-
+  
         if (requestIndex > -1) {
-          const currentStatus = allRequests[requestIndex].status;
+          const currentRequest = allRequests[requestIndex];
           let newStatus: QuotationRequestStatus = "Quoted: Waiting for TA Feedback";
-
-          if (["Quoted: Waiting for TA Feedback", "Quoted: Re-quoted", "Quoted: Awaiting TA Approval", "Quoted: Revision Requested"].includes(currentStatus)) {
-            newStatus = "Quoted: Re-quoted";
-          } else if (currentStatus === "New Request Submitted" || currentStatus === "Quoted: Revision In Progress") {
+          let newVersion = currentRequest.version || 0;
+  
+          if (["New Request Submitted", "Quoted: Revision In Progress"].includes(currentRequest.status)) {
+            newVersion = Math.max(1.0, newVersion); // Ensure version is at least 1.0
             newStatus = "Quoted: Waiting for TA Feedback";
+          } else if (currentRequest.status === "Quoted: Revision Requested") {
+            newVersion = parseFloat((newVersion + 0.1).toFixed(1));
+            newStatus = "Quoted: Re-quoted";
+          } else { // Subsequent sends or if status is already some form of "quoted"
+            newVersion = parseFloat(((newVersion || tripData.version || 0) + 0.1).toFixed(1));
+            newStatus = "Quoted: Re-quoted";
           }
           
-          allRequests[requestIndex].status = newStatus;
-          allRequests[requestIndex].linkedItineraryId = tripData.id;
-          allRequests[requestIndex].updatedAt = new Date().toISOString();
+          currentRequest.status = newStatus;
+          currentRequest.linkedItineraryId = tripData.id;
+          currentRequest.adminRevisionNotes = tripData.adminRevisionNotes || undefined; // Take from current tripData
+          currentRequest.version = newVersion;
+          currentRequest.updatedAt = new Date().toISOString();
+          currentRequest.agentRevisionNotes = undefined; // Clear agent notes as admin is sending a new version
+  
+          allRequests[requestIndex] = currentRequest;
           localStorage.setItem(AGENT_QUOTATION_REQUESTS_KEY, JSON.stringify(allRequests));
           
-          toast({ title: "Quotation Sent", description: `Proposal for Quotation ID ${tripData.quotationRequestId.split('-').pop()} marked as ready for agent (Status: ${newStatus}).`, variant: "default" });
+          const updatedTripData = { ...tripData, version: newVersion, updatedAt: new Date().toISOString() };
+          saveCurrentItineraryToStorage(updatedTripData);
+          setTripData(updatedTripData); // Update local state
+          
+          toast({ title: "Quotation Sent", description: `Proposal for Quotation ID ${tripData.quotationRequestId.split('-').pop()} (v${newVersion.toFixed(1)}) marked as ready for agent (Status: ${newStatus}).`, variant: "default" });
         } else {
           toast({ title: "Error", description: "Associated quotation request not found in storage.", variant: "destructive" });
         }
@@ -344,7 +394,7 @@ export default function ItineraryClientViewPage() {
             {isAdmin && (
               <>
                 {tripData.quotationRequestId && (
-                  <Button onClick={handleSendQuotationToAgent} size="sm" className="h-9 text-sm w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white">
+                  <Button onClick={handleSendQuotationToAgentFromViewPage} size="sm" className="h-9 text-sm w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white">
                     <Send className="mr-2 h-4 w-4"/> Send Quotation to Agent
                   </Button>
                 )}

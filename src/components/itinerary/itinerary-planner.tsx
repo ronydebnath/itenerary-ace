@@ -32,8 +32,8 @@ import { PlannerHeader } from './planner-header';
 import { DayNavigation } from './day-navigation';
 import { useRouter } from 'next/navigation';
 import { Badge } from '@/components/ui/badge';
-import { Textarea } from '@/components/ui/textarea'; // Added for displaying agent notes
-import { Label } from '@/components/ui/label'; // Added for labeling agent notes
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
 
 
 const SHOW_DETAILS_TOKEN = 'full_details_v1'; 
@@ -46,7 +46,6 @@ interface ItineraryPlannerProps {
   onUpdatePax: (updatedPax: Partial<PaxDetails>) => void;
   onManualSave: () => void;
   quotationRequestDetails?: QuotationRequest | null;
-  handleSendQuotationToAgent?: () => boolean; 
 }
 
 export function ItineraryPlanner({
@@ -57,7 +56,6 @@ export function ItineraryPlanner({
   onUpdatePax,
   onManualSave,
   quotationRequestDetails,
-  handleSendQuotationToAgent 
 }: ItineraryPlannerProps) {
   const router = useRouter();
   const [currentDayView, setCurrentDayView] = React.useState<number>(1);
@@ -165,13 +163,6 @@ export function ItineraryPlanner({
     }
   }, [tripData?.id, router, onManualSave]);
   
-  const handleSendQuotationClick = () => {
-    onManualSave(); // Save latest changes first
-    if(handleSendQuotationToAgent) {
-        handleSendQuotationToAgent(); // Then mark as ready for agent
-    }
-  };
-
 
   const getFormattedDateForDay = React.useCallback((dayNum: number): string => {
     if (!tripData.settings.startDate) return `Day ${dayNum}`;
@@ -186,7 +177,6 @@ export function ItineraryPlanner({
 
 
   const isLoadingAnything = isLoadingServices || isLoadingHotelDefinitions || isLoadingExchangeRates || isLoadingCountries;
-  const canSendQuoteToAgent = !!tripData.quotationRequestId && !!quotationRequestDetails && !!handleSendQuotationToAgent;
 
   return (
     <div className="w-full max-w-[1600px] mx-auto p-2 sm:p-4 md:p-6 lg:p-8">
@@ -226,6 +216,20 @@ export function ItineraryPlanner({
                 }
                 </p>
             </div>
+            {quotationRequestDetails.agentRevisionNotes && (
+                <div className="border-t pt-3 mt-3">
+                    <Label htmlFor="agentRevisionNotesDisplayPlanner" className="text-sm font-medium text-orange-600 flex items-center">
+                        <MessageSquare className="h-4 w-4 mr-1.5" /> Agent's Latest Revision Request Notes:
+                    </Label>
+                    <Textarea
+                        id="agentRevisionNotesDisplayPlanner"
+                        value={quotationRequestDetails.agentRevisionNotes}
+                        readOnly
+                        rows={3}
+                        className="mt-1 text-sm bg-orange-50 border-orange-200 text-orange-800 placeholder:text-orange-600"
+                    />
+                </div>
+            )}
             <Separator />
             {quotationRequestDetails.accommodationPrefs && (
                 <div className="space-y-1 sm:space-y-1.5">
@@ -264,20 +268,6 @@ export function ItineraryPlanner({
                 <p className="whitespace-pre-wrap bg-muted/30 p-1.5 sm:p-2 rounded-sm text-xs">{quotationRequestDetails.otherRequirements}</p>
                 </div>
             )}
-            {quotationRequestDetails.agentRevisionNotes && (
-                <div className="border-t pt-3 mt-3">
-                    <Label htmlFor="agentRevisionNotesDisplay" className="text-sm font-medium text-orange-600 flex items-center">
-                        <MessageSquareIcon className="h-4 w-4 mr-1.5" /> Agent's Revision Request Notes:
-                    </Label>
-                    <Textarea
-                        id="agentRevisionNotesDisplay"
-                        value={quotationRequestDetails.agentRevisionNotes}
-                        readOnly
-                        rows={3}
-                        className="mt-1 text-sm bg-orange-50 border-orange-200 text-orange-800 placeholder:text-orange-600"
-                    />
-                </div>
-            )}
             </CardContent>
         </Card>
       )}
@@ -291,7 +281,6 @@ export function ItineraryPlanner({
         onReset={onReset}
         showCosts={plannerShowCosts}
         quotationRequestDetails={quotationRequestDetails}
-        handleSendQuotationToAgent={handleSendQuotationClick} 
       />
 
       <DayNavigation

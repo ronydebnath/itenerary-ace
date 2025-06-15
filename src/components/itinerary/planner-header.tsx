@@ -25,7 +25,7 @@ import { DatePicker } from '@/components/ui/date-picker';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Edit3, Save, Info, CalendarDays, Users, MapPin, Route, Loader2, DollarSign, Globe, FileText, Image as ImageIconLucide, Wand2, Landmark, Send } from 'lucide-react';
+import { Edit3, Save, Info, CalendarDays, Users, MapPin, Route, Loader2, DollarSign, Globe, FileText, Image as ImageIconLucide, Wand2, Landmark, MessageSquare } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { formatCurrency } from '@/lib/utils';
 import { format, parseISO, isValid } from 'date-fns';
@@ -44,7 +44,6 @@ interface PlannerHeaderProps {
   onReset: () => void;
   showCosts: boolean;
   quotationRequestDetails?: QuotationRequest | null;
-  handleSendQuotationToAgent?: () => void;
 }
 
 function PlannerHeaderComponent({
@@ -56,7 +55,6 @@ function PlannerHeaderComponent({
   onReset,
   showCosts,
   quotationRequestDetails,
-  handleSendQuotationToAgent,
 }: PlannerHeaderProps) {
   const { countries: availableCountries, isLoading: isLoadingCountries } = useCountries();
   const { provinces: allAvailableProvinces, isLoading: isLoadingProvinces, getProvincesByCountry } = useProvinces();
@@ -139,7 +137,6 @@ function PlannerHeaderComponent({
 
 
   const numNights = Math.max(0, tripData.settings.numDays - 1);
-  const canSendQuotation = !!tripData.quotationRequestId && !!quotationRequestDetails && !!handleSendQuotationToAgent;
 
   return (
     <Card className="mb-4 md:mb-6 shadow-xl no-print">
@@ -174,11 +171,6 @@ function PlannerHeaderComponent({
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
-            {canSendQuotation && handleSendQuotationToAgent && (
-                 <Button onClick={handleSendQuotationToAgent} size="sm" className="bg-green-600 hover:bg-green-700 text-white text-xs sm:text-sm h-9 w-full xs:w-auto">
-                    <Send className="mr-1.5 h-4 w-4" /> Send Quotation to Agent
-                </Button>
-            )}
             <Button onClick={onManualSave} size="sm" className="bg-accent hover:bg-accent/90 text-accent-foreground text-xs sm:text-sm h-9 w-full xs:w-auto">
               <Save className="mr-1.5 h-4 w-4" /> Save
             </Button>
@@ -255,13 +247,26 @@ function PlannerHeaderComponent({
           )}
         </div>
         
-        {/* Removed Agent Revision Notes from here */}
+        {quotationRequestDetails?.agentRevisionNotes && (
+          <div className="border-t pt-4 mt-4">
+              <Label htmlFor="agentRevisionNotesDisplayHeader" className="text-sm font-medium text-orange-600 flex items-center">
+                  <MessageSquare className="h-4 w-4 mr-1.5" /> Agent's Latest Revision Request Notes:
+              </Label>
+              <Textarea
+                  id="agentRevisionNotesDisplayHeader"
+                  value={quotationRequestDetails.agentRevisionNotes}
+                  readOnly
+                  rows={3}
+                  className="mt-1 text-sm bg-orange-50 border-orange-200 text-orange-800 placeholder:text-orange-600"
+              />
+          </div>
+        )}
 
         {tripData.quotationRequestId && (
           <div className="border-t pt-4 mt-4">
-            <Label htmlFor="adminRevisionNotes" className="text-sm font-medium text-muted-foreground">Admin Notes for this Quotation Version (Optional)</Label>
+            <Label htmlFor="adminRevisionNotesPlanner" className="text-sm font-medium text-muted-foreground">Admin Notes for this Quotation Version (Optional)</Label>
             <Textarea
-                id="adminRevisionNotes"
+                id="adminRevisionNotesPlanner"
                 value={tripData.adminRevisionNotes || ''}
                 onChange={(e) => onUpdateTripData(currentData => ({ ...currentData, adminRevisionNotes: e.target.value }))}
                 placeholder="Notes for the TA regarding this version of the quote, e.g., 'Changed hotel in Phuket as requested', 'Added optional evening cruise'."
