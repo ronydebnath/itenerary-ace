@@ -28,10 +28,9 @@ import { useServicePrices } from '@/hooks/useServicePrices';
 import { useHotelDefinitions } from '@/hooks/useHotelDefinitions';
 import { useExchangeRates } from '@/hooks/useExchangeRates';
 import { useCountries } from '@/hooks/useCountries';
-import { addDays, format, parseISO } from 'date-fns';
+import { addDays, format, parseISO, isValid } from 'date-fns';
 import { PlannerHeader } from './planner-header';
 import { DayNavigation } from './day-navigation';
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import dynamic from 'next/dynamic';
 
 
@@ -48,7 +47,7 @@ interface ItineraryPlannerProps {
   onUpdateSettings: (updatedSettings: Partial<TripSettings>) => void;
   onUpdatePax: (updatedPax: Partial<PaxDetails>) => void;
   onManualSave: () => void;
-  quotationRequestDetails?: QuotationRequest | null; // Added prop
+  quotationRequestDetails?: QuotationRequest | null;
 }
 
 export function ItineraryPlanner({
@@ -67,7 +66,7 @@ export function ItineraryPlanner({
   const { allServicePrices, isLoading: isLoadingServices } = useServicePrices();
   const { allHotelDefinitions, isLoading: isLoadingHotelDefinitions } = useHotelDefinitions();
   const { getRate, isLoading: isLoadingExchangeRates, exchangeRates, globalMarkupPercentage, specificMarkupRates } = useExchangeRates();
-  const { countries, isLoading: isLoadingCountries } = useCountries(); 
+  const { countries, isLoading: isLoadingCountries } = useCountries();
 
   React.useEffect(() => {
     if (tripData && !isLoadingServices && !isLoadingHotelDefinitions && !isLoadingExchangeRates && !isLoadingCountries) {
@@ -135,7 +134,7 @@ export function ItineraryPlanner({
           newItem = { ...baseNewItem, type: 'misc', unitCost: 0, quantity: 1, costAssignment: 'perPerson' };
           break;
         default:
-          return {}; 
+          return {};
       }
 
       const newDays = { ...currentTripData.days };
@@ -193,67 +192,53 @@ export function ItineraryPlanner({
               This information was provided by the agent. Use it to guide your itinerary planning.
             </CardDescription>
           </CardHeader>
-          <CardContent className="pt-0">
-            <Accordion type="single" collapsible defaultValue="item-1" className="w-full">
-              <AccordionItem value="item-1">
-                <AccordionTrigger className="text-sm hover:no-underline">Client &amp; Basic Trip Info</AccordionTrigger>
-                <AccordionContent className="text-xs space-y-1 pt-2">
-                  <p><strong>Agent/Source:</strong> {tripData.clientName || 'N/A'}</p>
-                  <p><strong>Adults:</strong> {quotationRequestDetails.clientInfo.adults}, <strong>Children:</strong> {quotationRequestDetails.clientInfo.children} {quotationRequestDetails.clientInfo.children > 0 && `(Ages: ${quotationRequestDetails.clientInfo.childAges || 'N/A'})`}</p>
-                  <p><strong>Destinations:</strong></p>
-                    <ul className="list-disc pl-5">
-                        <li>Countries: {quotationRequestDetails.tripDetails.preferredCountryIds.map(id => countries.find(c=>c.id===id)?.name || id).join(', ') || 'Any'}</li>
-                        <li>Provinces: {quotationRequestDetails.tripDetails.preferredProvinceNames?.join(', ') || 'Any'}</li>
-                    </ul>
-                  <p><strong>Dates:</strong> {quotationRequestDetails.tripDetails.preferredStartDate ? format(parseISO(quotationRequestDetails.tripDetails.preferredStartDate), 'dd MMM yyyy') : 'N/A'} to {quotationRequestDetails.tripDetails.preferredEndDate ? format(parseISO(quotationRequestDetails.tripDetails.preferredEndDate), 'dd MMM yyyy') : 'N/A'} ({quotationRequestDetails.tripDetails.durationDays || 'N/A'} days)</p>
-                  <p><strong>Trip Type:</strong> {quotationRequestDetails.tripDetails.tripType || 'N/A'}</p>
-                  <p><strong>Budget:</strong> {quotationRequestDetails.tripDetails.budgetRange || 'N/A'} {quotationRequestDetails.tripDetails.budgetRange === "Specific Amount (see notes)" && `(${formatCurrency(quotationRequestDetails.tripDetails.budgetAmount || 0, quotationRequestDetails.tripDetails.budgetCurrency || 'USD')})`}</p>
-                </AccordionContent>
-              </AccordionItem>
-              {quotationRequestDetails.accommodationPrefs && (
-                <AccordionItem value="item-2">
-                  <AccordionTrigger className="text-sm hover:no-underline">Accommodation Preferences</AccordionTrigger>
-                  <AccordionContent className="text-xs space-y-1 pt-2">
-                    <p><strong>Star Rating:</strong> {quotationRequestDetails.accommodationPrefs.hotelStarRating || 'N/A'}</p>
-                    <p><strong>Room Prefs:</strong> {quotationRequestDetails.accommodationPrefs.roomPreferences || 'N/A'}</p>
-                    <p><strong>Specific Hotels:</strong> {quotationRequestDetails.accommodationPrefs.specificHotelRequests || 'N/A'}</p>
-                  </AccordionContent>
-                </AccordionItem>
-              )}
-              {quotationRequestDetails.activityPrefs && (
-                <AccordionItem value="item-3">
-                  <AccordionTrigger className="text-sm hover:no-underline">Activity & Tour Preferences</AccordionTrigger>
-                  <AccordionContent className="text-xs pt-2">
-                    <p className="whitespace-pre-wrap">{quotationRequestDetails.activityPrefs.requestedActivities || 'No specific activities requested.'}</p>
-                  </AccordionContent>
-                </AccordionItem>
-              )}
-              {quotationRequestDetails.flightPrefs && (
-                 <AccordionItem value="item-4">
-                  <AccordionTrigger className="text-sm hover:no-underline">Transfer Preferences</AccordionTrigger>
-                  <AccordionContent className="text-xs space-y-1 pt-2">
-                    <p><strong>Airport Transfers Required:</strong> {quotationRequestDetails.flightPrefs.airportTransfersRequired ? 'Yes' : 'No'}</p>
-                    <p><strong>Activity Transfers Required:</strong> {quotationRequestDetails.flightPrefs.activityTransfersRequired ? 'Yes' : 'No'}</p>
-                  </AccordionContent>
-                </AccordionItem>
-              )}
-              {quotationRequestDetails.mealPrefs && (
-                <AccordionItem value="item-5">
-                  <AccordionTrigger className="text-sm hover:no-underline">Meal Preferences</AccordionTrigger>
-                  <AccordionContent className="text-xs pt-2">
-                    <p><strong>Plan:</strong> {quotationRequestDetails.mealPrefs.mealPlan || 'Not Specified'}</p>
-                  </AccordionContent>
-                </AccordionItem>
-              )}
-              {quotationRequestDetails.otherRequirements && (
-                <AccordionItem value="item-6">
-                  <AccordionTrigger className="text-sm hover:no-underline">Other Requirements</AccordionTrigger>
-                  <AccordionContent className="text-xs pt-2">
-                    <p className="whitespace-pre-wrap">{quotationRequestDetails.otherRequirements}</p>
-                  </AccordionContent>
-                </AccordionItem>
-              )}
-            </Accordion>
+          <CardContent className="pt-0 text-xs space-y-3 p-4">
+            <div>
+              <h4 className="font-semibold text-sm mb-1 text-accent-foreground/90">Client & Basic Trip Info</h4>
+              <p><strong>Agent/Source:</strong> {tripData.clientName || 'N/A'}</p>
+              <p><strong>Adults:</strong> {quotationRequestDetails.clientInfo.adults}, <strong>Children:</strong> {quotationRequestDetails.clientInfo.children} {quotationRequestDetails.clientInfo.children > 0 && `(Ages: ${quotationRequestDetails.clientInfo.childAges || 'N/A'})`}</p>
+              <p><strong>Destinations:</strong></p>
+              <ul className="list-disc pl-5">
+                <li>Countries: {quotationRequestDetails.tripDetails.preferredCountryIds.map(id => countries.find(c => c.id === id)?.name || id).join(', ') || 'Any'}</li>
+                <li>Provinces: {quotationRequestDetails.tripDetails.preferredProvinceNames?.join(', ') || 'Any'}</li>
+              </ul>
+              <p><strong>Dates:</strong> {quotationRequestDetails.tripDetails.preferredStartDate && isValid(parseISO(quotationRequestDetails.tripDetails.preferredStartDate)) ? format(parseISO(quotationRequestDetails.tripDetails.preferredStartDate), 'dd MMM yyyy') : 'N/A'} to {quotationRequestDetails.tripDetails.preferredEndDate && isValid(parseISO(quotationRequestDetails.tripDetails.preferredEndDate)) ? format(parseISO(quotationRequestDetails.tripDetails.preferredEndDate), 'dd MMM yyyy') : 'N/A'} ({quotationRequestDetails.tripDetails.durationDays || 'N/A'} days)</p>
+              <p><strong>Trip Type:</strong> {quotationRequestDetails.tripDetails.tripType || 'N/A'}</p>
+              <p><strong>Budget:</strong> {quotationRequestDetails.tripDetails.budgetRange || 'N/A'} {quotationRequestDetails.tripDetails.budgetRange === "Specific Amount (see notes)" && `(${formatCurrency(quotationRequestDetails.tripDetails.budgetAmount || 0, quotationRequestDetails.tripDetails.budgetCurrency || 'USD')})`}</p>
+            </div>
+            {quotationRequestDetails.accommodationPrefs && (
+              <div>
+                <h4 className="font-semibold text-sm mb-1 mt-2 text-accent-foreground/90">Accommodation Preferences</h4>
+                <p><strong>Star Rating:</strong> {quotationRequestDetails.accommodationPrefs.hotelStarRating || 'N/A'}</p>
+                <p><strong>Room Prefs:</strong> {quotationRequestDetails.accommodationPrefs.roomPreferences || 'N/A'}</p>
+                <p><strong>Specific Hotels:</strong> {quotationRequestDetails.accommodationPrefs.specificHotelRequests || 'N/A'}</p>
+              </div>
+            )}
+            {quotationRequestDetails.activityPrefs && (
+              <div>
+                <h4 className="font-semibold text-sm mb-1 mt-2 text-accent-foreground/90">Activity & Tour Preferences</h4>
+                <p className="whitespace-pre-wrap">{quotationRequestDetails.activityPrefs.requestedActivities || 'No specific activities requested.'}</p>
+              </div>
+            )}
+            {quotationRequestDetails.flightPrefs && (
+              <div>
+                <h4 className="font-semibold text-sm mb-1 mt-2 text-accent-foreground/90">Transfer Preferences</h4>
+                <p><strong>Airport Transfers Required:</strong> {quotationRequestDetails.flightPrefs.airportTransfersRequired ? 'Yes' : 'No'}</p>
+                <p><strong>Activity Transfers Required:</strong> {quotationRequestDetails.flightPrefs.activityTransfersRequired ? 'Yes' : 'No'}</p>
+              </div>
+            )}
+            {quotationRequestDetails.mealPrefs && (
+              <div>
+                <h4 className="font-semibold text-sm mb-1 mt-2 text-accent-foreground/90">Meal Preferences</h4>
+                <p><strong>Plan:</strong> {quotationRequestDetails.mealPrefs.mealPlan || 'Not Specified'}</p>
+              </div>
+            )}
+            {quotationRequestDetails.otherRequirements && (
+              <div>
+                <h4 className="font-semibold text-sm mb-1 mt-2 text-accent-foreground/90">Other Requirements</h4>
+                <p className="whitespace-pre-wrap">{quotationRequestDetails.otherRequirements}</p>
+              </div>
+            )}
           </CardContent>
         </Card>
       )}
@@ -277,7 +262,7 @@ export function ItineraryPlanner({
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 md:gap-6 min-h-[60vh]">
         <div className="lg:col-span-8 flex flex-col">
-          {isLoadingAnything && !tripData.days[currentDayView] ? ( 
+          {isLoadingAnything && !tripData.days[currentDayView] ? (
             <div className="flex flex-col items-center justify-center p-6 sm:p-10 min-h-[300px] bg-card rounded-lg shadow-sm border flex-grow">
               <Loader2 className="h-10 w-10 sm:h-12 sm:w-12 animate-spin text-primary mb-3 sm:mb-4" />
               <p className="text-muted-foreground text-sm sm:text-base">Loading itinerary data and service definitions...</p>
@@ -290,7 +275,7 @@ export function ItineraryPlanner({
                     dayNumber={dayNum}
                     items={tripData.days[dayNum]?.items || []}
                     travelers={tripData.travelers}
-                    currency={tripData.pax.currency} 
+                    currency={tripData.pax.currency}
                     onAddItem={handleAddItem}
                     onUpdateItem={handleUpdateItem}
                     onDeleteItem={handleDeleteItem}
@@ -369,4 +354,3 @@ export function ItineraryPlanner({
     </div>
   );
 }
-
