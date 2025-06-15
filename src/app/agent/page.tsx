@@ -14,7 +14,7 @@
 import Link from 'next/link';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
-import { Briefcase, Route, Users, ListOrdered, LayoutDashboard, UserCog, FilePlus, ClipboardList, Info } from 'lucide-react';
+import { Briefcase, Route, Users, ListOrdered, LayoutDashboard, UserCog, FilePlus, ClipboardList, Info, FileText } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 
@@ -84,21 +84,35 @@ export default function AgentDashboardPage() {
             buttonText="Launch Planner"
             className="lg:col-span-1 bg-accent/5 border-accent/30"
           />
-          <AgentDashboardCard
-            title="Request New Quotation"
-            description="Fill out a detailed form to request a new travel quotation from the admin team."
-            href="/agent/quotation-request"
-            icon={FilePlus}
-            buttonText="Request Quote"
-          />
+
+          {/* Consolidated Quotation Management Card */}
+          <Card className={cn("shadow-lg hover:shadow-xl transition-shadow duration-300 flex flex-col bg-card", "lg:col-span-1")}>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 pt-4 px-4 sm:px-5">
+              <CardTitle className="text-lg sm:text-xl font-semibold text-primary">Quotation Management</CardTitle>
+              <div className={cn("p-2 rounded-md", "bg-primary/10")}>
+                <FileText className={cn("h-5 w-5 sm:h-6 sm:w-6", "text-primary")} />
+              </div>
+            </CardHeader>
+            <CardContent className="flex-grow px-4 sm:px-5 pt-1 pb-3">
+              <p className="text-xs sm:text-sm text-muted-foreground">
+                Create new quotation requests or view the status of your existing submissions.
+              </p>
+            </CardContent>
+            <CardFooter className="flex flex-col sm:flex-row gap-2 px-4 sm:px-5 pb-4">
+              <Link href="/agent/quotation-request" passHref className="w-full sm:flex-1">
+                <Button className="w-full bg-primary hover:bg-primary/90 text-primary-foreground text-sm py-2.5">
+                  <FilePlus className="mr-2 h-4 w-4" /> Request New
+                </Button>
+              </Link>
+              <Link href="/agent/my-quotation-requests" passHref className="w-full sm:flex-1">
+                <Button variant="outline" className="w-full text-sm py-2.5">
+                  <ClipboardList className="mr-2 h-4 w-4" /> View My Requests
+                </Button>
+              </Link>
+            </CardFooter>
+          </Card>
+
            <AgentDashboardCard
-            title="My Quotation Requests"
-            description="View the status of your submitted quotation requests and access proposals."
-            href="/agent/my-quotation-requests"
-            icon={ClipboardList}
-            buttonText="View My Requests"
-          />
-          <AgentDashboardCard
             title="My Agent Profile"
             description="Update your contact information, agency details, and professional preferences."
             href="/agent/profile"
