@@ -20,6 +20,8 @@ import { LayoutDashboard, ListChecks, Edit, Trash2, Search, FileText, Eye, FileP
 import { format, parseISO } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
 import { useCountries } from '@/hooks/useCountries';
+import { useAgents } from '@/hooks/useAgents'; // Import useAgents
+import { cn } from '@/lib/utils';
 
 const AGENT_QUOTATION_REQUESTS_KEY = 'itineraryAce_agentQuotationRequests';
 
@@ -30,6 +32,7 @@ export default function ManageQuotationRequestsPage() {
   const router = useRouter();
   const { toast } = useToast();
   const { countries, isLoading: isLoadingCountries } = useCountries();
+  const { agents, isLoading: isLoadingAgents } = useAgents(); // Use agents hook
 
   const loadRequests = React.useCallback(() => {
     setIsLoading(true);
@@ -75,21 +78,37 @@ export default function ManageQuotationRequestsPage() {
     return countryIds.map(id => countries.find(c => c.id === id)?.name || id).join(', ') || 'Any';
   };
 
+  const getAgentName = (agentId?: string) => {
+    if (isLoadingAgents || !agentId) return agentId || 'N/A';
+    const agent = agents.find(a => a.id === agentId);
+    return agent?.fullName || agentId;
+  };
+
+  const getStatusBadgeClassName = (status: QuotationRequest['status']): string => {
+    switch (status) {
+      case 'Pending': return 'bg-yellow-100 text-yellow-800 border-yellow-300 dark:bg-yellow-900/30 dark:text-yellow-300 dark:border-yellow-700';
+      case 'Quoted': return 'bg-blue-100 text-blue-800 border-blue-300 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-700';
+      case 'ConfirmedByAgent': return 'bg-green-100 text-green-800 border-green-300 dark:bg-green-900/30 dark:text-green-300 dark:border-green-700';
+      case 'BookingInProgress': return 'bg-purple-100 text-purple-800 border-purple-300 dark:bg-purple-900/30 dark:text-purple-300 dark:border-purple-700';
+      case 'Booked': return 'bg-teal-100 text-teal-800 border-teal-300 dark:bg-teal-900/30 dark:text-teal-300 dark:border-teal-700';
+      case 'Cancelled': return 'bg-red-100 text-red-800 border-red-300 dark:bg-red-900/30 dark:text-red-300 dark:border-red-700';
+      default: return 'bg-gray-100 text-gray-800 border-gray-300 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600';
+    }
+  };
+
   const filteredRequests = requests.filter(req => {
     const searchLower = searchTerm.toLowerCase();
-    const clientRef = req.clientInfo?.clientReference?.toLowerCase() || "";
-    const agentId = req.agentId?.toLowerCase() || "";
+    const agentName = getAgentName(req.agentId).toLowerCase();
     const destinations = (getCountryNames(req.tripDetails.preferredCountryIds) + " " + (req.tripDetails.preferredProvinceNames || []).join(" ")).toLowerCase();
     return (
       req.id.toLowerCase().includes(searchLower) ||
-      clientRef.includes(searchLower) ||
-      agentId.includes(searchLower) ||
+      agentName.includes(searchLower) ||
       destinations.includes(searchLower) ||
       req.status.toLowerCase().includes(searchLower)
     );
   });
 
-  if (isLoading) {
+  if (isLoading || isLoadingAgents) { // Added isLoadingAgents check
     return <div className="flex justify-center items-center min-h-screen p-4">Loading quotation requests...</div>;
   }
 
@@ -114,7 +133,7 @@ export default function ManageQuotationRequestsPage() {
             <Search className="absolute left-2 sm:left-3 top-1/2 -translate-y-1/2 h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground" />
             <Input
                 type="search"
-                placeholder="Search by ID, Client Ref, Agent, Destination, Status..."
+                placeholder="Search by ID, Agent, Destination, Status..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-8 sm:pl-10 w-full md:w-2/3 lg:w-1/2 text-sm sm:text-base h-9 sm:h-10"
@@ -137,7 +156,7 @@ export default function ManageQuotationRequestsPage() {
                 <TableRow>
                   <TableHead className="px-2 py-3 text-xs sm:text-sm">Req. ID</TableHead>
                   <TableHead className="px-2 py-3 text-xs sm:text-sm">Date</TableHead>
-                  <TableHead className="px-2 py-3 text-xs sm:text-sm">Client Ref.</TableHead>
+                  <TableHead className="px-2 py-3 text-xs sm:text-sm">Agent</TableHead>
                   <TableHead className="px-2 py-3 text-xs sm:text-sm">Destinations</TableHead>
                   <TableHead className="px-2 py-3 text-xs sm:text-sm">Pax</TableHead>
                   <TableHead className="px-2 py-3 text-xs sm:text-sm">Status</TableHead>
@@ -147,9 +166,9 @@ export default function ManageQuotationRequestsPage() {
               <TableBody>
                 {filteredRequests.map((req) => (
                   <TableRow key={req.id} className="text-xs sm:text-sm">
-                    <TableCell className="font-mono py-2 px-2 text-xs">{req.id.slice(-6)}</TableCell>
+                    <TableCell className="font-mono py-2 px-2 text-xs">{req.id.slice(-11)}</TableCell>
                     <TableCell className="py-2 px-2">{format(parseISO(req.requestDate), 'dd MMM yy')}</TableCell>
-                    <TableCell className="font-medium py-2 px-2">{req.clientInfo.clientReference || 'N/A'}</TableCell>
+                    <TableCell className="font-medium py-2 px-2">{getAgentName(req.agentId)}</TableCell>
                     <TableCell className="py-2 px-2">
                       {getCountryNames(req.tripDetails.preferredCountryIds)}
                       {(req.tripDetails.preferredProvinceNames || []).length > 0 && (
@@ -159,12 +178,14 @@ export default function ManageQuotationRequestsPage() {
                     <TableCell className="py-2 px-2">{req.clientInfo.adults}A {req.clientInfo.children > 0 && ` ${req.clientInfo.children}C`}</TableCell>
                     <TableCell className="py-2 px-2">
                        <Select value={req.status} onValueChange={(newStatus) => handleUpdateStatus(req.id, newStatus as QuotationRequestStatus)}>
-                          <SelectTrigger className="h-8 text-xs w-[130px]">
+                          <SelectTrigger className={cn("h-8 text-xs w-[130px]", getStatusBadgeClassName(req.status))}>
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
                             {QUOTATION_STATUSES.map(status => (
-                              <SelectItem key={status} value={status} className="text-xs">{status}</SelectItem>
+                              <SelectItem key={status} value={status} className="text-xs">
+                                <Badge variant="outline" className={cn("mr-2 w-full justify-start text-xs", getStatusBadgeClassName(status))}>{status}</Badge>
+                              </SelectItem>
                             ))}
                           </SelectContent>
                         </Select>
@@ -215,3 +236,4 @@ export default function ManageQuotationRequestsPage() {
     </main>
   );
 }
+
