@@ -14,15 +14,12 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import {
   Loader2, AlertCircle, CalendarDays, Users, MapPin,
-  Hotel, Car, Ticket, Utensils, ShoppingBag, PackagePlus, FileText,
-  Building, ListOrdered, DollarSign, Coins,
-  Briefcase, UserCircle as UserCircleIcon,
+  Hotel, Car, Ticket, Utensils, ShoppingBag, FileText,
   ArrowLeft, Globe, Printer, EyeOff, Eye
-} from 'lucide-react';
+} from 'lucide-react'; // Removed unused icons: Building, ListOrdered, DollarSign, Coins, Briefcase, UserCircleIcon, PackagePlus
 import { formatCurrency } from '@/lib/utils';
 
 const ITINERARY_DATA_PREFIX = 'itineraryAce_data_';
@@ -87,12 +84,9 @@ export default function ItineraryClientViewPage() {
       } finally {
         setIsLoading(false);
       }
-    } else if (!tripData && !isLoading && !error) { // Added !error to prevent premature "Not Available"
-      // If tripData is null and we are not in an initial loading phase for tripData itself,
-      // and no error has occurred yet, it might be that we are waiting for supporting hooks.
-      // Only set isLoading to false if ALL dependent hooks are also done loading.
+    } else if (!tripData && !isLoading && !error) { 
       if (!isLoadingServices && !isLoadingHotelDefs && !isLoadingCountries && !isLoadingExchangeRates) {
-         setIsLoading(false); // Stop loading if tripData is definitively not found (and wasn't set from an error)
+         setIsLoading(false); 
       }
     }
   }, [tripData, isLoadingServices, isLoadingHotelDefs, isLoadingCountries, isLoadingExchangeRates, countries, allServicePrices, allHotelDefinitions, getRate, isLoading, error]);
@@ -192,7 +186,7 @@ export default function ItineraryClientViewPage() {
                 ) : (
                   <div className="space-y-4 sm:space-y-5 print:space-y-3">
                     {dayItinerary.items.map(item => {
-                      const IconComponent = ITEM_TYPE_ICONS[item.type] || PackagePlus;
+                      const IconComponent = ITEM_TYPE_ICONS[item.type] || FileText; // Fallback to FileText
                       const detailedItemInfo = costSummary.detailedItems.find(di => di.id === item.id);
                       const locationDisplay = [detailedItemInfo?.province, detailedItemInfo?.countryName].filter(Boolean).join(', ');
 
@@ -290,3 +284,5 @@ export default function ItineraryClientViewPage() {
     </div>
   );
 }
+
+    
