@@ -16,11 +16,11 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { useToast } from "@/hooks/use-toast";
 import type { QuotationRequest, QuotationRequestStatus } from '@/types/quotation';
 import { QUOTATION_STATUSES } from '@/types/quotation';
-import { LayoutDashboard, ListChecks, Edit, Trash2, Search, FileText, Eye, FilePlus } from 'lucide-react';
+import { LayoutDashboard, ListChecks, Edit, Trash2, Search, FileText, Eye, FilePlus, Filter } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
 import { useCountries } from '@/hooks/useCountries';
-import { useAgents } from '@/hooks/useAgents'; // Import useAgents
+import { useAgents } from '@/hooks/useAgents'; 
 import { cn } from '@/lib/utils';
 
 const AGENT_QUOTATION_REQUESTS_KEY = 'itineraryAce_agentQuotationRequests';
@@ -28,11 +28,12 @@ const AGENT_QUOTATION_REQUESTS_KEY = 'itineraryAce_agentQuotationRequests';
 export default function ManageQuotationRequestsPage() {
   const [requests, setRequests] = React.useState<QuotationRequest[]>([]);
   const [searchTerm, setSearchTerm] = React.useState('');
+  const [statusFilter, setStatusFilter] = React.useState<QuotationRequestStatus | 'all'>('all');
   const [isLoading, setIsLoading] = React.useState(true);
   const router = useRouter();
   const { toast } = useToast();
   const { countries, isLoading: isLoadingCountries } = useCountries();
-  const { agents, isLoading: isLoadingAgents } = useAgents(); // Use agents hook
+  const { agents, isLoading: isLoadingAgents } = useAgents(); 
 
   const loadRequests = React.useCallback(() => {
     setIsLoading(true);
@@ -100,15 +101,18 @@ export default function ManageQuotationRequestsPage() {
     const searchLower = searchTerm.toLowerCase();
     const agentName = getAgentName(req.agentId).toLowerCase();
     const destinations = (getCountryNames(req.tripDetails.preferredCountryIds) + " " + (req.tripDetails.preferredProvinceNames || []).join(" ")).toLowerCase();
-    return (
+    
+    const statusMatches = statusFilter === 'all' || req.status === statusFilter;
+    const searchMatches = (
       req.id.toLowerCase().includes(searchLower) ||
       agentName.includes(searchLower) ||
       destinations.includes(searchLower) ||
       req.status.toLowerCase().includes(searchLower)
     );
+    return statusMatches && searchMatches;
   });
 
-  if (isLoading || isLoadingAgents) { // Added isLoadingAgents check
+  if (isLoading || isLoadingAgents) { 
     return <div className="flex justify-center items-center min-h-screen p-4">Loading quotation requests...</div>;
   }
 
@@ -128,16 +132,30 @@ export default function ManageQuotationRequestsPage() {
           </div>
         </div>
 
-        <div className="mb-4 md:mb-6">
-            <div className="relative">
+        <div className="flex flex-col sm:flex-row gap-3 mb-4 md:mb-6">
+            <div className="relative flex-grow">
             <Search className="absolute left-2 sm:left-3 top-1/2 -translate-y-1/2 h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground" />
             <Input
                 type="search"
-                placeholder="Search by ID, Agent, Destination, Status..."
+                placeholder="Search ID, Agent, Destination, Status..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-8 sm:pl-10 w-full md:w-2/3 lg:w-1/2 text-sm sm:text-base h-9 sm:h-10"
+                className="pl-8 sm:pl-10 w-full text-sm sm:text-base h-9 sm:h-10"
             />
+            </div>
+            <div className="relative sm:w-48">
+                <Filter className="absolute left-2 sm:left-3 top-1/2 -translate-y-1/2 h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground" />
+                <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as QuotationRequestStatus | 'all')}>
+                    <SelectTrigger className="pl-8 sm:pl-10 w-full text-sm sm:text-base h-9 sm:h-10">
+                        <SelectValue placeholder="Filter by status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="all">All Statuses</SelectItem>
+                        {QUOTATION_STATUSES.map(status => (
+                            <SelectItem key={status} value={status}>{status}</SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
             </div>
         </div>
 
@@ -145,9 +163,9 @@ export default function ManageQuotationRequestsPage() {
           <div className="text-center py-8 sm:py-10 border-2 border-dashed border-muted-foreground/30 rounded-lg">
             <FileText className="mx-auto h-10 w-10 sm:h-12 sm:w-12 text-muted-foreground" />
             <p className="mt-3 sm:mt-4 text-muted-foreground text-md sm:text-lg">
-              {searchTerm ? "No quotation requests match your search." : "No quotation requests received yet."}
+              {searchTerm || statusFilter !== 'all' ? "No quotation requests match your filters." : "No quotation requests received yet."}
             </p>
-            {!searchTerm && <p className="text-xs sm:text-sm text-muted-foreground mt-1">Agents can submit requests via their portal.</p>}
+            {!searchTerm && statusFilter === 'all' && <p className="text-xs sm:text-sm text-muted-foreground mt-1">Agents can submit requests via their portal.</p>}
           </div>
         ) : (
           <div className="rounded-lg border shadow-sm overflow-x-auto">
