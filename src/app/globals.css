@@ -13,7 +13,7 @@
     --popover: 0 0% 100%;            /* White */
     --popover-foreground: 220 10% 15%; /* Dark gray */
 
-    --primary: 217 91% 60%;        /* Vibrant Blue - Material Primary */
+    --primary: 206 100% 50%; /* Deep Sky Blue from PRD */
     --primary-foreground: 0 0% 100%; /* White - Material On Primary */
 
     --secondary: 217 91% 90%;      /* Light Blue - Material Secondary Container / Tonal Button Background */
@@ -22,7 +22,7 @@
     --muted: 220 17% 91%;           /* Slightly darker gray - Material Surface Variant */
     --muted-foreground: 220 10% 40%; /* Medium gray */
 
-    --accent: 30 100% 55%;         /* Vibrant Orange - Material Tertiary or a distinct accent */
+    --accent: 275 60% 55%; /* Vibrant Violet from PRD */
     --accent-foreground: 0 0% 100%;  /* White */
 
     --destructive: 0 84.2% 60.2%;    /* Red - remains same */
@@ -30,7 +30,7 @@
 
     --border: 220 15% 88%;           /* Light Gray - Material Outline */
     --input: 0 0% 100%;              /* White - Surface for inputs */
-    --ring: 217 91% 60%;             /* Primary blue for focus rings */
+    --ring: 206 100% 50%;             /* Primary blue for focus rings */
 
     --radius: 0.5rem; /* Material 3 often uses slightly more rounded corners */
 
@@ -43,12 +43,68 @@
     /* Sidebar specific colors */
     --sidebar-background: 220 20% 98%; 
     --sidebar-foreground: 220 10% 25%;
-    --sidebar-primary: 217 91% 55%; 
+    --sidebar-primary: 206 100% 50%; 
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 220 17% 93%; 
-    --sidebar-accent-foreground: 217 91% 35%;
+    --sidebar-accent-foreground: 206 100% 45%;
     --sidebar-border: 220 15% 90%;
-    --sidebar-ring: 217 91% 60%;
+    --sidebar-ring: 206 100% 50%;
+
+    /* Background color from PRD - Light Cyan */
+    --app-background: 185 60% 93%; /* Light Cyan #E0F7FA */
+
+    /* Quotation Status Specific Colors */
+    --status-new-request-bg: 210 100% 90%; /* Light Blue */
+    --status-new-request-text: 210 100% 30%; /* Dark Blue */
+    --status-new-request-border: 210 100% 70%; /* Medium Blue */
+
+    --status-waiting-feedback-bg: 50 100% 90%; /* Light Yellow */
+    --status-waiting-feedback-text: 50 100% 30%; /* Dark Yellow */
+    --status-waiting-feedback-border: 50 100% 70%; /* Medium Yellow */
+
+    --status-revision-requested-bg: 30 100% 90%; /* Light Orange */
+    --status-revision-requested-text: 30 100% 30%; /* Dark Orange */
+    --status-revision-requested-border: 30 100% 70%; /* Medium Orange */
+
+    --status-revision-progress-bg: 240 60% 90%; /* Light Indigo */
+    --status-revision-progress-text: 240 60% 30%; /* Dark Indigo */
+    --status-revision-progress-border: 240 60% 70%; /* Medium Indigo */
+
+    --status-requoted-bg: 50 100% 90%; /* Light Yellow (same as waiting) */
+    --status-requoted-text: 50 100% 30%; /* Dark Yellow */
+    --status-requoted-border: 50 100% 70%; /* Medium Yellow */
+    
+    --status-awaiting-approval-bg: 190 100% 90%; /* Light Sky Blue */
+    --status-awaiting-approval-text: 190 100% 30%; /* Dark Sky Blue */
+    --status-awaiting-approval-border: 190 100% 70%; /* Medium Sky Blue */
+
+    --status-confirmed-bg: 120 60% 90%; /* Light Green */
+    --status-confirmed-text: 120 60% 25%; /* Dark Green */
+    --status-confirmed-border: 120 60% 70%; /* Medium Green */
+
+    --status-deposit-pending-bg: 40 100% 90%; /* Light Gold/Amber */
+    --status-deposit-pending-text: 40 100% 30%; /* Dark Gold/Amber */
+    --status-deposit-pending-border: 40 100% 70%; /* Medium Gold/Amber */
+
+    --status-booked-bg: 145 60% 90%; /* Light Teal */
+    --status-booked-text: 145 60% 25%; /* Dark Teal */
+    --status-booked-border: 145 60% 70%; /* Medium Teal */
+
+    --status-documents-sent-bg: 260 60% 90%; /* Light Purple */
+    --status-documents-sent-text: 260 60% 30%; /* Dark Purple */
+    --status-documents-sent-border: 260 60% 70%; /* Medium Purple */
+
+    --status-trip-progress-bg: 220 80% 90%; /* Light Steel Blue */
+    --status-trip-progress-text: 220 80% 30%; /* Dark Steel Blue */
+    --status-trip-progress-border: 220 80% 70%; /* Medium Steel Blue */
+
+    --status-completed-bg: 220 10% 90%; /* Light Gray */
+    --status-completed-text: 220 10% 30%; /* Dark Gray */
+    --status-completed-border: 220 10% 70%; /* Medium Gray */
+
+    --status-cancelled-bg: 0 70% 90%; /* Light Red */
+    --status-cancelled-text: 0 70% 30%; /* Dark Red */
+    --status-cancelled-border: 0 70% 70%; /* Medium Red */
   }
 
   .dark {
@@ -61,7 +117,7 @@
     --popover: 220 10% 10%;
     --popover-foreground: 220 15% 90%;
 
-    --primary: 217 80% 70%;        /* Lighter Blue for Dark Mode - Material Primary */
+    --primary: 206 70% 65%; /* Lighter Sky Blue for Dark Mode */
     --primary-foreground: 220 10% 10%; /* Dark Text on Primary */
 
     --secondary: 217 50% 30%;      /* Darker Blue - Material Secondary Container */
@@ -70,7 +126,7 @@
     --muted: 220 10% 20%;           /* Darker Gray */
     --muted-foreground: 220 15% 65%; /* Medium Gray */
 
-    --accent: 30 90% 65%;          /* Lighter Orange for Dark Mode */
+    --accent: 275 70% 65%;          /* Lighter Violet for Dark Mode */
     --accent-foreground: 220 10% 10%;  /* Dark Text on Accent */
 
     --destructive: 0 70% 55%;
@@ -78,17 +134,73 @@
 
     --border: 220 10% 25%;           /* Darker Gray Border */
     --input: 220 10% 20%;            /* Darker Input Background */
-    --ring: 217 80% 70%;             /* Lighter Primary for focus rings */
+    --ring: 206 70% 65%;             /* Lighter Primary for focus rings */
     
     /* Sidebar specific colors for dark mode */
     --sidebar-background: 220 10% 12%; 
     --sidebar-foreground: 220 15% 88%;
-    --sidebar-primary: 217 80% 65%;
+    --sidebar-primary: 206 70% 60%;
     --sidebar-primary-foreground: 220 10% 5%;
     --sidebar-accent: 220 10% 22%;
-    --sidebar-accent-foreground: 217 80% 80%;
+    --sidebar-accent-foreground: 206 70% 75%;
     --sidebar-border: 220 10% 20%;
-    --sidebar-ring: 217 80% 70%;
+    --sidebar-ring: 206 70% 65%;
+
+    /* App background for dark mode */
+    --app-background: 185 30% 10%; /* Darker Cyan, almost black */
+
+    /* Quotation Status Specific Colors - Dark Mode */
+    --status-new-request-bg: 210 100% 15%; 
+    --status-new-request-text: 210 100% 75%; 
+    --status-new-request-border: 210 100% 40%;
+
+    --status-waiting-feedback-bg: 50 100% 15%; 
+    --status-waiting-feedback-text: 50 100% 75%; 
+    --status-waiting-feedback-border: 50 100% 40%;
+
+    --status-revision-requested-bg: 30 100% 15%; 
+    --status-revision-requested-text: 30 100% 75%; 
+    --status-revision-requested-border: 30 100% 40%;
+
+    --status-revision-progress-bg: 240 60% 15%; 
+    --status-revision-progress-text: 240 60% 75%; 
+    --status-revision-progress-border: 240 60% 40%; 
+
+    --status-requoted-bg: 50 100% 15%; 
+    --status-requoted-text: 50 100% 75%; 
+    --status-requoted-border: 50 100% 40%;
+    
+    --status-awaiting-approval-bg: 190 100% 15%; 
+    --status-awaiting-approval-text: 190 100% 75%; 
+    --status-awaiting-approval-border: 190 100% 40%;
+
+    --status-confirmed-bg: 120 60% 15%; 
+    --status-confirmed-text: 120 60% 75%; 
+    --status-confirmed-border: 120 60% 40%; 
+
+    --status-deposit-pending-bg: 40 100% 15%; 
+    --status-deposit-pending-text: 40 100% 75%; 
+    --status-deposit-pending-border: 40 100% 40%; 
+
+    --status-booked-bg: 145 60% 15%; 
+    --status-booked-text: 145 60% 75%; 
+    --status-booked-border: 145 60% 40%; 
+
+    --status-documents-sent-bg: 260 60% 15%; 
+    --status-documents-sent-text: 260 60% 75%; 
+    --status-documents-sent-border: 260 60% 40%; 
+
+    --status-trip-progress-bg: 220 80% 15%; 
+    --status-trip-progress-text: 220 80% 75%; 
+    --status-trip-progress-border: 220 80% 40%; 
+
+    --status-completed-bg: 220 10% 20%; 
+    --status-completed-text: 220 10% 70%; 
+    --status-completed-border: 220 10% 40%; 
+
+    --status-cancelled-bg: 0 70% 15%; 
+    --status-cancelled-text: 0 70% 75%; 
+    --status-cancelled-border: 0 70% 40%;
   }
 }
 
@@ -97,7 +209,8 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground font-body;
+    /* Apply the app-background color to the body */
+    @apply bg-[hsl(var(--app-background))] text-foreground font-body;
     font-feature-settings: "rlig" 1, "calt" 1;
   }
 }

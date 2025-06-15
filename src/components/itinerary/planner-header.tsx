@@ -1,4 +1,3 @@
-
 /**
  * @fileoverview This component renders the header section of the itinerary planner.
  * It includes fields for setting the itinerary name, client name, start date, number of days,
@@ -14,7 +13,7 @@
 "use client";
 
 import * as React from 'react';
-import type { TripData, TripSettings, PaxDetails, ProvinceItem, CurrencyCode, CountryItem } from '@/types/itinerary';
+import type { TripData, TripSettings, PaxDetails, ProvinceItem, CurrencyCode, CountryItem, QuotationRequest } from '@/types/itinerary';
 import { CURRENCIES } from '@/types/itinerary';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -24,7 +23,7 @@ import { DatePicker } from '@/components/ui/date-picker';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Edit3, Save, Info, CalendarDays, Users, MapPin, Route, Loader2, DollarSign, Globe, FileText, Image as ImageIconLucide, Wand2, Landmark } from 'lucide-react';
+import { Edit3, Save, Info, CalendarDays, Users, MapPin, Route, Loader2, DollarSign, Globe, FileText, Image as ImageIconLucide, Wand2, Landmark, Send } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { formatCurrency } from '@/lib/utils';
 import { format, parseISO, isValid } from 'date-fns';
@@ -42,6 +41,8 @@ interface PlannerHeaderProps {
   onManualSave: () => void;
   onReset: () => void;
   showCosts: boolean;
+  quotationRequestDetails?: QuotationRequest | null;
+  handleSendQuotationToAgent?: () => void; 
 }
 
 function PlannerHeaderComponent({
@@ -51,7 +52,9 @@ function PlannerHeaderComponent({
   onUpdatePax,
   onManualSave,
   onReset,
-  showCosts
+  showCosts,
+  quotationRequestDetails,
+  handleSendQuotationToAgent,
 }: PlannerHeaderProps) {
   const { countries: availableCountries, isLoading: isLoadingCountries } = useCountries();
   const { provinces: allAvailableProvinces, isLoading: isLoadingProvinces, getProvincesByCountry } = useProvinces();
@@ -134,6 +137,7 @@ function PlannerHeaderComponent({
 
 
   const numNights = Math.max(0, tripData.settings.numDays - 1);
+  const canSendQuotation = !!tripData.quotationRequestId && !!quotationRequestDetails && !!handleSendQuotationToAgent;
 
   return (
     <Card className="mb-4 md:mb-6 shadow-xl no-print">
@@ -168,6 +172,11 @@ function PlannerHeaderComponent({
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
+            {canSendQuotation && handleSendQuotationToAgent && (
+                 <Button onClick={handleSendQuotationToAgent} size="sm" className="bg-green-600 hover:bg-green-700 text-white text-xs sm:text-sm h-9 w-full xs:w-auto">
+                    <Send className="mr-1.5 h-4 w-4" /> Send Quotation to Agent
+                </Button>
+            )}
             <Button onClick={onManualSave} size="sm" className="bg-accent hover:bg-accent/90 text-accent-foreground text-xs sm:text-sm h-9 w-full xs:w-auto">
               <Save className="mr-1.5 h-4 w-4" /> Save
             </Button>
@@ -191,6 +200,9 @@ function PlannerHeaderComponent({
             {tripData.id && (
               <p className="text-xs text-muted-foreground mt-1">
                 ID: <span className="font-mono bg-muted px-1.5 py-0.5 rounded text-xs">{tripData.id}</span>
+                {tripData.quotationRequestId && (
+                    <span className="ml-2">Quote Ref: <Badge variant="secondary" className="text-xs font-mono">{tripData.quotationRequestId.split('-').pop()}</Badge></span>
+                )}
               </p>
             )}
           </div>
@@ -394,4 +406,3 @@ function PlannerHeaderComponent({
 }
 
 export const PlannerHeader = React.memo(PlannerHeaderComponent);
-

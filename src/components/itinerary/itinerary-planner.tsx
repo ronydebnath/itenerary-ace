@@ -42,7 +42,7 @@ interface ItineraryPlannerProps {
   onUpdatePax: (updatedPax: Partial<PaxDetails>) => void;
   onManualSave: () => void;
   quotationRequestDetails?: QuotationRequest | null;
-  handleFinalizeProposalForAgent: () => boolean;
+  handleSendQuotationToAgent: () => boolean; // Updated function name
 }
 
 export function ItineraryPlanner({
@@ -53,7 +53,7 @@ export function ItineraryPlanner({
   onUpdatePax,
   onManualSave,
   quotationRequestDetails,
-  handleFinalizeProposalForAgent
+  handleSendQuotationToAgent // Updated prop name
 }: ItineraryPlannerProps) {
   const router = useRouter();
   const [currentDayView, setCurrentDayView] = React.useState<number>(1);
@@ -161,9 +161,11 @@ export function ItineraryPlanner({
     }
   }, [tripData?.id, router, onManualSave]);
   
-  const handleFinalizeAndSendClick = () => {
+  const handleSendQuotationClick = () => {
     onManualSave(); // Save latest changes first
-    handleFinalizeProposalForAgent(); // Then mark as ready for agent
+    if(handleSendQuotationToAgent) {
+        handleSendQuotationToAgent(); // Then mark as ready for agent
+    }
   };
 
 
@@ -180,7 +182,7 @@ export function ItineraryPlanner({
 
 
   const isLoadingAnything = isLoadingServices || isLoadingHotelDefinitions || isLoadingExchangeRates || isLoadingCountries;
-  const canFinalizeProposal = !!tripData.quotationRequestId && !!quotationRequestDetails;
+  const canSendQuoteToAgent = !!tripData.quotationRequestId && !!quotationRequestDetails && !!handleSendQuotationToAgent;
 
   return (
     <div className="w-full max-w-[1600px] mx-auto p-2 sm:p-4 md:p-6 lg:p-8">
@@ -270,6 +272,8 @@ export function ItineraryPlanner({
         onManualSave={onManualSave}
         onReset={onReset}
         showCosts={plannerShowCosts}
+        quotationRequestDetails={quotationRequestDetails}
+        handleSendQuotationToAgent={handleSendQuotationClick} 
       />
 
       <DayNavigation
@@ -372,13 +376,8 @@ export function ItineraryPlanner({
         <Button onClick={() => handleSaveAndGoToView(false)} className="w-full sm:w-auto bg-secondary hover:bg-secondary/80 text-secondary-foreground">
           <EyeOff className="mr-2 h-4 w-4" /> View/Share without Details
         </Button>
-         {canFinalizeProposal && (
-          <Button onClick={handleFinalizeAndSendClick} className="w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white">
-            <Send className="mr-2 h-4 w-4" /> Finalize & Send to Agent
-          </Button>
-        )}
          <div className="mt-2 sm:mt-0 text-xs text-muted-foreground text-center sm:text-left">
-            <Info className="inline h-3 w-3 mr-1 -mt-px" /> All actions save the current itinerary before navigating or sending.
+            <Info className="inline h-3 w-3 mr-1 -mt-px" /> All actions save the current itinerary before navigating.
           </div>
       </div>
     </div>
