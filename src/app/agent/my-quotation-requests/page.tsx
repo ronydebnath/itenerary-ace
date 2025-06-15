@@ -17,6 +17,7 @@ import { LayoutDashboard, ClipboardList, Search, FileText, Eye } from 'lucide-re
 import { format, parseISO } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
 import { useCountries } from '@/hooks/useCountries';
+import { cn } from '@/lib/utils';
 
 const AGENT_QUOTATION_REQUESTS_KEY = 'itineraryAce_agentQuotationRequests';
 const PLACEHOLDER_AGENT_ID = "agent_default_user"; // Same as in quotation-request-form.tsx
@@ -60,25 +61,23 @@ export default function MyQuotationRequestsPage() {
 
   const filteredRequests = myRequests.filter(req => {
     const searchLower = searchTerm.toLowerCase();
-    const clientRef = req.clientInfo?.clientReference?.toLowerCase() || "";
     const destinations = (getCountryNames(req.tripDetails.preferredCountryIds) + " " + (req.tripDetails.preferredProvinceNames || []).join(" ")).toLowerCase();
     return (
       req.id.toLowerCase().includes(searchLower) ||
-      clientRef.includes(searchLower) ||
       destinations.includes(searchLower) ||
       req.status.toLowerCase().includes(searchLower)
     );
   });
 
-  const getStatusBadgeVariant = (status: QuotationRequest['status']): "default" | "secondary" | "outline" | "destructive" => {
+  const getStatusBadgeClassName = (status: QuotationRequest['status']): string => {
     switch (status) {
-      case 'Pending': return 'default';
-      case 'Quoted': return 'secondary';
-      case 'ConfirmedByAgent': return 'default'; // Or another color like green if we had more badge variants
-      case 'BookingInProgress': return 'outline';
-      case 'Booked': return 'default'; // Similar to Confirmed
-      case 'Cancelled': return 'destructive';
-      default: return 'outline';
+      case 'Pending': return 'bg-yellow-100 text-yellow-800 border-yellow-300 dark:bg-yellow-900/30 dark:text-yellow-300 dark:border-yellow-700';
+      case 'Quoted': return 'bg-blue-100 text-blue-800 border-blue-300 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-700';
+      case 'ConfirmedByAgent': return 'bg-green-100 text-green-800 border-green-300 dark:bg-green-900/30 dark:text-green-300 dark:border-green-700';
+      case 'BookingInProgress': return 'bg-purple-100 text-purple-800 border-purple-300 dark:bg-purple-900/30 dark:text-purple-300 dark:border-purple-700';
+      case 'Booked': return 'bg-teal-100 text-teal-800 border-teal-300 dark:bg-teal-900/30 dark:text-teal-300 dark:border-teal-700';
+      case 'Cancelled': return 'bg-red-100 text-red-800 border-red-300 dark:bg-red-900/30 dark:text-red-300 dark:border-red-700';
+      default: return 'bg-gray-100 text-gray-800 border-gray-300 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600';
     }
   };
 
@@ -108,7 +107,7 @@ export default function MyQuotationRequestsPage() {
             <Search className="absolute left-2 sm:left-3 top-1/2 -translate-y-1/2 h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground" />
             <Input
                 type="search"
-                placeholder="Search by ID, Client Ref, Destination, Status..."
+                placeholder="Search by ID, Destination, Status..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-8 sm:pl-10 w-full md:w-2/3 lg:w-1/2 text-sm sm:text-base h-9 sm:h-10"
@@ -135,7 +134,6 @@ export default function MyQuotationRequestsPage() {
                 <TableRow>
                   <TableHead className="px-2 py-3 text-xs sm:text-sm">Req. ID</TableHead>
                   <TableHead className="px-2 py-3 text-xs sm:text-sm">Date</TableHead>
-                  <TableHead className="px-2 py-3 text-xs sm:text-sm">Client Ref.</TableHead>
                   <TableHead className="px-2 py-3 text-xs sm:text-sm">Destinations</TableHead>
                   <TableHead className="px-2 py-3 text-xs sm:text-sm">Pax</TableHead>
                   <TableHead className="px-2 py-3 text-xs sm:text-sm text-center">Status</TableHead>
@@ -145,9 +143,8 @@ export default function MyQuotationRequestsPage() {
               <TableBody>
                 {filteredRequests.map((req) => (
                   <TableRow key={req.id} className="text-xs sm:text-sm">
-                    <TableCell className="font-mono py-2 px-2 text-xs">{req.id.slice(-6)}</TableCell>
+                    <TableCell className="font-mono py-2 px-2 text-xs">{req.id}</TableCell>
                     <TableCell className="py-2 px-2">{format(parseISO(req.requestDate), 'dd MMM yy')}</TableCell>
-                    <TableCell className="font-medium py-2 px-2">{req.clientInfo.clientReference || 'N/A'}</TableCell>
                     <TableCell className="py-2 px-2">
                       {getCountryNames(req.tripDetails.preferredCountryIds)}
                       {(req.tripDetails.preferredProvinceNames || []).length > 0 && (
@@ -156,7 +153,7 @@ export default function MyQuotationRequestsPage() {
                     </TableCell>
                     <TableCell className="py-2 px-2">{req.clientInfo.adults}A {req.clientInfo.children > 0 && ` ${req.clientInfo.children}C`}</TableCell>
                     <TableCell className="py-2 px-2 text-center">
-                        <Badge variant={getStatusBadgeVariant(req.status)} className="text-xs">
+                        <Badge variant="outline" className={cn("text-xs px-2.5 py-1", getStatusBadgeClassName(req.status))}>
                             {req.status}
                         </Badge>
                     </TableCell>
@@ -187,3 +184,4 @@ export default function MyQuotationRequestsPage() {
     </main>
   );
 }
+

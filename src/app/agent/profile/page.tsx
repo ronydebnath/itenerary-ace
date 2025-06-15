@@ -1,12 +1,9 @@
 /**
- * @fileoverview This page allows an agent (conceptually) to manage their agency's profile
- * and the users (other agents) associated with that agency. It displays the agency's details
- * for editing and lists its users, with functionality to add new users.
+ * @fileoverview This page allows an agent to manage their professional profile
+ * and view details of their associated agency.
  *
- * @bangla এই পৃষ্ঠাটি একজন এজেন্টকে (ধারণাগতভাবে) তাদের এজেন্সির প্রোফাইল এবং সেই এজেন্সির
- * সাথে যুক্ত ব্যবহারকারীদের (অন্যান্য এজেন্টদের) পরিচালনা করতে দেয়। এটি সম্পাদনার জন্য এজেন্সির
- * বিবরণ প্রদর্শন করে এবং এর ব্যবহারকারীদের তালিকাভুক্ত করে, নতুন ব্যবহারকারী যুক্ত করার
- * কার্যকারিতা সহ।
+ * @bangla এই পৃষ্ঠাটি একজন এজেন্টকে তাদের পেশাদার প্রোফাইল পরিচালনা করতে এবং তাদের
+ * সংশ্লিষ্ট এজেন্সির বিবরণ দেখতে দেয়।
  */
 "use client";
 
@@ -14,96 +11,80 @@ import * as React from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Button } from "@/components/ui/button";
-import { AgencyForm } from '@/components/admin/agency-form'; // Re-use the admin agency form
-import { AgentUserForm } from '@/components/agent/agent-user-form'; // Renamed form for user details
+import { AgentUserForm } from '@/components/agent/agent-user-form';
 import type { Agency, AgentProfile } from '@/types/agent';
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from "@/components/ui/dialog";
-import { ArrowLeft, Building, Users, PlusCircle, Edit, Trash2, LayoutDashboard, Loader2 } from 'lucide-react';
+import { ArrowLeft, Building, Users, UserCog, LayoutDashboard, Loader2, Mail, Phone, MapPin, Globe } from 'lucide-react';
 import { useAgents } from '@/hooks/useAgents';
+import { useCountries } from '@/hooks/useCountries';
 import { Separator } from '@/components/ui/separator';
 
-export default function AgencyProfilePage() {
+const PLACEHOLDER_AGENT_ID = "agent_default_user"; // Placeholder for actual logged-in agent
+
+export default function AgentProfilePage() {
   const router = useRouter();
   const { toast } = useToast();
-  const { agencies, agents, isLoading: isLoadingAgentsHook, updateAgency, addAgent, updateAgent, deleteAgent, refreshAgentData } = useAgents();
+  const { agents, agencies, isLoading: isLoadingAgentsHook, updateAgent, refreshAgentData } = useAgents();
+  const { getCountryById, isLoading: isLoadingCountries } = useCountries();
 
-  const [managingAgency, setManagingAgency] = React.useState<Agency | null>(null);
-  const [agencyUsers, setAgencyUsers] = React.useState<AgentProfile[]>([]);
-  const [isUserFormOpen, setIsUserFormOpen] = React.useState(false);
-  const [editingUser, setEditingUser] = React.useState<AgentProfile | undefined>(undefined);
+  const [currentAgentProfile, setCurrentAgentProfile] = React.useState<AgentProfile | null>(null);
+  const [associatedAgency, setAssociatedAgency] = React.useState<Agency | null>(null);
+  const [isEditingProfile, setIsEditingProfile] = React.useState(false);
 
   React.useEffect(() => {
-    refreshAgentData(); // Fetch latest data on mount
+    refreshAgentData();
   }, [refreshAgentData]);
 
   React.useEffect(() => {
-    if (!isLoadingAgentsHook) {
-      // For this agent-facing page, let's assume they manage their primary/first agency.
-      // In a real app with auth, this would be determined by the logged-in agent's association.
-      if (agencies.length > 0) {
-        const firstAgency = agencies[0];
-        setManagingAgency(firstAgency);
-        setAgencyUsers(agents.filter(agent => agent.agencyId === firstAgency.id));
+    if (!isLoadingAgentsHook && agents.length > 0 && agencies.length > 0) {
+      const agent = agents.find(a => a.id === PLACEHOLDER_AGENT_ID);
+      if (agent) {
+        setCurrentAgentProfile(agent);
+        const agency = agencies.find(ag => ag.id === agent.agencyId);
+        setAssociatedAgency(agency || null);
       } else {
-        setManagingAgency(null);
-        setAgencyUsers([]);
+        setCurrentAgentProfile(null);
+        setAssociatedAgency(null);
+        // Potentially redirect or show a message if agent profile not found
+        // For demo, we'll assume agent_default_user always exists after seeding.
       }
     }
-  }, [agencies, agents, isLoadingAgentsHook]);
+  }, [agents, agencies, isLoadingAgentsHook]);
 
-  const handleAgencyFormSubmit = (data: Agency) => {
-    if (managingAgency) {
-      updateAgency({ ...managingAgency, ...data }); // updateAgency should handle ID internally
+  const handleProfileUpdate = (updatedProfileData: AgentProfile) => {
+    if (currentAgentProfile) {
+      updateAgent({ ...currentAgentProfile, ...updatedProfileData });
+      toast({ title: "Profile Updated", description: "Your profile details have been saved." });
+      setIsEditingProfile(false); // Close form after update
+      refreshAgentData(); // Re-fetch to ensure UI consistency
     }
   };
 
-  const handleUserFormSubmit = (userData: AgentProfile) => {
-    if (!managingAgency) {
-      toast({ title: "Error", description: "No agency selected to add user to.", variant: "destructive" });
-      return;
-    }
-    if (editingUser) {
-      updateAgent({ ...editingUser, ...userData, agencyId: managingAgency.id });
-    } else {
-      addAgent({ ...userData, agencyId: managingAgency.id });
-    }
-    setIsUserFormOpen(false);
-    setEditingUser(undefined);
+  const getCountryName = (countryId?: string): string => {
+    if (!countryId || isLoadingCountries) return 'N/A';
+    return getCountryById(countryId)?.name || 'Unknown Country';
   };
 
-  const openEditUserDialog = (user: AgentProfile) => {
-    setEditingUser(user);
-    setIsUserFormOpen(true);
-  };
-  
-  const handleDeleteUser = (userId: string) => {
-    const userToDelete = agencyUsers.find(u => u.id === userId);
-    if (userToDelete) {
-        deleteAgent(userId);
-        toast({ title: "User Deleted", description: `User "${userToDelete.fullName}" has been removed.` });
-    }
-  };
+  const isLoading = isLoadingAgentsHook || isLoadingCountries;
 
-
-  if (isLoadingAgentsHook && !managingAgency) {
+  if (isLoading && !currentAgentProfile) {
     return (
-      <div className="flex justify-center items-center min-h-screen p-4">
-        <Loader2 className="h-8 w-8 animate-spin text-primary mr-2"/> Loading agency data...
-      </div>
+      <main className="min-h-screen bg-background p-4 md:p-8 flex flex-col items-center justify-center">
+        <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
+        <p className="text-muted-foreground">Loading your profile...</p>
+      </main>
     );
   }
 
-  if (!managingAgency) {
+  if (!currentAgentProfile) {
     return (
       <main className="min-h-screen bg-background p-4 md:p-8">
         <div className="container mx-auto max-w-3xl py-8 text-center">
-           <Building className="mx-auto h-16 w-16 text-muted-foreground mb-4" />
-          <h1 className="text-2xl font-semibold text-muted-foreground">No Agency Found</h1>
+          <UserCog className="mx-auto h-16 w-16 text-muted-foreground mb-4" />
+          <h1 className="text-2xl font-semibold text-muted-foreground">Agent Profile Not Found</h1>
           <p className="text-muted-foreground mt-2">
-            It seems there is no agency associated with your account or no agencies are set up in the system.
-            Please contact an administrator or set up an agency in the admin panel.
+            Could not load your profile. Please try again later or contact support.
           </p>
           <Link href="/agent" passHref className="mt-6 inline-block">
             <Button variant="outline">
@@ -116,98 +97,82 @@ export default function AgencyProfilePage() {
   }
 
   return (
-    <main className="min-h-screen bg-background p-4 md:p-8">
-      <div className="container mx-auto max-w-4xl py-8">
-        <Card className="shadow-xl mb-8">
-          <CardHeader>
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-2 sm:mb-4 gap-2">
-              <Link href="/agent">
-                <Button variant="outline" size="icon" className="h-9 w-9 sm:h-10 sm:w-10 self-start sm:self-center">
-                  <LayoutDashboard className="h-4 w-4 sm:h-5 sm:w-5" />
-                </Button>
-              </Link>
-              <div className="text-center sm:text-left flex-grow">
-                <CardTitle className="text-2xl sm:text-3xl font-bold text-primary flex items-center justify-center sm:justify-start">
-                  <Building className="mr-2 sm:mr-3 h-6 w-6 sm:h-8 sm:w-8" /> Agency Profile: {managingAgency.name}
-                </CardTitle>
-                <CardDescription className="text-sm sm:text-base">
-                  Manage your agency's information and details.
-                </CardDescription>
-              </div>
-              <Link href="/agent" passHref>
-                <Button variant="outline" size="sm" className="self-start sm:self-auto text-xs sm:text-sm">
-                  <ArrowLeft className="mr-1.5 h-3.5 w-3.5" /> Back to Dashboard
-                </Button>
-              </Link>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <AgencyForm
-              key={managingAgency.id} // Re-render if agency changes
-              initialData={managingAgency}
-              onSubmit={handleAgencyFormSubmit}
-              onCancel={() => router.push('/agent')} // Or provide a specific cancel action
-            />
-          </CardContent>
-        </Card>
+    <main className="min-h-screen bg-background p-4 md:p-6 lg:p-8">
+      <div className="container mx-auto max-w-3xl py-4 sm:py-6 md:py-8">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 md:mb-8 gap-3">
+          <div className="flex items-center gap-2">
+            <Link href="/agent">
+              <Button variant="outline" size="icon" className="h-9 w-9 sm:h-10 sm:w-10">
+                <LayoutDashboard className="h-4 w-4 sm:h-5 sm:w-5" />
+              </Button>
+            </Link>
+            <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-primary flex items-center">
+              <UserCog className="mr-2 sm:mr-3 h-6 w-6 sm:h-7 md:h-8 md:w-8" /> My Profile
+            </h1>
+          </div>
+          {!isEditingProfile && (
+            <Button onClick={() => setIsEditingProfile(true)} size="sm" className="bg-accent hover:bg-accent/90 text-accent-foreground self-start sm:self-auto">
+              Edit Profile
+            </Button>
+          )}
+        </div>
 
-        <Separator className="my-8" />
-
-        <Card className="shadow-xl">
+        {isEditingProfile ? (
+          <Card className="shadow-xl">
             <CardHeader>
-                <div className="flex justify-between items-center">
-                    <CardTitle className="text-xl font-semibold text-primary flex items-center">
-                        <Users className="mr-2 h-5 w-5" /> Users for {managingAgency.name} ({agencyUsers.length})
-                    </CardTitle>
-                    <Dialog open={isUserFormOpen} onOpenChange={(open) => { setIsUserFormOpen(open); if (!open) setEditingUser(undefined); }}>
-                        <DialogTrigger asChild>
-                            <Button size="sm" className="bg-accent hover:bg-accent/90 text-accent-foreground">
-                                <PlusCircle className="mr-2 h-4 w-4" /> Add New User
-                            </Button>
-                        </DialogTrigger>
-                        <DialogContent className="sm:max-w-lg">
-                            <DialogHeader>
-                                <DialogTitle>{editingUser ? 'Edit User' : 'Add New User'} to {managingAgency.name}</DialogTitle>
-                            </DialogHeader>
-                            <AgentUserForm
-                                key={editingUser?.id || 'new-user'}
-                                initialData={editingUser}
-                                agencyId={managingAgency.id} // Pass current agency ID
-                                onSubmit={handleUserFormSubmit}
-                                onCancel={() => { setIsUserFormOpen(false); setEditingUser(undefined); }}
-                            />
-                        </DialogContent>
-                    </Dialog>
-                </div>
-                <CardDescription>Manage agents and staff associated with this agency.</CardDescription>
+              <CardTitle className="text-lg sm:text-xl">Edit Your Profile</CardTitle>
             </CardHeader>
             <CardContent>
-                {agencyUsers.length > 0 ? (
-                    <ul className="space-y-3">
-                        {agencyUsers.map(user => (
-                            <li key={user.id} className="p-3 border rounded-md flex justify-between items-center hover:bg-muted/50 transition-colors">
-                                <div>
-                                    <p className="font-medium text-foreground">{user.fullName}</p>
-                                    <p className="text-xs text-muted-foreground">{user.email}</p>
-                                    {user.specializations && <p className="text-xs text-primary/80 italic mt-0.5" title={user.specializations}>Specializes in: {user.specializations.length > 40 ? user.specializations.substring(0, 37) + "..." : user.specializations}</p>}
-                                </div>
-                                <div className="space-x-1">
-                                    <Button variant="ghost" size="icon" className="h-7 w-7 text-primary/80 hover:bg-primary/10" onClick={() => openEditUserDialog(user)}>
-                                        <Edit className="h-4 w-4" />
-                                    </Button>
-                                     <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive/80 hover:bg-destructive/10" onClick={() => handleDeleteUser(user.id)}>
-                                        <Trash2 className="h-4 w-4" />
-                                    </Button>
-                                </div>
-                            </li>
-                        ))}
-                    </ul>
-                ) : (
-                    <p className="text-center text-muted-foreground py-4">No users added to this agency yet.</p>
-                )}
+              <AgentUserForm
+                initialData={currentAgentProfile}
+                agencyId={currentAgentProfile.agencyId}
+                onSubmit={handleProfileUpdate}
+                onCancel={() => setIsEditingProfile(false)}
+              />
             </CardContent>
-        </Card>
+          </Card>
+        ) : (
+          <div className="space-y-6 md:space-y-8">
+            <Card className="shadow-lg">
+              <CardHeader>
+                <CardTitle className="text-xl font-semibold text-primary">{currentAgentProfile.fullName}</CardTitle>
+                <CardDescription>{currentAgentProfile.email} {currentAgentProfile.phoneNumber && `| ${currentAgentProfile.phoneNumber}`}</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3 text-sm text-muted-foreground">
+                {currentAgentProfile.agencyName && <p><span className="font-medium text-foreground">Branch/Office:</span> {currentAgentProfile.agencyName}</p>}
+                {currentAgentProfile.specializations && <p><span className="font-medium text-foreground">Specializations:</span> {currentAgentProfile.specializations}</p>}
+                {currentAgentProfile.yearsOfExperience !== undefined && <p><span className="font-medium text-foreground">Years of Experience:</span> {currentAgentProfile.yearsOfExperience}</p>}
+                {currentAgentProfile.bio && <p className="whitespace-pre-wrap"><span className="font-medium text-foreground">Bio:</span> {currentAgentProfile.bio}</p>}
+                {currentAgentProfile.profilePictureUrl && (
+                  <div className="mt-2">
+                    <img src={currentAgentProfile.profilePictureUrl} alt="Profile" className="h-24 w-24 rounded-full object-cover" />
+                  </div>
+                )}
+              </CardContent>
+            </Card>
 
+            {associatedAgency && (
+              <Card className="shadow-lg">
+                <CardHeader>
+                  <CardTitle className="text-xl font-semibold text-primary flex items-center"><Building className="mr-2 h-5 w-5"/>Associated Agency</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2 text-sm text-muted-foreground">
+                  <p><span className="font-medium text-foreground">Name:</span> {associatedAgency.name}</p>
+                  {associatedAgency.mainAddress && (
+                    <div>
+                      <p className="font-medium text-foreground flex items-center"><MapPin className="mr-1.5 h-4 w-4"/>Address:</p>
+                      <p className="pl-5">{associatedAgency.mainAddress.street}, {associatedAgency.mainAddress.city}, {associatedAgency.mainAddress.postalCode}</p>
+                      <p className="pl-5">{getCountryName(associatedAgency.mainAddress.countryId)}</p>
+                    </div>
+                  )}
+                  {associatedAgency.contactEmail && <p className="flex items-center"><Mail className="mr-1.5 h-4 w-4"/>{associatedAgency.contactEmail}</p>}
+                  {associatedAgency.contactPhone && <p className="flex items-center"><Phone className="mr-1.5 h-4 w-4"/>{associatedAgency.contactPhone}</p>}
+                   {associatedAgency.preferredCurrency && <p className="flex items-center"><Globe className="mr-1.5 h-4 w-4"/>Preferred Currency: {associatedAgency.preferredCurrency}</p>}
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        )}
       </div>
     </main>
   );
