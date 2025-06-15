@@ -272,57 +272,66 @@ export function useItineraryManager() {
     } catch (e) { console.error("Error seeding/reading demo quotations:", e); }
 
     if (typeof window !== "undefined" && window.location.pathname === '/planner') {
-      setPageStatus('loading');
+      let targetItineraryIdFromLogic = itineraryIdFromUrl;
+      let createFromQuotationIdLogic = quotationRequestIdFromUrl;
+      let associatedQuotationRequestLogic: QuotationRequest | null = null;
 
-      let targetItineraryId = itineraryIdFromUrl;
-      let createFromQuotationId = quotationRequestIdFromUrl;
-      let associatedQuotationRequest: QuotationRequest | null = null;
-
-      if (createFromQuotationId) {
+      if (createFromQuotationIdLogic) {
         if (allQuotationRequests.length === 0) {
             const storedQuotations = localStorage.getItem(AGENT_QUOTATION_REQUESTS_KEY);
             if (storedQuotations) allQuotationRequests = JSON.parse(storedQuotations);
         }
-        associatedQuotationRequest = allQuotationRequests.find(q => q.id === createFromQuotationId) || null;
-        setCurrentQuotationRequest(associatedQuotationRequest);
-        if (associatedQuotationRequest?.linkedItineraryId && !targetItineraryId) {
-            targetItineraryId = associatedQuotationRequest.linkedItineraryId;
+        associatedQuotationRequestLogic = allQuotationRequests.find(q => q.id === createFromQuotationIdLogic) || null;
+        // Don't set currentQuotationRequest state here yet, do it when tripData is confirmed
+        if (associatedQuotationRequestLogic?.linkedItineraryId && !targetItineraryIdFromLogic) {
+            targetItineraryIdFromLogic = associatedQuotationRequestLogic.linkedItineraryId;
         }
-      } else {
-        setCurrentQuotationRequest(null);
       }
 
-      if (!targetItineraryId && !createFromQuotationId) {
-        try { targetItineraryId = localStorage.getItem('lastActiveItineraryId'); } catch (e) { /* ignore */ }
+      if (!targetItineraryIdFromLogic && !createFromQuotationIdLogic) {
+        try { targetItineraryIdFromLogic = localStorage.getItem('lastActiveItineraryId'); } catch (e) { /* */ }
       }
+
+      // Conditional loading status
+      const needsNewDataLoad = !tripDataInternalRef.current ||
+                               (targetItineraryIdFromLogic && targetItineraryIdFromLogic !== currentItineraryId) ||
+                               (createFromQuotationIdLogic && tripDataInternalRef.current?.quotationRequestId !== createFromQuotationIdLogic);
+
+      if (needsNewDataLoad) {
+        setPageStatus('loading');
+      }
+
 
       let newTripToSet: TripData | null = null;
-      let newCurrentId: string | null = null;
+      let newCurrentIdForState: string | null = null;
       let isNewItineraryFromQuote = false;
 
-      if (targetItineraryId) {
+      if (targetItineraryIdFromLogic) {
             try {
-                const savedDataString = localStorage.getItem(`${ITINERARY_DATA_PREFIX}${targetItineraryId}`);
+                const savedDataString = localStorage.getItem(`${ITINERARY_DATA_PREFIX}${targetItineraryIdFromLogic}`);
                 if (savedDataString) {
                     const parsedData = JSON.parse(savedDataString) as Partial<TripData>;
-                    const defaultForContext = createDefaultTripData(parsedData.quotationRequestId || createFromQuotationId || undefined, associatedQuotationRequest);
+                    // Ensure associatedQuotationRequestLogic is set if quote ID matches
+                    if (parsedData.quotationRequestId && !associatedQuotationRequestLogic) {
+                        associatedQuotationRequestLogic = allQuotationRequests.find(q => q.id === parsedData.quotationRequestId) || null;
+                    } else if (createFromQuotationIdLogic && !parsedData.quotationRequestId) {
+                        // Itinerary loaded by ID, but URL also has a quote ID. Prioritize quote from URL if not on data.
+                        associatedQuotationRequestLogic = allQuotationRequests.find(q => q.id === createFromQuotationIdLogic) || null;
+                    }
 
+
+                    const defaultForContext = createDefaultTripData(parsedData.quotationRequestId || createFromQuotationIdLogic || undefined, associatedQuotationRequestLogic);
                     let finalClientName = parsedData.clientName;
-                    if (!finalClientName && (parsedData.quotationRequestId || createFromQuotationId)) {
-                        const qIdForClientName = parsedData.quotationRequestId || createFromQuotationId;
-                        if (allQuotationRequests.length === 0 && qIdForClientName) {
-                            const requestsString = localStorage.getItem(AGENT_QUOTATION_REQUESTS_KEY);
-                            if (requestsString) allQuotationRequests = JSON.parse(requestsString);
-                        }
+                    if (!finalClientName && (parsedData.quotationRequestId || createFromQuotationIdLogic)) {
+                        const qIdForClientName = parsedData.quotationRequestId || createFromQuotationIdLogic;
+                        if (allQuotationRequests.length === 0 && qIdForClientName) { /* already loaded */ }
                         const agentIdForClientName = allQuotationRequests.find(q => q.id === qIdForClientName)?.agentId;
-                        if (agentIdForClientName) {
-                          finalClientName = getAgencyAndAgentNameFromLocalStorage(agentIdForClientName);
-                        }
+                        if (agentIdForClientName) finalClientName = getAgencyAndAgentNameFromLocalStorage(agentIdForClientName);
                     }
 
                     newTripToSet = {
-                        id: parsedData.id || targetItineraryId,
-                        itineraryName: parsedData.itineraryName || (associatedQuotationRequest ? `Proposal for Quotation ${associatedQuotationRequest.id.split('-').pop()}` : defaultForContext.itineraryName),
+                        id: parsedData.id || targetItineraryIdFromLogic,
+                        itineraryName: parsedData.itineraryName || (associatedQuotationRequestLogic ? `Proposal for Quotation ${associatedQuotationRequestLogic.id.split('-').pop()}` : defaultForContext.itineraryName),
                         clientName: finalClientName || defaultForContext.clientName,
                         createdAt: parsedData.createdAt || new Date().toISOString(),
                         updatedAt: parsedData.updatedAt || new Date().toISOString(),
@@ -330,43 +339,48 @@ export function useItineraryManager() {
                         pax: { ...defaultForContext.pax, ...parsedData.pax },
                         travelers: parsedData.travelers && parsedData.travelers.length > 0 ? parsedData.travelers : createDefaultTravelers(parsedData.pax?.adults ?? defaultForContext.pax.adults, parsedData.pax?.children ?? defaultForContext.pax.children),
                         days: parsedData.days || defaultForContext.days,
-                        quotationRequestId: parsedData.quotationRequestId || createFromQuotationId || undefined,
+                        quotationRequestId: parsedData.quotationRequestId || createFromQuotationIdLogic || undefined,
                         version: parsedData.version || 1,
                         overallBookingStatus: parsedData.overallBookingStatus || "NotStarted",
                     };
-                    newCurrentId = targetItineraryId;
-                } else {
-                    if (localStorage.getItem('lastActiveItineraryId') === targetItineraryId) localStorage.removeItem('lastActiveItineraryId');
-
-                    if (createFromQuotationId && associatedQuotationRequest) {
-                        newTripToSet = createDefaultTripData(createFromQuotationId, associatedQuotationRequest);
+                    newCurrentIdForState = targetItineraryIdFromLogic;
+                } else { // No saved data for targetItineraryIdFromLogic
+                    if (localStorage.getItem('lastActiveItineraryId') === targetItineraryIdFromLogic) localStorage.removeItem('lastActiveItineraryId');
+                    if (createFromQuotationIdLogic && associatedQuotationRequestLogic) {
+                        newTripToSet = createDefaultTripData(createFromQuotationIdLogic, associatedQuotationRequestLogic);
                         isNewItineraryFromQuote = true;
                     } else {
                         newTripToSet = createDefaultTripData();
                     }
-                    newCurrentId = newTripToSet.id;
+                    newCurrentIdForState = newTripToSet.id;
                 }
             } catch (error) {
-                console.error("Failed to load data for ID:", targetItineraryId, error);
-                newTripToSet = createDefaultTripData(createFromQuotationId, associatedQuotationRequest);
-                newCurrentId = newTripToSet.id;
-                if (createFromQuotationId) isNewItineraryFromQuote = true;
+                console.error("Failed to load data for ID:", targetItineraryIdFromLogic, error);
+                newTripToSet = createDefaultTripData(createFromQuotationIdLogic, associatedQuotationRequestLogic);
+                newCurrentIdForState = newTripToSet.id;
+                if (createFromQuotationIdLogic) isNewItineraryFromQuote = true;
             }
-      } else if (createFromQuotationId && associatedQuotationRequest) {
-        newTripToSet = createDefaultTripData(createFromQuotationId, associatedQuotationRequest);
-        newCurrentId = newTripToSet.id;
+      } else if (createFromQuotationIdLogic && associatedQuotationRequestLogic) {
+        newTripToSet = createDefaultTripData(createFromQuotationIdLogic, associatedQuotationRequestLogic);
+        newCurrentIdForState = newTripToSet.id;
         isNewItineraryFromQuote = true;
-      } else {
+      } else if (tripDataInternalRef.current && !needsNewDataLoad) { // No ID in URL, no quote, but we have existing data and don't need a new load
+        newTripToSet = tripDataInternalRef.current;
+        newCurrentIdForState = tripDataInternalRef.current.id;
+        associatedQuotationRequestLogic = tripDataInternalRef.current.quotationRequestId
+            ? allQuotationRequests.find(q => q.id === tripDataInternalRef.current!.quotationRequestId) || null
+            : null;
+      } else { // No ID in URL, no quote, and no existing data, or needsNewDataLoad was true but resolved to no target
         newTripToSet = createDefaultTripData();
-        newCurrentId = newTripToSet.id;
+        newCurrentIdForState = newTripToSet.id;
       }
 
-      if (isNewItineraryFromQuote && newTripToSet && newCurrentId && createFromQuotationId && associatedQuotationRequest) {
-        if (!associatedQuotationRequest.linkedItineraryId) {
+      if (isNewItineraryFromQuote && newTripToSet && newCurrentIdForState && createFromQuotationIdLogic && associatedQuotationRequestLogic) {
+        if (!associatedQuotationRequestLogic.linkedItineraryId) {
             try {
-               const reqIdx = allQuotationRequests.findIndex(q => q.id === createFromQuotationId);
+               const reqIdx = allQuotationRequests.findIndex(q => q.id === createFromQuotationIdLogic);
                if (reqIdx > -1) {
-                   allQuotationRequests[reqIdx].linkedItineraryId = newCurrentId;
+                   allQuotationRequests[reqIdx].linkedItineraryId = newCurrentIdForState;
                    allQuotationRequests[reqIdx].status = "Quoted";
                    allQuotationRequests[reqIdx].updatedAt = new Date().toISOString();
                    localStorage.setItem(AGENT_QUOTATION_REQUESTS_KEY, JSON.stringify(allQuotationRequests));
@@ -375,25 +389,40 @@ export function useItineraryManager() {
         }
       }
 
-      if (newTripToSet && newCurrentId) {
-        setTripData(newTripToSet);
-        setCurrentItineraryId(newCurrentId);
+      if (newTripToSet && newCurrentIdForState) {
+        if (JSON.stringify(tripDataInternalRef.current) !== JSON.stringify(newTripToSet)) {
+          setTripData(newTripToSet);
+        }
+        if (currentItineraryId !== newCurrentIdForState) {
+          setCurrentItineraryId(newCurrentIdForState);
+        }
+        if (JSON.stringify(currentQuotationRequest) !== JSON.stringify(associatedQuotationRequestLogic)) {
+            setCurrentQuotationRequest(associatedQuotationRequestLogic);
+        }
 
-        try { localStorage.setItem('lastActiveItineraryId', newCurrentId); } catch(e) {/* */}
+        try { localStorage.setItem('lastActiveItineraryId', newCurrentIdForState); } catch(e) {/* */}
 
-        const finalUrl = `/planner?itineraryId=${newCurrentId}${newTripToSet.quotationRequestId ? `&quotationRequestId=${newTripToSet.quotationRequestId}`: ''}`;
+        const finalUrl = `/planner?itineraryId=${newCurrentIdForState}${newTripToSet.quotationRequestId ? `&quotationRequestId=${newTripToSet.quotationRequestId}`: ''}`;
         if (window.location.pathname + window.location.search !== finalUrl) {
             router.replace(finalUrl, { shallow: true });
         }
         setPageStatus('planner');
-      } else {
-        // Handle case where newTripToSet or newCurrentId might be null
-        // This ensures pageStatus doesn't get stuck in 'loading' incorrectly
-        // or try to transition to 'planner' without valid data.
-        // Potentially set an error state or fallback.
+      } else if (pageStatus !== 'planner' && !tripDataInternalRef.current) {
+          // Fallback if truly no data could be loaded or derived and we're stuck in loading
+          console.warn("useItineraryManager: Could not establish trip data. Initializing with a new default itinerary.");
+          const fallbackTrip = createDefaultTripData();
+          setTripData(fallbackTrip);
+          setCurrentItineraryId(fallbackTrip.id);
+          setCurrentQuotationRequest(null);
+          setPageStatus('planner');
+          localStorage.setItem('lastActiveItineraryId', fallbackTrip.id);
+          router.replace(`/planner?itineraryId=${fallbackTrip.id}`, { shallow: true });
+      } else if (pageStatus === 'loading' && tripDataInternalRef.current) {
+          // If we were 'loading' but already had data and didn't need a new load, switch back to planner
+          setPageStatus('planner');
       }
     }
-  }, [itineraryIdFromUrl, quotationRequestIdFromUrl, router, toast]); // Use memoized params
+  }, [itineraryIdFromUrl, quotationRequestIdFromUrl, router, toast, currentItineraryId, pageStatus]);
 
 
   const handleStartNewItinerary = React.useCallback(() => {
@@ -512,7 +541,7 @@ export function useItineraryManager() {
           }
         }
       }
-      setTripData(dataToSave);
+      setTripData(dataToSave); // Ensure the local state has the version and updatedAt too
       toast({ title: "Success", description: `Itinerary "${dataToSave.itineraryName}" (v${newVersion}) saved.` });
     } catch (e: any) {
       console.error("Error during manual save:", e);
