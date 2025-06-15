@@ -17,7 +17,7 @@ import type { Agency } from './agent'; // Import Agency type
 export const TRIP_TYPES = ["Leisure", "Business", "Honeymoon", "Family", "Adventure", "Cultural", "Cruise", "Group Tour", "Backpacking", "Other"] as const;
 export const BUDGET_RANGES = ["Economy/Budget", "Mid-Range/Comfort", "Luxury/Premium", "Specific Amount (see notes)"] as const;
 export const HOTEL_STAR_RATINGS = ["Any", "2 Stars", "3 Stars", "4 Stars", "5 Stars", "Boutique/Unrated"] as const;
-export const QUOTATION_STATUSES = ["Pending", "Quoted", "ConfirmedByAgent", "BookingInProgress", "Booked", "Cancelled"] as const;
+export const QUOTATION_STATUSES = ["Pending", "Quoted", "ProposalReady", "ConfirmedByAgent", "BookingInProgress", "Booked", "Cancelled"] as const;
 export const MEAL_PLAN_OPTIONS = ["No Meal", "Breakfast Only", "Breakfast and Lunch/Dinner", "Breakfast, Lunch and Dinner"] as const;
 
 export const generateQuotationIdNumericPart = (): string => {

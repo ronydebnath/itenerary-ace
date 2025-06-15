@@ -1,4 +1,3 @@
-
 /**
  * @fileoverview This component is the core user interface for planning an itinerary.
  * It orchestrates various sub-components like the `PlannerHeader` for global settings,
@@ -16,9 +15,8 @@ import * as React from 'react';
 import type { TripData, ItineraryItem, CostSummary, TripSettings, PaxDetails, QuotationRequest } from '@/types/itinerary';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-// ScrollArea import is removed as it's no longer used directly here for DayView
 import { Separator } from '@/components/ui/separator';
-import { Eye, EyeOff, Loader2, FileText, Users as UsersIcon, MapPin as MapPinIcon, CalendarDays as CalendarDaysIcon, Briefcase as BriefcaseIcon, Coins as CoinsIcon, BedDouble as BedDoubleIcon, Zap as ZapIcon, Car as CarIcon, Utensils as UtensilsIcon, MessageSquare as MessageSquareIcon, Share2, Info } from 'lucide-react';
+import { Eye, EyeOff, Loader2, FileText, Users as UsersIcon, MapPin as MapPinIcon, CalendarDays as CalendarDaysIcon, Briefcase as BriefcaseIcon, Coins as CoinsIcon, BedDouble as BedDoubleIcon, Zap as ZapIcon, Car as CarIcon, Utensils as UtensilsIcon, MessageSquare as MessageSquareIcon, Share2, Info, Send } from 'lucide-react';
 import { formatCurrency, generateGUID } from '@/lib/utils';
 import { DayView } from '../itinerary/day-view';
 import { CostBreakdownTable } from '../itinerary/cost-breakdown-table';
@@ -34,7 +32,7 @@ import { DayNavigation } from './day-navigation';
 import { useRouter } from 'next/navigation';
 import { Badge } from '@/components/ui/badge';
 
-const SHOW_DETAILS_TOKEN = 'full_details_v1'; // Token to show detailed costs
+const SHOW_DETAILS_TOKEN = 'full_details_v1'; 
 
 interface ItineraryPlannerProps {
   tripData: TripData;
@@ -44,6 +42,7 @@ interface ItineraryPlannerProps {
   onUpdatePax: (updatedPax: Partial<PaxDetails>) => void;
   onManualSave: () => void;
   quotationRequestDetails?: QuotationRequest | null;
+  handleFinalizeProposalForAgent: () => boolean;
 }
 
 export function ItineraryPlanner({
@@ -53,12 +52,12 @@ export function ItineraryPlanner({
   onUpdateSettings,
   onUpdatePax,
   onManualSave,
-  quotationRequestDetails
+  quotationRequestDetails,
+  handleFinalizeProposalForAgent
 }: ItineraryPlannerProps) {
   const router = useRouter();
   const [currentDayView, setCurrentDayView] = React.useState<number>(1);
   const [costSummary, setCostSummary] = React.useState<CostSummary | null>(null);
-  // The planner's own 'showCosts' state, primarily for the 'DetailsSummaryTable' within the planner itself.
   const [plannerShowCosts, setPlannerShowCosts] = React.useState<boolean>(true);
   const { allServicePrices, isLoading: isLoadingServices } = useServicePrices();
   const { allHotelDefinitions, isLoading: isLoadingHotelDefinitions } = useHotelDefinitions();
@@ -67,7 +66,6 @@ export function ItineraryPlanner({
 
   React.useEffect(() => {
     if (tripData && !isLoadingServices && !isLoadingHotelDefinitions && !isLoadingExchangeRates && !isLoadingCountries) {
-      // Planner always calculates with full cost details for its own view
       const summary = calculateAllCosts(tripData, countries, allServicePrices, allHotelDefinitions, getRate, true);
       setCostSummary(summary);
     } else {
@@ -152,8 +150,8 @@ export function ItineraryPlanner({
     });
   }, [onUpdateTripData]);
 
-  const handleSaveAndView = React.useCallback((withDetailedCosts: boolean) => {
-    onManualSave(); // Ensure latest data is saved
+  const handleSaveAndGoToView = React.useCallback((withDetailedCosts: boolean) => {
+    onManualSave(); 
     if (tripData?.id) {
       let url = `/itinerary/view/${tripData.id}`;
       if (withDetailedCosts) {
@@ -162,6 +160,11 @@ export function ItineraryPlanner({
       router.push(url);
     }
   }, [tripData?.id, router, onManualSave]);
+  
+  const handleFinalizeAndSendClick = () => {
+    onManualSave(); // Save latest changes first
+    handleFinalizeProposalForAgent(); // Then mark as ready for agent
+  };
 
 
   const getFormattedDateForDay = React.useCallback((dayNum: number): string => {
@@ -177,6 +180,7 @@ export function ItineraryPlanner({
 
 
   const isLoadingAnything = isLoadingServices || isLoadingHotelDefinitions || isLoadingExchangeRates || isLoadingCountries;
+  const canFinalizeProposal = !!tripData.quotationRequestId && !!quotationRequestDetails;
 
   return (
     <div className="w-full max-w-[1600px] mx-auto p-2 sm:p-4 md:p-6 lg:p-8">
@@ -283,7 +287,6 @@ export function ItineraryPlanner({
               <p className="text-muted-foreground text-sm sm:text-base">Loading itinerary data and service definitions...</p>
             </div>
           ) : (
-             // Removed ScrollArea wrapper from here
             <div>
               {Array.from({ length: tripData.settings.numDays }, (_, i) => i + 1).map(dayNum => (
                 <div key={dayNum} style={{ display: dayNum === currentDayView ? 'block' : 'none' }}>
@@ -363,17 +366,21 @@ export function ItineraryPlanner({
       </Card>
 
       <div className="mt-6 md:mt-8 py-4 md:py-6 border-t border-border flex flex-col sm:flex-row justify-center items-center gap-3 sm:gap-4 no-print">
-         <Button onClick={() => handleSaveAndView(true)} className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-primary-foreground">
-          <Share2 className="mr-2 h-4 w-4" /> View/Share with Price Details
+         <Button onClick={() => handleSaveAndGoToView(true)} className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-primary-foreground">
+          <Share2 className="mr-2 h-4 w-4" /> View/Share with Details
         </Button>
-        <Button onClick={() => handleSaveAndView(false)} className="w-full sm:w-auto bg-secondary hover:bg-secondary/80 text-secondary-foreground">
-          <EyeOff className="mr-2 h-4 w-4" /> View/Share without Price Details
+        <Button onClick={() => handleSaveAndGoToView(false)} className="w-full sm:w-auto bg-secondary hover:bg-secondary/80 text-secondary-foreground">
+          <EyeOff className="mr-2 h-4 w-4" /> View/Share without Details
         </Button>
+         {canFinalizeProposal && (
+          <Button onClick={handleFinalizeAndSendClick} className="w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white">
+            <Send className="mr-2 h-4 w-4" /> Finalize & Send to Agent
+          </Button>
+        )}
          <div className="mt-2 sm:mt-0 text-xs text-muted-foreground text-center sm:text-left">
-            <Info className="inline h-3 w-3 mr-1 -mt-px" /> Both options save the current itinerary before navigating.
+            <Info className="inline h-3 w-3 mr-1 -mt-px" /> All actions save the current itinerary before navigating or sending.
           </div>
       </div>
     </div>
   );
 }
-

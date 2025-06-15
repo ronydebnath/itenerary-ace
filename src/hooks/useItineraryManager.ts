@@ -421,7 +421,6 @@ export function useItineraryManager() {
           setPageStatus('planner');
       }
     } else if (tripDataInternalRef.current && pageStatus !== 'planner') {
-      // If no need to load/recreate, but page status is not 'planner' (e.g. after HMR), set it correctly.
       setPageStatus('planner');
       const currentTripAssociatedQuote = tripDataInternalRef.current.quotationRequestId
         ? allQuotationRequests.find(q => q.id === tripDataInternalRef.current!.quotationRequestId) || null
@@ -430,7 +429,7 @@ export function useItineraryManager() {
         setCurrentQuotationRequest(currentTripAssociatedQuote);
       }
     }
-  }, [itineraryIdFromUrl, quotationRequestIdFromUrl, router, toast, saveNewItineraryToStorage]);
+  }, [itineraryIdFromUrl, quotationRequestIdFromUrl, router, toast, saveNewItineraryToStorage, currentItineraryId, pageStatus]);
 
 
   const handleStartNewItinerary = React.useCallback(() => {
@@ -539,26 +538,62 @@ export function useItineraryManager() {
         if (requestsString) {
           let allRequests: QuotationRequest[] = JSON.parse(requestsString);
           const requestIndex = allRequests.findIndex(q => q.id === dataToSave.quotationRequestId);
-          if (requestIndex > -1 && (allRequests[requestIndex].status === "Pending" || !allRequests[requestIndex].linkedItineraryId)) {
-            allRequests[requestIndex].status = "Quoted";
+          if (requestIndex > -1 && allRequests[requestIndex].status === "Pending") {
+            allRequests[requestIndex].status = "Quoted"; // Mark as quoted if admin saves
             allRequests[requestIndex].linkedItineraryId = currentItineraryIdForSave;
             allRequests[requestIndex].updatedAt = new Date().toISOString();
             localStorage.setItem(AGENT_QUOTATION_REQUESTS_KEY, JSON.stringify(allRequests));
-          } else if (requestIndex > -1 && allRequests[requestIndex].linkedItineraryId !== currentItineraryIdForSave ) {
+             setCurrentQuotationRequest(prev => prev && prev.id === allRequests[requestIndex].id ? allRequests[requestIndex] : prev);
+          } else if (requestIndex > -1 && !allRequests[requestIndex].linkedItineraryId) {
             allRequests[requestIndex].linkedItineraryId = currentItineraryIdForSave;
-             if (allRequests[requestIndex].status === "Pending") allRequests[requestIndex].status = "Quoted";
             allRequests[requestIndex].updatedAt = new Date().toISOString();
             localStorage.setItem(AGENT_QUOTATION_REQUESTS_KEY, JSON.stringify(allRequests));
+             setCurrentQuotationRequest(prev => prev && prev.id === allRequests[requestIndex].id ? allRequests[requestIndex] : prev);
           }
         }
       }
-      setTripData(dataToSave);
+      setTripData(dataToSave); // Update local state with the saved version
       toast({ title: "Success", description: `Itinerary "${dataToSave.itineraryName}" (v${newVersion}) saved.` });
     } catch (e: any) {
       console.error("Error during manual save:", e);
       toast({ title: "Error", description: `Could not save itinerary: ${e.message}`, variant: "destructive" });
     }
   }, [currentItineraryId, toast]);
+
+  const handleFinalizeProposalForAgent = React.useCallback(() => {
+    const currentTripForFinalize = tripDataInternalRef.current;
+    if (!currentTripForFinalize || !currentTripForFinalize.quotationRequestId) {
+      toast({ title: "Error", description: "This itinerary is not linked to a quotation request.", variant: "destructive" });
+      return false;
+    }
+    try {
+      const requestsString = localStorage.getItem(AGENT_QUOTATION_REQUESTS_KEY);
+      if (requestsString) {
+        let allRequests: QuotationRequest[] = JSON.parse(requestsString);
+        const requestIndex = allRequests.findIndex(q => q.id === currentTripForFinalize.quotationRequestId);
+        if (requestIndex > -1) {
+          allRequests[requestIndex].status = "ProposalReady";
+          allRequests[requestIndex].linkedItineraryId = currentTripForFinalize.id; // Ensure it's linked
+          allRequests[requestIndex].updatedAt = new Date().toISOString();
+          localStorage.setItem(AGENT_QUOTATION_REQUESTS_KEY, JSON.stringify(allRequests));
+          setCurrentQuotationRequest(allRequests[requestIndex]); // Update local state for the quote
+          toast({ title: "Proposal Sent", description: `Proposal for Quotation ID ${currentTripForFinalize.quotationRequestId.split('-').pop()} is now ready for the agent.` });
+          return true;
+        } else {
+          toast({ title: "Error", description: "Associated quotation request not found.", variant: "destructive" });
+          return false;
+        }
+      } else {
+        toast({ title: "Error", description: "Quotation request data not found.", variant: "destructive" });
+        return false;
+      }
+    } catch (e: any) {
+      console.error("Error finalizing proposal:", e);
+      toast({ title: "Error", description: `Could not finalize proposal: ${e.message}`, variant: "destructive" });
+      return false;
+    }
+  }, [toast]);
+
 
   return {
     tripData,
@@ -570,6 +605,6 @@ export function useItineraryManager() {
     handleUpdateSettings,
     handleUpdatePax,
     handleManualSave,
+    handleFinalizeProposalForAgent,
   };
 }
-

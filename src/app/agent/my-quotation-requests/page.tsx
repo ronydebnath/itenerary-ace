@@ -1,4 +1,3 @@
-
 /**
  * @fileoverview This page allows travel agents to view their submitted quotation requests.
  * It lists requests filtered by the agent's ID (placeholder for actual login), showing key details,
@@ -73,7 +72,8 @@ export default function MyQuotationRequestsPage() {
   const getStatusBadgeClassName = (status: QuotationRequest['status']): string => {
     switch (status) {
       case 'Pending': return 'bg-yellow-100 text-yellow-800 border-yellow-300 dark:bg-yellow-900/30 dark:text-yellow-300 dark:border-yellow-700';
-      case 'Quoted': return 'bg-blue-100 text-blue-800 border-blue-300 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-700';
+      case 'Quoted': return 'bg-orange-100 text-orange-800 border-orange-300 dark:bg-orange-900/30 dark:text-orange-300 dark:border-orange-700'; // Changed color for "Quoted" (admin working)
+      case 'ProposalReady': return 'bg-sky-100 text-sky-800 border-sky-300 dark:bg-sky-900/30 dark:text-sky-300 dark:border-sky-700'; // New color for "ProposalReady"
       case 'ConfirmedByAgent': return 'bg-green-100 text-green-800 border-green-300 dark:bg-green-900/30 dark:text-green-300 dark:border-green-700';
       case 'BookingInProgress': return 'bg-purple-100 text-purple-800 border-purple-300 dark:bg-purple-900/30 dark:text-purple-300 dark:border-purple-700';
       case 'Booked': return 'bg-teal-100 text-teal-800 border-teal-300 dark:bg-teal-900/30 dark:text-teal-300 dark:border-teal-700';
@@ -159,21 +159,20 @@ export default function MyQuotationRequestsPage() {
                         </Badge>
                     </TableCell>
                     <TableCell className="text-center py-2 px-2">
-                      {req.linkedItineraryId ? (
+                      {req.status === "ProposalReady" && req.linkedItineraryId ? (
                         <Button
                           variant="outline"
                           size="sm"
-                          // Default agent view is without detailed costs. Admin must share specific link for detailed costs.
-                          onClick={() => router.push(`/itinerary/view/${req.linkedItineraryId}`)}
+                          onClick={() => router.push(`/itinerary/view/${req.linkedItineraryId}`)} // Default view for agent is without price details token
                           className="text-xs h-7"
                           title="View Proposal"
                         >
                           <Eye className="h-3 w-3 mr-1"/> View Proposal
                         </Button>
-                      ) : req.status === "Pending" || req.status === "Quoted" ? (
-                        <Badge variant="outline" className="text-xs text-muted-foreground">Awaiting</Badge>
+                      ) : req.status === "Quoted" ? (
+                         <Badge variant="outline" className="text-xs text-muted-foreground">Processing</Badge>
                       ) : (
-                         <Badge variant="secondary" className="text-xs text-muted-foreground">Not Available</Badge>
+                         <Badge variant="secondary" className="text-xs text-muted-foreground">N/A</Badge>
                       )}
                     </TableCell>
                   </TableRow>
@@ -186,4 +185,3 @@ export default function MyQuotationRequestsPage() {
     </main>
   );
 }
-
