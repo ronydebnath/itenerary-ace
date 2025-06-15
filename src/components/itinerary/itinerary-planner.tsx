@@ -16,7 +16,7 @@ import * as React from 'react';
 import type { TripData, ItineraryItem, CostSummary, TripSettings, PaxDetails, QuotationRequest } from '@/types/itinerary';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { ScrollArea } from '@/components/ui/scroll-area';
+// ScrollArea import is removed as it's no longer used directly here for DayView
 import { Separator } from '@/components/ui/separator';
 import { Eye, EyeOff, Loader2, FileText, Users as UsersIcon, MapPin as MapPinIcon, CalendarDays as CalendarDaysIcon, Briefcase as BriefcaseIcon, Coins as CoinsIcon, BedDouble as BedDoubleIcon, Zap as ZapIcon, Car as CarIcon, Utensils as UtensilsIcon, MessageSquare as MessageSquareIcon, Share2 } from 'lucide-react';
 import { formatCurrency, generateGUID } from '@/lib/utils';
@@ -279,7 +279,7 @@ export function ItineraryPlanner({
               <p className="text-muted-foreground text-sm sm:text-base">Loading itinerary data and service definitions...</p>
             </div>
           ) : (
-            <ScrollArea className="max-h-[70vh] pr-0 lg:pr-2">
+            <div>
               {Array.from({ length: tripData.settings.numDays }, (_, i) => i + 1).map(dayNum => (
                 <div key={dayNum} style={{ display: dayNum === currentDayView ? 'block' : 'none' }}>
                   <DayView
@@ -296,7 +296,7 @@ export function ItineraryPlanner({
                   />
                 </div>
               ))}
-            </ScrollArea>
+            </div>
           )}
         </div>
 
@@ -365,3 +365,4 @@ export function ItineraryPlanner({
     </div>
   );
 }
+
