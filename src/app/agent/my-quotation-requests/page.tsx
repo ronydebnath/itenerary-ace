@@ -163,7 +163,8 @@ export default function MyQuotationRequestsPage() {
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => router.push(`/itinerary/view/${req.linkedItineraryId}?displayCosts=true&quotationRequestId=${req.id}`)}
+                          // Default agent view is without detailed costs. Admin must share specific link for detailed costs.
+                          onClick={() => router.push(`/itinerary/view/${req.linkedItineraryId}`)}
                           className="text-xs h-7"
                           title="View Proposal"
                         >

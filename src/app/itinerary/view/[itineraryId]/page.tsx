@@ -22,9 +22,10 @@ import {
 } from 'lucide-react';
 import { formatCurrency, cn } from '@/lib/utils';
 import { CostBreakdownTable } from '@/components/itinerary/cost-breakdown-table';
-// DetailsSummaryTable import is removed as the section is being removed
+import { DetailsSummaryTable } from '@/components/itinerary/details-summary-table';
 
 const ITINERARY_DATA_PREFIX = 'itineraryAce_data_';
+const SHOW_DETAILS_TOKEN = 'full_details_v1'; // Token to show detailed costs
 
 const ITEM_TYPE_ICONS: { [key in ItineraryItem['type']]: React.ElementType } = {
   transfer: Car,
@@ -54,8 +55,9 @@ export default function ItineraryClientViewPage() {
   const [isLoading, setIsLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
   
-  const displayCostsQueryParam = searchParams.get('displayCosts');
-  const showCosts = displayCostsQueryParam === 'true';
+  const viewModeToken = searchParams.get('viewMode');
+  // Default to false (summary view), only show details if token matches
+  const showCosts = viewModeToken === SHOW_DETAILS_TOKEN;
 
 
   const { allServicePrices, isLoading: isLoadingServices } = useServicePrices();
@@ -268,6 +270,7 @@ export default function ItineraryClientViewPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
               <div className="bg-muted/20 dark:bg-muted/10 p-3 sm:p-4 rounded-md border">
                 <h3 className="text-sm sm:text-md font-semibold mb-1.5 print:text-sm text-foreground/90">Per Person Total:</h3>
+                {/* Always show per-person and grand total, regardless of 'showCosts' for detailed items */}
                 <CostBreakdownTable summary={costSummary} currency={pax.currency} travelers={travelers} showCosts={true} />
               </div>
               <div className="text-left md:text-right bg-muted/20 dark:bg-muted/10 p-3 sm:p-4 rounded-md border">

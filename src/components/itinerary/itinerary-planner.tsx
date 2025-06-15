@@ -34,6 +34,7 @@ import { DayNavigation } from './day-navigation';
 import { useRouter } from 'next/navigation';
 import { Badge } from '@/components/ui/badge';
 
+const SHOW_DETAILS_TOKEN = 'full_details_v1'; // Token to show detailed costs
 
 interface ItineraryPlannerProps {
   tripData: TripData;
@@ -66,7 +67,8 @@ export function ItineraryPlanner({
 
   React.useEffect(() => {
     if (tripData && !isLoadingServices && !isLoadingHotelDefinitions && !isLoadingExchangeRates && !isLoadingCountries) {
-      const summary = calculateAllCosts(tripData, countries, allServicePrices, allHotelDefinitions, getRate);
+      // Planner always calculates with full cost details for its own view
+      const summary = calculateAllCosts(tripData, countries, allServicePrices, allHotelDefinitions, getRate, true);
       setCostSummary(summary);
     } else {
       setCostSummary(null);
@@ -150,16 +152,17 @@ export function ItineraryPlanner({
     });
   }, [onUpdateTripData]);
 
-  const handleViewClientItinerary = React.useCallback((showDetailedCosts: boolean) => {
+  const handleSaveAndView = React.useCallback((withDetailedCosts: boolean) => {
+    onManualSave(); // Ensure latest data is saved
     if (tripData?.id) {
-      router.push(`/itinerary/view/${tripData.id}?displayCosts=${showDetailedCosts}`);
+      let url = `/itinerary/view/${tripData.id}`;
+      if (withDetailedCosts) {
+        url += `?viewMode=${SHOW_DETAILS_TOKEN}`;
+      }
+      router.push(url);
     }
-  }, [tripData?.id, router]);
+  }, [tripData?.id, router, onManualSave]);
 
-  const handleSaveAndView = (showDetailedCosts: boolean) => {
-    onManualSave();
-    handleViewClientItinerary(showDetailedCosts);
-  };
 
   const getFormattedDateForDay = React.useCallback((dayNum: number): string => {
     if (!tripData.settings.startDate) return `Day ${dayNum}`;
@@ -280,6 +283,7 @@ export function ItineraryPlanner({
               <p className="text-muted-foreground text-sm sm:text-base">Loading itinerary data and service definitions...</p>
             </div>
           ) : (
+             // Removed ScrollArea wrapper from here
             <div>
               {Array.from({ length: tripData.settings.numDays }, (_, i) => i + 1).map(dayNum => (
                 <div key={dayNum} style={{ display: dayNum === currentDayView ? 'block' : 'none' }}>
@@ -359,7 +363,7 @@ export function ItineraryPlanner({
       </Card>
 
       <div className="mt-6 md:mt-8 py-4 md:py-6 border-t border-border flex flex-col sm:flex-row justify-center items-center gap-3 sm:gap-4 no-print">
-        <Button onClick={() => handleSaveAndView(true)} className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-primary-foreground">
+         <Button onClick={() => handleSaveAndView(true)} className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-primary-foreground">
           <Share2 className="mr-2 h-4 w-4" /> View/Share with Price Details
         </Button>
         <Button onClick={() => handleSaveAndView(false)} className="w-full sm:w-auto bg-secondary hover:bg-secondary/80 text-secondary-foreground">
