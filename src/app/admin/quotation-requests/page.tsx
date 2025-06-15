@@ -16,7 +16,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { useToast } from "@/hooks/use-toast";
 import type { QuotationRequest, QuotationRequestStatus } from '@/types/quotation';
 import { QUOTATION_STATUSES } from '@/types/quotation';
-import { LayoutDashboard, ListChecks, Edit, Trash2, Search, FileText, Eye, FilePlus, Filter, MessageCircle } from 'lucide-react';
+import { LayoutDashboard, ListChecks, Edit, Trash2, Search, FileText, Eye, FilePlus, Filter, MessageSquare } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
 import { useCountries } from '@/hooks/useCountries';
@@ -223,7 +223,7 @@ export default function ManageQuotationRequestsPage() {
                             <Tooltip>
                               <TooltipTrigger asChild>
                                 <Button variant="ghost" size="icon" className="h-5 w-5 ml-1 text-orange-500">
-                                  <MessageCircle className="h-3 w-3" />
+                                  <MessageSquare className="h-3 w-3" />
                                 </Button>
                               </TooltipTrigger>
                               <TooltipContent className="max-w-xs text-xs p-2 shadow-lg bg-background border">

@@ -306,586 +306,141 @@ const transformInitialDataToFormValues = (data?: Partial<ServicePriceItem>): Par
 };
 
 
-export function ServicePriceForm({ initialData, onSubmit, onCancel }: ServicePriceFormProps) {
-  const { provinces, isLoading: isLoadingProvinces } = useProvinces();
-
+export function ServicePriceFormRouter({ initialData, onSubmit, onCancel }: ServicePriceFormRouterProps) {
+  const { countries, isLoading: isLoadingCountries, getCountryById } = useCountries();
+  const defaultValuesFromInitial = React.useMemo(() => transformInitialDataToFormValues(initialData, countries), [initialData, countries]);
+  
   const form = useForm<ServicePriceFormValues>({
     resolver: zodResolver(servicePriceSchema),
-    defaultValues: transformInitialDataToFormValues(initialData),
-    mode: "onChange", 
+    defaultValues: defaultValuesFromInitial,
+    mode: "onSubmit", 
   });
 
-  const selectedCategory = form.watch("category");
-  const selectedTransferMode = form.watch("transferMode");
-  const hotelNameForLegend = form.watch('name');
-  const hotelProvinceForLegend = form.watch('province');
-  const activityNameForLegend = form.watch('name');
+  const watchedCategory = form.watch("category");
+  const watchedName = form.watch('name');
+  const watchedCountryId = form.watch('countryId');
+  const watchedProvince = form.watch('province');
+  const isNewService = !initialData?.id;
+  const isCreateMode = !initialData?.id;
 
+  React.useEffect(() => {
+    if(!isLoadingCountries) {
+      form.reset(transformInitialDataToFormValues(initialData, countries));
+    }
+  }, [initialData, countries, form.reset, form, isLoadingCountries]);
 
-  const { fields: roomTypeFields, append: appendRoomType, remove: removeRoomType } = useFieldArray({
-    control: form.control, name: "hotelDetails.roomTypes", keyName: "fieldId" 
-  });
-  const { fields: activityPackageFields, append: appendActivityPackage, remove: removeActivityPackage } = useFieldArray({
-    control: form.control, name: "activityPackages", keyName: "packageFieldId" 
-  });
-  const { fields: surchargePeriodFields, append: appendSurchargePeriod, remove: removeSurchargePeriod } = useFieldArray({
-    control: form.control, name: "surchargePeriods", keyName: "surchargeFieldId"
-  });
-  const { fields: vehicleOptionFields, append: appendVehicleOption, remove: removeVehicleOption } = useFieldArray({
-    control: form.control, name: "vehicleOptions", keyName: "vehicleOptionFieldId"
-  });
-
-
- React.useEffect(() => {
+  React.useEffect(() => {
     const currentCategoryValue = form.getValues('category');
+    const currentName = form.getValues('name');
+    const currentCountryId = form.getValues('countryId');
+    const currentProvince = form.getValues('province');
     const currentUnitDesc = form.getValues('unitDescription');
-    const currentTransferMode = form.getValues('transferMode');
-
-    const setFormValueIfChanged = (fieldName: keyof ServicePriceFormValues, newValue: any, options?: any) => {
-        if (form.getValues(fieldName) !== newValue) {
-            form.setValue(fieldName, newValue, options);
-        }
-    };
     
-    if (currentCategoryValue === 'activity') {
-        setFormValueIfChanged('price1', undefined, { shouldValidate: true });
-        setFormValueIfChanged('price2', undefined, { shouldValidate: true });
-        setFormValueIfChanged('subCategory', undefined, { shouldValidate: true });
-        setFormValueIfChanged('hotelDetails', undefined, { shouldValidate: true });
-        setFormValueIfChanged('unitDescription', currentUnitDesc || 'per person', { shouldValidate: true });
-        setFormValueIfChanged('vehicleOptions', undefined, { shouldValidate: true });
-        setFormValueIfChanged('transferMode', undefined, { shouldValidate: true });
-        setFormValueIfChanged('maxPassengers', undefined, { shouldValidate: true });
-    } else if (currentCategoryValue === 'hotel') {
-        setFormValueIfChanged('price1', undefined, { shouldValidate: true });
-        setFormValueIfChanged('price2', undefined, { shouldValidate: true });
-        setFormValueIfChanged('subCategory', undefined, { shouldValidate: true });
-        setFormValueIfChanged('activityPackages', undefined, { shouldValidate: true });
-        setFormValueIfChanged('unitDescription', currentUnitDesc || 'per night', { shouldValidate: true });
-        setFormValueIfChanged('vehicleOptions', undefined, { shouldValidate: true });
-        setFormValueIfChanged('transferMode', undefined, { shouldValidate: true });
-        setFormValueIfChanged('maxPassengers', undefined, { shouldValidate: true });
-    } else if (currentCategoryValue === 'transfer') {
-        setFormValueIfChanged('hotelDetails', undefined, { shouldValidate: true });
-        setFormValueIfChanged('activityPackages', undefined, { shouldValidate: true });
-        if (!currentTransferMode) { // If transferMode is not set, default to ticket
-            setFormValueIfChanged('transferMode', 'ticket', { shouldValidate: true });
+    const setFieldValue = (path: any, value: any) => form.setValue(path, value, { shouldValidate: true, shouldDirty: true });
+    
+    if (currentCategoryValue === 'hotel') {
+        let hotelDetailsCurrent = form.getValues('hotelDetails');
+        const expectedHotelName = currentName || (isNewService ? "New Hotel" : hotelDetailsCurrent?.name);
+        const expectedCountryId = currentCountryId || (hotelDetailsCurrent?.countryId || "");
+        const expectedProvince = currentProvince || hotelDetailsCurrent?.province || "";
+        let updateRequired = false;
+
+        if (!hotelDetailsCurrent || (isNewService && (!hotelDetailsCurrent.id || !hotelDetailsCurrent.name))) {
+            setFieldValue('hotelDetails', { 
+                id: generateGUID(), 
+                name: expectedHotelName, 
+                countryId: expectedCountryId, 
+                province: expectedProvince, 
+                starRating: hotelDetailsCurrent?.starRating ?? 3,
+                roomTypes: hotelDetailsCurrent?.roomTypes?.length ? hotelDetailsCurrent.roomTypes : [createDefaultRoomType()] 
+            });
+        } else {
+            if (hotelDetailsCurrent.name !== expectedHotelName) { hotelDetailsCurrent.name = expectedHotelName || ""; updateRequired = true; }
+            if (hotelDetailsCurrent.countryId !== expectedCountryId) { hotelDetailsCurrent.countryId = expectedCountryId; updateRequired = true; }
+            if (hotelDetailsCurrent.province !== expectedProvince) { hotelDetailsCurrent.province = expectedProvince; updateRequired = true; }
+            if (!hotelDetailsCurrent.id) { hotelDetailsCurrent.id = generateGUID(); updateRequired = true; }
+            if (hotelDetailsCurrent.starRating === undefined) { hotelDetailsCurrent.starRating = 3; updateRequired = true;}
+            if (updateRequired) setFieldValue('hotelDetails', { ...hotelDetailsCurrent });
         }
-        if (currentTransferMode === 'vehicle') {
-             setFormValueIfChanged('price1', undefined, { shouldValidate: true });
-             setFormValueIfChanged('price2', undefined, { shouldValidate: true });
-             setFormValueIfChanged('subCategory', undefined, { shouldValidate: true });
-             setFormValueIfChanged('maxPassengers', undefined, { shouldValidate: true });
-             setFormValueIfChanged('unitDescription', currentUnitDesc || 'per service', { shouldValidate: true });
-             if (!form.getValues('vehicleOptions') || form.getValues('vehicleOptions')?.length === 0) {
-                setFormValueIfChanged('vehicleOptions', [{ id: generateGUID(), vehicleType: VEHICLE_TYPES[0], price: 0, maxPassengers: 1, notes: ''}], { shouldValidate: true });
-             }
-        } else { // ticket mode
-             setFormValueIfChanged('vehicleOptions', undefined, { shouldValidate: true });
-             setFormValueIfChanged('surchargePeriods', undefined, { shouldValidate: true }); // Surcharges for vehicle only
-             setFormValueIfChanged('subCategory', 'ticket', { shouldValidate: true });
-             setFormValueIfChanged('unitDescription', currentUnitDesc || 'per person', { shouldValidate: true });
-             if (form.getValues('price1') === undefined) setFormValueIfChanged('price1', 0, { shouldValidate: true });
+        if(!currentUnitDesc) setFieldValue('unitDescription', 'per night');
+    } else if (currentCategoryValue === 'activity') {
+        if(!currentUnitDesc) setFieldValue('unitDescription', 'per person');
+    } else if (currentCategoryValue === 'transfer') {
+        const currentTransferMode = form.getValues('transferMode');
+        if (currentTransferMode === 'vehicle' && !currentUnitDesc) {
+            setFieldValue('unitDescription', 'per service');
+        } else if (currentTransferMode !== 'vehicle' && !currentUnitDesc) { // ticket or undefined defaults to per person
+             setFieldValue('unitDescription', 'per person');
         }
     } else { // meal, misc
-        setFormValueIfChanged('hotelDetails', undefined, { shouldValidate: true });
-        setFormValueIfChanged('activityPackages', undefined, { shouldValidate: true });
-        setFormValueIfChanged('vehicleOptions', undefined, { shouldValidate: true });
-        setFormValueIfChanged('transferMode', undefined, { shouldValidate: true });
-        setFormValueIfChanged('maxPassengers', undefined, { shouldValidate: true });
-        setFormValueIfChanged('surchargePeriods', undefined, { shouldValidate: true });
-        setFormValueIfChanged('unitDescription', currentUnitDesc || 'per person', { shouldValidate: true });
-        if (form.getValues('price1') === undefined) {
-            setFormValueIfChanged('price1', 0, { shouldValidate: true });
-        }
+        if(!currentUnitDesc) setFieldValue('unitDescription', 'per person');
     }
-  }, [selectedCategory, selectedTransferMode, form]); 
-
-
-  const getPrice1Label = (): string => {
-    if (selectedCategory === 'transfer' && selectedTransferMode === 'ticket') return "Adult Ticket Price";
-    if (selectedCategory === 'meal') return "Adult Meal Price";
-    if (selectedCategory === 'misc') return "Unit Cost";
-    return "Default Adult Price / Main Rate"; // Fallback, though ideally not shown if specific logic applies
-  };
-
-  const getPrice2Label = (): string | null => {
-    if (selectedCategory === 'transfer' && selectedTransferMode === 'ticket') return "Child Ticket Price (Optional)";
-    if (selectedCategory === 'meal') return "Child Meal Price (Optional)";
-    return null;
-  };
-
-  const getSubCategoryLabel = (): string | null => {
-    if (selectedCategory === 'meal') return "Meal Type (e.g., Set Menu, Buffet)";
-    if (selectedCategory === 'misc') return "Item Sub-Type (e.g., Visa Fee, Souvenir)";
-    return null; // No subCategory field for Hotel, Activity, or Vehicle Transfer
-  };
-
-  const showSimplePricingFields = selectedCategory !== 'hotel' && selectedCategory !== 'activity' && !(selectedCategory === 'transfer' && selectedTransferMode === 'vehicle');
-  const showSubCategoryInput = (): boolean => (selectedCategory === 'meal' || selectedCategory === 'misc');
-  const showMaxPassengersGlobal = (): boolean => selectedCategory === 'transfer' && selectedTransferMode === 'ticket'; // Not generally used now, maybe for ticket bundles?
-  const showSurchargeSection = (): boolean => selectedCategory === 'transfer' && selectedTransferMode === 'vehicle';
-  const showVehicleOptionsSection = (): boolean => selectedCategory === 'transfer' && selectedTransferMode === 'vehicle';
+  }, [watchedCategory, watchedName, watchedCountryId, watchedProvince, isNewService, initialData, form, countries]);
 
   const handleActualSubmit = (values: ServicePriceFormValues) => {
-    const dataToSubmit = { ...values };
-
-    if (dataToSubmit.category === 'hotel' && dataToSubmit.hotelDetails) {
-      dataToSubmit.hotelDetails.name = dataToSubmit.name;
-      dataToSubmit.hotelDetails.province = dataToSubmit.province || '';
-      dataToSubmit.hotelDetails.roomTypes = dataToSubmit.hotelDetails.roomTypes.map(rt => ({
+    const dataToSubmit: any = JSON.parse(JSON.stringify(values)); 
+    if (dataToSubmit.category === 'hotel' && dataToSubmit.hotelDetails?.roomTypes) {
+      dataToSubmit.hotelDetails.name = dataToSubmit.name || dataToSubmit.hotelDetails.name; 
+      dataToSubmit.hotelDetails.countryId = dataToSubmit.countryId || dataToSubmit.hotelDetails.countryId;
+      dataToSubmit.hotelDetails.province = dataToSubmit.province || dataToSubmit.hotelDetails.province || ""; 
+      dataToSubmit.hotelDetails.starRating = dataToSubmit.hotelDetails.starRating; 
+      dataToSubmit.hotelDetails.roomTypes = dataToSubmit.hotelDetails.roomTypes.map((rt: any) => ({
         ...rt,
-        seasonalPrices: rt.seasonalPrices.map(sp => ({
-            ...sp,
-            startDate: (sp.startDate as Date).toISOString().split('T')[0],
-            endDate: (sp.endDate as Date).toISOString().split('T')[0],
-            extraBedRate: rt.extraBedAllowed ? sp.extraBedRate : undefined,
+        seasonalPrices: rt.seasonalPrices.map((sp: any) => ({
+          ...sp,
+          startDate: (sp.startDate instanceof Date ? format(sp.startDate, 'yyyy-MM-dd') : (typeof sp.startDate === 'string' && isValid(parseISO(sp.startDate)) ? format(parseISO(sp.startDate), 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd'))),
+          endDate: (sp.endDate instanceof Date ? format(sp.endDate, 'yyyy-MM-dd') : (typeof sp.endDate === 'string' && isValid(parseISO(sp.endDate)) ? format(parseISO(sp.endDate), 'yyyy-MM-dd') : format(addDays(new Date(),30), 'yyyy-MM-dd'))),
         })),
       }));
-    } else if (dataToSubmit.category === 'activity' && dataToSubmit.activityPackages) {
-      // Activity specific transformations already handled by schema if necessary
-    } else if (dataToSubmit.category === 'transfer') {
-        if (dataToSubmit.transferMode === 'vehicle' && dataToSubmit.surchargePeriods) {
-          dataToSubmit.surchargePeriods = dataToSubmit.surchargePeriods.map(sp => ({
+    } 
+    
+    if (dataToSubmit.surchargePeriods) {
+        dataToSubmit.surchargePeriods = dataToSubmit.surchargePeriods.map((sp: any) => ({
             ...sp,
-            startDate: (sp.startDate as Date).toISOString().split('T')[0],
-            endDate: (sp.endDate as Date).toISOString().split('T')[0],
-          }));
-        }
+             startDate: (sp.startDate instanceof Date ? format(sp.startDate, 'yyyy-MM-dd') : (typeof sp.startDate === 'string' && isValid(parseISO(sp.startDate)) ? format(parseISO(sp.startDate), 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd'))),
+             endDate: (sp.endDate instanceof Date ? format(sp.endDate, 'yyyy-MM-dd') : (typeof sp.endDate === 'string' && isValid(parseISO(sp.endDate)) ? format(parseISO(sp.endDate), 'yyyy-MM-dd') : format(addDays(new Date(),30), 'yyyy-MM-dd'))),
+        }));
+    }
+    if (dataToSubmit.activityPackages) {
+        dataToSubmit.activityPackages = dataToSubmit.activityPackages.map((ap:any) => ({
+            ...ap,
+            validityStartDate: ap.validityStartDate || undefined,
+            validityEndDate: ap.validityEndDate || undefined,
+        }));
     }
 
-    if (dataToSubmit.province === "none") {
-      dataToSubmit.province = undefined;
-    }
+    if (dataToSubmit.countryId === "none") dataToSubmit.countryId = undefined;
+    if (dataToSubmit.province === "none") dataToSubmit.province = undefined;
     onSubmit({ ...dataToSubmit } as Omit<ServicePriceItem, 'id'>);
   };
 
-  const subCategoryLabel = getSubCategoryLabel();
+  const handleFormError = (errors: any) => { console.error("Form validation errors:", errors); };
+
+  if (isLoadingCountries) {
+    return <div className="flex justify-center items-center min-h-[200px]"><Loader2 className="h-8 w-8 animate-spin text-primary"/> <p className="ml-2">Loading form configuration...</p></div>;
+  }
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(handleActualSubmit)} className="space-y-6">
-        <ScrollArea className="h-[60vh] md:h-[70vh] pr-3">
-            <div className="space-y-6 p-1">
-                
-                <div className="border border-border rounded-md p-4 relative">
-                    <p className="text-sm font-semibold -mt-6 ml-2 px-1 bg-background inline-block absolute left-2 top-[-0.7rem] mb-4">Basic Service Details</p>
-                    <div className="space-y-4 pt-2">
-                        <FormField
-                            control={form.control}
-                            name="province"
-                            render={({ field }) => (
-                                <FormItem>
-                                <FormLabel>Province / Location (Optional)</FormLabel>
-                                <Select
-                                    onValueChange={(value) => field.onChange(value === "none" ? undefined : value)}
-                                    value={field.value || "none"}
-                                    disabled={isLoadingProvinces}
-                                >
-                                    <FormControl>
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Select province..." />
-                                    </SelectTrigger>
-                                    </FormControl>
-                                    <SelectContent>
-                                    <SelectItem value="none">— Select —</SelectItem>
-                                    {provinces.map(p => (
-                                        <SelectItem key={p.id} value={p.name}>{p.name}</SelectItem>
-                                    ))}
-                                    </SelectContent>
-                                </Select>
-                                <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-                        <FormField
-                            control={form.control}
-                            name="category"
-                            render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>Category</FormLabel>
-                                <Select onValueChange={field.onChange} value={field.value}>
-                                <FormControl><SelectTrigger><SelectValue placeholder="Select category" /></SelectTrigger></FormControl>
-                                <SelectContent>
-                                    {SERVICE_CATEGORIES.map(cat => <SelectItem key={cat} value={cat}>{cat.charAt(0).toUpperCase() + cat.slice(1)}</SelectItem>)}
-                                </SelectContent>
-                                </Select>
-                                <FormMessage />
-                            </FormItem>
-                            )}
-                        />
-                         <FormField
-                            control={form.control}
-                            name="name"
-                            render={({ field }) => (
-                                <FormItem>
-                                <FormLabel>Service / Route / Hotel / Activity Name</FormLabel>
-                                <FormControl><Input placeholder="e.g., City Tour, Oceanview Resort, BKK Airport to City" {...field} /></FormControl>
-                                <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-                         <FormField
-                            control={form.control}
-                            name="currency"
-                            render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>Currency</FormLabel>
-                                <Select onValueChange={field.onChange} value={field.value}>
-                                <FormControl><SelectTrigger><SelectValue placeholder="Select currency" /></SelectTrigger></FormControl>
-                                <SelectContent>
-                                    {CURRENCIES.map(curr => <SelectItem key={curr} value={curr}>{curr}</SelectItem>)}
-                                </SelectContent>
-                                </Select>
-                                <FormMessage />
-                            </FormItem>
-                            )}
-                        />
-                         <FormField
-                            control={form.control}
-                            name="unitDescription"
-                            render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>Unit Description</FormLabel>
-                                <FormControl><Input
-                                    placeholder={selectedCategory === 'hotel' ? 'per night' : (selectedCategory === 'transfer' && selectedTransferMode === 'vehicle' ? 'per service' : 'per person')}
-                                    {...field}
-                                    value={field.value || ''}
-                                /></FormControl>
-                                <FormMessage />
-                            </FormItem>
-                            )}
-                        />
-                         <FormField
-                            control={form.control}
-                            name="notes"
-                            render={({ field }) => (
-                                <FormItem>
-                                <FormLabel>General Service Notes (Optional)</FormLabel>
-                                <FormControl><Textarea placeholder="Overall details about the service" {...field} value={field.value || ''} rows={2} /></FormControl>
-                                <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-                    </div>
-                </div>
-
-                {selectedCategory === 'transfer' && (
-                    <div className="border border-border rounded-md p-4 relative mt-6">
-                        <p className="text-sm font-semibold -mt-6 ml-2 px-1 bg-background inline-block absolute left-2 top-[-0.7rem] mb-4">Transfer Mode</p>
-                        <FormField
-                            control={form.control}
-                            name="transferMode"
-                            render={({ field }) => (
-                            <FormItem>
-                                <Select onValueChange={field.onChange} value={field.value || undefined}>
-                                <FormControl><SelectTrigger><SelectValue placeholder="Select transfer mode" /></SelectTrigger></FormControl>
-                                <SelectContent>
-                                    <SelectItem value="ticket">Ticket Basis</SelectItem>
-                                    <SelectItem value="vehicle">Vehicle Basis</SelectItem>
-                                </SelectContent>
-                                </Select>
-                                <FormMessage />
-                            </FormItem>
-                            )}
-                        />
-                    </div>
-                )}
-
-                {showSimplePricingFields && (
-                    <div className="border border-border rounded-md p-4 relative mt-6">
-                        <p className="text-sm font-semibold -mt-6 ml-2 px-1 bg-background inline-block absolute left-2 top-[-0.7rem] mb-4">Pricing Details: {selectedCategory.charAt(0).toUpperCase() + selectedCategory.slice(1)}</p>
-                        <div className="space-y-4 pt-2">
-                            {showSubCategoryInput() && subCategoryLabel && (
-                                <FormField
-                                    control={form.control}
-                                    name="subCategory"
-                                    render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>{subCategoryLabel}</FormLabel>
-                                        <FormControl><Input placeholder="Details..." {...field} value={field.value || ''}/></FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                    )}
-                                />
-                            )}
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <FormField
-                                    control={form.control}
-                                    name="price1"
-                                    render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>{getPrice1Label()}</FormLabel>
-                                        <FormControl><Input type="number" placeholder="0.00" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)} value={field.value ?? ''}/></FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                    )}
-                                />
-                                {getPrice2Label() && (
-                                    <FormField
-                                    control={form.control}
-                                    name="price2"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                        <FormLabel>{getPrice2Label()}</FormLabel>
-                                        <FormControl><Input type="number" placeholder="0.00" {...field} value={field.value ?? ''} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)} /></FormControl>
-                                        <FormMessage />
-                                        </FormItem>
-                                    )}
-                                    />
-                                )}
-                            </div>
-                        </div>
-                    </div>
-                )}
-
-                {showVehicleOptionsSection() && (
-                     <div className="border border-border rounded-md p-4 mt-6 relative">
-                        <p className="text-sm font-semibold -mt-6 ml-2 px-1 bg-background inline-block absolute left-2 top-[-0.7rem] mb-4 flex items-center">
-                           <Car className="h-4 w-4 mr-1 text-blue-500" /> Vehicle Options for Route: {form.getValues('name')}
-                        </p>
-                        <div id="vehicleOptionsContainer" className="space-y-4 pt-2">
-                            {vehicleOptionFields.map((vehicleField, vehicleIndex) => (
-                                <div key={vehicleField.vehicleOptionFieldId} className="border border-muted rounded-md p-3 bg-card shadow-sm">
-                                    <div className="flex justify-between items-center mb-2">
-                                        <Label className="text-sm font-medium">Vehicle Option {vehicleIndex + 1}</Label>
-                                        <Button
-                                            type="button" variant="ghost" size="icon"
-                                            onClick={() => vehicleOptionFields.length > 1 ? removeVehicleOption(vehicleIndex) : null}
-                                            disabled={vehicleOptionFields.length <=1}
-                                            className="h-6 w-6 text-destructive hover:bg-destructive/10"
-                                        >
-                                            <XIcon size={16} />
-                                        </Button>
-                                    </div>
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-                                        <FormField
-                                            control={form.control}
-                                            name={`vehicleOptions.${vehicleIndex}.vehicleType`}
-                                            render={({ field }) => (
-                                                <FormItem><FormLabel className="text-xs">Type</FormLabel>
-                                                <Select onValueChange={field.onChange} value={field.value}>
-                                                    <FormControl><SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger></FormControl>
-                                                    <SelectContent>{VEHICLE_TYPES.map(v => <SelectItem key={v} value={v}>{v}</SelectItem>)}</SelectContent>
-                                                </Select>
-                                                <FormMessage className="text-xs" />
-                                                </FormItem>
-                                            )}
-                                        />
-                                        <FormField
-                                            control={form.control}
-                                            name={`vehicleOptions.${vehicleIndex}.price`}
-                                            render={({ field }) => (
-                                                <FormItem><FormLabel className="text-xs">Price ({form.getValues('currency')})</FormLabel>
-                                                <FormControl><Input type="number" placeholder="0.00" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || 0)} className="h-9 text-sm" /></FormControl>
-                                                <FormMessage className="text-xs" />
-                                                </FormItem>
-                                            )}
-                                        />
-                                        <FormField
-                                            control={form.control}
-                                            name={`vehicleOptions.${vehicleIndex}.maxPassengers`}
-                                            render={({ field }) => (
-                                                <FormItem><FormLabel className="text-xs">Max Pax</FormLabel>
-                                                <FormControl><Input type="number" placeholder="1" {...field} onChange={e => field.onChange(parseInt(e.target.value, 10) || 1)} className="h-9 text-sm" min="1"/></FormControl>
-                                                <FormMessage className="text-xs" />
-                                                </FormItem>
-                                            )}
-                                        />
-                                    </div>
-                                    <FormField
-                                            control={form.control}
-                                            name={`vehicleOptions.${vehicleIndex}.notes`}
-                                            render={({ field }) => (
-                                                <FormItem className="mt-2"><FormLabel className="text-xs">Option Notes</FormLabel>
-                                                <FormControl><Textarea placeholder="Specific notes for this vehicle option..." {...field} value={field.value || ''} rows={1} className="text-sm min-h-[2.25rem]"/></FormControl>
-                                                <FormMessage className="text-xs" />
-                                                </FormItem>
-                                            )}
-                                    />
-                                </div>
-                            ))}
-                        </div>
-                        <Button
-                            type="button" variant="outline" size="sm"
-                            onClick={() => appendVehicleOption({ id: generateGUID(), vehicleType: VEHICLE_TYPES[0], price: 0, maxPassengers: 1, notes: ''}, { shouldFocus: false })}
-                            className="mt-4 border-blue-500 text-blue-600 hover:bg-blue-500/10 add-btn"
-                        >
-                            <PlusCircle className="mr-2 h-4 w-4" /> Add Vehicle Option
-                        </Button>
-                        {(form.formState.errors.vehicleOptions as any)?.message && (
-                            <FormMessage className="mt-2 text-sm text-destructive">{(form.formState.errors.vehicleOptions as any).message}</FormMessage>
-                        )}
-                     </div>
-                )}
-
-                {showSurchargeSection() && (
-                    <div className="border border-border rounded-md p-4 mt-6 relative">
-                        <p className="text-sm font-semibold -mt-6 ml-2 px-1 bg-background inline-block absolute left-2 top-[-0.7rem] mb-4 flex items-center">
-                            <AlertTriangle className="h-4 w-4 mr-1 text-orange-500" /> Route Surcharges for: {form.getValues('name')}
-                        </p>
-                        <div id="surchargePeriodsContainer" className="space-y-4 pt-2">
-                            {surchargePeriodFields.map((surchargeField, surchargeIndex) => (
-                                <div key={surchargeField.surchargeFieldId} className="border border-muted rounded-md p-3 bg-card shadow-sm">
-                                    <div className="flex justify-between items-center mb-2">
-                                        <Label className="text-sm font-medium">Surcharge Period {surchargeIndex + 1}</Label>
-                                        <Button type="button" variant="ghost" size="icon" onClick={() => removeSurchargePeriod(surchargeIndex)} className="h-6 w-6 text-destructive hover:bg-destructive/10" >
-                                            <XIcon size={16} />
-                                        </Button>
-                                    </div>
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
-                                        <FormField control={form.control} name={`surchargePeriods.${surchargeIndex}.name`} render={({ field }) => ( <FormItem><FormLabel className="text-xs">Name</FormLabel><FormControl><Input placeholder="e.g., New Year Peak" {...field} className="h-9 text-sm" /></FormControl><FormMessage className="text-xs" /></FormItem> )} />
-                                        <Controller control={form.control} name={`surchargePeriods.${surchargeIndex}.startDate`} render={({ field, fieldState: { error } }) => ( <FormItem><FormLabel className="text-xs">Start Date</FormLabel><FormControl><DatePicker date={field.value} onDateChange={field.onChange} placeholder="dd-MM-yy" /></FormControl>{error && <FormMessage className="text-xs">{error.message}</FormMessage>}</FormItem> )} />
-                                        <Controller control={form.control} name={`surchargePeriods.${surchargeIndex}.endDate`} render={({ field, fieldState: { error } }) => ( <FormItem><FormLabel className="text-xs">End Date</FormLabel><FormControl><DatePicker date={field.value} onDateChange={field.onChange} minDate={form.getValues(`surchargePeriods.${surchargeIndex}.startDate`)} placeholder="dd-MM-yy" /></FormControl>{error && <FormMessage className="text-xs">{error.message}</FormMessage>}</FormItem> )} />
-                                        <FormField control={form.control} name={`surchargePeriods.${surchargeIndex}.surchargeAmount`} render={({ field }) => ( <FormItem><FormLabel className="text-xs">Amount ({form.getValues('currency')})</FormLabel><FormControl><Input type="number" placeholder="0.00" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || 0)} className="h-9 text-sm" /></FormControl><FormMessage className="text-xs" /></FormItem> )} />
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                        <Button type="button" variant="outline" size="sm" onClick={() => appendSurchargePeriod({ id: generateGUID(), name: '', startDate: new Date(), endDate: new Date(), surchargeAmount: 0 }, { shouldFocus: false })} className="mt-4 border-orange-500 text-orange-600 hover:bg-orange-500/10 add-btn" >
-                            <PlusCircle className="mr-2 h-4 w-4" /> Add Surcharge Period
-                        </Button>
-                        {(form.formState.errors.surchargePeriods as any)?.message && ( <FormMessage className="mt-2 text-sm text-destructive">{(form.formState.errors.surchargePeriods as any).message}</FormMessage> )}
-                    </div>
-                )}
-                
-                {selectedCategory === 'hotel' && (
-                    <div className="border border-border rounded-md p-4 mt-6 relative">
-                         <p className="text-sm font-semibold -mt-6 ml-2 px-1 bg-background inline-block absolute left-2 top-[-0.7rem] mb-4"> Room Types &amp; Nightly Rates for: {hotelNameForLegend || "Hotel"} {hotelProvinceForLegend && `(${hotelProvinceForLegend})`} </p>
-                        <div id="roomTypesContainer" className="space-y-6 pt-2">
-                        {roomTypeFields.map((roomField, roomIndex) => {
-                            const roomTypeNameWatch = form.watch(`hotelDetails.roomTypes.${roomIndex}.name`);
-                            const roomLegend = roomTypeNameWatch || `Room Type ${roomIndex + 1}`;
-                            return (
-                            <div key={roomField.fieldId} className="border border-border rounded-md p-4 pt-6 relative bg-card shadow-sm">
-                                <p className="text-base font-medium -mt-6 ml-2 px-1 bg-card inline-block absolute left-2 top-[0.1rem] max-w-[calc(100%-3rem)] truncate"> {roomLegend} </p>
-                                <Button type="button" variant="ghost" size="icon" onClick={() => roomTypeFields.length > 1 ? removeRoomType(roomIndex) : null} disabled={roomTypeFields.length <= 1} className="absolute top-1 right-1 h-7 w-7 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center text-sm hover:bg-destructive/80 disabled:opacity-50" aria-label="Remove Room Type" > <XIcon size={16}/> </Button>
-                                <div className="space-y-3 pt-2">
-                                  <FormField control={form.control} name={`hotelDetails.roomTypes.${roomIndex}.name`} render={({ field }) => ( <FormItem><FormLabel className="text-sm">Room Type Name</FormLabel><FormControl><Input placeholder="e.g., Deluxe Pool View" {...field} /></FormControl><FormMessage /></FormItem> )} />
-                                  <FormField control={form.control} name={`hotelDetails.roomTypes.${roomIndex}.extraBedAllowed`} render={({ field }) => ( <FormItem className="flex flex-row items-center space-x-2 space-y-0 pt-2"><FormControl><Checkbox checked={field.value} onCheckedChange={(checked) => { field.onChange(checked); if (!checked) { const seasons = form.getValues(`hotelDetails.roomTypes.${roomIndex}.seasonalPrices`); seasons.forEach((_, seasonIdx) => { form.setValue(`hotelDetails.roomTypes.${roomIndex}.seasonalPrices.${seasonIdx}.extraBedRate`, undefined, { shouldValidate: true }); }); } }} /></FormControl><FormLabel className="text-sm font-normal cursor-pointer"> Extra Bed Permitted for this Room Type? </FormLabel><FormMessage /></FormItem> )} />
-                                   <FormField control={form.control} name={`hotelDetails.roomTypes.${roomIndex}.notes`} render={({ field }) => ( <FormItem><FormLabel className="text-sm">Room Details (Size, Amenities, Bed Type, View, etc.)</FormLabel><FormControl><Textarea placeholder="Describe room features, size, bed configuration, view, key amenities..." {...field} value={field.value || ''} rows={3} /></FormControl><FormMessage /></FormItem> )} />
-                                </div>
-                                <SeasonalRatesTable roomIndex={roomIndex} form={form} currency={form.getValues('currency')} />
-                                <Button type="button" variant="outline" size="sm" className="mt-3 border-primary text-primary hover:bg-primary/10 add-btn" onClick={() => { const currentRoomSeasonalPrices = form.getValues(`hotelDetails.roomTypes.${roomIndex}.seasonalPrices`) || []; form.setValue(`hotelDetails.roomTypes.${roomIndex}.seasonalPrices`, [ ...currentRoomSeasonalPrices, { id: generateGUID(), startDate: new Date(), endDate: new Date(), rate: 0, extraBedRate: undefined } ], { shouldValidate: true }); }} > <PlusCircle className="mr-2 h-4 w-4" /> Add Season </Button>
-                                 {(form.formState.errors.hotelDetails?.roomTypes?.[roomIndex] as any)?.seasonalPrices?.message && ( <FormMessage className="mt-2 text-xs text-destructive"> {(form.formState.errors.hotelDetails?.roomTypes?.[roomIndex] as any)?.seasonalPrices?.message} </FormMessage> )}
-                            </div>
-                            );
-                        })}
-                        </div>
-                        <Button type="button" variant="outline" onClick={() => appendRoomType({ id: generateGUID(), name: `Room Type ${roomTypeFields.length + 1}`, extraBedAllowed: false, notes: '', characteristics: [], seasonalPrices: [{ id: generateGUID(), startDate: new Date(), endDate: new Date(), rate: 0, extraBedRate: undefined }] }, { shouldFocus: false })} className="mt-4 border-accent text-accent hover:bg-accent/10 add-btn" > <PlusCircle className="mr-2 h-4 w-4" /> Add Room Type </Button>
-                         {(form.formState.errors.hotelDetails?.roomTypes as any)?.message && ( <FormMessage className="mt-2 text-sm text-destructive">{(form.formState.errors.hotelDetails?.roomTypes as any).message}</FormMessage> )}
-                         {form.formState.errors.hotelDetails?.root?.message && ( <FormMessage className="mt-2 text-sm text-destructive">{form.formState.errors.hotelDetails.root.message}</FormMessage> )}
-                    </div>
-                )}
-                
-                {selectedCategory === 'activity' && (
-                  <div className="border border-border rounded-md p-4 mt-6 relative">
-                    <p className="text-sm font-semibold -mt-6 ml-2 px-1 bg-background inline-block absolute left-2 top-[-0.7rem] mb-4"> Activity Packages for: {activityNameForLegend || "Activity"} </p>
-                    <div id="activityPackagesContainer" className="space-y-4 pt-2">
-                      {activityPackageFields.map((packageField, packageIndex) => {
-                        const currentPackageValues = form.watch(`activityPackages.${packageIndex}`);
-                        const packageLegend = currentPackageValues?.name || `Package ${packageIndex + 1}`;
-                        return (
-                        <div key={packageField.packageFieldId} className="border border-border rounded-md p-4 pt-6 relative bg-card shadow-sm">
-                           <p className="text-base font-medium -mt-6 ml-2 px-1 bg-card inline-block absolute left-2 top-[0.1rem] max-w-[calc(100%-3rem)] truncate"> {packageLegend} </p>
-                          <Button type="button" variant="ghost" size="icon" onClick={() => activityPackageFields.length > 1 ? removeActivityPackage(packageIndex) : null} disabled={activityPackageFields.length <= 1 && activityPackageFields[0]?.name === "Standard Package" && activityPackageFields[0]?.price1 === 0} className="absolute top-1 right-1 h-7 w-7 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center text-sm hover:bg-destructive/80 disabled:opacity-50" aria-label="Remove Package" > <XIcon size={16} /> </Button>
-                          <div className="space-y-3 pt-2">
-                            <FormField control={form.control} name={`activityPackages.${packageIndex}.name`} render={({ field }) => ( <FormItem><FormLabel className="text-sm">Package Name</FormLabel><FormControl><Input placeholder="e.g., Sunset Cruise, Full Day Tour" {...field} /></FormControl><FormMessage /></FormItem> )} />
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <FormField control={form.control} name={`activityPackages.${packageIndex}.price1`} render={({ field }) => ( <FormItem><FormLabel className="text-sm">Adult Price ({form.getValues('currency')})</FormLabel><FormControl><Input type="number" placeholder="0.00" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || 0)} /></FormControl><FormMessage /></FormItem> )} />
-                                <FormField control={form.control} name={`activityPackages.${packageIndex}.price2`} render={({ field }) => ( <FormItem><FormLabel className="text-sm">Child Price ({form.getValues('currency')}) (Optional)</FormLabel><FormControl><Input type="number" placeholder="0.00" {...field} value={field.value ?? ''} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)} /></FormControl><FormMessage /></FormItem> )} />
-                            </div>
-                            <FormField control={form.control} name={`activityPackages.${packageIndex}.notes`} render={({ field }) => ( <FormItem><FormLabel className="text-sm">Package Notes/Details</FormLabel><FormControl><Textarea placeholder="Inclusions, duration, what to bring, etc." {...field} value={field.value || ''} rows={2} /></FormControl><FormMessage /></FormItem> )} />
-                             <Controller control={form.control} name={`activityPackages.${packageIndex}`} render={({ field: { onChange, value }}) => ( <ActivityPackageScheduler packageId={packageField.id} initialSchedulingData={{ validityStartDate: value.validityStartDate, validityEndDate: value.validityEndDate, closedWeekdays: value.closedWeekdays, specificClosedDates: value.specificClosedDates, }} onSchedulingChange={(newSchedule: SchedulingData) => { onChange({ ...value, ...newSchedule }); }} /> )} />
-                          </div>
-                        </div>
-                      );
-                      })}
-                    </div>
-                    <Button type="button" variant="outline" onClick={() => appendActivityPackage({ id: generateGUID(), name: `Package ${activityPackageFields.length + 1}`, price1: 0, price2: undefined, notes: '', validityStartDate: new Date().toISOString().split('T')[0], validityEndDate: new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().split('T')[0], closedWeekdays: [], specificClosedDates: [] }, { shouldFocus: false })} className="mt-4 border-accent text-accent hover:bg-accent/10 add-btn" > <PlusCircle className="mr-2 h-4 w-4" /> Add Package </Button>
-                    {(form.formState.errors.activityPackages as any)?.message && ( <FormMessage className="mt-2 text-sm text-destructive">{(form.formState.errors.activityPackages as any).message}</FormMessage> )}
-                    {form.formState.errors.activityPackages?.root?.message && ( <FormMessage className="mt-2 text-sm text-destructive">{form.formState.errors.activityPackages.root.message}</FormMessage> )}
-                  </div>
-                )}
-
-
-            </div>
+      <form onSubmit={form.handleSubmit(handleActualSubmit, handleFormError)} className="space-y-6">
+        <ScrollArea className="h-[calc(100vh-280px)] md:h-[calc(100vh-250px)] pr-3">
+          <div className="space-y-4 md:space-y-6 p-1">
+            <CommonPriceFields form={form} />
+            {watchedCategory === 'hotel' && <HotelPriceForm form={form} />}
+            {watchedCategory === 'activity' && <ActivityPriceForm form={form} isCreateMode={isCreateMode} />}
+            {watchedCategory === 'transfer' && <TransferPriceForm form={form} />}
+            {watchedCategory === 'meal' && <MealPriceForm form={form} isCreateMode={isCreateMode} />}
+            {watchedCategory === 'misc' && <MiscellaneousPriceForm form={form} isCreateMode={isCreateMode} />}
+          </div>
         </ScrollArea>
         <div className="flex justify-end space-x-3 pt-4 border-t mt-4">
-          <Button type="button" variant="outline" onClick={onCancel}>Cancel</Button>
-          <Button type="submit" className="bg-accent hover:bg-accent/90 text-accent-foreground">
+          <Button type="button" variant="outline" onClick={onCancel} size="sm" className="h-9 text-sm">Cancel</Button>
+          <Button type="submit" className="bg-accent hover:bg-accent/90 text-accent-foreground h-9 text-sm" size="sm">
+            {form.formState.isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : null}
             {initialData?.id ? 'Update' : 'Create'} Service Price
           </Button>
         </div>
       </form>
     </Form>
-  );
-}
-
-
-interface SeasonalRatesTableProps {
-  roomIndex: number;
-  form: ReturnType<typeof useForm<ServicePriceFormValues>>;
-  currency: CurrencyCode;
-}
-
-function SeasonalRatesTable({ roomIndex, form, currency }: SeasonalRatesTableProps) {
-  const { fields, append, remove } = useFieldArray({
-    control: form.control,
-    name: `hotelDetails.roomTypes.${roomIndex}.seasonalPrices`,
-    keyName: "seasonFieldId"
-  });
-
-  const roomExtraBedAllowed = useWatch({
-    control: form.control,
-    name: `hotelDetails.roomTypes.${roomIndex}.extraBedAllowed`,
-  });
-
-  React.useEffect(() => {
-    if (fields.length === 0) {
-      append({ id: generateGUID(), startDate: new Date(), endDate: new Date(), rate: 0, extraBedRate: undefined }, { shouldFocus: false });
-    }
-  }, [fields, append]);
-
-
-  return (
-    <div className="space-y-1 mt-4">
-        <Label className="text-sm font-medium text-muted-foreground mb-1 block">Seasonal Pricing Periods</Label>
-      <Table className="mb-1 border">
-        <TableHeader className="bg-muted/30">
-          <TableRow>
-            <TableHead className="w-[140px] px-2 py-1 text-xs">Start Date</TableHead>
-            <TableHead className="w-[140px] px-2 py-1 text-xs">End Date</TableHead>
-            <TableHead className="w-[120px] px-2 py-1 text-xs">Rate ({currency})</TableHead>
-            {roomExtraBedAllowed && <TableHead className="w-[120px] px-2 py-1 text-xs">Extra Bed Rate</TableHead>}
-            <TableHead className="w-[40px] px-1 py-1 text-center text-xs">Del</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {fields.map((seasonField, seasonIndex) => (
-            <TableRow key={seasonField.seasonFieldId}>
-              <TableCell className="px-2 py-1">
-                <Controller control={form.control} name={`hotelDetails.roomTypes.${roomIndex}.seasonalPrices.${seasonIndex}.startDate`} render={({ field, fieldState: { error } }) => ( <FormItem><FormControl><DatePicker date={field.value} onDateChange={field.onChange} placeholder="dd-MM-yy" /></FormControl>{error && <FormMessage className="text-xs">{error.message}</FormMessage>}</FormItem> )} />
-              </TableCell>
-              <TableCell className="px-2 py-1">
-                <Controller control={form.control} name={`hotelDetails.roomTypes.${roomIndex}.seasonalPrices.${seasonIndex}.endDate`} render={({ field, fieldState: { error } }) => ( <FormItem><FormControl><DatePicker date={field.value} onDateChange={field.onChange} minDate={form.getValues(`hotelDetails.roomTypes.${roomIndex}.seasonalPrices.${seasonIndex}.startDate`)} placeholder="dd-MM-yy" /></FormControl>{error && <FormMessage className="text-xs">{error.message}</FormMessage>}{form.formState.errors.hotelDetails?.roomTypes?.[roomIndex]?.seasonalPrices?.[seasonIndex]?.endDate?.message && ( <FormMessage className="text-xs">{form.formState.errors.hotelDetails.roomTypes[roomIndex].seasonalPrices[seasonIndex].endDate.message}</FormMessage> )}</FormItem> )} />
-              </TableCell>
-              <TableCell className="px-2 py-1">
-                <FormField control={form.control} name={`hotelDetails.roomTypes.${roomIndex}.seasonalPrices.${seasonIndex}.rate`} render={({ field }) => ( <FormItem><FormControl><Input type="number" placeholder="0.00" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || 0)} className="h-9 text-sm" /></FormControl><FormMessage className="text-xs" /></FormItem> )} />
-              </TableCell>
-             {roomExtraBedAllowed && (
-                <TableCell className="px-2 py-1">
-                    <FormField control={form.control} name={`hotelDetails.roomTypes.${roomIndex}.seasonalPrices.${seasonIndex}.extraBedRate`} render={({ field }) => ( <FormItem><FormControl><Input type="number" placeholder="0.00" {...field} value={field.value ?? ''} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)} className="h-9 text-sm" /></FormControl><FormMessage className="text-xs" /></FormItem> )} />
-                </TableCell>
-             )}
-              <TableCell className="text-center px-1 py-1 align-middle">
-                <Button type="button" variant="ghost" size="icon" onClick={() => fields.length > 1 ? remove(seasonIndex) : null} disabled={fields.length <= 1} className="h-7 w-7 text-destructive hover:text-destructive/80 disabled:opacity-50 remove-season flex items-center justify-center" aria-label="Remove Season" > <XIcon size={18} /> </Button>
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-       {(form.formState.errors.hotelDetails?.roomTypes?.[roomIndex]?.seasonalPrices as any)?.message && ( <FormMessage className="text-xs text-destructive">{(form.formState.errors.hotelDetails?.roomTypes?.[roomIndex]?.seasonalPrices as any).message}</FormMessage> )}
-    </div>
   );
 }

@@ -27,6 +27,7 @@ export default function PlannerPage() {
     handleUpdateSettings,
     handleUpdatePax,
     handleManualSave,
+    handleSendQuotationToAgent,
   } = useItineraryManager();
 
   if (pageStatus === 'loading' || !tripData) {

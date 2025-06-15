@@ -82,7 +82,7 @@ export default function AgentQuotationRequestPage() {
       agentId: placeholderAgentId, 
       requestDate: new Date().toISOString(), 
       updatedAt: new Date().toISOString(), 
-      status: data.status || "Pending", 
+      status: data.status || "New Request Submitted", 
     };
     console.log("Processing quotation request to be sent (saved for admin):", newRequest);
 

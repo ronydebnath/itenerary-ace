@@ -130,8 +130,8 @@ export interface HotelCharacteristic {
 export interface RoomTypeSeasonalPrice {
   id: string;
   seasonName?: string;
-  startDate: string; // YYYY-MM-DD
-  endDate: string;   // YYYY-MM-DD
+  startDate: string | Date; // YYYY-MM-DD or Date object, needs consistent handling
+  endDate: string | Date;   // YYYY-MM-DD or Date object
   rate: number;      // Nightly rate for the room
   extraBedRate?: number;
 }
@@ -171,6 +171,7 @@ export interface HotelItem extends BaseItem {
   checkoutDay: number;
   hotelDefinitionId: string; // Refers to HotelDefinition.id
   selectedRooms: SelectedHotelRoomConfiguration[]; // Array of specific room bookings
+  childrenSharingBed?: boolean; // Added for clarity in hotel calculations, default true for now
 }
 
 export interface MealItem extends BaseItem {
@@ -263,8 +264,8 @@ export const SERVICE_CATEGORIES: ItineraryItemType[] = ['transfer', 'activity', 
 export interface SurchargePeriod {
   id: string;
   name: string;
-  startDate: string; // YYYY-MM-DD
-  endDate: string;   // YYYY-MM-DD
+  startDate: string | Date; // YYYY-MM-DD
+  endDate: string | Date;   // YYYY-MM-DD
   surchargeAmount: number;
 }
 // Represents a master service price definition, stored globally
@@ -337,3 +338,7 @@ export interface SpecificMarkupRate {
   updatedAt: string; // ISO Date string
 }
 
+// Default Country IDs for demo data
+export const DEFAULT_THAILAND_ID = "f47ac10b-58cc-4372-a567-0e02b2c3d479";
+export const DEFAULT_MALAYSIA_ID = "986a76d0-9490-4e0f-806a-1a3e9728a708";
+export const DEFAULT_BANGLADESH_ID = "bd010101-0000-0000-0000-000000000001";

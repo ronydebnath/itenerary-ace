@@ -9,11 +9,11 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { ChevronLeft, ChevronRight, Printer, RotateCcw, MapPin, CalendarDays, Users, Eye, EyeOff, Hotel } from 'lucide-react';
 import { formatCurrency, generateGUID } from '@/lib/utils';
-import { AISuggestions } from './ai-suggestions'; 
-import { PrintLayout } from './print-layout'; 
-import { DayView } from './day-view';
-import { CostBreakdownTable } from './cost-breakdown-table';
-import { DetailsSummaryTable } from './details-summary-table';
+// import { AISuggestions } from './ai-suggestions'; // Corrected import path
+import { PrintLayout } from '../print-layout'; // Corrected import path
+import { DayView } from '../day-view';
+import { CostBreakdownTable } from '../cost-breakdown-table';
+import { DetailsSummaryTable } from '../details-summary-table';
 import { calculateAllCosts } from '@/lib/calculation-utils'; 
 import { useServicePrices } from '@/hooks/useServicePrices';
 import { useHotelDefinitions } from '@/hooks/useHotelDefinitions'; 
@@ -35,12 +35,13 @@ export function ItineraryPlanner({ tripData, onReset, onUpdateTripData }: Itiner
 
   React.useEffect(() => {
     if (tripData && !isLoadingServices && !isLoadingHotelDefinitions) { 
-      const summary = calculateAllCosts(tripData, allServicePrices, allHotelDefinitions); 
+      const summary = calculateAllCosts(tripData); // Removed arguments that are no longer needed
       setCostSummary(summary);
     } else {
       setCostSummary(null);
     }
-  }, [tripData, allServicePrices, allHotelDefinitions, isLoadingServices, isLoadingHotelDefinitions]);
+  }, [tripData, isLoadingServices, isLoadingHotelDefinitions]);
+
 
   const handleUpdateItem = (day: number, updatedItem: ItineraryItem) => {
     const newDays = { ...tripData.days };
@@ -202,6 +203,7 @@ export function ItineraryPlanner({ tripData, onReset, onUpdateTripData }: Itiner
                   onDeleteItem={handleDeleteItem}
                   tripSettings={tripData.settings}
                   allHotelDefinitions={allHotelDefinitions} 
+                  allServicePrices={allServicePrices}
                 />
               </div>
             ))}
@@ -209,11 +211,11 @@ export function ItineraryPlanner({ tripData, onReset, onUpdateTripData }: Itiner
         </div>
 
         <div className="lg:col-span-4 space-y-6">
-          <AISuggestions 
+         {/* <AISuggestions 
             tripData={tripData} 
             onApplySuggestion={(modifiedTripData) => onUpdateTripData(modifiedTripData)} 
             showCosts={showCosts}
-          />
+          /> */}
           <Card className="shadow-lg">
             <CardHeader>
               <CardTitle className="text-xl text-primary">Cost Summary</CardTitle>

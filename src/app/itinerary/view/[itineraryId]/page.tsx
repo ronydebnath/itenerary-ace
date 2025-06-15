@@ -139,7 +139,7 @@ export default function ItineraryClientViewPage() {
     }
   }, [tripData, isLoadingServices, isLoadingHotelDefs, isLoadingCountries, isLoadingExchangeRates, countries, allServicePrices, allHotelDefinitions, getRate, isLoading, error, showCosts]);
 
-  const handleSendQuotationToAgentFromViewPage = () => {
+  const handleSendQuotationToAgentFromViewPage = React.useCallback(() => {
     if (!tripData || !tripData.quotationRequestId) {
       toast({ title: "Error", description: "This itinerary is not linked to a quotation request.", variant: "destructive" });
       return;
@@ -192,7 +192,7 @@ export default function ItineraryClientViewPage() {
       console.error("Error sending quotation from client view:", e);
       toast({ title: "Error", description: `Could not update quotation status: ${e.message}`, variant: "destructive" });
     }
-  };
+  }, [tripData, toast, saveCurrentItineraryToStorage]);
 
 
   const getFormattedDateForDay = (dayNum: number): string => {

@@ -443,4 +443,3 @@ function SeasonalRatesTableForRoomType({ form, roomIndex, currency }: SeasonalRa
   );
 }
 
-

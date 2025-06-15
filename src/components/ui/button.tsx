@@ -24,6 +24,7 @@ const buttonVariants = cva(
         sm: "h-9 rounded-md px-3",
         lg: "h-11 rounded-md px-8 text-base", // Slightly larger text for lg buttons
         icon: "h-10 w-10",
+        xs: "h-8 px-2.5 rounded-md text-xs", // Added xs size
       },
     },
     defaultVariants: {
