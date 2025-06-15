@@ -4,6 +4,7 @@
 import * as React from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import type { TripData, ItineraryItem, CostSummary, DetailedSummaryItem, HotelOccupancyDetail, CurrencyCode, Traveler, CountryItem } from '@/types/itinerary';
+import type { QuotationRequest, QuotationRequestStatus } from '@/types/quotation'; // Import QuotationRequest types
 import { calculateAllCosts } from '@/lib/calculation-utils';
 import { useServicePrices } from '@/hooks/useServicePrices';
 import { useHotelDefinitions } from '@/hooks/useHotelDefinitions';
@@ -18,14 +19,16 @@ import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import {
   Loader2, AlertCircle, CalendarDays, Users, MapPin,
   Hotel, Car, Ticket, Utensils, ShoppingBag, FileText,
-  ArrowLeft, Globe, Printer, Coins, PackageIcon, MessageSquare
+  ArrowLeft, Globe, Printer, Coins, PackageIcon, MessageSquare, Send
 } from 'lucide-react';
 import { formatCurrency, cn } from '@/lib/utils';
 import { CostBreakdownTable } from '@/components/itinerary/cost-breakdown-table';
 import { DetailsSummaryTable } from '@/components/itinerary/details-summary-table';
+import { useToast } from "@/hooks/use-toast"; // Import useToast
 
 const ITINERARY_DATA_PREFIX = 'itineraryAce_data_';
-const SHOW_DETAILS_TOKEN = 'full_details_v1'; // Token to show detailed costs
+const AGENT_QUOTATION_REQUESTS_KEY = 'itineraryAce_agentQuotationRequests'; // For updating quote status
+const VIEW_MODE_TOKEN = 'full_details_v1'; // Token to show detailed costs
 
 const ITEM_TYPE_ICONS: { [key in ItineraryItem['type']]: React.ElementType } = {
   transfer: Car,
@@ -49,6 +52,7 @@ export default function ItineraryClientViewPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const itineraryId = params.itineraryId as string;
+  const { toast } = useToast();
 
   const [tripData, setTripData] = React.useState<TripData | null>(null);
   const [costSummary, setCostSummary] = React.useState<CostSummary | null>(null);
@@ -56,8 +60,7 @@ export default function ItineraryClientViewPage() {
   const [error, setError] = React.useState<string | null>(null);
   
   const viewModeToken = searchParams.get('viewMode');
-  // Default to false (summary view), only show details if token matches
-  const showCosts = viewModeToken === SHOW_DETAILS_TOKEN;
+  const showCosts = viewModeToken === VIEW_MODE_TOKEN;
 
 
   const { allServicePrices, isLoading: isLoadingServices } = useServicePrices();
@@ -98,6 +101,48 @@ export default function ItineraryClientViewPage() {
       }
     }
   }, [tripData, isLoadingServices, isLoadingHotelDefs, isLoadingCountries, isLoadingExchangeRates, countries, allServicePrices, allHotelDefinitions, getRate, isLoading, error, showCosts]);
+
+  const handleSendQuotationToAgent = () => {
+    if (!tripData || !tripData.quotationRequestId) {
+      toast({ title: "Error", description: "This itinerary is not linked to a quotation request.", variant: "destructive" });
+      return;
+    }
+
+    try {
+      const requestsString = localStorage.getItem(AGENT_QUOTATION_REQUESTS_KEY);
+      if (requestsString) {
+        let allRequests: QuotationRequest[] = JSON.parse(requestsString);
+        const requestIndex = allRequests.findIndex(q => q.id === tripData.quotationRequestId);
+
+        if (requestIndex > -1) {
+          const currentStatus = allRequests[requestIndex].status;
+          let newStatus: QuotationRequestStatus = "Quoted: Waiting for TA Feedback";
+
+          if (["Quoted: Waiting for TA Feedback", "Quoted: Re-quoted", "Quoted: Awaiting TA Approval", "Quoted: Revision Requested"].includes(currentStatus)) {
+            newStatus = "Quoted: Re-quoted";
+          } else if (currentStatus === "New Request Submitted" || currentStatus === "Quoted: Revision In Progress") {
+            newStatus = "Quoted: Waiting for TA Feedback";
+          }
+          // Other statuses like Confirmed, Booked etc., might not revert directly to "Waiting for TA Feedback"
+          // but this action implies sending a (possibly revised) quote.
+
+          allRequests[requestIndex].status = newStatus;
+          allRequests[requestIndex].linkedItineraryId = tripData.id;
+          allRequests[requestIndex].updatedAt = new Date().toISOString();
+          localStorage.setItem(AGENT_QUOTATION_REQUESTS_KEY, JSON.stringify(allRequests));
+          
+          toast({ title: "Quotation Sent", description: `Proposal for Quotation ID ${tripData.quotationRequestId.split('-').pop()} marked as ready for agent (Status: ${newStatus}).`, variant: "default" });
+        } else {
+          toast({ title: "Error", description: "Associated quotation request not found in storage.", variant: "destructive" });
+        }
+      } else {
+        toast({ title: "Error", description: "Quotation request data not found in storage.", variant: "destructive" });
+      }
+    } catch (e: any) {
+      console.error("Error sending quotation from client view:", e);
+      toast({ title: "Error", description: `Could not update quotation status: ${e.message}`, variant: "destructive" });
+    }
+  };
 
 
   const getFormattedDateForDay = (dayNum: number): string => {
@@ -159,7 +204,7 @@ export default function ItineraryClientViewPage() {
             </div>
             <div className="flex gap-2 self-start sm:self-center no-print">
                 <Button onClick={() => router.back()} variant="outline" size="sm" className="h-8 text-xs">
-                    <ArrowLeft className="mr-1.5 h-3.5 w-3.5" /> Back to Previous Page
+                    <ArrowLeft className="mr-1.5 h-3.5 w-3.5" /> Back
                 </Button>
             </div>
           </div>
@@ -291,6 +336,11 @@ export default function ItineraryClientViewPage() {
             <Button onClick={() => window.print()} variant="outline" size="sm" className="h-9 text-sm w-full sm:w-auto">
                 <Printer className="mr-2 h-4 w-4"/> Print Current View
             </Button>
+            {tripData.quotationRequestId && (
+                <Button onClick={handleSendQuotationToAgent} size="sm" className="h-9 text-sm w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white">
+                    <Send className="mr-2 h-4 w-4"/> Send Quotation to Agent
+                </Button>
+            )}
         </div>
       </div>
     </div>
