@@ -80,7 +80,7 @@ function BaseItemFormComponent<T extends ItineraryItem>({
   onToggleExpand,
 }: BaseItemFormProps<T>) {
   const [isOptOutOpen, setIsOptOutOpen] = React.useState(item.excludedTravelerIds.length > 0);
-  const { countries: allAvailableCountriesHook, isLoading: isLoadingCountries, getCountryById } = useCountries();
+  const { countries: allAvailableCountriesHook, isLoading: isLoadingCountries } = useCountries();
   const { provinces: allAvailableProvincesForHook, isLoading: isLoadingProvinces, getProvincesByCountry } = useProvinces();
 
   const displayableCountriesForItem = React.useMemo(() => {
@@ -106,7 +106,7 @@ function BaseItemFormComponent<T extends ItineraryItem>({
       }
       return provincesWithinItemCountry.sort((a,b) => a.name.localeCompare(b.name));
     }
-    
+
     let provincesToDisplay: typeof allAvailableProvincesForHook = [];
     if (globallySelectedProvincesFromSettings.length > 0) {
       provincesToDisplay = allAvailableProvincesForHook.filter(p =>
@@ -124,7 +124,7 @@ function BaseItemFormComponent<T extends ItineraryItem>({
       provincesToDisplay = provincesToDisplay.filter((province, index, self) =>
         index === self.findIndex((p) => p.id === province.id)
       );
-    } else { 
+    } else {
       provincesToDisplay = [...allAvailableProvincesForHook];
     }
     return provincesToDisplay.sort((a,b) => a.name.localeCompare(b.name));
@@ -137,7 +137,6 @@ function BaseItemFormComponent<T extends ItineraryItem>({
     getProvincesByCountry
   ]);
 
-
   const prevContextRef = React.useRef<{
     type: ItineraryItem['type'];
     countryId?: string;
@@ -149,103 +148,116 @@ function BaseItemFormComponent<T extends ItineraryItem>({
   });
 
   React.useEffect(() => {
-    const currentItem = item; // item from the current render's props
+    const currentItem = item; // Current item from props
+    const prevContext = prevContextRef.current;
 
-    const currentItemType = currentItem.type;
-    const currentItemCountryId = currentItem.countryId;
-    const currentItemProvince = currentItem.province;
+    const typeChanged = currentItem.type !== prevContext.type;
+    const countryChanged = currentItem.countryId !== prevContext.countryId;
+    const provinceChanged = currentItem.province !== prevContext.province;
 
-    const prevType = prevContextRef.current.type;
-    const prevCountryId = prevContextRef.current.countryId;
-    const prevProvince = prevContextRef.current.province;
+    if (typeChanged || countryChanged || provinceChanged) {
+      const updatedFieldsToReset: Partial<T> = {};
+      let needsReset = false;
 
-    // Check if the core context has changed by comparing current item's fields with the stored previous context
-    if (
-        currentItemType !== prevType ||
-        currentItemCountryId !== prevCountryId ||
-        currentItemProvince !== prevProvince
-    ) {
-        const updatedFieldsToReset: Partial<T> = {};
-        
-        // Determine if dependent fields need reset based on the *current* item's state
-        if (currentItem.selectedServicePriceId !== undefined) {
-            updatedFieldsToReset.selectedServicePriceId = undefined;
+      // Always reset service price ID if context changes
+      if (currentItem.selectedServicePriceId !== undefined) {
+        updatedFieldsToReset.selectedServicePriceId = undefined;
+        needsReset = true;
+      }
+
+      if (currentItem.type === 'activity') {
+        const activityItem = currentItem as ActivityItem;
+        if (activityItem.selectedPackageId !== undefined) {
+          (updatedFieldsToReset as Partial<ActivityItem>).selectedPackageId = undefined;
+          needsReset = true;
         }
-        if (currentItemType === 'activity') {
-            const activityItem = currentItem as ActivityItem;
-            if (activityItem.selectedPackageId !== undefined) {
-                (updatedFieldsToReset as Partial<ActivityItem>).selectedPackageId = undefined;
-            }
-        } else if (currentItemType === 'transfer') {
-            const transferItem = currentItem as TransferItem;
-            if (transferItem.selectedVehicleOptionId !== undefined) {
-                (updatedFieldsToReset as Partial<TransferItem>).selectedVehicleOptionId = undefined;
-            }
-        } else if (currentItemType === 'hotel') {
-            const hotelItem = currentItem as HotelItem;
-            if (hotelItem.hotelDefinitionId && hotelItem.hotelDefinitionId !== '') {
-                (updatedFieldsToReset as Partial<HotelItem>).hotelDefinitionId = '';
-            }
-            if (hotelItem.selectedRooms && hotelItem.selectedRooms.length > 0) {
-                (updatedFieldsToReset as Partial<HotelItem>).selectedRooms = [];
-            }
+      } else if (currentItem.type === 'transfer') {
+        const transferItem = currentItem as TransferItem;
+        if (transferItem.selectedVehicleOptionId !== undefined) {
+          (updatedFieldsToReset as Partial<TransferItem>).selectedVehicleOptionId = undefined;
+          needsReset = true;
         }
+      } else if (currentItem.type === 'hotel') {
+        const hotelItem = currentItem as HotelItem;
+        if (hotelItem.hotelDefinitionId !== undefined && hotelItem.hotelDefinitionId !== '') {
+          (updatedFieldsToReset as Partial<HotelItem>).hotelDefinitionId = '';
+          needsReset = true;
+        }
+        if (hotelItem.selectedRooms && hotelItem.selectedRooms.length > 0) {
+          (updatedFieldsToReset as Partial<HotelItem>).selectedRooms = [];
+          needsReset = true;
+        }
+      }
 
-        // If countryId was just cleared (changed from defined to undefined), ensure province is also cleared
-        if (currentItemCountryId === undefined && prevCountryId !== undefined && currentItemProvince !== undefined) {
-            updatedFieldsToReset.province = undefined;
-        }
-        
-        let actualChangesExist = false;
+      // If countryId was just cleared, and province was set, province should also be cleared.
+      if (countryChanged && currentItem.countryId === undefined && currentItem.province !== undefined) {
+        updatedFieldsToReset.province = undefined;
+        needsReset = true;
+      }
+      // If countryId changed to a new value (and was not previously undefined), province should be reset.
+      else if (countryChanged && currentItem.countryId !== undefined && prevContext.countryId !== undefined && currentItem.province !== undefined) {
+        updatedFieldsToReset.province = undefined;
+        needsReset = true;
+      }
+
+
+      if (needsReset) {
+        let actualChangesMade = false;
+        const finalUpdatePayload: Partial<T> = {};
+
         for (const key in updatedFieldsToReset) {
-            const typedKey = key as keyof T;
-            const resetValue = updatedFieldsToReset[typedKey];
-            const currentValueOnItem = currentItem[typedKey];
+          const typedKey = key as keyof T;
+          const resetValue = updatedFieldsToReset[typedKey];
+          const currentValueOnItem = currentItem[typedKey];
 
-            if (Array.isArray(resetValue) && Array.isArray(currentValueOnItem)) {
-                // If we intend to reset to an empty array, and the current array is not empty
-                if (resetValue.length === 0 && currentValueOnItem.length > 0) {
-                    actualChangesExist = true; break;
-                }
-            } else if (resetValue === '' && (currentValueOnItem !== '' && currentValueOnItem !== undefined)) {
-                // For string fields being reset to empty (e.g., hotelDefinitionId)
-                 actualChangesExist = true; break;
-            } else if (resetValue === undefined && currentValueOnItem !== undefined) {
-                // For most fields being reset to undefined
-                actualChangesExist = true; break;
+          if (Array.isArray(resetValue) && Array.isArray(currentValueOnItem)) {
+            if (currentValueOnItem.length > 0) {
+              finalUpdatePayload[typedKey] = resetValue;
+              actualChangesMade = true;
             }
+          } else if (resetValue === '' && (currentValueOnItem !== '' && currentValueOnItem !== undefined && currentValueOnItem !== null)) {
+            finalUpdatePayload[typedKey] = resetValue;
+            actualChangesMade = true;
+          } else if (resetValue === undefined && (currentValueOnItem !== undefined && currentValueOnItem !== null)) {
+            finalUpdatePayload[typedKey] = resetValue;
+            actualChangesMade = true;
+          }
         }
 
-        if (actualChangesExist) {
-            onUpdate({ ...currentItem, ...updatedFieldsToReset });
+        if (actualChangesMade) {
+          onUpdate({ ...currentItem, ...finalUpdatePayload });
         }
-
-        // Update ref to the current context
-        prevContextRef.current = {
-            type: currentItemType,
-            countryId: currentItemCountryId,
-            province: currentItemProvince,
-        };
+      }
     }
-  }, [item.type, item.countryId, item.province, onUpdate, item]); // item is included here to ensure currentItem is up-to-date, but logic relies on prevContextRef
+    // Update ref *after* all logic.
+    prevContextRef.current = { type: item.type, countryId: item.countryId, province: item.province };
+  }, [item.type, item.countryId, item.province, onUpdate, item]); // Keep `item` for access to its latest state for the update call
 
 
   const handleItemCountryChange = React.useCallback((countryIdValue?: string) => {
     const selectedCountry = allAvailableCountriesHook.find(c => c.id === countryIdValue);
-    onUpdate({
-      ...item,
-      countryId: selectedCountry?.id,
-      countryName: selectedCountry?.name,
-      province: undefined, 
-    } as T); 
-  }, [allAvailableCountriesHook, item, onUpdate]);
+    const newCountryId = selectedCountry?.id;
+    const newCountryName = selectedCountry?.name;
+
+    if (item.countryId !== newCountryId || (item.province !== undefined) ) { // If country changes OR province needs reset
+        onUpdate({
+            ...item,
+            countryId: newCountryId,
+            countryName: newCountryName,
+            province: undefined,
+        } as T);
+    }
+  }, [onUpdate, item, allAvailableCountriesHook]);
 
   const handleItemProvinceChange = React.useCallback((provinceName?: string) => {
-    onUpdate({
-      ...item,
-      province: provinceName === "none" || provinceName === undefined ? undefined : provinceName,
-    } as T); 
-  }, [item, onUpdate]);
+    const newProvinceValue = provinceName === "none" || provinceName === undefined ? undefined : provinceName;
+    if (item.province !== newProvinceValue) {
+        onUpdate({
+            ...item,
+            province: newProvinceValue,
+        } as T);
+    }
+  }, [onUpdate, item]);
 
 
   const handleOptOutToggle = (travelerId: string, checked: boolean) => {
