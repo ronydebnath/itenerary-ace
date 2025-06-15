@@ -21,7 +21,7 @@ import {
   ArrowLeft, Globe, Printer, EyeOff, Eye, Coins, PackageIcon, MessageSquare
 } from 'lucide-react';
 import { formatCurrency, cn } from '@/lib/utils';
-import { CostBreakdownTable } from '@/components/itinerary/cost-breakdown-table'; // Ensure this is correctly imported
+import { CostBreakdownTable } from '@/components/itinerary/cost-breakdown-table'; 
 // DetailsSummaryTable import is removed as the section is being removed
 
 const ITINERARY_DATA_PREFIX = 'itineraryAce_data_';
@@ -78,7 +78,8 @@ export default function ItineraryClientViewPage() {
   React.useEffect(() => {
     if (tripData && !isLoadingServices && !isLoadingHotelDefs && !isLoadingCountries && !isLoadingExchangeRates) {
       try {
-        const summary = calculateAllCosts(tripData, countries, allServicePrices, allHotelDefinitions, getRate);
+        // Pass showCosts to calculateAllCosts
+        const summary = calculateAllCosts(tripData, countries, allServicePrices, allHotelDefinitions, getRate, showCosts);
         setCostSummary(summary);
       } catch (calcError: any) {
         console.error("Error calculating costs:", calcError);
@@ -91,7 +92,8 @@ export default function ItineraryClientViewPage() {
          setIsLoading(false);
       }
     }
-  }, [tripData, isLoadingServices, isLoadingHotelDefs, isLoadingCountries, isLoadingExchangeRates, countries, allServicePrices, allHotelDefinitions, getRate, isLoading, error]);
+  // Add showCosts to the dependency array so recalculation happens when it changes
+  }, [tripData, isLoadingServices, isLoadingHotelDefs, isLoadingCountries, isLoadingExchangeRates, countries, allServicePrices, allHotelDefinitions, getRate, isLoading, error, showCosts]);
 
 
   const getFormattedDateForDay = (dayNum: number): string => {
@@ -268,6 +270,7 @@ export default function ItineraryClientViewPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
               <div className="bg-muted/20 dark:bg-muted/10 p-3 sm:p-4 rounded-md border">
                 <h3 className="text-sm sm:text-md font-semibold mb-1.5 print:text-sm text-foreground/90">Per Person Total:</h3>
+                 {/* CostBreakdownTable always shows costs internally */}
                 <CostBreakdownTable summary={costSummary} currency={pax.currency} travelers={travelers} showCosts={true} />
               </div>
               <div className="text-left md:text-right bg-muted/20 dark:bg-muted/10 p-3 sm:p-4 rounded-md border">
@@ -282,7 +285,7 @@ export default function ItineraryClientViewPage() {
               </div>
             </div>
             {!showCosts && (
-              <p className="text-sm text-muted-foreground text-center mt-4 print:hidden">Click "Show Detailed Costs" to view individual item costs in the day-by-day breakdown.</p>
+              <p className="text-sm text-muted-foreground text-center mt-4 print:hidden">Detailed item costs are currently hidden. Click "Show Detailed Costs" to view.</p>
             )}
           </section>
           

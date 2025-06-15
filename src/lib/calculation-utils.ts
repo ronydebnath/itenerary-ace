@@ -1,3 +1,4 @@
+
 /**
  * @fileoverview This file houses the core logic for calculating costs related to itinerary items.
  * It includes functions to determine costs for transfers, activities, hotel stays, meals, and
@@ -51,9 +52,10 @@ function getParticipatingTravelers(item: ItineraryItem, allTravelers: Traveler[]
 function calculateTransferCostInternal(
   item: TransferItem,
   allTravelers: Traveler[],
-  sourceCurrency: CurrencyCode, // The currency of the prices in this item/service
+  sourceCurrency: CurrencyCode,
   tripSettings: TripSettings,
-  serviceDefinition?: ServicePriceItem
+  serviceDefinition: ServicePriceItem | undefined,
+  showCosts: boolean
 ): { adultCost: number, childCost: number, totalCost: number, participatingIds: string[], excludedTravelerLabels: string[], specificDetails: string, individualContributions: { [travelerId: string]: number }, province?: string } {
   const { adultCount, childCount, participatingIds, excludedTravelerLabels } = getParticipatingTravelers(item, allTravelers);
   let adultCost = 0;
@@ -72,7 +74,10 @@ function calculateTransferCostInternal(
     adultCost = adultCount * adultPrice;
     childCost = childCount * childPrice;
     totalCost = adultCost + childCost;
-    specificDetails += `; Ticket. Ad: ${formatCurrency(adultPrice, sourceCurrency)}, Ch: ${formatCurrency(childPrice, sourceCurrency)}`;
+    specificDetails += `; Ticket.`;
+    if (showCosts) {
+        specificDetails += ` Ad: ${formatCurrency(adultPrice, sourceCurrency)}, Ch: ${formatCurrency(childPrice, sourceCurrency)}`;
+    }
     participatingIds.forEach(id => {
       individualContributions[id] = (allTravelers.find(t => t.id === id)?.type === 'adult' ? adultPrice : childPrice);
     });
@@ -86,7 +91,7 @@ function calculateTransferCostInternal(
       vehicleTypeDisplay = selectedVehicleOption.vehicleType;
     } else if (serviceDefinition && (!serviceDefinition.vehicleOptions || serviceDefinition.vehicleOptions.length === 0)) {
       baseCostPerVehicle = serviceDefinition.price1 ?? item.costPerVehicle ?? 0;
-      if (serviceDefinition.subCategory && serviceDefinition.subCategory !== 'ticket') vehicleTypeDisplay = serviceDefinition.subCategory; // Assuming subCategory might be vehicle type if no options
+      if (serviceDefinition.subCategory && serviceDefinition.subCategory !== 'ticket') vehicleTypeDisplay = serviceDefinition.subCategory;
     }
 
     let appliedSurcharge = 0;
@@ -113,12 +118,14 @@ function calculateTransferCostInternal(
     const vehicleTotalCost = finalCostPerVehicle * numVehicles;
     totalCost = vehicleTotalCost;
 
-    specificDetails += `; Type: ${vehicleTypeDisplay}; #Veh: ${numVehicles}; Cost/V (base): ${formatCurrency(baseCostPerVehicle, sourceCurrency)}`;
-    if (appliedSurcharge > 0) {
-      specificDetails += `; Surcharge (${surchargeName}): ${formatCurrency(appliedSurcharge, sourceCurrency)}`;
+    specificDetails += `; Type: ${vehicleTypeDisplay}; #Veh: ${numVehicles}`;
+    if (showCosts) {
+        specificDetails += `; Cost/V (base): ${formatCurrency(baseCostPerVehicle, sourceCurrency)}`;
+        if (appliedSurcharge > 0) {
+          specificDetails += `; Surcharge (${surchargeName}): ${formatCurrency(appliedSurcharge, sourceCurrency)}`;
+        }
+        specificDetails += `; Total/V: ${formatCurrency(finalCostPerVehicle, sourceCurrency)}`;
     }
-    specificDetails += `; Total/V: ${formatCurrency(finalCostPerVehicle, sourceCurrency)}`;
-
 
     const totalParticipants = adultCount + childCount;
     if (totalParticipants > 0) {
@@ -131,7 +138,12 @@ function calculateTransferCostInternal(
   return { adultCost, childCost, totalCost, participatingIds, excludedTravelerLabels, specificDetails, individualContributions, province: item.province };
 }
 
-function calculateActivityCostInternal(item: ActivityItem, allTravelers: Traveler[], sourceCurrency: CurrencyCode): { adultCost: number, childCost: number, totalCost: number, participatingIds: string[], excludedTravelerLabels: string[], specificDetails: string, individualContributions: { [travelerId: string]: number }, province?: string } {
+function calculateActivityCostInternal(
+  item: ActivityItem,
+  allTravelers: Traveler[],
+  sourceCurrency: CurrencyCode,
+  showCosts: boolean
+): { adultCost: number, childCost: number, totalCost: number, participatingIds: string[], excludedTravelerLabels: string[], specificDetails: string, individualContributions: { [travelerId: string]: number }, province?: string } {
   const { adultCount, childCount, participatingIds, excludedTravelerLabels } = getParticipatingTravelers(item, allTravelers);
   const adultPrice = item.adultPrice || 0;
   const childPrice = item.childPrice ?? adultPrice;
@@ -144,7 +156,12 @@ function calculateActivityCostInternal(item: ActivityItem, allTravelers: Travele
   const endDay = item.endDay || startDay;
   const duration = Math.max(1, endDay - startDay + 1);
 
-  let specificDetails = `Day ${startDay}${duration > 1 ? '-' + endDay : ''} (Dur: ${duration}d). Ad: ${formatCurrency(adultPrice, sourceCurrency)}, Ch: ${formatCurrency(childPrice, sourceCurrency)}. Fixed Price.`;
+  let specificDetails = `Day ${startDay}${duration > 1 ? '-' + endDay : ''} (Dur: ${duration}d).`;
+  if (showCosts) {
+    specificDetails += ` Ad: ${formatCurrency(adultPrice, sourceCurrency)}, Ch: ${formatCurrency(childPrice, sourceCurrency)}. Fixed Price.`;
+  } else {
+    specificDetails += ` Fixed Price.`;
+  }
   if (item.province) specificDetails += `; Prov: ${item.province}`;
 
   const individualContributions: { [travelerId: string]: number } = {};
@@ -160,7 +177,8 @@ function calculateHotelCostInternal(
   allTravelers: Traveler[],
   sourceCurrency: CurrencyCode,
   tripSettings: TripSettings,
-  allHotelDefinitionsSafe: HotelDefinition[]
+  allHotelDefinitionsSafe: HotelDefinition[],
+  showCosts: boolean
 ): { adultCost: number, childCost: number, totalCost: number, participatingIds: string[], excludedTravelerLabels: string[], specificDetails: string, occupancyDetails: HotelOccupancyDetail[], individualContributions: { [travelerId: string]: number }, province?: string } {
   const { participatingIds: itemOverallParticipatingIds, excludedTravelerLabels } = getParticipatingTravelers(item, allTravelers);
 
@@ -259,7 +277,12 @@ function calculateHotelCostInternal(
   return { adultCost: itemTotalAdultCost, childCost: itemTotalChildCost, totalCost: overallHotelTotalCost, participatingIds: itemOverallParticipatingIds, excludedTravelerLabels, specificDetails: baseSpecificDetails, occupancyDetails: occupancyDetailsForSummary, individualContributions, province: item.province };
 }
 
-function calculateMealCostInternal(item: MealItem, allTravelers: Traveler[], sourceCurrency: CurrencyCode): { adultCost: number, childCost: number, totalCost: number, participatingIds: string[], excludedTravelerLabels: string[], specificDetails: string, individualContributions: { [travelerId: string]: number }, province?: string } {
+function calculateMealCostInternal(
+  item: MealItem,
+  allTravelers: Traveler[],
+  sourceCurrency: CurrencyCode,
+  showCosts: boolean
+): { adultCost: number, childCost: number, totalCost: number, participatingIds: string[], excludedTravelerLabels: string[], specificDetails: string, individualContributions: { [travelerId: string]: number }, province?: string } {
   const { adultCount, childCount, participatingIds, excludedTravelerLabels } = getParticipatingTravelers(item, allTravelers);
   const adultPrice = item.adultMealPrice || 0;
   const childPrice = item.childMealPrice ?? adultPrice;
@@ -269,8 +292,12 @@ function calculateMealCostInternal(item: MealItem, allTravelers: Traveler[], sou
   const childCost = childCount * childPrice * numMeals;
   const totalCost = adultCost + childCost;
 
-  let specificDetails = `# Meals: ${numMeals}, Ad: ${formatCurrency(adultPrice, sourceCurrency)}, Ch: ${formatCurrency(childPrice, sourceCurrency)}`;
+  let specificDetails = `# Meals: ${numMeals}`;
+  if (showCosts) {
+    specificDetails += `, Ad: ${formatCurrency(adultPrice, sourceCurrency)}, Ch: ${formatCurrency(childPrice, sourceCurrency)}`;
+  }
   if (item.province) specificDetails += `; Prov: ${item.province}`;
+
   const individualContributions: { [travelerId: string]: number } = {};
   const adultMealTotal = adultPrice * numMeals;
   const childMealTotal = childPrice * numMeals;
@@ -281,7 +308,12 @@ function calculateMealCostInternal(item: MealItem, allTravelers: Traveler[], sou
   return { adultCost, childCost, totalCost, participatingIds, excludedTravelerLabels, specificDetails, individualContributions, province: item.province };
 }
 
-function calculateMiscCostInternal(item: MiscItem, allTravelers: Traveler[], sourceCurrency: CurrencyCode): { adultCost: number, childCost: number, totalCost: number, participatingIds: string[], excludedTravelerLabels: string[], specificDetails: string, individualContributions: { [travelerId: string]: number }, province?: string } {
+function calculateMiscCostInternal(
+  item: MiscItem,
+  allTravelers: Traveler[],
+  sourceCurrency: CurrencyCode,
+  showCosts: boolean
+): { adultCost: number, childCost: number, totalCost: number, participatingIds: string[], excludedTravelerLabels: string[], specificDetails: string, individualContributions: { [travelerId: string]: number }, province?: string } {
   const { adultCount, childCount, participatingIds, excludedTravelerLabels } = getParticipatingTravelers(item, allTravelers);
   const unitCost = item.unitCost || 0;
   const quantity = item.quantity || 1;
@@ -290,7 +322,10 @@ function calculateMiscCostInternal(item: MiscItem, allTravelers: Traveler[], sou
   let adultCost = 0;
   let childCost = 0;
   let totalCost = 0;
-  let specificDetails = `Assign: ${item.costAssignment}, Qty: ${quantity}, Unit Cost: ${formatCurrency(unitCost, sourceCurrency)}`;
+  let specificDetails = `Assign: ${item.costAssignment}, Qty: ${quantity}`;
+  if (showCosts) {
+    specificDetails += `, Unit Cost: ${formatCurrency(unitCost, sourceCurrency)}`;
+  }
   if (item.province) specificDetails += `; Prov: ${item.province}`;
   const individualContributions: { [travelerId: string]: number } = {};
 
@@ -315,10 +350,11 @@ function calculateMiscCostInternal(item: MiscItem, allTravelers: Traveler[], sou
 // --- Main Cost Calculation Function ---
 export function calculateAllCosts(
   tripData: TripData,
-  countries: CountryItem[], // Now required
+  countries: CountryItem[],
   allServicePricesInput?: ServicePriceItem[],
   allHotelDefinitionsInput?: HotelDefinition[],
-  getRateForConversion?: (from: CurrencyCode, to: CurrencyCode) => ConversionRateDetails | null
+  getRateForConversion?: (from: CurrencyCode, to: CurrencyCode) => ConversionRateDetails | null,
+  showCosts: boolean = true // Default to true if not provided
 ): CostSummary {
   const allServicePrices = Array.isArray(allServicePricesInput) ? allServicePricesInput : [];
   const allHotelDefinitions = Array.isArray(allHotelDefinitionsInput) ? allHotelDefinitionsInput : [];
@@ -340,7 +376,6 @@ export function calculateAllCosts(
           if (serviceDefinition) {
               sourceCurrency = serviceDefinition.currency;
           } else {
-              // console.warn(`Service definition not found for ID: ${item.selectedServicePriceId} on item ${item.name}. Falling back on currency.`);
               const itemCountryDef = itemCountryForContext ? countries.find(c => c.id === itemCountryForContext) : undefined;
               if (itemCountryDef?.defaultCurrency) sourceCurrency = itemCountryDef.defaultCurrency;
           }
@@ -353,7 +388,6 @@ export function calculateAllCosts(
               if (hotelItemCountryDef?.defaultCurrency) {
                   sourceCurrency = hotelItemCountryDef.defaultCurrency;
               }
-              // console.warn(`No ServicePriceItem found for HotelDefinition ID: ${item.hotelDefinitionId}. Using ${sourceCurrency}.`);
           }
       } else { 
           const itemCountryDef = itemCountryForContext ? countries.find(c => c.id === itemCountryForContext) : undefined;
@@ -366,19 +400,19 @@ export function calculateAllCosts(
       let calcResult;
       switch (item.type) {
         case 'transfer':
-          calcResult = calculateTransferCostInternal(item, tripData.travelers, sourceCurrency, tripData.settings, serviceDefinition);
+          calcResult = calculateTransferCostInternal(item, tripData.travelers, sourceCurrency, tripData.settings, serviceDefinition, showCosts);
           break;
         case 'activity':
-          calcResult = calculateActivityCostInternal(item, tripData.travelers, sourceCurrency);
+          calcResult = calculateActivityCostInternal(item, tripData.travelers, sourceCurrency, showCosts);
           break;
         case 'hotel':
-          calcResult = calculateHotelCostInternal(item, tripData.travelers, sourceCurrency, tripData.settings, allHotelDefinitions);
+          calcResult = calculateHotelCostInternal(item, tripData.travelers, sourceCurrency, tripData.settings, allHotelDefinitions, showCosts);
           break;
         case 'meal':
-          calcResult = calculateMealCostInternal(item, tripData.travelers, sourceCurrency);
+          calcResult = calculateMealCostInternal(item, tripData.travelers, sourceCurrency, showCosts);
           break;
         case 'misc':
-          calcResult = calculateMiscCostInternal(item, tripData.travelers, sourceCurrency);
+          calcResult = calculateMiscCostInternal(item, tripData.travelers, sourceCurrency, showCosts);
           break;
         default:
           return;
