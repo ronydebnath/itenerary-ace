@@ -1,3 +1,4 @@
+
 /**
  * @fileoverview This file defines the main page for the Itinerary Planner.
  * It utilizes the `useItineraryManager` hook to manage the state and logic
@@ -20,6 +21,7 @@ export default function PlannerPage() {
   const {
     tripData,
     pageStatus,
+    currentQuotationRequest, // Get the quotation request details
     handleStartNewItinerary,
     handleUpdateTripData,
     handleUpdateSettings,
@@ -47,8 +49,10 @@ export default function PlannerPage() {
           onUpdateSettings={handleUpdateSettings}
           onUpdatePax={handleUpdatePax}
           onManualSave={handleManualSave}
+          quotationRequestDetails={currentQuotationRequest} // Pass it to the planner
         />
       )}
     </div>
   );
 }
+
