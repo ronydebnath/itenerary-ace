@@ -152,17 +152,17 @@ function DayViewComponent({
 
         <div>
           <h3 className="text-md font-semibold mb-2 text-center text-primary uppercase tracking-wider">Add Service to Day {dayNumber}</h3>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
+          <div className="flex flex-wrap justify-center gap-2 sm:grid sm:grid-cols-3 md:grid-cols-5">
             {SERVICE_TYPES_CONFIG.map(serviceConfig => {
               const IconComponent = serviceConfig.icon;
               return (
                 <Button
                   key={serviceConfig.type}
                   variant="outline"
-                  className="flex-col h-auto p-2 border-dashed hover:border-solid hover:bg-primary/5 hover:text-primary group transition-all duration-150 ease-in-out text-[10px] sm:text-xs leading-tight"
+                  className="flex-col h-auto p-1.5 border-dashed hover:border-solid hover:bg-primary/5 hover:text-primary group transition-all duration-150 ease-in-out text-[10px] sm:text-xs leading-tight w-[calc(50%-0.25rem)] sm:w-auto"
                   onClick={() => onAddItem(dayNumber, serviceConfig.type)}
                 >
-                  <IconComponent className="h-4 w-4 mb-0.5 text-muted-foreground group-hover:text-primary transition-colors sm:h-5 sm:w-5 sm:mb-1" />
+                  <IconComponent className="h-3.5 w-3.5 sm:h-4 sm:w-4 mb-0.5 text-muted-foreground group-hover:text-primary transition-colors" />
                   <span className="font-medium text-center whitespace-normal">{serviceConfig.label}</span>
                 </Button>
               );
@@ -175,4 +175,3 @@ function DayViewComponent({
 }
 export const DayView = React.memo(DayViewComponent);
     
-

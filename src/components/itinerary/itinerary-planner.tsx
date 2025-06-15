@@ -1,3 +1,4 @@
+
 /**
  * @fileoverview This component is the core user interface for planning an itinerary.
  * It orchestrates various sub-components like the `PlannerHeader` for global settings,
@@ -177,35 +178,35 @@ export function ItineraryPlanner({
     <div className="w-full max-w-[1600px] mx-auto p-2 sm:p-4 md:p-6 lg:p-8">
       {quotationRequestDetails && (
         <Card className="my-4 md:my-6 shadow-md no-print bg-secondary/20 border-secondary">
-          <CardHeader className="pb-3 p-4">
-            <CardTitle className="text-lg sm:text-xl text-primary flex items-center">
-              <FileText className="mr-2 h-5 w-5 text-primary" />
+          <CardHeader className="pb-3 p-3 sm:p-4">
+            <CardTitle className="text-base sm:text-lg md:text-xl text-primary flex items-center">
+              <FileText className="mr-2 h-4 w-4 sm:h-5 sm:w-5 text-primary" />
               Original Quotation Request (ID: {quotationRequestDetails.id.split('-').pop()})
             </CardTitle>
-            <CardDescription className="text-sm text-muted-foreground">
+            <CardDescription className="text-xs sm:text-sm text-muted-foreground">
               This information was provided by the agent. Use it to guide your itinerary planning.
             </CardDescription>
           </CardHeader>
-          <CardContent className="pt-2 text-sm space-y-4 p-4">
-            <div className="space-y-2">
-                <h4 className="font-semibold text-md flex items-center text-foreground/90 mb-1">
-                <UsersIcon className="h-4 w-4 mr-2 text-primary" />Client & Basic Trip Info
+          <CardContent className="pt-2 text-xs sm:text-sm space-y-3 sm:space-y-4 p-3 sm:p-4">
+            <div className="space-y-1 sm:space-y-2">
+                <h4 className="font-semibold text-sm sm:text-md flex items-center text-foreground/90 mb-1">
+                <UsersIcon className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-2 text-primary" />Client & Basic Trip Info
                 </h4>
-                <p><strong>Agent/Source:</strong> <Badge variant="outline" className="font-normal">{tripData.clientName || 'N/A'}</Badge></p>
-                <p><strong>Pax:</strong> {quotationRequestDetails.clientInfo.adults} Adult(s)
+                <p className="break-words"><strong>Agent/Source:</strong> <Badge variant="outline" className="font-normal text-xs">{tripData.clientName || 'N/A'}</Badge></p>
+                <p className="break-words"><strong>Pax:</strong> {quotationRequestDetails.clientInfo.adults} Adult(s)
                 {quotationRequestDetails.clientInfo.children > 0 && `, ${quotationRequestDetails.clientInfo.children} Child(ren)`}
                 {quotationRequestDetails.clientInfo.children > 0 && quotationRequestDetails.clientInfo.childAges && ` (Ages: ${quotationRequestDetails.clientInfo.childAges})`}
                 </p>
                 <div>
                 <p className="font-medium">Destinations:</p>
-                <ul className="list-disc pl-5 text-xs">
-                    <li>Countries: <span className="font-semibold">{quotationRequestDetails.tripDetails.preferredCountryIds.map(id => countries.find(c => c.id === id)?.name || id).join(', ') || 'Any'}</span></li>
-                    <li>Provinces: <span className="font-semibold">{quotationRequestDetails.tripDetails.preferredProvinceNames?.join(', ') || 'Any'}</span></li>
+                <ul className="list-disc pl-4 sm:pl-5 text-xs">
+                    <li>Countries: <span className="font-semibold break-words">{quotationRequestDetails.tripDetails.preferredCountryIds.map(id => countries.find(c => c.id === id)?.name || id).join(', ') || 'Any'}</span></li>
+                    <li>Provinces: <span className="font-semibold break-words">{quotationRequestDetails.tripDetails.preferredProvinceNames?.join(', ') || 'Any'}</span></li>
                 </ul>
                 </div>
-                <p><strong>Dates:</strong> {quotationRequestDetails.tripDetails.preferredStartDate && isValid(parseISO(quotationRequestDetails.tripDetails.preferredStartDate)) ? format(parseISO(quotationRequestDetails.tripDetails.preferredStartDate), 'dd MMM yyyy') : 'N/A'} to {quotationRequestDetails.tripDetails.preferredEndDate && isValid(parseISO(quotationRequestDetails.tripDetails.preferredEndDate)) ? format(parseISO(quotationRequestDetails.tripDetails.preferredEndDate), 'dd MMM yyyy') : 'N/A'} <span className="text-muted-foreground">({quotationRequestDetails.tripDetails.durationDays || 'N/A'} days)</span></p>
-                <p><strong>Trip Type:</strong> <Badge variant="secondary" className="font-normal">{quotationRequestDetails.tripDetails.tripType || 'N/A'}</Badge></p>
-                <p><strong>Budget:</strong> {quotationRequestDetails.tripDetails.budgetRange || 'N/A'}
+                <p className="break-words"><strong>Dates:</strong> {quotationRequestDetails.tripDetails.preferredStartDate && isValid(parseISO(quotationRequestDetails.tripDetails.preferredStartDate)) ? format(parseISO(quotationRequestDetails.tripDetails.preferredStartDate), 'dd MMM yyyy') : 'N/A'} to {quotationRequestDetails.tripDetails.preferredEndDate && isValid(parseISO(quotationRequestDetails.tripDetails.preferredEndDate)) ? format(parseISO(quotationRequestDetails.tripDetails.preferredEndDate), 'dd MMM yyyy') : 'N/A'} <span className="text-muted-foreground">({quotationRequestDetails.tripDetails.durationDays || 'N/A'} days)</span></p>
+                <p><strong>Trip Type:</strong> <Badge variant="secondary" className="font-normal text-xs">{quotationRequestDetails.tripDetails.tripType || 'N/A'}</Badge></p>
+                <p className="break-words"><strong>Budget:</strong> {quotationRequestDetails.tripDetails.budgetRange || 'N/A'}
                 {quotationRequestDetails.tripDetails.budgetRange === "Specific Amount (see notes)" &&
                     <span className="font-semibold"> ({formatCurrency(quotationRequestDetails.tripDetails.budgetAmount || 0, quotationRequestDetails.tripDetails.budgetCurrency || 'USD')})</span>
                 }
@@ -213,40 +214,40 @@ export function ItineraryPlanner({
             </div>
             <Separator />
             {quotationRequestDetails.accommodationPrefs && (
-                <div className="space-y-1.5">
-                <h4 className="font-semibold text-md flex items-center text-foreground/90 mb-1"><BedDoubleIcon className="h-4 w-4 mr-2 text-primary" />Accommodation Preferences</h4>
-                <p><strong>Star Rating:</strong> {quotationRequestDetails.accommodationPrefs.hotelStarRating || 'N/A'}</p>
-                <p><strong>Room Prefs:</strong> {quotationRequestDetails.accommodationPrefs.roomPreferences || 'N/A'}</p>
-                <p><strong>Specific Hotels/Locations:</strong> {quotationRequestDetails.accommodationPrefs.specificHotelRequests || 'N/A'}</p>
+                <div className="space-y-1 sm:space-y-1.5">
+                <h4 className="font-semibold text-sm sm:text-md flex items-center text-foreground/90 mb-1"><BedDoubleIcon className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-2 text-primary" />Accommodation Preferences</h4>
+                <p className="break-words"><strong>Star Rating:</strong> {quotationRequestDetails.accommodationPrefs.hotelStarRating || 'N/A'}</p>
+                <p className="break-words"><strong>Room Prefs:</strong> {quotationRequestDetails.accommodationPrefs.roomPreferences || 'N/A'}</p>
+                <p className="break-words"><strong>Specific Hotels/Locations:</strong> {quotationRequestDetails.accommodationPrefs.specificHotelRequests || 'N/A'}</p>
                 </div>
             )}
             <Separator />
             {quotationRequestDetails.activityPrefs && (
-                <div className="space-y-1.5">
-                <h4 className="font-semibold text-md flex items-center text-foreground/90 mb-1"><ZapIcon className="h-4 w-4 mr-2 text-primary" />Activity & Tour Preferences</h4>
-                <p className="whitespace-pre-wrap bg-muted/30 p-2 rounded-sm text-xs">{quotationRequestDetails.activityPrefs.requestedActivities || 'No specific activities requested.'}</p>
+                <div className="space-y-1 sm:space-y-1.5">
+                <h4 className="font-semibold text-sm sm:text-md flex items-center text-foreground/90 mb-1"><ZapIcon className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-2 text-primary" />Activity & Tour Preferences</h4>
+                <p className="whitespace-pre-wrap bg-muted/30 p-1.5 sm:p-2 rounded-sm text-xs">{quotationRequestDetails.activityPrefs.requestedActivities || 'No specific activities requested.'}</p>
                 </div>
             )}
             <Separator />
             {quotationRequestDetails.flightPrefs && (
-                <div className="space-y-1.5">
-                <h4 className="font-semibold text-md flex items-center text-foreground/90 mb-1"><CarIcon className="h-4 w-4 mr-2 text-primary" />Transfer Preferences</h4>
-                <p><strong>Airport Transfers Required:</strong> <Badge variant={quotationRequestDetails.flightPrefs.airportTransfersRequired ? "default" : "outline"}>{quotationRequestDetails.flightPrefs.airportTransfersRequired ? 'Yes' : 'No'}</Badge></p>
-                <p><strong>Activity Transfers Required:</strong> <Badge variant={quotationRequestDetails.flightPrefs.activityTransfersRequired ? "default" : "outline"}>{quotationRequestDetails.flightPrefs.activityTransfersRequired ? 'Yes' : 'No'}</Badge></p>
+                <div className="space-y-1 sm:space-y-1.5">
+                <h4 className="font-semibold text-sm sm:text-md flex items-center text-foreground/90 mb-1"><CarIcon className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-2 text-primary" />Transfer Preferences</h4>
+                <p><strong>Airport Transfers Required:</strong> <Badge variant={quotationRequestDetails.flightPrefs.airportTransfersRequired ? "default" : "outline"} className="text-xs">{quotationRequestDetails.flightPrefs.airportTransfersRequired ? 'Yes' : 'No'}</Badge></p>
+                <p><strong>Activity Transfers Required:</strong> <Badge variant={quotationRequestDetails.flightPrefs.activityTransfersRequired ? "default" : "outline"} className="text-xs">{quotationRequestDetails.flightPrefs.activityTransfersRequired ? 'Yes' : 'No'}</Badge></p>
                 </div>
             )}
             <Separator />
             {quotationRequestDetails.mealPrefs && (
-                <div className="space-y-1.5">
-                <h4 className="font-semibold text-md flex items-center text-foreground/90 mb-1"><UtensilsIcon className="h-4 w-4 mr-2 text-primary" />Meal Preferences</h4>
+                <div className="space-y-1 sm:space-y-1.5">
+                <h4 className="font-semibold text-sm sm:text-md flex items-center text-foreground/90 mb-1"><UtensilsIcon className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-2 text-primary" />Meal Preferences</h4>
                 <p><strong>Plan:</strong> {quotationRequestDetails.mealPrefs.mealPlan || 'Not Specified'}</p>
                 </div>
             )}
             <Separator />
             {quotationRequestDetails.otherRequirements && (
-                <div className="space-y-1.5">
-                <h4 className="font-semibold text-md flex items-center text-foreground/90 mb-1"><MessageSquareIcon className="h-4 w-4 mr-2 text-primary" />Other Requirements</h4>
-                <p className="whitespace-pre-wrap bg-muted/30 p-2 rounded-sm text-xs">{quotationRequestDetails.otherRequirements}</p>
+                <div className="space-y-1 sm:space-y-1.5">
+                <h4 className="font-semibold text-sm sm:text-md flex items-center text-foreground/90 mb-1"><MessageSquareIcon className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-2 text-primary" />Other Requirements</h4>
+                <p className="whitespace-pre-wrap bg-muted/30 p-1.5 sm:p-2 rounded-sm text-xs">{quotationRequestDetails.otherRequirements}</p>
                 </div>
             )}
             </CardContent>
@@ -270,7 +271,7 @@ export function ItineraryPlanner({
         getFormattedDateForDay={getFormattedDateForDay}
       />
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 md:gap-6 min-h-[60vh]">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 md:gap-6">
         <div className="lg:col-span-8 flex flex-col">
           {isLoadingAnything && !tripData.days[currentDayView] ? (
             <div className="flex flex-col items-center justify-center p-6 sm:p-10 min-h-[300px] bg-card rounded-lg shadow-sm border flex-grow">
@@ -278,7 +279,7 @@ export function ItineraryPlanner({
               <p className="text-muted-foreground text-sm sm:text-base">Loading itinerary data and service definitions...</p>
             </div>
           ) : (
-            <ScrollArea className="h-[65vh] pr-0 lg:pr-2">
+            <ScrollArea className="max-h-[70vh] pr-0 lg:pr-2">
               {Array.from({ length: tripData.settings.numDays }, (_, i) => i + 1).map(dayNum => (
                 <div key={dayNum} style={{ display: dayNum === currentDayView ? 'block' : 'none' }}>
                   <DayView
