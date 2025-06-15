@@ -22,7 +22,7 @@ import {
 } from 'lucide-react';
 import { formatCurrency, cn } from '@/lib/utils';
 import { CostBreakdownTable } from '@/components/itinerary/cost-breakdown-table'; // Ensure this is correctly imported
-import { DetailsSummaryTable } from '@/components/itinerary/details-summary-table'; // Ensure this is correctly imported
+// DetailsSummaryTable import is removed as the section is being removed
 
 const ITINERARY_DATA_PREFIX = 'itineraryAce_data_';
 
@@ -281,16 +281,11 @@ export default function ItineraryClientViewPage() {
                 )}
               </div>
             </div>
-          </section>
-          
-          {/* Full Itinerary Details Table - Individual costs depend on showCosts state */}
-          <section className="mt-6 pt-5 border-t print:mt-4 print:pt-3 print:border-gray-300 page-break-before-avoid">
-            <h2 className="text-lg sm:text-xl font-semibold text-primary mb-3 sm:mb-4 print:text-base">Full Itinerary Breakdown</h2>
-            <DetailsSummaryTable summary={costSummary} currency={pax.currency} showCosts={showCosts} />
             {!showCosts && (
-              <p className="text-sm text-muted-foreground text-center mt-4 print:hidden">Detailed item costs are currently hidden. Click "Show Detailed Costs" to view.</p>
+              <p className="text-sm text-muted-foreground text-center mt-4 print:hidden">Click "Show Detailed Costs" to view individual item costs in the day-by-day breakdown.</p>
             )}
           </section>
+          
         </CardContent>
          <div className="p-4 sm:p-6 pt-0 text-center no-print">
             <Button onClick={() => window.print()} variant="default" size="sm" className="h-9 text-sm">
@@ -301,3 +296,4 @@ export default function ItineraryClientViewPage() {
     </div>
   );
 }
+
