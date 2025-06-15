@@ -25,7 +25,7 @@ import { DatePicker } from '@/components/ui/date-picker';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Edit3, Save, Info, CalendarDays, Users, MapPin, Route, Loader2, DollarSign, Globe, FileText, Image as ImageIconLucide, Wand2, Landmark, Send, MessageSquare } from 'lucide-react';
+import { Edit3, Save, Info, CalendarDays, Users, MapPin, Route, Loader2, DollarSign, Globe, FileText, Image as ImageIconLucide, Wand2, Landmark, Send } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { formatCurrency } from '@/lib/utils';
 import { format, parseISO, isValid } from 'date-fns';
@@ -255,20 +255,7 @@ function PlannerHeaderComponent({
           )}
         </div>
         
-        {quotationRequestDetails?.agentRevisionNotes && (
-            <div className="border-t pt-4 mt-4">
-                <Label htmlFor="agentRevisionNotesDisplay" className="text-sm font-medium text-muted-foreground flex items-center">
-                    <MessageSquare className="h-4 w-4 mr-1.5 text-orange-500" /> Agent's Revision Request Notes
-                </Label>
-                <Textarea
-                    id="agentRevisionNotesDisplay"
-                    value={quotationRequestDetails.agentRevisionNotes}
-                    readOnly
-                    rows={3}
-                    className="mt-1 text-sm bg-orange-50 border-orange-200 text-orange-800 placeholder:text-orange-600"
-                />
-            </div>
-        )}
+        {/* Removed Agent Revision Notes from here */}
 
         {tripData.quotationRequestId && (
           <div className="border-t pt-4 mt-4">

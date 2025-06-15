@@ -32,6 +32,9 @@ import { PlannerHeader } from './planner-header';
 import { DayNavigation } from './day-navigation';
 import { useRouter } from 'next/navigation';
 import { Badge } from '@/components/ui/badge';
+import { Textarea } from '@/components/ui/textarea'; // Added for displaying agent notes
+import { Label } from '@/components/ui/label'; // Added for labeling agent notes
+
 
 const SHOW_DETAILS_TOKEN = 'full_details_v1'; 
 
@@ -259,6 +262,20 @@ export function ItineraryPlanner({
                 <div className="space-y-1 sm:space-y-1.5">
                 <h4 className="font-semibold text-sm sm:text-md flex items-center text-foreground/90 mb-1"><MessageSquareIcon className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-2 text-primary" />Other Requirements</h4>
                 <p className="whitespace-pre-wrap bg-muted/30 p-1.5 sm:p-2 rounded-sm text-xs">{quotationRequestDetails.otherRequirements}</p>
+                </div>
+            )}
+            {quotationRequestDetails.agentRevisionNotes && (
+                <div className="border-t pt-3 mt-3">
+                    <Label htmlFor="agentRevisionNotesDisplay" className="text-sm font-medium text-orange-600 flex items-center">
+                        <MessageSquareIcon className="h-4 w-4 mr-1.5" /> Agent's Revision Request Notes:
+                    </Label>
+                    <Textarea
+                        id="agentRevisionNotesDisplay"
+                        value={quotationRequestDetails.agentRevisionNotes}
+                        readOnly
+                        rows={3}
+                        className="mt-1 text-sm bg-orange-50 border-orange-200 text-orange-800 placeholder:text-orange-600"
+                    />
                 </div>
             )}
             </CardContent>
