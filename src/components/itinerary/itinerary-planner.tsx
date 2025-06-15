@@ -18,7 +18,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
-import { Printer, Eye, EyeOff, Loader2, FileText, Users as UsersIcon, MapPin as MapPinIcon, CalendarDays as CalendarDaysIcon, Briefcase as BriefcaseIcon, Coins as CoinsIcon, BedDouble as BedDoubleIcon, Zap as ZapIcon, Car as CarIcon, Utensils as UtensilsIcon, MessageSquare as MessageSquareIcon } from 'lucide-react';
+import { Eye, EyeOff, Loader2, FileText, Users as UsersIcon, MapPin as MapPinIcon, CalendarDays as CalendarDaysIcon, Briefcase as BriefcaseIcon, Coins as CoinsIcon, BedDouble as BedDoubleIcon, Zap as ZapIcon, Car as CarIcon, Utensils as UtensilsIcon, MessageSquare as MessageSquareIcon, Share2 } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
 import { DayView } from '../itinerary/day-view';
 import { CostBreakdownTable } from '../itinerary/cost-breakdown-table';
@@ -31,14 +31,8 @@ import { useCountries } from '@/hooks/useCountries';
 import { addDays, format, parseISO, isValid } from 'date-fns';
 import { PlannerHeader } from './planner-header';
 import { DayNavigation } from './day-navigation';
-import dynamic from 'next/dynamic';
+import { useRouter } from 'next/navigation'; // Import useRouter
 import { Badge } from '@/components/ui/badge';
-
-
-const PrintLayout = dynamic(() => import('../itinerary/print-layout').then(mod => mod.PrintLayout), {
-  loading: () => <div className="flex justify-center items-center h-screen"><Loader2 className="h-8 w-8 animate-spin" /> <span className="ml-2">Preparing print view...</span></div>,
-  ssr: false
-});
 
 
 interface ItineraryPlannerProps {
@@ -60,9 +54,9 @@ export function ItineraryPlanner({
   onManualSave,
   quotationRequestDetails
 }: ItineraryPlannerProps) {
+  const router = useRouter(); // Initialize router
   const [currentDayView, setCurrentDayView] = React.useState<number>(1);
   const [costSummary, setCostSummary] = React.useState<CostSummary | null>(null);
-  const [isPrinting, setIsPrinting] = React.useState(false);
   const [showCosts, setShowCosts] = React.useState<boolean>(true);
   const { allServicePrices, isLoading: isLoadingServices } = useServicePrices();
   const { allHotelDefinitions, isLoading: isLoadingHotelDefinitions } = useHotelDefinitions();
@@ -155,13 +149,11 @@ export function ItineraryPlanner({
     });
   }, [onUpdateTripData]);
 
-  const handlePrint = React.useCallback(() => {
-    setIsPrinting(true);
-    setTimeout(() => {
-      window.print();
-      setIsPrinting(false);
-    }, 100);
-  }, []);
+  const handleViewClientItinerary = React.useCallback(() => {
+    if (tripData?.id) {
+      router.push(`/itinerary/view/${tripData.id}`);
+    }
+  }, [tripData?.id, router]);
 
   const getFormattedDateForDay = React.useCallback((dayNum: number): string => {
     if (!tripData.settings.startDate) return `Day ${dayNum}`;
@@ -174,9 +166,6 @@ export function ItineraryPlanner({
     }
   }, [tripData.settings.startDate]);
 
-  if (isPrinting && costSummary) {
-    return <PrintLayout tripData={tripData} costSummary={costSummary} showCosts={showCosts} />;
-  }
 
   const isLoadingAnything = isLoadingServices || isLoadingHotelDefinitions || isLoadingExchangeRates || isLoadingCountries;
 
@@ -184,7 +173,7 @@ export function ItineraryPlanner({
     <div className="w-full max-w-[1600px] mx-auto p-2 sm:p-4 md:p-6 lg:p-8">
       {quotationRequestDetails && (
         <Card className="my-4 md:my-6 shadow-md no-print bg-secondary/20 border-secondary">
-           <CardHeader className="pb-3">
+          <CardHeader className="pb-3">
             <CardTitle className="text-lg sm:text-xl text-primary flex items-center">
               <FileText className="mr-2 h-5 w-5" />
               Original Quotation Request (ID: {quotationRequestDetails.id.split('-').pop()})
@@ -193,10 +182,11 @@ export function ItineraryPlanner({
               This information was provided by the agent. Use it to guide your itinerary planning.
             </CardDescription>
           </CardHeader>
-          <CardContent className="pt-2 text-sm space-y-4 p-4">
-            
+          <CardContent className="pt-2 text-sm space-y-3 p-4">
             <div className="space-y-2">
-              <h4 className="font-semibold text-md flex items-center text-foreground/90 mb-1"><UsersIcon className="h-4 w-4 mr-2 text-primary" />Client &amp; Basic Trip Info</h4>
+              <h4 className="font-semibold text-md flex items-center text-foreground/90 mb-1">
+                <UsersIcon className="h-4 w-4 mr-2 text-primary" />Client & Basic Trip Info
+              </h4>
               <p><strong>Agent/Source:</strong> <Badge variant="outline" className="font-normal">{tripData.clientName || 'N/A'}</Badge></p>
               <p><strong>Pax:</strong> {quotationRequestDetails.clientInfo.adults} Adult(s)
                 {quotationRequestDetails.clientInfo.children > 0 && `, ${quotationRequestDetails.clientInfo.children} Child(ren)`}
@@ -212,7 +202,7 @@ export function ItineraryPlanner({
               <p><strong>Dates:</strong> {quotationRequestDetails.tripDetails.preferredStartDate && isValid(parseISO(quotationRequestDetails.tripDetails.preferredStartDate)) ? format(parseISO(quotationRequestDetails.tripDetails.preferredStartDate), 'dd MMM yyyy') : 'N/A'} to {quotationRequestDetails.tripDetails.preferredEndDate && isValid(parseISO(quotationRequestDetails.tripDetails.preferredEndDate)) ? format(parseISO(quotationRequestDetails.tripDetails.preferredEndDate), 'dd MMM yyyy') : 'N/A'} <span className="text-muted-foreground">({quotationRequestDetails.tripDetails.durationDays || 'N/A'} days)</span></p>
               <p><strong>Trip Type:</strong> <Badge variant="secondary" className="font-normal">{quotationRequestDetails.tripDetails.tripType || 'N/A'}</Badge></p>
               <p><strong>Budget:</strong> {quotationRequestDetails.tripDetails.budgetRange || 'N/A'}
-                {quotationRequestDetails.tripDetails.budgetRange === "Specific Amount (see notes)" && 
+                {quotationRequestDetails.tripDetails.budgetRange === "Specific Amount (see notes)" &&
                  <span className="font-semibold"> ({formatCurrency(quotationRequestDetails.tripDetails.budgetAmount || 0, quotationRequestDetails.tripDetails.budgetCurrency || 'USD')})</span>
                 }
               </p>
@@ -363,11 +353,10 @@ export function ItineraryPlanner({
       </Card>
 
       <div className="mt-6 md:mt-8 py-4 md:py-6 border-t border-border flex flex-col sm:flex-row justify-center items-center gap-3 sm:gap-4 no-print">
-        <Button className="w-full sm:w-auto bg-accent hover:bg-accent/90 text-accent-foreground">
-          <Printer className="mr-2 h-4 w-4" /> Print Itinerary
+        <Button onClick={handleViewClientItinerary} className="w-full sm:w-auto bg-accent hover:bg-accent/90 text-accent-foreground">
+          <Share2 className="mr-2 h-4 w-4" /> View Client Itinerary
         </Button>
       </div>
     </div>
   );
 }
-
