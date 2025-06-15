@@ -184,7 +184,7 @@ export function ItineraryPlanner({
     <div className="w-full max-w-[1600px] mx-auto p-2 sm:p-4 md:p-6 lg:p-8">
       {quotationRequestDetails && (
         <Card className="my-4 md:my-6 shadow-md no-print bg-secondary/20 border-secondary">
-          <CardHeader className="pb-3">
+           <CardHeader className="pb-3">
             <CardTitle className="text-lg sm:text-xl text-primary flex items-center">
               <FileText className="mr-2 h-5 w-5" />
               Original Quotation Request (ID: {quotationRequestDetails.id.split('-').pop()})
@@ -193,7 +193,7 @@ export function ItineraryPlanner({
               This information was provided by the agent. Use it to guide your itinerary planning.
             </CardDescription>
           </CardHeader>
-          <CardContent className="pt-2 text-sm space-y-3 p-4">
+          <CardContent className="pt-2 text-sm space-y-4 p-4">
             
             <div className="space-y-2">
               <h4 className="font-semibold text-md flex items-center text-foreground/90 mb-1"><UsersIcon className="h-4 w-4 mr-2 text-primary" />Client &amp; Basic Trip Info</h4>
@@ -363,7 +363,7 @@ export function ItineraryPlanner({
       </Card>
 
       <div className="mt-6 md:mt-8 py-4 md:py-6 border-t border-border flex flex-col sm:flex-row justify-center items-center gap-3 sm:gap-4 no-print">
-        <Button onClick={handlePrint} className="w-full sm:w-auto bg-accent hover:bg-accent/90 text-accent-foreground">
+        <Button className="w-full sm:w-auto bg-accent hover:bg-accent/90 text-accent-foreground">
           <Printer className="mr-2 h-4 w-4" /> Print Itinerary
         </Button>
       </div>
