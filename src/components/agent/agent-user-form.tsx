@@ -82,27 +82,27 @@ export function AgentUserForm({
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 max-h-[70vh] overflow-y-auto p-1">
-        <FormField control={form.control} name="fullName" render={({ field }) => (<FormItem><FormLabel>Full Name</FormLabel><FormControl><Input placeholder="e.g., Jane Doe" {...field} /></FormControl><FormMessage /></FormItem> )} />
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5 max-h-[calc(100vh-20rem)] sm:max-h-[calc(100vh-18rem)] overflow-y-auto p-1 pr-2">
+        <FormField control={form.control} name="fullName" render={({ field }) => (<FormItem><FormLabel>Full Name</FormLabel><FormControl><Input placeholder="e.g., Jane Doe" {...field} className="h-9 text-sm"/></FormControl><FormMessage /></FormItem> )} />
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <FormField control={form.control} name="email" render={({ field }) => (<FormItem><FormLabel>Email Address</FormLabel><FormControl><Input type="email" placeholder="user@example.com" {...field} /></FormControl><FormMessage /></FormItem>)} />
-          <FormField control={form.control} name="phoneNumber" render={({ field }) => (<FormItem><FormLabel>Phone Number (Optional)</FormLabel><FormControl><Input type="tel" placeholder="+1 555 123 4567" {...field} /></FormControl><FormMessage /></FormItem> )} />
+          <FormField control={form.control} name="email" render={({ field }) => (<FormItem><FormLabel>Email Address</FormLabel><FormControl><Input type="email" placeholder="user@example.com" {...field} className="h-9 text-sm"/></FormControl><FormMessage /></FormItem>)} />
+          <FormField control={form.control} name="phoneNumber" render={({ field }) => (<FormItem><FormLabel>Phone Number (Optional)</FormLabel><FormControl><Input type="tel" placeholder="+1 555 123 4567" {...field} className="h-9 text-sm"/></FormControl><FormMessage /></FormItem> )} />
         </div>
         
-        <FormField control={form.control} name="agencyName" render={({ field }) => (<FormItem><FormLabel>Specific Office/Branch Name (Optional)</FormLabel><FormControl><Input placeholder="e.g., Downtown Branch" {...field} /></FormControl><FormDescription className="text-xs">If this user is associated with a specific branch of the main agency.</FormDescription><FormMessage /></FormItem>)} />
+        <FormField control={form.control} name="agencyName" render={({ field }) => (<FormItem><FormLabel>Specific Office/Branch Name (Optional)</FormLabel><FormControl><Input placeholder="e.g., Downtown Branch" {...field} className="h-9 text-sm"/></FormControl><FormDescription className="text-xs">If this user is associated with a specific branch of the main agency.</FormDescription><FormMessage /></FormItem>)} />
         
-        <FormField control={form.control} name="specializations" render={({ field }) => (<FormItem><FormLabel>Specializations (Optional)</FormLabel><FormControl><Textarea placeholder="e.g., Luxury Travel, Adventure Tours" {...field} rows={2} /></FormControl><FormMessage /></FormItem>)} />
-        <FormField control={form.control} name="yearsOfExperience" render={({ field }) => (<FormItem><FormLabel>Years of Experience (Optional)</FormLabel><FormControl><Input type="number" placeholder="5" {...field} onChange={e => field.onChange(e.target.value === '' ? undefined : parseInt(e.target.value, 10))} /></FormControl><FormMessage /></FormItem>)} />
-        <FormField control={form.control} name="bio" render={({ field }) => (<FormItem><FormLabel>Short Bio (Optional)</FormLabel><FormControl><Textarea placeholder="User's professional background..." {...field} rows={3} /></FormControl><FormMessage /></FormItem>)} />
-        <FormField control={form.control} name="profilePictureUrl" render={({ field }) => (<FormItem><FormLabel>Profile Picture URL (Optional)</FormLabel><FormControl><Input type="url" placeholder="https://example.com/photo.jpg" {...field} /></FormControl><FormMessage /></FormItem>)} />
+        <FormField control={form.control} name="specializations" render={({ field }) => (<FormItem><FormLabel>Specializations (Optional)</FormLabel><FormControl><Textarea placeholder="e.g., Luxury Travel, Adventure Tours" {...field} rows={2} className="text-sm min-h-[2.25rem]"/></FormControl><FormMessage /></FormItem>)} />
+        <FormField control={form.control} name="yearsOfExperience" render={({ field }) => (<FormItem><FormLabel>Years of Experience (Optional)</FormLabel><FormControl><Input type="number" placeholder="5" {...field} onChange={e => field.onChange(e.target.value === '' ? undefined : parseInt(e.target.value, 10))} className="h-9 text-sm"/></FormControl><FormMessage /></FormItem>)} />
+        <FormField control={form.control} name="bio" render={({ field }) => (<FormItem><FormLabel>Short Bio (Optional)</FormLabel><FormControl><Textarea placeholder="User's professional background..." {...field} rows={3} className="text-sm min-h-[4.5rem]"/></FormControl><FormMessage /></FormItem>)} />
+        <FormField control={form.control} name="profilePictureUrl" render={({ field }) => (<FormItem><FormLabel>Profile Picture URL (Optional)</FormLabel><FormControl><Input type="url" placeholder="https://example.com/photo.jpg" {...field} className="h-9 text-sm"/></FormControl><FormMessage /></FormItem>)} />
         
         <FormField control={form.control} name="agencyId" render={({ field }) => (<FormItem className="hidden"><FormLabel>Agency ID (Hidden)</FormLabel><FormControl><Input {...field} readOnly /></FormControl><FormMessage /></FormItem>)} />
 
-        <div className="flex justify-end space-x-3 pt-4 sticky bottom-0 bg-background pb-1">
-          <Button type="button" variant="outline" onClick={onCancel} disabled={form.formState.isSubmitting}>
+        <div className="flex justify-end space-x-3 pt-4 sticky bottom-0 bg-card pb-1 border-t -mx-1 px-1">
+          <Button type="button" variant="outline" onClick={onCancel} disabled={form.formState.isSubmitting} size="sm" className="h-9 text-sm">
             Cancel
           </Button>
-          <Button type="submit" className="bg-primary hover:bg-primary/90 text-primary-foreground" disabled={form.formState.isSubmitting}>
+          <Button type="submit" className="bg-primary hover:bg-primary/90 text-primary-foreground h-9 text-sm" disabled={form.formState.isSubmitting} size="sm">
             {form.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             {initialData?.id ? 'Update User' : 'Add User'}
           </Button>

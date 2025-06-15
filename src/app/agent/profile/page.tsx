@@ -15,7 +15,8 @@ import { AgentUserForm } from '@/components/agent/agent-user-form';
 import type { Agency, AgentProfile } from '@/types/agent';
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { ArrowLeft, Building, Users, UserCog, LayoutDashboard, Loader2, Mail, Phone, MapPin, Globe } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { ArrowLeft, Building, Users, UserCog, LayoutDashboard, Loader2, Mail, Phone, MapPin, Globe, Edit, Workflow, Calendar, Sparkles } from 'lucide-react';
 import { useAgents } from '@/hooks/useAgents';
 import { useCountries } from '@/hooks/useCountries';
 import { Separator } from '@/components/ui/separator';
@@ -46,8 +47,6 @@ export default function AgentProfilePage() {
       } else {
         setCurrentAgentProfile(null);
         setAssociatedAgency(null);
-        // Potentially redirect or show a message if agent profile not found
-        // For demo, we'll assume agent_default_user always exists after seeding.
       }
     }
   }, [agents, agencies, isLoadingAgentsHook]);
@@ -56,8 +55,8 @@ export default function AgentProfilePage() {
     if (currentAgentProfile) {
       updateAgent({ ...currentAgentProfile, ...updatedProfileData });
       toast({ title: "Profile Updated", description: "Your profile details have been saved." });
-      setIsEditingProfile(false); // Close form after update
-      refreshAgentData(); // Re-fetch to ensure UI consistency
+      setIsEditingProfile(false); 
+      refreshAgentData(); 
     }
   };
 
@@ -98,7 +97,7 @@ export default function AgentProfilePage() {
 
   return (
     <main className="min-h-screen bg-background p-4 md:p-6 lg:p-8">
-      <div className="container mx-auto max-w-3xl py-4 sm:py-6 md:py-8">
+      <div className="container mx-auto max-w-4xl py-4 sm:py-6 md:py-8">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 md:mb-8 gap-3">
           <div className="flex items-center gap-2">
             <Link href="/agent">
@@ -112,17 +111,18 @@ export default function AgentProfilePage() {
           </div>
           {!isEditingProfile && (
             <Button onClick={() => setIsEditingProfile(true)} size="sm" className="bg-accent hover:bg-accent/90 text-accent-foreground self-start sm:self-auto">
-              Edit Profile
+              <Edit className="mr-2 h-4 w-4" /> Edit Profile
             </Button>
           )}
         </div>
 
         {isEditingProfile ? (
           <Card className="shadow-xl">
-            <CardHeader>
-              <CardTitle className="text-lg sm:text-xl">Edit Your Profile</CardTitle>
+            <CardHeader className="p-4 sm:p-5">
+              <CardTitle className="text-lg sm:text-xl text-primary">Edit Your Profile</CardTitle>
+              <CardDescription className="text-xs sm:text-sm">Make changes to your professional information.</CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-4 sm:p-5">
               <AgentUserForm
                 initialData={currentAgentProfile}
                 agencyId={currentAgentProfile.agencyId}
@@ -133,41 +133,50 @@ export default function AgentProfilePage() {
           </Card>
         ) : (
           <div className="space-y-6 md:space-y-8">
-            <Card className="shadow-lg">
-              <CardHeader>
-                <CardTitle className="text-xl font-semibold text-primary">{currentAgentProfile.fullName}</CardTitle>
-                <CardDescription>{currentAgentProfile.email} {currentAgentProfile.phoneNumber && `| ${currentAgentProfile.phoneNumber}`}</CardDescription>
+            <Card className="shadow-lg border-primary/20">
+              <CardHeader className="p-4 sm:p-5">
+                <div className="flex items-center justify-between">
+                    <CardTitle className="text-xl sm:text-2xl font-semibold text-primary flex items-center">
+                        {currentAgentProfile.profilePictureUrl ? (
+                            <img src={currentAgentProfile.profilePictureUrl} alt={currentAgentProfile.fullName} className="h-10 w-10 sm:h-12 sm:w-12 rounded-full object-cover mr-3 border-2 border-primary/30" />
+                        ) : (
+                            <UserCog className="h-8 w-8 sm:h-10 sm:w-10 mr-3 text-primary/80" />
+                        )}
+                        {currentAgentProfile.fullName}
+                    </CardTitle>
+                </div>
+                <CardDescription className="text-sm text-muted-foreground mt-1">
+                    {currentAgentProfile.email} {currentAgentProfile.phoneNumber && `| ${currentAgentProfile.phoneNumber}`}
+                </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-3 text-sm text-muted-foreground">
-                {currentAgentProfile.agencyName && <p><span className="font-medium text-foreground">Branch/Office:</span> {currentAgentProfile.agencyName}</p>}
-                {currentAgentProfile.specializations && <p><span className="font-medium text-foreground">Specializations:</span> {currentAgentProfile.specializations}</p>}
-                {currentAgentProfile.yearsOfExperience !== undefined && <p><span className="font-medium text-foreground">Years of Experience:</span> {currentAgentProfile.yearsOfExperience}</p>}
-                {currentAgentProfile.bio && <p className="whitespace-pre-wrap"><span className="font-medium text-foreground">Bio:</span> {currentAgentProfile.bio}</p>}
-                {currentAgentProfile.profilePictureUrl && (
-                  <div className="mt-2">
-                    <img src={currentAgentProfile.profilePictureUrl} alt="Profile" className="h-24 w-24 rounded-full object-cover" />
-                  </div>
-                )}
+              <CardContent className="p-4 sm:p-5 space-y-3 text-sm text-muted-foreground">
+                {currentAgentProfile.agencyName && <p className="flex items-center"><Workflow className="mr-2 h-4 w-4 text-primary/70"/> <span className="font-medium text-foreground">Branch/Office:</span><span className="ml-1.5">{currentAgentProfile.agencyName}</span></p>}
+                {currentAgentProfile.specializations && <p className="flex items-center"><Sparkles className="mr-2 h-4 w-4 text-primary/70"/> <span className="font-medium text-foreground">Specializations:</span><span className="ml-1.5">{currentAgentProfile.specializations}</span></p>}
+                {currentAgentProfile.yearsOfExperience !== undefined && <p className="flex items-center"><Calendar className="mr-2 h-4 w-4 text-primary/70"/><span className="font-medium text-foreground">Years of Experience:</span><span className="ml-1.5">{currentAgentProfile.yearsOfExperience}</span></p>}
+                {currentAgentProfile.bio && <div className="pt-2"><p className="font-medium text-foreground mb-1">Bio:</p><p className="whitespace-pre-wrap text-xs leading-relaxed bg-muted/50 p-3 rounded-md border">{currentAgentProfile.bio}</p></div>}
               </CardContent>
             </Card>
 
             {associatedAgency && (
-              <Card className="shadow-lg">
-                <CardHeader>
-                  <CardTitle className="text-xl font-semibold text-primary flex items-center"><Building className="mr-2 h-5 w-5"/>Associated Agency</CardTitle>
+              <Card className="shadow-lg border-secondary/30">
+                <CardHeader className="p-4 sm:p-5">
+                  <CardTitle className="text-lg sm:text-xl font-semibold text-secondary-foreground flex items-center"><Building className="mr-2 h-5 w-5 text-secondary-foreground/80"/>Associated Agency</CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-2 text-sm text-muted-foreground">
-                  <p><span className="font-medium text-foreground">Name:</span> {associatedAgency.name}</p>
+                <CardContent className="p-4 sm:p-5 space-y-2 text-sm text-muted-foreground">
+                  <p><span className="font-medium text-foreground">Name:</span> <Badge variant="secondary">{associatedAgency.name}</Badge></p>
                   {associatedAgency.mainAddress && (
-                    <div>
-                      <p className="font-medium text-foreground flex items-center"><MapPin className="mr-1.5 h-4 w-4"/>Address:</p>
-                      <p className="pl-5">{associatedAgency.mainAddress.street}, {associatedAgency.mainAddress.city}, {associatedAgency.mainAddress.postalCode}</p>
-                      <p className="pl-5">{getCountryName(associatedAgency.mainAddress.countryId)}</p>
+                    <div className="pt-1">
+                      <p className="font-medium text-foreground flex items-center mb-1"><MapPin className="mr-1.5 h-4 w-4 text-secondary-foreground/70"/>Main Address:</p>
+                      <address className="pl-5 not-italic text-xs space-y-0.5">
+                        <span>{associatedAgency.mainAddress.street}</span><br/>
+                        <span>{associatedAgency.mainAddress.city}{associatedAgency.mainAddress.stateProvince ? `, ${associatedAgency.mainAddress.stateProvince}` : ""}, {associatedAgency.mainAddress.postalCode}</span><br/>
+                        <span>{getCountryName(associatedAgency.mainAddress.countryId)}</span>
+                      </address>
                     </div>
                   )}
-                  {associatedAgency.contactEmail && <p className="flex items-center"><Mail className="mr-1.5 h-4 w-4"/>{associatedAgency.contactEmail}</p>}
-                  {associatedAgency.contactPhone && <p className="flex items-center"><Phone className="mr-1.5 h-4 w-4"/>{associatedAgency.contactPhone}</p>}
-                   {associatedAgency.preferredCurrency && <p className="flex items-center"><Globe className="mr-1.5 h-4 w-4"/>Preferred Currency: {associatedAgency.preferredCurrency}</p>}
+                  {associatedAgency.contactEmail && <p className="flex items-center pt-1"><Mail className="mr-2 h-4 w-4 text-secondary-foreground/70"/>{associatedAgency.contactEmail}</p>}
+                  {associatedAgency.contactPhone && <p className="flex items-center"><Phone className="mr-2 h-4 w-4 text-secondary-foreground/70"/>{associatedAgency.contactPhone}</p>}
+                   {associatedAgency.preferredCurrency && <p className="flex items-center"><Globe className="mr-2 h-4 w-4 text-secondary-foreground/70"/>Preferred Currency: {associatedAgency.preferredCurrency}</p>}
                 </CardContent>
               </Card>
             )}

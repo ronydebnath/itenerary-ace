@@ -132,7 +132,7 @@ export default function MyQuotationRequestsPage() {
             <Table>
               <TableHeader className="bg-muted/50">
                 <TableRow>
-                  <TableHead className="px-2 py-3 text-xs sm:text-sm">Req. ID</TableHead>
+                  <TableHead className="px-2 py-3 text-xs sm:text-sm w-[120px] sm:w-[150px]">Req. ID</TableHead>
                   <TableHead className="px-2 py-3 text-xs sm:text-sm">Date</TableHead>
                   <TableHead className="px-2 py-3 text-xs sm:text-sm">Destinations</TableHead>
                   <TableHead className="px-2 py-3 text-xs sm:text-sm">Pax</TableHead>
@@ -143,7 +143,7 @@ export default function MyQuotationRequestsPage() {
               <TableBody>
                 {filteredRequests.map((req) => (
                   <TableRow key={req.id} className="text-xs sm:text-sm">
-                    <TableCell className="font-mono py-2 px-2 text-xs">{req.id}</TableCell>
+                    <TableCell className="font-mono py-2 px-2 text-xs truncate max-w-[100px] sm:max-w-none">{req.id}</TableCell>
                     <TableCell className="py-2 px-2">{format(parseISO(req.requestDate), 'dd MMM yy')}</TableCell>
                     <TableCell className="py-2 px-2">
                       {getCountryNames(req.tripDetails.preferredCountryIds)}
@@ -184,4 +184,3 @@ export default function MyQuotationRequestsPage() {
     </main>
   );
 }
-

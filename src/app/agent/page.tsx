@@ -14,8 +14,9 @@
 import Link from 'next/link';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
-import { Briefcase, Route, Users, ListOrdered, LayoutDashboard, UserCog, FilePlus, ClipboardList } from 'lucide-react';
+import { Briefcase, Route, Users, ListOrdered, LayoutDashboard, UserCog, FilePlus, ClipboardList, Info } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Badge } from '@/components/ui/badge';
 
 interface AgentDashboardCardProps {
   title: string;
@@ -29,22 +30,32 @@ interface AgentDashboardCardProps {
 
 function AgentDashboardCard({ title, description, href, icon: Icon, buttonText = "Access", className, disabled = false }: AgentDashboardCardProps) {
   return (
-    <Card className={cn("shadow-lg hover:shadow-xl transition-shadow duration-300 flex flex-col bg-card", className, disabled && "opacity-60 cursor-not-allowed")}>
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 pt-4 px-4 sm:px-6">
+    <Card className={cn(
+      "shadow-lg hover:shadow-xl transition-shadow duration-300 flex flex-col bg-card",
+      className,
+      disabled && "bg-muted/50 hover:shadow-lg cursor-not-allowed opacity-70"
+    )}>
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 pt-4 px-4 sm:px-5">
         <CardTitle className="text-lg sm:text-xl font-semibold text-primary">{title}</CardTitle>
-        <div className="p-2 bg-primary/10 rounded-md">
-          <Icon className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
+        <div className={cn("p-2 rounded-md", disabled ? "bg-muted-foreground/10" : "bg-primary/10")}>
+          <Icon className={cn("h-5 w-5 sm:h-6 sm:w-6", disabled ? "text-muted-foreground/70" : "text-primary")} />
         </div>
       </CardHeader>
-      <CardContent className="flex-grow px-4 sm:px-6 pt-2 pb-4">
+      <CardContent className="flex-grow px-4 sm:px-5 pt-1 pb-3">
         <p className="text-xs sm:text-sm text-muted-foreground">{description}</p>
       </CardContent>
-      <CardFooter className="px-4 sm:px-6 pb-4">
-        <Link href={disabled ? "#" : href} passHref className="w-full">
-          <Button className="w-full bg-primary hover:bg-primary/90 text-primary-foreground text-sm sm:text-base py-2.5 sm:py-3" disabled={disabled}>
-            {buttonText}
+      <CardFooter className="px-4 sm:px-5 pb-4">
+        {disabled ? (
+          <Button className="w-full bg-muted hover:bg-muted text-muted-foreground text-sm sm:text-base py-2.5 sm:py-3" disabled>
+            <Info className="mr-2 h-4 w-4" /> Coming Soon
           </Button>
-        </Link>
+        ) : (
+          <Link href={href} passHref className="w-full">
+            <Button className="w-full bg-primary hover:bg-primary/90 text-primary-foreground text-sm sm:text-base py-2.5 sm:py-3">
+              {buttonText}
+            </Button>
+          </Link>
+        )}
       </CardFooter>
     </Card>
   );
@@ -96,18 +107,16 @@ export default function AgentDashboardPage() {
           />
           <AgentDashboardCard
             title="My Client Itineraries"
-            description="View, edit, and organize all itineraries you have created for your clients. (Coming Soon)"
+            description="View, edit, and organize all itineraries you have created for your clients."
             href="#"
             icon={ListOrdered}
-            buttonText="View My Itineraries"
             disabled
           />
            <AgentDashboardCard
             title="Client Management"
-            description="Manage your client profiles, contact information, and travel preferences. (Coming Soon)"
+            description="Manage your client profiles, contact information, and travel preferences."
             href="#"
             icon={Users}
-            buttonText="Manage Clients"
             disabled
           />
         </div>
