@@ -98,7 +98,7 @@ function BaseItemFormComponent<T extends ItineraryItem>({
     const globallySelectedCountries = tripSettings.selectedCountries || [];
     const globallySelectedProvincesFromSettings = tripSettings.selectedProvinces || [];
 
-    if (item.countryId) { // If item has a specific country, show its provinces (potentially filtered by global province settings)
+    if (item.countryId) {
       let provincesWithinItemCountry = getProvincesByCountry(item.countryId);
       if (globallySelectedProvincesFromSettings.length > 0 && globallySelectedCountries.includes(item.countryId)) {
         provincesWithinItemCountry = provincesWithinItemCountry.filter(p =>
@@ -107,8 +107,8 @@ function BaseItemFormComponent<T extends ItineraryItem>({
       }
       return provincesWithinItemCountry.sort((a,b) => a.name.localeCompare(b.name));
     }
-    // If item has no specific country, show provinces based on global selections
-    let provincesToDisplay = [];
+    
+    let provincesToDisplay: typeof allAvailableProvincesForHook = [];
     if (globallySelectedProvincesFromSettings.length > 0) {
       provincesToDisplay = allAvailableProvincesForHook.filter(p =>
         globallySelectedProvincesFromSettings.includes(p.name)
@@ -122,11 +122,10 @@ function BaseItemFormComponent<T extends ItineraryItem>({
       globallySelectedCountries.forEach(countryId => {
         provincesToDisplay.push(...getProvincesByCountry(countryId));
       });
-      // Deduplicate if multiple global countries share provinces (not typical but safe)
       provincesToDisplay = provincesToDisplay.filter((province, index, self) =>
         index === self.findIndex((p) => p.id === province.id)
       );
-    } else { // No global country or province filters, show all
+    } else { 
       provincesToDisplay = [...allAvailableProvincesForHook];
     }
     return provincesToDisplay.sort((a,b) => a.name.localeCompare(b.name));
@@ -139,89 +138,76 @@ function BaseItemFormComponent<T extends ItineraryItem>({
     getProvincesByCountry
   ]);
 
+  const prevContextRef = React.useRef<{
+    type: ItineraryItem['type'];
+    countryId?: string;
+    province?: string;
+  }>();
 
   React.useEffect(() => {
-    const updatedFields: Partial<T> = {};
-    let needsUpdate = false;
-
-    // Rule 1: If countryId is cleared, province must also be cleared.
-    if (!item.countryId && item.province) {
-        updatedFields.province = undefined;
-        needsUpdate = true;
-    }
-
-    // Rule 2: If province is set, but its countryId doesn't match item.countryId, clear province.
-    // (This is implicitly handled by the dropdowns: province dropdown is filtered by item.countryId)
-    // However, if item.countryId changes, existing item.province might become invalid.
-    if (item.countryId && item.province) {
-        const provinceCountry = allAvailableProvincesForHook.find(p => p.name === item.province)?.countryId;
-        if (provinceCountry && provinceCountry !== item.countryId) {
-            updatedFields.province = undefined;
-            needsUpdate = true;
+    const { type: currentType, countryId: currentCountryId, province: currentProvince } = item;
+  
+    if (prevContextRef.current !== undefined) { // Only run if prevContextRef has been initialized
+      const contextChanged = currentType !== prevContextRef.current.type ||
+                             currentCountryId !== prevContextRef.current.countryId ||
+                             currentProvince !== prevContextRef.current.province;
+  
+      if (contextChanged) {
+        const updatedFields: Partial<T> = {};
+        let needsReset = false;
+  
+        if (item.selectedServicePriceId !== undefined) {
+          updatedFields.selectedServicePriceId = undefined;
+          needsReset = true;
         }
-    }
-    
-    // Rule 3: When country, province, or type changes, reset service-specific selections.
-    // This is the core logic for this effect.
-    // We store previous values to detect actual change.
-    const prevCountryId = itemRef.current?.countryId;
-    const prevProvince = itemRef.current?.province;
-    const prevType = itemRef.current?.type;
-
-    if (item.countryId !== prevCountryId || item.province !== prevProvince || item.type !== prevType) {
-        updatedFields.selectedServicePriceId = undefined;
-        if (item.type === 'activity') (updatedFields as Partial<ActivityItem>).selectedPackageId = undefined;
-        if (item.type === 'transfer') (updatedFields as Partial<TransferItem>).selectedVehicleOptionId = undefined;
-        if (item.type === 'hotel') {
+        if (currentType === 'activity' && (item as ActivityItem).selectedPackageId !== undefined) {
+          (updatedFields as Partial<ActivityItem>).selectedPackageId = undefined;
+          needsReset = true;
+        }
+        if (currentType === 'transfer' && (item as TransferItem).selectedVehicleOptionId !== undefined) {
+          (updatedFields as Partial<TransferItem>).selectedVehicleOptionId = undefined;
+          needsReset = true;
+        }
+        if (currentType === 'hotel') {
+          if ((item as HotelItem).hotelDefinitionId !== undefined && (item as HotelItem).hotelDefinitionId !== '') {
             (updatedFields as Partial<HotelItem>).hotelDefinitionId = '';
+            needsReset = true;
+          }
+          if ((item as HotelItem).selectedRooms !== undefined && (item as HotelItem).selectedRooms.length > 0) {
             (updatedFields as Partial<HotelItem>).selectedRooms = [];
+            needsReset = true;
+          }
         }
-        needsUpdate = true;
+  
+        if (needsReset) {
+          onUpdate({ ...item, ...updatedFields });
+        }
+      }
     }
-
-    // Update ref for next comparison
-    itemRef.current = { countryId: item.countryId, province: item.province, type: item.type };
-
-
-    if (needsUpdate) {
-        let actualChangesMade = false;
-        for (const key in updatedFields) {
-            if (updatedFields[key as keyof T] !== item[key as keyof T]) {
-                actualChangesMade = true;
-                break;
-            }
-        }
-        if (actualChangesMade) {
-            onUpdate({ ...item, ...updatedFields });
-        }
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [item.countryId, item.province, item.type, onUpdate, allAvailableProvincesForHook]); // allAvailableProvincesForHook for province validation
-
-  // Ref to store previous item's key properties for comparison in useEffect
-  const itemRef = React.useRef<{ countryId?: string; province?: string; type?: ItineraryItem['type'] } | null>(null);
-  React.useEffect(() => {
-    itemRef.current = { countryId: item.countryId, province: item.province, type: item.type };
-  }, [item.countryId, item.province, item.type]);
+  
+    // Update the ref for the next render with current values
+    prevContextRef.current = { type: currentType, countryId: currentCountryId, province: currentProvince };
+  // Dependencies are the specific item properties that define its context for service selection, and the onUpdate callback.
+  // The full `item` is NOT a dependency here to avoid loops if other parts of `item` change.
+  }, [item.type, item.countryId, item.province, onUpdate]);
+  
 
 
   const handleItemCountryChange = React.useCallback((countryIdValue?: string) => {
     const selectedCountry = allAvailableCountriesHook.find(c => c.id === countryIdValue);
-    const updatedItemPartial: Partial<ItineraryItem> = {
+    onUpdate({
+      ...item,
       countryId: selectedCountry?.id,
       countryName: selectedCountry?.name,
-      province: undefined, 
-      // Resetting these dependent fields is now handled by the main useEffect
-    };
-    onUpdate({ ...item, ...updatedItemPartial as Partial<T> });
+      province: undefined, // Always clear province when country changes
+    } as T); 
   }, [allAvailableCountriesHook, item, onUpdate]);
 
   const handleItemProvinceChange = React.useCallback((provinceName?: string) => {
-    const updatedItemPartial: Partial<ItineraryItem> = {
+    onUpdate({
+      ...item,
       province: provinceName === "none" || provinceName === undefined ? undefined : provinceName,
-      // Resetting these dependent fields is now handled by the main useEffect
-    };
-    onUpdate({ ...item, ...updatedItemPartial as Partial<T> });
+    } as T); 
   }, [item, onUpdate]);
 
 
@@ -414,3 +400,4 @@ function BaseItemFormComponent<T extends ItineraryItem>({
 }
 
 export const BaseItemForm = React.memo(BaseItemFormComponent) as typeof BaseItemFormComponent;
+
