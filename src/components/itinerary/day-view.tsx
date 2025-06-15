@@ -152,7 +152,7 @@ function DayViewComponent({
 
         <div>
           <h3 className="text-md font-semibold mb-2 text-center text-primary uppercase tracking-wider">Add Service to Day {dayNumber}</h3>
-          <div className="grid grid-cols-3 md:grid-cols-5 gap-2">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
             {SERVICE_TYPES_CONFIG.map(serviceConfig => {
               const IconComponent = serviceConfig.icon;
               return (
@@ -163,7 +163,7 @@ function DayViewComponent({
                   onClick={() => onAddItem(dayNumber, serviceConfig.type)}
                 >
                   <IconComponent className="h-4 w-4 mb-0.5 text-muted-foreground group-hover:text-primary transition-colors sm:h-5 sm:w-5 sm:mb-1" />
-                  <span className="font-medium text-center">{serviceConfig.label}</span>
+                  <span className="font-medium text-center whitespace-normal">{serviceConfig.label}</span>
                 </Button>
               );
             })}
@@ -174,4 +174,5 @@ function DayViewComponent({
   );
 }
 export const DayView = React.memo(DayViewComponent);
+    
 
