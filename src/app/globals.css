@@ -54,57 +54,57 @@
     --app-background: 185 60% 93%; /* Light Cyan #E0F7FA */
 
     /* Quotation Status Specific Colors */
-    --status-new-request-bg: 210 100% 90%; /* Light Blue */
-    --status-new-request-text: 210 100% 30%; /* Dark Blue */
-    --status-new-request-border: 210 100% 70%; /* Medium Blue */
+    --status-new-request-bg: 210 100% 90%; 
+    --status-new-request-text: 210 100% 30%; 
+    --status-new-request-border: 210 100% 70%; 
 
-    --status-waiting-feedback-bg: 50 100% 90%; /* Light Yellow */
-    --status-waiting-feedback-text: 50 100% 30%; /* Dark Yellow */
-    --status-waiting-feedback-border: 50 100% 70%; /* Medium Yellow */
+    --status-revision-progress-bg: 240 60% 90%; 
+    --status-revision-progress-text: 240 60% 30%; 
+    --status-revision-progress-border: 240 60% 70%; 
 
-    --status-revision-requested-bg: 30 100% 90%; /* Light Orange */
-    --status-revision-requested-text: 30 100% 30%; /* Dark Orange */
-    --status-revision-requested-border: 30 100% 70%; /* Medium Orange */
+    --status-waiting-feedback-bg: 50 100% 90%; 
+    --status-waiting-feedback-text: 50 100% 30%; 
+    --status-waiting-feedback-border: 50 100% 70%; 
 
-    --status-revision-progress-bg: 240 60% 90%; /* Light Indigo */
-    --status-revision-progress-text: 240 60% 30%; /* Dark Indigo */
-    --status-revision-progress-border: 240 60% 70%; /* Medium Indigo */
+    --status-revision-requested-bg: 30 100% 90%; 
+    --status-revision-requested-text: 30 100% 30%; 
+    --status-revision-requested-border: 30 100% 70%; 
 
-    --status-requoted-bg: 50 100% 90%; /* Light Yellow (same as waiting) */
-    --status-requoted-text: 50 100% 30%; /* Dark Yellow */
-    --status-requoted-border: 50 100% 70%; /* Medium Yellow */
+    --status-requoted-bg: 50 100% 90%; 
+    --status-requoted-text: 50 100% 30%;
+    --status-requoted-border: 50 100% 70%; 
     
-    --status-awaiting-approval-bg: 190 100% 90%; /* Light Sky Blue */
-    --status-awaiting-approval-text: 190 100% 30%; /* Dark Sky Blue */
-    --status-awaiting-approval-border: 190 100% 70%; /* Medium Sky Blue */
+    --status-awaiting-approval-bg: 190 100% 90%; 
+    --status-awaiting-approval-text: 190 100% 30%; 
+    --status-awaiting-approval-border: 190 100% 70%; 
 
-    --status-confirmed-bg: 120 60% 90%; /* Light Green */
-    --status-confirmed-text: 120 60% 25%; /* Dark Green */
-    --status-confirmed-border: 120 60% 70%; /* Medium Green */
+    --status-confirmed-bg: 120 60% 90%; 
+    --status-confirmed-text: 120 60% 25%; 
+    --status-confirmed-border: 120 60% 70%; 
 
-    --status-deposit-pending-bg: 40 100% 90%; /* Light Gold/Amber */
-    --status-deposit-pending-text: 40 100% 30%; /* Dark Gold/Amber */
-    --status-deposit-pending-border: 40 100% 70%; /* Medium Gold/Amber */
+    --status-deposit-pending-bg: 40 100% 90%; 
+    --status-deposit-pending-text: 40 100% 30%; 
+    --status-deposit-pending-border: 40 100% 70%; 
 
-    --status-booked-bg: 145 60% 90%; /* Light Teal */
-    --status-booked-text: 145 60% 25%; /* Dark Teal */
-    --status-booked-border: 145 60% 70%; /* Medium Teal */
+    --status-booked-bg: 145 60% 90%; 
+    --status-booked-text: 145 60% 25%; 
+    --status-booked-border: 145 60% 70%; 
 
-    --status-documents-sent-bg: 260 60% 90%; /* Light Purple */
-    --status-documents-sent-text: 260 60% 30%; /* Dark Purple */
-    --status-documents-sent-border: 260 60% 70%; /* Medium Purple */
+    --status-documents-sent-bg: 260 60% 90%; 
+    --status-documents-sent-text: 260 60% 30%; 
+    --status-documents-sent-border: 260 60% 70%; 
 
-    --status-trip-progress-bg: 220 80% 90%; /* Light Steel Blue */
-    --status-trip-progress-text: 220 80% 30%; /* Dark Steel Blue */
-    --status-trip-progress-border: 220 80% 70%; /* Medium Steel Blue */
+    --status-trip-progress-bg: 220 80% 90%; 
+    --status-trip-progress-text: 220 80% 30%; 
+    --status-trip-progress-border: 220 80% 70%; 
 
-    --status-completed-bg: 220 10% 90%; /* Light Gray */
-    --status-completed-text: 220 10% 30%; /* Dark Gray */
-    --status-completed-border: 220 10% 70%; /* Medium Gray */
+    --status-completed-bg: 220 10% 90%; 
+    --status-completed-text: 220 10% 30%; 
+    --status-completed-border: 220 10% 70%; 
 
-    --status-cancelled-bg: 0 70% 90%; /* Light Red */
-    --status-cancelled-text: 0 70% 30%; /* Dark Red */
-    --status-cancelled-border: 0 70% 70%; /* Medium Red */
+    --status-cancelled-bg: 0 70% 90%; 
+    --status-cancelled-text: 0 70% 30%; 
+    --status-cancelled-border: 0 70% 70%; 
   }
 
   .dark {
@@ -154,6 +154,10 @@
     --status-new-request-text: 210 100% 75%; 
     --status-new-request-border: 210 100% 40%;
 
+    --status-revision-progress-bg: 240 60% 15%; 
+    --status-revision-progress-text: 240 60% 75%; 
+    --status-revision-progress-border: 240 60% 40%; 
+
     --status-waiting-feedback-bg: 50 100% 15%; 
     --status-waiting-feedback-text: 50 100% 75%; 
     --status-waiting-feedback-border: 50 100% 40%;
@@ -162,12 +166,8 @@
     --status-revision-requested-text: 30 100% 75%; 
     --status-revision-requested-border: 30 100% 40%;
 
-    --status-revision-progress-bg: 240 60% 15%; 
-    --status-revision-progress-text: 240 60% 75%; 
-    --status-revision-progress-border: 240 60% 40%; 
-
     --status-requoted-bg: 50 100% 15%; 
-    --status-requoted-text: 50 100% 75%; 
+    --status-requoted-text: 50 100% 75%;
     --status-requoted-border: 50 100% 40%;
     
     --status-awaiting-approval-bg: 190 100% 15%; 

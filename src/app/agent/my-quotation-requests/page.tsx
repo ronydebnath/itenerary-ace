@@ -10,14 +10,18 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
 import type { QuotationRequest, QuotationRequestStatus } from '@/types/quotation';
-import { LayoutDashboard, ClipboardList, Search, FileText, Eye } from 'lucide-react';
+import { LayoutDashboard, ClipboardList, Search, FileText, Eye, Edit2, CheckCircle2, MessageSquare } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
 import { useCountries } from '@/hooks/useCountries';
 import { cn } from '@/lib/utils';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { Tooltip, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 const AGENT_QUOTATION_REQUESTS_KEY = 'itineraryAce_agentQuotationRequests';
 const PLACEHOLDER_AGENT_ID = "agent_default_user"; // Same as in quotation-request-form.tsx
@@ -29,6 +33,11 @@ export default function MyQuotationRequestsPage() {
   const router = useRouter();
   const { toast } = useToast();
   const { countries, isLoading: isLoadingCountries } = useCountries();
+
+  const [isRevisionModalOpen, setIsRevisionModalOpen] = React.useState(false);
+  const [revisionNotes, setRevisionNotes] = React.useState("");
+  const [currentRequestForRevision, setCurrentRequestForRevision] = React.useState<QuotationRequest | null>(null);
+
 
   const loadMyRequests = React.useCallback(() => {
     setIsLoading(true);
@@ -54,6 +63,65 @@ export default function MyQuotationRequestsPage() {
     loadMyRequests();
   }, [loadMyRequests]);
 
+  const updateRequestInLocalStorage = (updatedRequest: QuotationRequest) => {
+    const updatedRequestsList = myRequests.map(req =>
+      req.id === updatedRequest.id ? updatedRequest : req
+    );
+    // Update the full list in localStorage, not just the agent's
+    const allStoredRequestsString = localStorage.getItem(AGENT_QUOTATION_REQUESTS_KEY);
+    const allStoredRequests: QuotationRequest[] = allStoredRequestsString ? JSON.parse(allStoredRequestsString) : [];
+    const indexInAll = allStoredRequests.findIndex(r => r.id === updatedRequest.id);
+    if (indexInAll > -1) {
+      allStoredRequests[indexInAll] = updatedRequest;
+      localStorage.setItem(AGENT_QUOTATION_REQUESTS_KEY, JSON.stringify(allStoredRequests));
+    }
+    setMyRequests(updatedRequestsList); // Update local state for immediate UI refresh
+  };
+
+  const handleRequestRevision = (request: QuotationRequest) => {
+    setCurrentRequestForRevision(request);
+    setRevisionNotes(request.agentRevisionNotes || "");
+    setIsRevisionModalOpen(true);
+  };
+
+  const submitRevisionRequest = () => {
+    if (currentRequestForRevision) {
+      const updatedRequest = {
+        ...currentRequestForRevision,
+        status: "Quoted: Revision Requested" as QuotationRequestStatus,
+        agentRevisionNotes: revisionNotes,
+        version: (currentRequestForRevision.version || 1) + 0.1, // Increment version for revision
+        updatedAt: new Date().toISOString(),
+      };
+      updateRequestInLocalStorage(updatedRequest);
+      toast({ title: "Revision Requested", description: `Your notes for Quotation ID ${currentRequestForRevision.id.slice(-6)} have been sent to the admin.` });
+      setIsRevisionModalOpen(false);
+      setRevisionNotes("");
+      setCurrentRequestForRevision(null);
+    }
+  };
+
+  const handleMarkAsReadyForApproval = (request: QuotationRequest) => {
+     const updatedRequest = {
+        ...request,
+        status: "Quoted: Awaiting TA Approval" as QuotationRequestStatus,
+        updatedAt: new Date().toISOString(),
+      };
+      updateRequestInLocalStorage(updatedRequest);
+      toast({ title: "Marked for Approval", description: `Quotation ID ${request.id.slice(-6)} is now awaiting final admin approval.` });
+  };
+
+  const handleApproveQuotation = (request: QuotationRequest) => {
+     const updatedRequest = {
+        ...request,
+        status: "Confirmed" as QuotationRequestStatus,
+        updatedAt: new Date().toISOString(),
+      };
+      updateRequestInLocalStorage(updatedRequest);
+      toast({ title: "Quotation Approved!", description: `Quotation ID ${request.id.slice(-6)} has been confirmed.` });
+  };
+
+
   const getCountryNames = (countryIds: string[] = []) => {
     if (isLoadingCountries) return "Loading countries...";
     return countryIds.map(id => countries.find(c => c.id === id)?.name || id).join(', ') || 'Any';
@@ -70,12 +138,11 @@ export default function MyQuotationRequestsPage() {
   });
 
   const getStatusBadgeClassName = (status: QuotationRequest['status']): string => {
-    // Use HSL variables from globals.css for status colors
     switch (status) {
       case 'New Request Submitted': return 'bg-[hsl(var(--status-new-request-bg))] text-[hsl(var(--status-new-request-text))] border-[hsl(var(--status-new-request-border))] dark:bg-[hsl(var(--status-new-request-bg))] dark:text-[hsl(var(--status-new-request-text))] dark:border-[hsl(var(--status-new-request-border))]';
+      case 'Quoted: Revision In Progress': return 'bg-[hsl(var(--status-revision-progress-bg))] text-[hsl(var(--status-revision-progress-text))] border-[hsl(var(--status-revision-progress-border))] dark:bg-[hsl(var(--status-revision-progress-bg))] dark:text-[hsl(var(--status-revision-progress-text))] dark:border-[hsl(var(--status-revision-progress-border))]';
       case 'Quoted: Waiting for TA Feedback': return 'bg-[hsl(var(--status-waiting-feedback-bg))] text-[hsl(var(--status-waiting-feedback-text))] border-[hsl(var(--status-waiting-feedback-border))] dark:bg-[hsl(var(--status-waiting-feedback-bg))] dark:text-[hsl(var(--status-waiting-feedback-text))] dark:border-[hsl(var(--status-waiting-feedback-border))]';
       case 'Quoted: Revision Requested': return 'bg-[hsl(var(--status-revision-requested-bg))] text-[hsl(var(--status-revision-requested-text))] border-[hsl(var(--status-revision-requested-border))] dark:bg-[hsl(var(--status-revision-requested-bg))] dark:text-[hsl(var(--status-revision-requested-text))] dark:border-[hsl(var(--status-revision-requested-border))]';
-      case 'Quoted: Revision In Progress': return 'bg-[hsl(var(--status-revision-progress-bg))] text-[hsl(var(--status-revision-progress-text))] border-[hsl(var(--status-revision-progress-border))] dark:bg-[hsl(var(--status-revision-progress-bg))] dark:text-[hsl(var(--status-revision-progress-text))] dark:border-[hsl(var(--status-revision-progress-border))]';
       case 'Quoted: Re-quoted': return 'bg-[hsl(var(--status-requoted-bg))] text-[hsl(var(--status-requoted-text))] border-[hsl(var(--status-requoted-border))] dark:bg-[hsl(var(--status-requoted-bg))] dark:text-[hsl(var(--status-requoted-text))] dark:border-[hsl(var(--status-requoted-border))]';
       case 'Quoted: Awaiting TA Approval': return 'bg-[hsl(var(--status-awaiting-approval-bg))] text-[hsl(var(--status-awaiting-approval-text))] border-[hsl(var(--status-awaiting-approval-border))] dark:bg-[hsl(var(--status-awaiting-approval-bg))] dark:text-[hsl(var(--status-awaiting-approval-text))] dark:border-[hsl(var(--status-awaiting-approval-border))]';
       case 'Confirmed': return 'bg-[hsl(var(--status-confirmed-bg))] text-[hsl(var(--status-confirmed-text))] border-[hsl(var(--status-confirmed-border))] dark:bg-[hsl(var(--status-confirmed-bg))] dark:text-[hsl(var(--status-confirmed-text))] dark:border-[hsl(var(--status-confirmed-border))]';
@@ -85,12 +152,6 @@ export default function MyQuotationRequestsPage() {
       case 'Trip In Progress': return 'bg-[hsl(var(--status-trip-progress-bg))] text-[hsl(var(--status-trip-progress-text))] border-[hsl(var(--status-trip-progress-border))] dark:bg-[hsl(var(--status-trip-progress-bg))] dark:text-[hsl(var(--status-trip-progress-text))] dark:border-[hsl(var(--status-trip-progress-border))]';
       case 'Completed': return 'bg-[hsl(var(--status-completed-bg))] text-[hsl(var(--status-completed-text))] border-[hsl(var(--status-completed-border))] dark:bg-[hsl(var(--status-completed-bg))] dark:text-[hsl(var(--status-completed-text))] dark:border-[hsl(var(--status-completed-border))]';
       case 'Cancelled': return 'bg-[hsl(var(--status-cancelled-bg))] text-[hsl(var(--status-cancelled-text))] border-[hsl(var(--status-cancelled-border))] dark:bg-[hsl(var(--status-cancelled-bg))] dark:text-[hsl(var(--status-cancelled-text))] dark:border-[hsl(var(--status-cancelled-border))]';
-      // Fallback for deprecated statuses from previous version
-      case 'Pending': return 'bg-yellow-100 text-yellow-800 border-yellow-300 dark:bg-yellow-900/30 dark:text-yellow-300 dark:border-yellow-700'; // Old Pending
-      case 'Quoted': return 'bg-orange-100 text-orange-800 border-orange-300 dark:bg-orange-900/30 dark:text-orange-300 dark:border-orange-700'; // Old Quoted
-      case 'ProposalReady': return 'bg-sky-100 text-sky-800 border-sky-300 dark:bg-sky-900/30 dark:text-sky-300 dark:border-sky-700'; // Old ProposalReady
-      case 'ConfirmedByAgent': return 'bg-green-100 text-green-800 border-green-300 dark:bg-green-900/30 dark:text-green-300 dark:border-green-700'; // Old ConfirmedByAgent
-      case 'BookingInProgress': return 'bg-purple-100 text-purple-800 border-purple-300 dark:bg-purple-900/30 dark:text-purple-300 dark:border-purple-700'; // Old BookingInProgress
       default: return 'bg-gray-100 text-gray-800 border-gray-300 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600';
     }
   };
@@ -105,12 +166,8 @@ export default function MyQuotationRequestsPage() {
       "Quoted: Waiting for TA Feedback",
       "Quoted: Re-quoted",
       "Quoted: Awaiting TA Approval",
-      "Confirmed",
-      "Deposit Pending",
-      "Booked",
-      "Documents Sent",
-      "Trip In Progress",
-      "Completed"
+      "Confirmed", // Added to allow viewing approved proposals
+      "Deposit Pending", "Booked", "Documents Sent", "Trip In Progress", "Completed" // Keep existing viewable statuses
     ].includes(status);
   };
 
@@ -161,18 +218,18 @@ export default function MyQuotationRequestsPage() {
             <Table>
               <TableHeader className="bg-muted/50">
                 <TableRow>
-                  <TableHead className="px-2 py-3 text-xs sm:text-sm w-[120px] sm:w-[150px]">Req. ID</TableHead>
+                  <TableHead className="px-2 py-3 text-xs sm:text-sm w-[100px] sm:w-[120px]">Req. ID</TableHead>
                   <TableHead className="px-2 py-3 text-xs sm:text-sm">Date</TableHead>
                   <TableHead className="px-2 py-3 text-xs sm:text-sm">Destinations</TableHead>
                   <TableHead className="px-2 py-3 text-xs sm:text-sm">Pax</TableHead>
-                  <TableHead className="px-2 py-3 text-xs sm:text-sm text-center">Status</TableHead>
-                  <TableHead className="text-center w-[120px] px-2 py-3 text-xs sm:text-sm">Proposal</TableHead>
+                  <TableHead className="px-2 py-3 text-xs sm:text-sm text-center">Status (Ver. {filteredRequests[0]?.version || 1})</TableHead>
+                  <TableHead className="text-center w-[220px] sm:w-[280px] px-2 py-3 text-xs sm:text-sm">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredRequests.map((req) => (
                   <TableRow key={req.id} className="text-xs sm:text-sm">
-                    <TableCell className="font-mono py-2 px-2 text-xs truncate max-w-[100px] sm:max-w-none">{req.id}</TableCell>
+                    <TableCell className="font-mono py-2 px-2 text-xs truncate max-w-[80px] sm:max-w-none">{req.id.slice(-11)}</TableCell>
                     <TableCell className="py-2 px-2">{format(parseISO(req.requestDate), 'dd MMM yy')}</TableCell>
                     <TableCell className="py-2 px-2">
                       {getCountryNames(req.tripDetails.preferredCountryIds)}
@@ -182,24 +239,58 @@ export default function MyQuotationRequestsPage() {
                     </TableCell>
                     <TableCell className="py-2 px-2">{req.clientInfo.adults}A {req.clientInfo.children > 0 && ` ${req.clientInfo.children}C`}</TableCell>
                     <TableCell className="py-2 px-2 text-center">
-                        <Badge variant="outline" className={cn("text-xs px-2.5 py-1 whitespace-nowrap", getStatusBadgeClassName(req.status))}>
-                            {req.status}
+                        <Badge variant="outline" className={cn("text-xs px-2 py-0.5 whitespace-nowrap", getStatusBadgeClassName(req.status))}>
+                            {req.status} {req.version && req.version > 0 ? `(v${req.version.toFixed(1)})` : ''}
                         </Badge>
+                         {req.adminRevisionNotes && ["Quoted: Re-quoted", "Quoted: Waiting for TA Feedback"].includes(req.status) && (
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-5 w-5 ml-1 text-blue-500">
+                                  <MessageSquare className="h-3 w-3" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent className="max-w-xs text-xs">
+                                <p className="font-semibold">Admin Notes:</p>
+                                <p className="whitespace-pre-wrap">{req.adminRevisionNotes}</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        )}
                     </TableCell>
-                    <TableCell className="text-center py-2 px-2">
-                      {agentCanViewProposal(req.status) && req.linkedItineraryId ? (
+                    <TableCell className="text-center py-2 px-2 space-x-1">
+                       {agentCanViewProposal(req.status) && req.linkedItineraryId ? (
                         <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => router.push(`/itinerary/view/${req.linkedItineraryId}`)} // Default view for agent is without price details token
-                          className="text-xs h-7"
-                          title="View Proposal"
+                          variant="outline" size="xs"
+                          onClick={() => router.push(`/itinerary/view/${req.linkedItineraryId}`)}
+                          className="text-xs h-7 px-2" title="View Proposal"
                         >
                           <Eye className="h-3 w-3 mr-1"/> View Proposal
                         </Button>
                       ) : (
-                         <Badge variant="secondary" className="text-xs text-muted-foreground">Awaiting Admin</Badge>
+                         <Badge variant="secondary" className="text-xs text-muted-foreground px-2 py-1">Awaiting Admin</Badge>
                       )}
+
+                      {(req.status === "Quoted: Waiting for TA Feedback" || req.status === "Quoted: Re-quoted") && (
+                        <>
+                          <Button variant="outline" size="xs" onClick={() => handleRequestRevision(req)} className="text-xs h-7 px-2 border-orange-500 text-orange-600 hover:bg-orange-50">
+                            <Edit2 className="h-3 w-3 mr-1" /> Request Revision
+                          </Button>
+                          <Button variant="outline" size="xs" onClick={() => handleMarkAsReadyForApproval(req)} className="text-xs h-7 px-2 border-sky-500 text-sky-600 hover:bg-sky-50">
+                            <CheckCircle2 className="h-3 w-3 mr-1" /> Ready for Approval
+                          </Button>
+                        </>
+                      )}
+                       {req.status === "Quoted: Awaiting TA Approval" && (
+                         <>
+                           <Button variant="default" size="xs" onClick={() => handleApproveQuotation(req)} className="text-xs h-7 px-2 bg-green-600 hover:bg-green-700">
+                             <CheckCircle2 className="h-3 w-3 mr-1" /> Approve
+                           </Button>
+                            <Button variant="outline" size="xs" onClick={() => handleRequestRevision(req)} className="text-xs h-7 px-2 border-orange-500 text-orange-600 hover:bg-orange-50">
+                                <Edit2 className="h-3 w-3 mr-1" /> Further Revision
+                            </Button>
+                         </>
+                       )}
                     </TableCell>
                   </TableRow>
                 ))}
@@ -208,6 +299,28 @@ export default function MyQuotationRequestsPage() {
           </div>
         )}
       </div>
+      <Dialog open={isRevisionModalOpen} onOpenChange={setIsRevisionModalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Request Revision for Quotation ID: {currentRequestForRevision?.id.slice(-6)}</DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            <Label htmlFor="revision-notes">Your Notes for Admin:</Label>
+            <Textarea
+              id="revision-notes"
+              value={revisionNotes}
+              onChange={(e) => setRevisionNotes(e.target.value)}
+              placeholder="Please specify the changes you'd like, e.g., 'Change hotel in Bangkok to 5-star', 'Add a day trip to Ayutthaya', etc."
+              rows={5}
+              className="mt-1"
+            />
+          </div>
+          <DialogFooter>
+            <DialogClose asChild><Button variant="outline">Cancel</Button></DialogClose>
+            <Button onClick={submitRevisionRequest} disabled={!revisionNotes.trim()}>Send Revision Request</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </main>
   );
 }

@@ -19,19 +19,19 @@ export const BUDGET_RANGES = ["Economy/Budget", "Mid-Range/Comfort", "Luxury/Pre
 export const HOTEL_STAR_RATINGS = ["Any", "2 Stars", "3 Stars", "4 Stars", "5 Stars", "Boutique/Unrated"] as const;
 
 export const QUOTATION_STATUSES = [
-  "New Request Submitted",
-  "Quoted: Waiting for TA Feedback",
-  "Quoted: Revision Requested",
-  "Quoted: Revision In Progress",
-  "Quoted: Re-quoted",
-  "Quoted: Awaiting TA Approval",
-  "Confirmed",
-  "Deposit Pending",
-  "Booked",
-  "Documents Sent",
-  "Trip In Progress",
-  "Completed",
-  "Cancelled"
+  "New Request Submitted",         // TA submits new request
+  "Quoted: Revision In Progress",  // Admin is actively working on the first quote or a revision
+  "Quoted: Waiting for TA Feedback", // Admin has sent a quote/proposal (v1 or later), waiting for TA
+  "Quoted: Revision Requested",    // TA has reviewed and requested changes
+  "Quoted: Re-quoted",             // Admin has sent an updated quote after TA revision request
+  "Quoted: Awaiting TA Approval",  // TA has reviewed revisions and is ready to make final approval
+  "Confirmed",                     // TA has approved the quotation
+  "Deposit Pending",               // Admin has sent Pro Forma, awaiting deposit
+  "Booked",                        // Deposit received, services confirmed by Admin
+  "Documents Sent",                // Vouchers, tickets, etc., sent to TA
+  "Trip In Progress",              // Travel dates have started
+  "Completed",                     // Trip finished
+  "Cancelled"                      // Request/Booking cancelled
 ] as const;
 
 export const MEAL_PLAN_OPTIONS = ["No Meal", "Breakfast Only", "Breakfast and Lunch/Dinner", "Breakfast, Lunch and Dinner"] as const;
@@ -123,6 +123,9 @@ export const QuotationRequestSchema = z.object({
   status: z.enum(QUOTATION_STATUSES).default("New Request Submitted"),
   linkedItineraryId: z.string().optional().describe("ID of the itinerary created for this request"),
   updatedAt: z.string().optional().default(() => new Date().toISOString()),
+  agentRevisionNotes: z.string().optional().describe("Notes from TA when requesting a revision."),
+  adminRevisionNotes: z.string().optional().describe("Notes from Admin when sending a re-quote."),
+  version: z.number().int().min(0).optional().describe("Tracks quote version, starts at 1 upon first send."),
 });
 
 export type QuotationRequestStatus = z.infer<typeof QuotationRequestSchema.shape.status>;

@@ -18,6 +18,7 @@ import { CURRENCIES } from '@/types/itinerary';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { DatePicker } from '@/components/ui/date-picker';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -203,6 +204,9 @@ function PlannerHeaderComponent({
                 {tripData.quotationRequestId && (
                     <span className="ml-2">Quote Ref: <Badge variant="secondary" className="text-xs font-mono">{tripData.quotationRequestId.split('-').pop()}</Badge></span>
                 )}
+                {tripData.version !== undefined && tripData.version > 0 && (
+                    <span className="ml-2">Ver: <Badge variant="outline" className="text-xs">{tripData.version.toFixed(1)}</Badge></span>
+                )}
               </p>
             )}
           </div>
@@ -218,7 +222,7 @@ function PlannerHeaderComponent({
           </div>
         </div>
 
-        <div className="border-t pt-4 mt-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-t pt-4 mt-4">
           <div className="flex items-center space-x-2">
             <Checkbox
               id="isTemplate"
@@ -237,7 +241,7 @@ function PlannerHeaderComponent({
             </Label>
           </div>
           {tripData.settings.isTemplate && (
-            <div className="mt-3 ml-6">
+            <div className="mt-3 sm:mt-0">
               <Label htmlFor="templateCategory" className="text-sm font-medium text-muted-foreground">Template Category (Optional)</Label>
               <Input
                 id="templateCategory"
@@ -249,6 +253,20 @@ function PlannerHeaderComponent({
             </div>
           )}
         </div>
+         {tripData.quotationRequestId && (
+          <div className="border-t pt-4 mt-4">
+            <Label htmlFor="adminRevisionNotes" className="text-sm font-medium text-muted-foreground">Admin Notes for this Quotation Version (Optional)</Label>
+            <Textarea
+                id="adminRevisionNotes"
+                value={tripData.adminRevisionNotes || ''}
+                onChange={(e) => onUpdateTripData(currentData => ({ ...currentData, adminRevisionNotes: e.target.value }))}
+                placeholder="Notes for the TA regarding this version of the quote, e.g., 'Changed hotel in Phuket as requested', 'Added optional evening cruise'."
+                rows={2}
+                className="mt-1 text-sm"
+            />
+          </div>
+        )}
+
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-end border-t pt-4 mt-4">
           <div>
