@@ -1,3 +1,4 @@
+
 /**
  * @fileoverview This page allows administrators to view and manage submitted quotation requests.
  * It lists all requests from localStorage, showing key details and current status.
@@ -89,12 +90,11 @@ export default function ManageQuotationRequestsPage() {
   };
 
   const getStatusBadgeClassName = (status: QuotationRequest['status']): string => {
-    // Use HSL variables from globals.css for status colors
     switch (status) {
       case 'New Request Submitted': return 'bg-[hsl(var(--status-new-request-bg))] text-[hsl(var(--status-new-request-text))] border-[hsl(var(--status-new-request-border))] dark:bg-[hsl(var(--status-new-request-bg))] dark:text-[hsl(var(--status-new-request-text))] dark:border-[hsl(var(--status-new-request-border))]';
+      case 'Quoted: Revision In Progress': return 'bg-[hsl(var(--status-revision-progress-bg))] text-[hsl(var(--status-revision-progress-text))] border-[hsl(var(--status-revision-progress-border))] dark:bg-[hsl(var(--status-revision-progress-bg))] dark:text-[hsl(var(--status-revision-progress-text))] dark:border-[hsl(var(--status-revision-progress-border))]';
       case 'Quoted: Waiting for TA Feedback': return 'bg-[hsl(var(--status-waiting-feedback-bg))] text-[hsl(var(--status-waiting-feedback-text))] border-[hsl(var(--status-waiting-feedback-border))] dark:bg-[hsl(var(--status-waiting-feedback-bg))] dark:text-[hsl(var(--status-waiting-feedback-text))] dark:border-[hsl(var(--status-waiting-feedback-border))]';
       case 'Quoted: Revision Requested': return 'bg-[hsl(var(--status-revision-requested-bg))] text-[hsl(var(--status-revision-requested-text))] border-[hsl(var(--status-revision-requested-border))] dark:bg-[hsl(var(--status-revision-requested-bg))] dark:text-[hsl(var(--status-revision-requested-text))] dark:border-[hsl(var(--status-revision-requested-border))]';
-      case 'Quoted: Revision In Progress': return 'bg-[hsl(var(--status-revision-progress-bg))] text-[hsl(var(--status-revision-progress-text))] border-[hsl(var(--status-revision-progress-border))] dark:bg-[hsl(var(--status-revision-progress-bg))] dark:text-[hsl(var(--status-revision-progress-text))] dark:border-[hsl(var(--status-revision-progress-border))]';
       case 'Quoted: Re-quoted': return 'bg-[hsl(var(--status-requoted-bg))] text-[hsl(var(--status-requoted-text))] border-[hsl(var(--status-requoted-border))] dark:bg-[hsl(var(--status-requoted-bg))] dark:text-[hsl(var(--status-requoted-text))] dark:border-[hsl(var(--status-requoted-border))]';
       case 'Quoted: Awaiting TA Approval': return 'bg-[hsl(var(--status-awaiting-approval-bg))] text-[hsl(var(--status-awaiting-approval-text))] border-[hsl(var(--status-awaiting-approval-border))] dark:bg-[hsl(var(--status-awaiting-approval-bg))] dark:text-[hsl(var(--status-awaiting-approval-text))] dark:border-[hsl(var(--status-awaiting-approval-border))]';
       case 'Confirmed': return 'bg-[hsl(var(--status-confirmed-bg))] text-[hsl(var(--status-confirmed-text))] border-[hsl(var(--status-confirmed-border))] dark:bg-[hsl(var(--status-confirmed-bg))] dark:text-[hsl(var(--status-confirmed-text))] dark:border-[hsl(var(--status-confirmed-border))]';
@@ -154,7 +154,7 @@ export default function ManageQuotationRequestsPage() {
                 className="pl-8 sm:pl-10 w-full text-sm sm:text-base h-9 sm:h-10"
             />
             </div>
-            <div className="relative sm:w-64"> {/* Increased width for longer status names */}
+            <div className="relative sm:w-64"> 
                 <Filter className="absolute left-2 sm:left-3 top-1/2 -translate-y-1/2 h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground" />
                 <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as QuotationRequestStatus | 'all')}>
                     <SelectTrigger className="pl-8 sm:pl-10 w-full text-sm sm:text-base h-9 sm:h-10">
@@ -207,7 +207,7 @@ export default function ManageQuotationRequestsPage() {
                     <TableCell className="py-2 px-2">{req.clientInfo.adults}A {req.clientInfo.children > 0 && ` ${req.clientInfo.children}C`}</TableCell>
                     <TableCell className="py-2 px-2">
                        <Select value={req.status} onValueChange={(newStatus) => handleUpdateStatus(req.id, newStatus as QuotationRequestStatus)}>
-                          <SelectTrigger className={cn("h-8 text-xs w-[180px] sm:w-[200px]", getStatusBadgeClassName(req.status))}> {/* Increased width */}
+                          <SelectTrigger className={cn("h-8 text-xs w-[180px] sm:w-[200px]", getStatusBadgeClassName(req.status))}> 
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
@@ -225,10 +225,10 @@ export default function ManageQuotationRequestsPage() {
                         size="sm"
                         onClick={() => router.push(`/planner?quotationRequestId=${req.id}${req.linkedItineraryId ? `&itineraryId=${req.linkedItineraryId}` : ''}`)}
                         className="mr-1 text-xs h-7"
-                        title={req.linkedItineraryId ? "View/Edit Proposal" : "Create Proposal"}
+                        title="View/Edit Proposal"
                       >
                         {req.linkedItineraryId ? <Edit className="h-3 w-3 mr-1"/> : <FilePlus className="h-3 w-3 mr-1"/>}
-                        {req.linkedItineraryId ? "Proposal" : "Create"}
+                        Proposal
                       </Button>
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
@@ -265,3 +265,4 @@ export default function ManageQuotationRequestsPage() {
     </main>
   );
 }
+
