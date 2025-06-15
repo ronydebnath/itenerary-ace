@@ -9,7 +9,7 @@
  * কার্যকলাপ, হোটেল) জন্য একটি ভিত্তি হিসেবে কাজ করে। এটি একটি সাধারণ কাঠামো সরবরাহ করে,
  * যার মধ্যে আইটেমের প্রকার, নাম এবং অ্যাকশন বোতাম (প্রসারণ/সংকোচন, মুছে ফেলা) সহ একটি
  * সংকোচনযোগ্য হেডার রয়েছে। এটি নির্দিষ্ট ভ্রমণকারীদের বাদ দেওয়ার জন্য একটি বিভাগও অন্তর্ভুক্ত
- * করে এবং চিলড্রেন হিসেবে পাস করা আইটেম-নির্দিষ্ট ক্ষেত্রগুলির রেন্ডারিং পরিচালনা করে।
+ * এবং চিলড্রেন হিসেবে পাস করা আইটেম-নির্দিষ্ট ক্ষেত্রগুলির রেন্ডারিং পরিচালনা করে।
  */
 "use client";
 
@@ -148,37 +148,34 @@ function BaseItemFormComponent<T extends ItineraryItem>({
   });
 
   React.useEffect(() => {
-    const currentItem = item; // Current item from props
     const prevContext = prevContextRef.current;
-
-    const typeChanged = currentItem.type !== prevContext.type;
-    const countryChanged = currentItem.countryId !== prevContext.countryId;
-    const provinceChanged = currentItem.province !== prevContext.province;
+    const typeChanged = item.type !== prevContext.type;
+    const countryChanged = item.countryId !== prevContext.countryId;
+    const provinceChanged = item.province !== prevContext.province;
 
     if (typeChanged || countryChanged || provinceChanged) {
       const updatedFieldsToReset: Partial<T> = {};
       let needsReset = false;
 
-      // Always reset service price ID if context changes
-      if (currentItem.selectedServicePriceId !== undefined) {
+      if (item.selectedServicePriceId !== undefined) {
         updatedFieldsToReset.selectedServicePriceId = undefined;
         needsReset = true;
       }
 
-      if (currentItem.type === 'activity') {
-        const activityItem = currentItem as ActivityItem;
+      if (item.type === 'activity') {
+        const activityItem = item as ActivityItem;
         if (activityItem.selectedPackageId !== undefined) {
           (updatedFieldsToReset as Partial<ActivityItem>).selectedPackageId = undefined;
           needsReset = true;
         }
-      } else if (currentItem.type === 'transfer') {
-        const transferItem = currentItem as TransferItem;
+      } else if (item.type === 'transfer') {
+        const transferItem = item as TransferItem;
         if (transferItem.selectedVehicleOptionId !== undefined) {
           (updatedFieldsToReset as Partial<TransferItem>).selectedVehicleOptionId = undefined;
           needsReset = true;
         }
-      } else if (currentItem.type === 'hotel') {
-        const hotelItem = currentItem as HotelItem;
+      } else if (item.type === 'hotel') {
+        const hotelItem = item as HotelItem;
         if (hotelItem.hotelDefinitionId !== undefined && hotelItem.hotelDefinitionId !== '') {
           (updatedFieldsToReset as Partial<HotelItem>).hotelDefinitionId = '';
           needsReset = true;
@@ -189,13 +186,10 @@ function BaseItemFormComponent<T extends ItineraryItem>({
         }
       }
 
-      // If countryId was just cleared, and province was set, province should also be cleared.
-      if (countryChanged && currentItem.countryId === undefined && currentItem.province !== undefined) {
+      if (countryChanged && item.countryId === undefined && item.province !== undefined) {
         updatedFieldsToReset.province = undefined;
         needsReset = true;
-      }
-      // If countryId changed to a new value (and was not previously undefined), province should be reset.
-      else if (countryChanged && currentItem.countryId !== undefined && prevContext.countryId !== undefined && currentItem.province !== undefined) {
+      } else if (countryChanged && item.countryId !== undefined && prevContext.countryId !== undefined && item.province !== undefined) {
         updatedFieldsToReset.province = undefined;
         needsReset = true;
       }
@@ -208,10 +202,10 @@ function BaseItemFormComponent<T extends ItineraryItem>({
         for (const key in updatedFieldsToReset) {
           const typedKey = key as keyof T;
           const resetValue = updatedFieldsToReset[typedKey];
-          const currentValueOnItem = currentItem[typedKey];
+          const currentValueOnItem = item[typedKey]; // Use item from closure/props
 
           if (Array.isArray(resetValue) && Array.isArray(currentValueOnItem)) {
-            if (currentValueOnItem.length > 0) {
+            if (currentValueOnItem.length > 0) { // Only update if current array is not already empty
               finalUpdatePayload[typedKey] = resetValue;
               actualChangesMade = true;
             }
@@ -225,13 +219,12 @@ function BaseItemFormComponent<T extends ItineraryItem>({
         }
 
         if (actualChangesMade) {
-          onUpdate({ ...currentItem, ...finalUpdatePayload });
+          onUpdate({ ...item, ...finalUpdatePayload });
         }
       }
     }
-    // Update ref *after* all logic.
     prevContextRef.current = { type: item.type, countryId: item.countryId, province: item.province };
-  }, [item.type, item.countryId, item.province, onUpdate, item]); // Keep `item` for access to its latest state for the update call
+  }, [item.type, item.countryId, item.province, onUpdate, item]);
 
 
   const handleItemCountryChange = React.useCallback((countryIdValue?: string) => {
@@ -239,15 +232,15 @@ function BaseItemFormComponent<T extends ItineraryItem>({
     const newCountryId = selectedCountry?.id;
     const newCountryName = selectedCountry?.name;
 
-    if (item.countryId !== newCountryId || (item.province !== undefined) ) { // If country changes OR province needs reset
+    if (item.countryId !== newCountryId || (item.province !== undefined && newCountryId !== item.countryId) ) {
         onUpdate({
             ...item,
             countryId: newCountryId,
             countryName: newCountryName,
-            province: undefined,
+            province: undefined, // Reset province when country changes
         } as T);
     }
-  }, [onUpdate, item, allAvailableCountriesHook]);
+  }, [onUpdate, item.countryId, item.countryName, item.province, allAvailableCountriesHook]);
 
   const handleItemProvinceChange = React.useCallback((provinceName?: string) => {
     const newProvinceValue = provinceName === "none" || provinceName === undefined ? undefined : provinceName;
@@ -257,7 +250,7 @@ function BaseItemFormComponent<T extends ItineraryItem>({
             province: newProvinceValue,
         } as T);
     }
-  }, [onUpdate, item]);
+  }, [onUpdate, item.province]);
 
 
   const handleOptOutToggle = (travelerId: string, checked: boolean) => {
@@ -449,3 +442,4 @@ function BaseItemFormComponent<T extends ItineraryItem>({
 }
 
 export const BaseItemForm = React.memo(BaseItemFormComponent) as typeof BaseItemFormComponent;
+
