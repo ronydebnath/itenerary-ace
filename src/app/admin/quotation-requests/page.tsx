@@ -22,6 +22,7 @@ import { Badge } from '@/components/ui/badge';
 import { useCountries } from '@/hooks/useCountries';
 import { useAgents } from '@/hooks/useAgents'; 
 import { cn } from '@/lib/utils';
+import { useItineraryManager } from '@/hooks/useItineraryManager'; // Import the hook
 
 const AGENT_QUOTATION_REQUESTS_KEY = 'itineraryAce_agentQuotationRequests';
 
@@ -34,6 +35,8 @@ export default function ManageQuotationRequestsPage() {
   const { toast } = useToast();
   const { countries, isLoading: isLoadingCountries } = useCountries();
   const { agents, isLoading: isLoadingAgents } = useAgents(); 
+  
+  useItineraryManager(); // Invoke the hook to ensure its side effects (like seeding) run
 
   const loadRequests = React.useCallback(() => {
     setIsLoading(true);
