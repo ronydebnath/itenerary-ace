@@ -18,7 +18,7 @@ import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import {
   Loader2, AlertCircle, CalendarDays, Users, MapPin,
   Hotel, Car, Ticket, Utensils, ShoppingBag, FileText,
-  ArrowLeft, Globe, Printer, EyeOff, Eye, Coins, PackageIcon, MessageSquare
+  ArrowLeft, Globe, Printer, EyeOff, Eye, Coins, PackageIcon, MessageSquare, Share2
 } from 'lucide-react';
 import { formatCurrency, cn } from '@/lib/utils';
 import { CostBreakdownTable } from '@/components/itinerary/cost-breakdown-table';
@@ -54,7 +54,6 @@ export default function ItineraryClientViewPage() {
   const [isLoading, setIsLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
   
-  // Read showCosts from query param. Default to false if not 'true'.
   const displayCostsQueryParam = searchParams.get('displayCosts');
   const showCosts = displayCostsQueryParam === 'true';
 
@@ -83,7 +82,6 @@ export default function ItineraryClientViewPage() {
   React.useEffect(() => {
     if (tripData && !isLoadingServices && !isLoadingHotelDefs && !isLoadingCountries && !isLoadingExchangeRates) {
       try {
-        // Pass showCosts to calculateAllCosts
         const summary = calculateAllCosts(tripData, countries, allServicePrices, allHotelDefinitions, getRate, showCosts);
         setCostSummary(summary);
       } catch (calcError: any) {
@@ -97,7 +95,6 @@ export default function ItineraryClientViewPage() {
          setIsLoading(false);
       }
     }
-  // Add showCosts to the dependency array so recalculation happens when it changes
   }, [tripData, isLoadingServices, isLoadingHotelDefs, isLoadingCountries, isLoadingExchangeRates, countries, allServicePrices, allHotelDefinitions, getRate, isLoading, error, showCosts]);
 
 
@@ -108,6 +105,12 @@ export default function ItineraryClientViewPage() {
       return `Day ${dayNum} - ${format(date, "MMMM d, yyyy (EEEE)")}`;
     } catch (e) {
       return `Day ${dayNum}`;
+    }
+  };
+
+  const handleShareView = (withCosts: boolean) => {
+    if (tripData?.id) {
+        router.push(`/itinerary/view/${tripData.id}?displayCosts=${withCosts}`);
     }
   };
 
@@ -158,7 +161,6 @@ export default function ItineraryClientViewPage() {
               {tripData.clientName && <p className="text-sm sm:text-md text-muted-foreground print:text-gray-700">For: {tripData.clientName}</p>}
             </div>
             <div className="flex gap-2 self-start sm:self-center no-print">
-                {/* Removed the "Hide/Show Detailed Costs" button as it's now controlled by query param */}
                 <Button onClick={() => router.back()} variant="outline" size="sm" className="h-8 text-xs">
                     <ArrowLeft className="mr-1.5 h-3.5 w-3.5" /> Back to Planner
                 </Button>
@@ -272,7 +274,6 @@ export default function ItineraryClientViewPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
               <div className="bg-muted/20 dark:bg-muted/10 p-3 sm:p-4 rounded-md border">
                 <h3 className="text-sm sm:text-md font-semibold mb-1.5 print:text-sm text-foreground/90">Per Person Total:</h3>
-                 {/* CostBreakdownTable always shows costs internally */}
                 <CostBreakdownTable summary={costSummary} currency={pax.currency} travelers={travelers} showCosts={true} />
               </div>
               <div className="text-left md:text-right bg-muted/20 dark:bg-muted/10 p-3 sm:p-4 rounded-md border">
@@ -294,9 +295,15 @@ export default function ItineraryClientViewPage() {
           </section>
           
         </CardContent>
-         <div className="p-4 sm:p-6 pt-0 text-center no-print">
-            <Button onClick={() => window.print()} variant="default" size="sm" className="h-9 text-sm">
-                <Printer className="mr-2 h-4 w-4"/> Print This View
+         <div className="p-4 sm:p-6 pt-0 text-center no-print flex flex-col sm:flex-row justify-center items-center gap-3">
+            <Button onClick={() => window.print()} variant="outline" size="sm" className="h-9 text-sm w-full sm:w-auto">
+                <Printer className="mr-2 h-4 w-4"/> Print Current View
+            </Button>
+            <Button onClick={() => handleShareView(true)} variant="default" size="sm" className="h-9 text-sm w-full sm:w-auto">
+                <Eye className="mr-2 h-4 w-4"/> View/Share with Details
+            </Button>
+            <Button onClick={() => handleShareView(false)} variant="secondary" size="sm" className="h-9 text-sm w-full sm:w-auto">
+                <EyeOff className="mr-2 h-4 w-4"/> View/Share without Details
             </Button>
         </div>
       </div>
