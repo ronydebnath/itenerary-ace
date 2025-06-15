@@ -1,3 +1,4 @@
+
 /**
  * @fileoverview This component renders the header section of the itinerary planner.
  * It includes fields for setting the itinerary name, client name, start date, number of days,
@@ -53,20 +54,12 @@ function PlannerHeaderComponent({
   const { countries: availableCountries, isLoading: isLoadingCountries } = useCountries();
   const { provinces: allAvailableProvinces, isLoading: isLoadingProvinces, getProvincesByCountry } = useProvinces();
 
-  const handleSettingsChange = <K extends keyof TripSettings>(key: K, value: TripSettings[K]) => {
-    onUpdateSettings({ [key]: value });
-  };
-
-  const handlePaxChange = <K extends keyof PaxDetails>(key: K, value: PaxDetails[K]) => {
-    onUpdatePax({ [key]: value });
-  };
-
   const handleCountryToggle = (countryId: string) => {
     const currentSelectedCountries = tripData.settings.selectedCountries || [];
     const newSelectedCountries = currentSelectedCountries.includes(countryId)
       ? currentSelectedCountries.filter(id => id !== countryId)
       : [...currentSelectedCountries, countryId];
-    onUpdateSettings({ selectedCountries: newSelectedCountries, selectedProvinces: [] });
+    onUpdateSettings({ selectedCountries: newSelectedCountries, selectedProvinces: [] }); // Reset provinces when countries change
   };
 
   const handleProvinceToggle = (provinceName: string) => {
@@ -89,6 +82,7 @@ function PlannerHeaderComponent({
     return tripData.settings.startDate && isValid(parseISO(tripData.settings.startDate)) ? format(parseISO(tripData.settings.startDate), "MMMM d, yyyy") : 'N/A';
   }, [tripData.settings.startDate]);
 
+
   const displayableProvinces = React.useMemo(() => {
     if (isLoadingProvinces) return [];
     const globallySelectedCountries = tripData.settings.selectedCountries || [];
@@ -101,6 +95,7 @@ function PlannerHeaderComponent({
     }
     return allAvailableProvinces.sort((a,b) => a.name.localeCompare(b.name));
   }, [isLoadingProvinces, tripData.settings.selectedCountries, allAvailableProvinces, getProvincesByCountry]);
+
 
   const selectedCountryNames = React.useMemo(() => {
     return (tripData.settings.selectedCountries || [])
@@ -128,6 +123,7 @@ function PlannerHeaderComponent({
     });
     return Object.fromEntries(sortedGroupEntries);
   }, [displayableProvinces, isLoadingProvinces, isLoadingCountries, availableCountries]);
+
 
   const numNights = Math.max(0, tripData.settings.numDays - 1);
 
@@ -232,27 +228,27 @@ function PlannerHeaderComponent({
             <Label htmlFor="startDate" className="text-sm font-medium text-muted-foreground flex items-center"><CalendarDays className="h-4 w-4 mr-1.5"/>Start Date</Label>
             <DatePicker
               date={startDateForPicker}
-              onDateChange={(date) => handleSettingsChange('startDate', date ? date.toISOString().split('T')[0] : new Date().toISOString().split('T')[0])}
+              onDateChange={(date) => onUpdateSettings({ startDate: date ? date.toISOString().split('T')[0] : new Date().toISOString().split('T')[0] })}
             />
           </div>
           <div>
             <Label htmlFor="numDays" className="text-sm font-medium text-muted-foreground">Days</Label>
-            <Input id="numDays" type="number" value={tripData.settings.numDays} onChange={(e) => handleSettingsChange('numDays', parseInt(e.target.value, 10) || 1)} min="1" className="h-10 mt-1"/>
+            <Input id="numDays" type="number" value={tripData.settings.numDays} onChange={(e) => onUpdateSettings({ numDays: parseInt(e.target.value, 10) || 1 })} min="1" className="h-10 mt-1"/>
           </div>
           <div>
             <Label htmlFor="globalAdults" className="text-sm font-medium text-muted-foreground flex items-center"><Users className="h-4 w-4 mr-1.5"/>Adults</Label>
-            <Input id="globalAdults" type="number" value={tripData.pax.adults} onChange={(e) => handlePaxChange('adults', parseInt(e.target.value, 10) || 0)} min="0" className="h-10 mt-1"/>
+            <Input id="globalAdults" type="number" value={tripData.pax.adults} onChange={(e) => onUpdatePax({ adults: parseInt(e.target.value, 10) || 0 })} min="0" className="h-10 mt-1"/>
           </div>
           <div>
             <Label htmlFor="globalChildren" className="text-sm font-medium text-muted-foreground">Children</Label>
-            <Input id="globalChildren" type="number" value={tripData.pax.children} onChange={(e) => handlePaxChange('children', parseInt(e.target.value, 10) || 0)} min="0" className="h-10 mt-1"/>
+            <Input id="globalChildren" type="number" value={tripData.pax.children} onChange={(e) => onUpdatePax({ children: parseInt(e.target.value, 10) || 0 })} min="0" className="h-10 mt-1"/>
           </div>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 items-end">
             <div>
                 <Label htmlFor="currency" className="text-sm font-medium text-muted-foreground flex items-center"><Landmark className="h-4 w-4 mr-1.5"/>Billing Currency</Label>
-                <Select value={tripData.pax.currency} onValueChange={(value) => handlePaxChange('currency', value as CurrencyCode)}>
+                <Select value={tripData.pax.currency} onValueChange={(value) => onUpdatePax({ currency: value as CurrencyCode })}>
                 <SelectTrigger id="currency" className="w-full h-10 mt-1">
                     <SelectValue />
                 </SelectTrigger>
@@ -265,7 +261,7 @@ function PlannerHeaderComponent({
             </div>
             <div>
                 <Label htmlFor="budget" className="text-sm font-medium text-muted-foreground flex items-center"><DollarSign className="h-4 w-4 mr-1.5"/>Budget (Optional)</Label>
-                <Input id="budget" type="number" value={tripData.settings.budget || ''} onChange={(e) => handleSettingsChange('budget', e.target.value ? parseFloat(e.target.value) : undefined)} min="0" placeholder="e.g., 1000" className="h-10 mt-1"/>
+                <Input id="budget" type="number" value={tripData.settings.budget || ''} onChange={(e) => onUpdateSettings({ budget: e.target.value ? parseFloat(e.target.value) : undefined })} min="0" placeholder="e.g., 1000" className="h-10 mt-1"/>
             </div>
         </div>
 
@@ -378,3 +374,4 @@ function PlannerHeaderComponent({
 }
 
 export const PlannerHeader = React.memo(PlannerHeaderComponent);
+
