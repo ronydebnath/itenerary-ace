@@ -142,6 +142,7 @@ export function AgencyManager() {
                 <CardContent className="text-xs text-muted-foreground space-y-1.5 flex-grow">
                     {agency.contactEmail && <p className="flex items-center"><Mail className="h-3 w-3 mr-1.5 flex-shrink-0" /> {agency.contactEmail}</p>}
                     {agency.contactPhone && <p className="flex items-center"><Phone className="h-3 w-3 mr-1.5 flex-shrink-0" /> {agency.contactPhone}</p>}
+                    {agency.preferredCurrency && <p className="flex items-center"><BadgeDollarSign className="h-3 w-3 mr-1.5 flex-shrink-0 text-green-600" /> Default Billing: <Badge variant="outline" className="ml-1 border-green-500/50 text-green-700">{agency.preferredCurrency}</Badge></p>}
 
                     <Separator className="my-2.5" />
                     <h4 className="text-sm font-medium text-foreground/90 flex items-center"><UsersIcon className="mr-1.5 h-4 w-4"/>Affiliated Agents ({affiliatedAgents.length})</h4>
@@ -171,3 +172,4 @@ export function AgencyManager() {
     </div>
   );
 }
+

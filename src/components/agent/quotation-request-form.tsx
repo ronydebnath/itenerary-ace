@@ -49,7 +49,7 @@ import { useProvinces } from '@/hooks/useProvinces';
 import { cn } from '@/lib/utils';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Alert, AlertTitle as ShadcnAlertTitle, AlertDescription as ShadcnAlertDescription } from "@/components/ui/alert";
-
+import { useAgents } from '@/hooks/useAgents'; // Import useAgents hook
 
 interface QuotationRequestFormProps {
   onSubmit: (data: QuotationRequest) => void;
@@ -60,7 +60,20 @@ interface QuotationRequestFormProps {
 export function QuotationRequestForm({ onSubmit, onCancel, defaultAgentId }: QuotationRequestFormProps) {
   const { countries, isLoading: isLoadingCountries, getCountryById } = useCountries();
   const { provinces: allProvinces, isLoading: isLoadingProvinces, getProvincesByCountry } = useProvinces();
+  const { getAgencyById, isLoading: isLoadingAgentsData } = useAgents(); // Use useAgents hook
   const [countrySelectionError, setCountrySelectionError] = React.useState<string | null>(null);
+
+  const agentAgencyPreferredCurrency = React.useMemo(() => {
+    if (!defaultAgentId || isLoadingAgentsData) return undefined;
+    // In a real app, you'd fetch the agent profile here
+    // For demo, we assume the agent is linked to an agency whose ID might be derivable or stored
+    const agentProfile = JSON.parse(localStorage.getItem('itineraryAceAgents') || '[]').find((a: any) => a.id === defaultAgentId);
+    if (agentProfile?.agencyId) {
+      const agency = getAgencyById(agentProfile.agencyId);
+      return agency?.preferredCurrency;
+    }
+    return undefined;
+  }, [defaultAgentId, isLoadingAgentsData, getAgencyById]);
 
   const form = useForm<QuotationRequest>({
     resolver: zodResolver(QuotationRequestSchema),
@@ -72,7 +85,7 @@ export function QuotationRequestForm({ onSubmit, onCancel, defaultAgentId }: Quo
         childAges: "",
       },
       tripDetails: {
-        budgetCurrency: 'USD',
+        budgetCurrency: agentAgencyPreferredCurrency || 'USD', // Default to agency's preferred currency or USD
         preferredCountryIds: [],
         preferredProvinceNames: [],
         tripType: undefined,
@@ -97,6 +110,12 @@ export function QuotationRequestForm({ onSubmit, onCancel, defaultAgentId }: Quo
       requestDate: new Date().toISOString(),
     },
   });
+
+  React.useEffect(() => {
+    if (agentAgencyPreferredCurrency && form.getValues('tripDetails.budgetCurrency') !== agentAgencyPreferredCurrency) {
+      form.setValue('tripDetails.budgetCurrency', agentAgencyPreferredCurrency, { shouldValidate: true });
+    }
+  }, [agentAgencyPreferredCurrency, form]);
 
   const watchStartDate = form.watch("tripDetails.preferredStartDate");
   const watchEndDate = form.watch("tripDetails.preferredEndDate");
@@ -484,8 +503,8 @@ export function QuotationRequestForm({ onSubmit, onCancel, defaultAgentId }: Quo
         <Separator className="my-6" />
         <div className="flex justify-end space-x-3">
           <Button type="button" variant="outline" onClick={onCancel} disabled={form.formState.isSubmitting}>Cancel</Button>
-          <Button type="submit" className="bg-primary hover:bg-primary/90 text-primary-foreground" disabled={form.formState.isSubmitting || isLoadingCountries || isLoadingProvinces}>
-            {(form.formState.isSubmitting || isLoadingCountries || isLoadingProvinces) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+          <Button type="submit" className="bg-primary hover:bg-primary/90 text-primary-foreground" disabled={form.formState.isSubmitting || isLoadingCountries || isLoadingProvinces || isLoadingAgentsData}>
+            {(form.formState.isSubmitting || isLoadingCountries || isLoadingProvinces || isLoadingAgentsData) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Submit Quotation Request
           </Button>
         </div>
@@ -493,3 +512,4 @@ export function QuotationRequestForm({ onSubmit, onCancel, defaultAgentId }: Quo
     </Form>
   );
 }
+

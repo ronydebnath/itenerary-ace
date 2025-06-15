@@ -215,3 +215,4 @@ This document outlines the primary data structures used by the Itinerary Ace app
 This schema provides a foundational understanding of how data is managed locally within the Itinerary Ace application.
 এই স্কিমাটি ইটিনেরারি এস অ্যাপ্লিকেশনের মধ্যে স্থানীয়ভাবে ডেটা কীভাবে পরিচালিত হয় তার একটি মৌলিক ধারণা প্রদান করে।
       
+
