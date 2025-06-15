@@ -44,8 +44,10 @@ export interface BaseItemFormProps<T extends ItineraryItem> {
 
 export function FormField({label, id, children, className}: {label: string, id: string, children: React.ReactNode, className?: string}) {
   return (
-    <div className={cn("space-y-1", className)}>
-      <Label htmlFor={id} className="text-sm">{label}</Label>
+    <div className={cn("space-y-1 min-w-0", className)}>
+      <Label htmlFor={id} className="text-sm">
+        <span className="break-words">{label}</span>
+      </Label>
       {children}
     </div>
   );
@@ -202,10 +204,10 @@ function BaseItemFormComponent<T extends ItineraryItem>({
         for (const key in updatedFieldsToReset) {
           const typedKey = key as keyof T;
           const resetValue = updatedFieldsToReset[typedKey];
-          const currentValueOnItem = item[typedKey]; // Use item from closure/props
+          const currentValueOnItem = item[typedKey]; 
 
           if (Array.isArray(resetValue) && Array.isArray(currentValueOnItem)) {
-            if (currentValueOnItem.length > 0) { // Only update if current array is not already empty
+            if (currentValueOnItem.length > 0) { 
               finalUpdatePayload[typedKey] = resetValue;
               actualChangesMade = true;
             }
@@ -237,7 +239,7 @@ function BaseItemFormComponent<T extends ItineraryItem>({
             ...item,
             countryId: newCountryId,
             countryName: newCountryName,
-            province: undefined, // Reset province when country changes
+            province: undefined, 
         } as T);
     }
   }, [onUpdate, item.countryId, item.countryName, item.province, allAvailableCountriesHook]);
@@ -417,7 +419,7 @@ function BaseItemFormComponent<T extends ItineraryItem>({
               <div id={`optout-content-${item.id}`} className="mt-1.5 sm:mt-2 p-2 sm:p-3 border rounded-md bg-muted/30 max-h-32 sm:max-h-40 overflow-y-auto">
                 {travelers.length > 0 ? (
                   travelers.map(traveler => (
-                    <div key={traveler.id} className="flex items-center space-x-2 mb-1 py-0.5 sm:py-1">
+                    <div key={traveler.id} className="flex items-center space-x-2 mb-1 py-0.5 sm:py-1 min-w-0">
                       <Checkbox
                         id={`optout-${item.id}-${traveler.id}`}
                         checked={item.excludedTravelerIds.includes(traveler.id)}
@@ -425,7 +427,7 @@ function BaseItemFormComponent<T extends ItineraryItem>({
                         className="h-4 w-4 sm:h-5 sm:w-5"
                       />
                       <Label htmlFor={`optout-${item.id}-${traveler.id}`} className="text-sm font-normal cursor-pointer">
-                        {traveler.label}
+                        <span className="break-words">{traveler.label}</span>
                       </Label>
                     </div>
                   ))
@@ -442,4 +444,3 @@ function BaseItemFormComponent<T extends ItineraryItem>({
 }
 
 export const BaseItemForm = React.memo(BaseItemFormComponent) as typeof BaseItemFormComponent;
-
