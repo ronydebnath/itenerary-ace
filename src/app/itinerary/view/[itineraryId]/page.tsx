@@ -24,11 +24,12 @@ import {
 import { formatCurrency, cn } from '@/lib/utils';
 import { CostBreakdownTable } from '@/components/itinerary/cost-breakdown-table';
 import { DetailsSummaryTable } from '@/components/itinerary/details-summary-table';
-import { useToast } from "@/hooks/use-toast"; // Import useToast
+import { useToast } from "@/hooks/use-toast";
+import { useSession } from "next-auth/react"; // Import useSession
 
 const ITINERARY_DATA_PREFIX = 'itineraryAce_data_';
 const AGENT_QUOTATION_REQUESTS_KEY = 'itineraryAce_agentQuotationRequests'; // For updating quote status
-const VIEW_MODE_TOKEN = 'full_details_v1'; // Token to show detailed costs
+const VIEW_MODE_TOKEN = 'full_details_v1';
 
 const ITEM_TYPE_ICONS: { [key in ItineraryItem['type']]: React.ElementType } = {
   transfer: Car,
@@ -53,14 +54,15 @@ export default function ItineraryClientViewPage() {
   const searchParams = useSearchParams();
   const itineraryId = params.itineraryId as string;
   const { toast } = useToast();
+  const { data: session, status: sessionStatus } = useSession(); // Get session data
 
   const [tripData, setTripData] = React.useState<TripData | null>(null);
   const [costSummary, setCostSummary] = React.useState<CostSummary | null>(null);
   const [isLoading, setIsLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
   
-  const viewModeToken = searchParams.get('viewMode');
-  const showCosts = viewModeToken === VIEW_MODE_TOKEN;
+  const viewModeTokenParam = searchParams.get('viewMode');
+  const showCosts = viewModeTokenParam === VIEW_MODE_TOKEN;
 
 
   const { allServicePrices, isLoading: isLoadingServices } = useServicePrices();
@@ -123,9 +125,7 @@ export default function ItineraryClientViewPage() {
           } else if (currentStatus === "New Request Submitted" || currentStatus === "Quoted: Revision In Progress") {
             newStatus = "Quoted: Waiting for TA Feedback";
           }
-          // Other statuses like Confirmed, Booked etc., might not revert directly to "Waiting for TA Feedback"
-          // but this action implies sending a (possibly revised) quote.
-
+          
           allRequests[requestIndex].status = newStatus;
           allRequests[requestIndex].linkedItineraryId = tripData.id;
           allRequests[requestIndex].updatedAt = new Date().toISOString();
@@ -156,7 +156,7 @@ export default function ItineraryClientViewPage() {
   };
 
 
-  if (isLoading) {
+  if (isLoading || sessionStatus === 'loading') {
     return (
       <div className="flex flex-col justify-center items-center min-h-screen bg-background p-4">
         <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
@@ -191,6 +191,8 @@ export default function ItineraryClientViewPage() {
   const displayStartDate = settings.startDate && isValid(parseISO(settings.startDate))
     ? format(parseISO(settings.startDate), "MMMM d, yyyy")
     : 'N/A';
+  
+  const isAdmin = session?.user && (session.user as any).role === 'admin';
 
 
   return (
@@ -328,7 +330,7 @@ export default function ItineraryClientViewPage() {
                 )}
               </div>
             </div>
-            
+            {!showCosts && <p className="text-sm text-muted-foreground text-center mt-4 print:block hidden">Detailed individual service costs are hidden in this view.</p>}
           </section>
           
         </CardContent>
@@ -336,7 +338,7 @@ export default function ItineraryClientViewPage() {
             <Button onClick={() => window.print()} variant="outline" size="sm" className="h-9 text-sm w-full sm:w-auto">
                 <Printer className="mr-2 h-4 w-4"/> Print Current View
             </Button>
-            {tripData.quotationRequestId && (
+            {isAdmin && tripData.quotationRequestId && (
                 <Button onClick={handleSendQuotationToAgent} size="sm" className="h-9 text-sm w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white">
                     <Send className="mr-2 h-4 w-4"/> Send Quotation to Agent
                 </Button>
