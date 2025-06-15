@@ -19,7 +19,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Printer, Eye, EyeOff, Loader2, FileText, Users as UsersIcon, MapPin as MapPinIcon, CalendarDays as CalendarDaysIcon, Briefcase as BriefcaseIcon, Coins as CoinsIcon, BedDouble as BedDoubleIcon, Zap as ZapIcon, Car as CarIcon, Utensils as UtensilsIcon, MessageSquare as MessageSquareIcon } from 'lucide-react';
-import { formatCurrency, generateGUID } from '@/lib/utils';
+import { formatCurrency } from '@/lib/utils';
 import { DayView } from '../itinerary/day-view';
 import { CostBreakdownTable } from '../itinerary/cost-breakdown-table';
 import { DetailsSummaryTable } from '../itinerary/details-summary-table';
@@ -183,20 +183,20 @@ export function ItineraryPlanner({
   return (
     <div className="w-full max-w-[1600px] mx-auto p-2 sm:p-4 md:p-6 lg:p-8">
       {quotationRequestDetails && (
-        <Card className="mb-4 md:mb-6 shadow-md no-print bg-secondary/20 border-secondary">
+        <Card className="my-4 md:my-6 shadow-md no-print bg-secondary/20 border-secondary">
           <CardHeader className="pb-3">
-            <CardTitle className="text-lg sm:text-xl text-accent flex items-center">
+            <CardTitle className="text-lg sm:text-xl text-primary flex items-center">
               <FileText className="mr-2 h-5 w-5" />
               Original Quotation Request (ID: {quotationRequestDetails.id.split('-').pop()})
             </CardTitle>
-            <CardDescription className="text-sm text-accent-foreground/80">
+            <CardDescription className="text-sm text-muted-foreground">
               This information was provided by the agent. Use it to guide your itinerary planning.
             </CardDescription>
           </CardHeader>
-          <CardContent className="pt-2 text-sm space-y-4 p-4">
+          <CardContent className="pt-2 text-sm space-y-3 p-4">
             
             <div className="space-y-2">
-              <h4 className="font-semibold text-md flex items-center text-accent-foreground/90"><UsersIcon className="h-4 w-4 mr-2 text-accent" />Client &amp; Basic Trip Info</h4>
+              <h4 className="font-semibold text-md flex items-center text-foreground/90 mb-1"><UsersIcon className="h-4 w-4 mr-2 text-primary" />Client &amp; Basic Trip Info</h4>
               <p><strong>Agent/Source:</strong> <Badge variant="outline" className="font-normal">{tripData.clientName || 'N/A'}</Badge></p>
               <p><strong>Pax:</strong> {quotationRequestDetails.clientInfo.adults} Adult(s)
                 {quotationRequestDetails.clientInfo.children > 0 && `, ${quotationRequestDetails.clientInfo.children} Child(ren)`}
@@ -220,7 +220,7 @@ export function ItineraryPlanner({
             <Separator />
             {quotationRequestDetails.accommodationPrefs && (
               <div className="space-y-1.5">
-                <h4 className="font-semibold text-md flex items-center text-accent-foreground/90"><BedDoubleIcon className="h-4 w-4 mr-2 text-accent" />Accommodation Preferences</h4>
+                <h4 className="font-semibold text-md flex items-center text-foreground/90 mb-1"><BedDoubleIcon className="h-4 w-4 mr-2 text-primary" />Accommodation Preferences</h4>
                 <p><strong>Star Rating:</strong> {quotationRequestDetails.accommodationPrefs.hotelStarRating || 'N/A'}</p>
                 <p><strong>Room Prefs:</strong> {quotationRequestDetails.accommodationPrefs.roomPreferences || 'N/A'}</p>
                 <p><strong>Specific Hotels/Locations:</strong> {quotationRequestDetails.accommodationPrefs.specificHotelRequests || 'N/A'}</p>
@@ -229,14 +229,14 @@ export function ItineraryPlanner({
              <Separator />
             {quotationRequestDetails.activityPrefs && (
               <div className="space-y-1.5">
-                <h4 className="font-semibold text-md flex items-center text-accent-foreground/90"><ZapIcon className="h-4 w-4 mr-2 text-accent" />Activity & Tour Preferences</h4>
+                <h4 className="font-semibold text-md flex items-center text-foreground/90 mb-1"><ZapIcon className="h-4 w-4 mr-2 text-primary" />Activity & Tour Preferences</h4>
                 <p className="whitespace-pre-wrap bg-muted/30 p-2 rounded-sm text-xs">{quotationRequestDetails.activityPrefs.requestedActivities || 'No specific activities requested.'}</p>
               </div>
             )}
              <Separator />
             {quotationRequestDetails.flightPrefs && (
               <div className="space-y-1.5">
-                <h4 className="font-semibold text-md flex items-center text-accent-foreground/90"><CarIcon className="h-4 w-4 mr-2 text-accent" />Transfer Preferences</h4>
+                <h4 className="font-semibold text-md flex items-center text-foreground/90 mb-1"><CarIcon className="h-4 w-4 mr-2 text-primary" />Transfer Preferences</h4>
                 <p><strong>Airport Transfers Required:</strong> <Badge variant={quotationRequestDetails.flightPrefs.airportTransfersRequired ? "default" : "outline"}>{quotationRequestDetails.flightPrefs.airportTransfersRequired ? 'Yes' : 'No'}</Badge></p>
                 <p><strong>Activity Transfers Required:</strong> <Badge variant={quotationRequestDetails.flightPrefs.activityTransfersRequired ? "default" : "outline"}>{quotationRequestDetails.flightPrefs.activityTransfersRequired ? 'Yes' : 'No'}</Badge></p>
               </div>
@@ -244,14 +244,14 @@ export function ItineraryPlanner({
              <Separator />
             {quotationRequestDetails.mealPrefs && (
               <div className="space-y-1.5">
-                <h4 className="font-semibold text-md flex items-center text-accent-foreground/90"><UtensilsIcon className="h-4 w-4 mr-2 text-accent" />Meal Preferences</h4>
+                <h4 className="font-semibold text-md flex items-center text-foreground/90 mb-1"><UtensilsIcon className="h-4 w-4 mr-2 text-primary" />Meal Preferences</h4>
                 <p><strong>Plan:</strong> {quotationRequestDetails.mealPrefs.mealPlan || 'Not Specified'}</p>
               </div>
             )}
              <Separator />
             {quotationRequestDetails.otherRequirements && (
               <div className="space-y-1.5">
-                <h4 className="font-semibold text-md flex items-center text-accent-foreground/90"><MessageSquareIcon className="h-4 w-4 mr-2 text-accent" />Other Requirements</h4>
+                <h4 className="font-semibold text-md flex items-center text-foreground/90 mb-1"><MessageSquareIcon className="h-4 w-4 mr-2 text-primary" />Other Requirements</h4>
                 <p className="whitespace-pre-wrap bg-muted/30 p-2 rounded-sm text-xs">{quotationRequestDetails.otherRequirements}</p>
               </div>
             )}
