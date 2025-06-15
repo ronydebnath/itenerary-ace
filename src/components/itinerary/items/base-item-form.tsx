@@ -1,3 +1,4 @@
+
 /**
  * @fileoverview This component serves as a foundational building block for all specific
  * itinerary item forms (e.g., Transfer, Activity, Hotel). It provides a common structure
@@ -284,21 +285,21 @@ function BaseItemFormComponent<T extends ItineraryItem>({
       >
         <div
           onClick={onToggleExpand}
-          className="flex-grow flex items-center cursor-pointer min-w-0 mr-2"
+          className="flex-grow flex items-center cursor-pointer min-w-0 mr-1 sm:mr-2"
           role="button"
           tabIndex={0}
           onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onToggleExpand(); }}
           aria-expanded={isCurrentlyExpanded}
           aria-controls={`item-content-${item.id}`}
         >
-          <IconComponent className="h-5 w-5 mr-2 flex-shrink-0 text-primary" />
+          <IconComponent className="h-5 w-5 mr-1.5 sm:mr-2 flex-shrink-0 text-primary" />
           <div className="flex-grow min-w-0">
-            <CardTitle className="text-base font-semibold text-primary truncate" title={`${itemTypeLabel}: ${itemNameDisplay}`}>
-              <BookingStatusIcon className="h-4 w-4 mr-1.5 inline-block relative -top-px text-muted-foreground" />
+            <CardTitle className="text-sm sm:text-base font-semibold text-primary truncate" title={`${itemTypeLabel}: ${itemNameDisplay}`}>
+              <BookingStatusIcon className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1 sm:mr-1.5 inline-block relative -top-px text-muted-foreground" />
               {itemTypeLabel}: {itemNameDisplay}
             </CardTitle>
             {itemSummaryLine && (
-              <div className={cn("text-sm text-muted-foreground truncate", isCurrentlyExpanded && "hidden sm:block")}>
+              <div className={cn("text-xs sm:text-sm text-muted-foreground truncate", isCurrentlyExpanded && "hidden sm:block")}>
                 {itemSummaryLine}
               </div>
             )}
@@ -426,7 +427,7 @@ function BaseItemFormComponent<T extends ItineraryItem>({
                         onCheckedChange={(checked) => handleOptOutToggle(traveler.id, !!checked)}
                         className="h-4 w-4 sm:h-5 sm:w-5"
                       />
-                      <Label htmlFor={`optout-${item.id}-${traveler.id}`} className="text-sm font-normal cursor-pointer">
+                      <Label htmlFor={`optout-${item.id}-${traveler.id}`} className="text-sm font-normal cursor-pointer min-w-0">
                         <span className="break-words">{traveler.label}</span>
                       </Label>
                     </div>
@@ -444,3 +445,4 @@ function BaseItemFormComponent<T extends ItineraryItem>({
 }
 
 export const BaseItemForm = React.memo(BaseItemFormComponent) as typeof BaseItemFormComponent;
+

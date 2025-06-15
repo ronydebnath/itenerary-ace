@@ -376,16 +376,16 @@ function PlannerHeaderComponent({
           </div>
         </div>
 
-        <div className="mt-4 p-3 bg-secondary/30 rounded-lg border border-secondary text-sm text-muted-foreground">
-          <div className="flex flex-wrap gap-x-3 gap-y-1">
-            <span className="font-semibold text-foreground">Current Config:</span>
-            <span className="whitespace-nowrap"><strong className="text-primary">{numNights} Night(s) / {tripData.settings.numDays} Day(s)</strong> starting {displayStartDate}.</span>
-            <span className="whitespace-nowrap">For {tripData.pax.adults} Adult(s), {tripData.pax.children} Child(ren).</span>
-            <span className="whitespace-nowrap">Billing Currency: {tripData.pax.currency}.</span>
-            {tripData.settings.isTemplate ? <Badge variant="outline" className="ml-1.5 border-accent text-accent text-xs">TEMPLATE{tripData.settings.templateCategory ? `: ${tripData.settings.templateCategory}` : ''}</Badge> : ""}
-            {selectedCountryNames.length > 0 ? <span className="whitespace-nowrap"> Countries: {selectedCountryNames.join(', ')}.</span> : ""}
-            {(tripData.settings.selectedProvinces || []).length > 0 ? <span className="whitespace-nowrap"> Provinces: {tripData.settings.selectedProvinces.join(', ')}.</span> : ""}
-            {showCosts && tripData.settings.budget ? <span className="whitespace-nowrap"> Budget: {formatCurrency(tripData.settings.budget, tripData.pax.currency)}.</span> : ""}
+        <div className="mt-4 p-3 bg-secondary/30 rounded-lg border border-secondary text-muted-foreground">
+          <div className="flex flex-col text-xs sm:text-sm sm:flex-row sm:flex-wrap sm:gap-x-3 sm:gap-y-1">
+            <span className="font-semibold text-foreground break-words">Current Config:</span>
+            <span className="break-words"><strong className="text-primary">{numNights} Night(s) / {tripData.settings.numDays} Day(s)</strong> starting {displayStartDate}.</span>
+            <span className="break-words">For {tripData.pax.adults} Adult(s), {tripData.pax.children} Child(ren).</span>
+            <span className="break-words">Billing Currency: {tripData.pax.currency}.</span>
+            {tripData.settings.isTemplate ? <Badge variant="outline" className="ml-1.5 border-accent text-accent text-xs self-start sm:self-center">TEMPLATE{tripData.settings.templateCategory ? `: ${tripData.settings.templateCategory}` : ''}</Badge> : ""}
+            {selectedCountryNames.length > 0 ? <span className="break-words"> Countries: {selectedCountryNames.join(', ')}.</span> : ""}
+            {(tripData.settings.selectedProvinces || []).length > 0 ? <span className="break-words"> Provinces: {tripData.settings.selectedProvinces.join(', ')}.</span> : ""}
+            {showCosts && tripData.settings.budget ? <span className="break-words"> Budget: {formatCurrency(tripData.settings.budget, tripData.pax.currency)}.</span> : ""}
           </div>
         </div>
       </CardContent>
@@ -394,3 +394,4 @@ function PlannerHeaderComponent({
 }
 
 export const PlannerHeader = React.memo(PlannerHeaderComponent);
+
