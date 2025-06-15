@@ -42,7 +42,7 @@ const PrintLayout = dynamic(() => import('../itinerary/print-layout').then(mod =
 interface ItineraryPlannerProps {
   tripData: TripData;
   onReset: () => void;
-  onUpdateTripData: (updatedTripData: Partial<TripData>) => void;
+  onUpdateTripData: (updateFn: (currentTripData: TripData | null) => Partial<TripData> | TripData) => void; // Modified to accept function
   onUpdateSettings: (updatedSettings: Partial<TripSettings>) => void;
   onUpdatePax: (updatedPax: Partial<PaxDetails>) => void;
   onManualSave: () => void;
@@ -63,7 +63,7 @@ export function ItineraryPlanner({
   const { allServicePrices, isLoading: isLoadingServices } = useServicePrices();
   const { allHotelDefinitions, isLoading: isLoadingHotelDefinitions } = useHotelDefinitions();
   const { getRate, isLoading: isLoadingExchangeRates, exchangeRates, globalMarkupPercentage, specificMarkupRates } = useExchangeRates();
-  const { countries, isLoading: isLoadingCountries } = useCountries(); // Get countries for passing to calculateAllCosts
+  const { countries, isLoading: isLoadingCountries } = useCountries(); 
 
   React.useEffect(() => {
     if (tripData && !isLoadingServices && !isLoadingHotelDefinitions && !isLoadingExchangeRates && !isLoadingCountries) {
@@ -82,65 +82,74 @@ export function ItineraryPlanner({
 
 
   const handleUpdateItem = React.useCallback((day: number, updatedItem: ItineraryItem) => {
-    const newDays = { ...tripData.days };
-    const dayItems = [...(newDays[day]?.items || [])];
-    const itemIndex = dayItems.findIndex(item => item.id === updatedItem.id);
-    if (itemIndex > -1) {
-      dayItems[itemIndex] = updatedItem;
-    }
-    newDays[day] = { items: dayItems };
-    onUpdateTripData({ days: newDays });
-  }, [tripData.days, onUpdateTripData]);
+    onUpdateTripData(currentTripData => {
+      if (!currentTripData) return {}; // Should not happen if planner is active
+      const newDays = { ...currentTripData.days };
+      const dayItems = [...(newDays[day]?.items || [])];
+      const itemIndex = dayItems.findIndex(item => item.id === updatedItem.id);
+      if (itemIndex > -1) {
+        dayItems[itemIndex] = updatedItem;
+      }
+      newDays[day] = { items: dayItems };
+      return { days: newDays };
+    });
+  }, [onUpdateTripData]);
 
   const handleAddItem = React.useCallback((day: number, itemType: ItineraryItem['type']) => {
-    let newItem: ItineraryItem;
-    const baseNewItem = {
-      id: generateGUID(),
-      day,
-      name: `New ${itemType}`,
-      excludedTravelerIds: [],
-      countryId: tripData.settings.selectedCountries.length === 1 ? tripData.settings.selectedCountries[0] : undefined,
-      province: tripData.settings.selectedProvinces.length === 1 ? tripData.settings.selectedProvinces[0] : undefined,
-    };
+    onUpdateTripData(currentTripData => {
+      if (!currentTripData) return {};
+      let newItem: ItineraryItem;
+      const baseNewItem = {
+        id: generateGUID(),
+        day,
+        name: `New ${itemType}`,
+        excludedTravelerIds: [],
+        countryId: currentTripData.settings.selectedCountries.length === 1 ? currentTripData.settings.selectedCountries[0] : undefined,
+        province: currentTripData.settings.selectedProvinces.length === 1 ? currentTripData.settings.selectedProvinces[0] : undefined,
+      };
 
-    switch (itemType) {
-      case 'transfer':
-        newItem = { ...baseNewItem, type: 'transfer', mode: 'ticket', adultTicketPrice: 0, childTicketPrice: 0 };
-        break;
-      case 'activity':
-        newItem = { ...baseNewItem, type: 'activity', adultPrice: 0, childPrice: 0 };
-        break;
-      case 'hotel':
-        newItem = {
-          ...baseNewItem,
-          type: 'hotel',
-          checkoutDay: day + 1,
-          hotelDefinitionId: '', 
-          selectedRooms: []
-        };
-        break;
-      case 'meal':
-        newItem = { ...baseNewItem, type: 'meal', adultMealPrice: 0, childMealPrice: 0, totalMeals: 1 };
-        break;
-      case 'misc':
-        newItem = { ...baseNewItem, type: 'misc', unitCost: 0, quantity: 1, costAssignment: 'perPerson' };
-        break;
-      default:
-        return;
-    }
+      switch (itemType) {
+        case 'transfer':
+          newItem = { ...baseNewItem, type: 'transfer', mode: 'ticket', adultTicketPrice: 0, childTicketPrice: 0 };
+          break;
+        case 'activity':
+          newItem = { ...baseNewItem, type: 'activity', adultPrice: 0, childPrice: 0 };
+          break;
+        case 'hotel':
+          newItem = {
+            ...baseNewItem,
+            type: 'hotel',
+            checkoutDay: day + 1,
+            hotelDefinitionId: '',
+            selectedRooms: []
+          };
+          break;
+        case 'meal':
+          newItem = { ...baseNewItem, type: 'meal', adultMealPrice: 0, childMealPrice: 0, totalMeals: 1 };
+          break;
+        case 'misc':
+          newItem = { ...baseNewItem, type: 'misc', unitCost: 0, quantity: 1, costAssignment: 'perPerson' };
+          break;
+        default:
+          return {}; // No update
+      }
 
-    const newDays = { ...tripData.days };
-    const dayItems = [...(newDays[day]?.items || []), newItem];
-    newDays[day] = { items: dayItems };
-    onUpdateTripData({ days: newDays });
-  }, [tripData.days, tripData.settings.selectedCountries, tripData.settings.selectedProvinces, onUpdateTripData]);
+      const newDays = { ...currentTripData.days };
+      const dayItems = [...(newDays[day]?.items || []), newItem];
+      newDays[day] = { items: dayItems };
+      return { days: newDays };
+    });
+  }, [onUpdateTripData]);
 
   const handleDeleteItem = React.useCallback((day: number, itemId: string) => {
-    const newDays = { ...tripData.days };
-    const dayItems = (newDays[day]?.items || []).filter(item => item.id !== itemId);
-    newDays[day] = { items: dayItems };
-    onUpdateTripData({ days: newDays });
-  }, [tripData.days, onUpdateTripData]);
+    onUpdateTripData(currentTripData => {
+      if (!currentTripData) return {};
+      const newDays = { ...currentTripData.days };
+      const dayItems = (newDays[day]?.items || []).filter(item => item.id !== itemId);
+      newDays[day] = { items: dayItems };
+      return { days: newDays };
+    });
+  }, [onUpdateTripData]);
 
   const handlePrint = React.useCallback(() => {
     setIsPrinting(true);
@@ -201,7 +210,7 @@ export function ItineraryPlanner({
                     dayNumber={dayNum}
                     items={tripData.days[dayNum]?.items || []}
                     travelers={tripData.travelers}
-                    currency={tripData.pax.currency} // This is billingCurrency
+                    currency={tripData.pax.currency} 
                     onAddItem={handleAddItem}
                     onUpdateItem={handleUpdateItem}
                     onDeleteItem={handleDeleteItem}

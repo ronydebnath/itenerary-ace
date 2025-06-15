@@ -1,4 +1,3 @@
-
 /**
  * @fileoverview This custom React hook manages the state and core logic for an itinerary.
  * It handles loading existing itineraries from localStorage or creating new ones,
@@ -158,7 +157,7 @@ export function useItineraryManager() {
     let associatedQuotationRequest: QuotationRequest | undefined = undefined;
     let allQuotationRequests: QuotationRequest[] = [];
 
-    try { // Seed Demo Quotations if none exist
+    try { 
       const storedQuotations = localStorage.getItem(AGENT_QUOTATION_REQUESTS_KEY);
       if (!storedQuotations) {
         const agentsString = localStorage.getItem(AGENTS_STORAGE_KEY);
@@ -188,7 +187,7 @@ export function useItineraryManager() {
         const now = new Date();
         const demoQuotationData: Omit<QuotationRequest, 'id' | 'requestDate' | 'updatedAt' | 'status'>[] = [
           {
-            agentId: AGENT_ID_JOHN_DOE_GTE, // John Doe from Global Travel Experts
+            agentId: AGENT_ID_JOHN_DOE_GTE, 
             clientInfo: { adults: 2, children: 0, childAges: "" },
             tripDetails: {
               preferredCountryIds: [DEFAULT_THAILAND_ID],
@@ -205,7 +204,7 @@ export function useItineraryManager() {
             mealPrefs: {mealPlan: "Breakfast Only"}
           },
           {
-            agentId: AGENT_ID_BOB_JOHNSON_LAI, // Bob Johnson from Local Adventures Inc.
+            agentId: AGENT_ID_BOB_JOHNSON_LAI, 
             clientInfo: { adults: 2, children: 2, childAges: "6,10" },
             tripDetails: {
               preferredCountryIds: [DEFAULT_THAILAND_ID, DEFAULT_MALAYSIA_ID],
@@ -222,7 +221,7 @@ export function useItineraryManager() {
             flightPrefs: { airportTransfersRequired: true, activityTransfersRequired: true },
           },
           {
-            agentId: AGENT_ID_FATIMA_AHMED_BV, // Fatima Ahmed from Bengal Voyager
+            agentId: AGENT_ID_FATIMA_AHMED_BV, 
             clientInfo: { adults: 2, children: 0, childAges: "" },
             tripDetails: {
               preferredCountryIds: [DEFAULT_THAILAND_ID],
@@ -246,21 +245,20 @@ export function useItineraryManager() {
           return {
             ...q,
             id: generateFullQuotationId(agency?.id),
-            requestDate: subDays(now, (demoQuotationData.length - index) * 10).toISOString(), // Stagger request dates
+            requestDate: subDays(now, (demoQuotationData.length - index) * 10).toISOString(), 
             updatedAt: subDays(now, (demoQuotationData.length - index) * 10).toISOString(),
             status: "Pending" as QuotationRequestStatus,
           };
         });
         localStorage.setItem(AGENT_QUOTATION_REQUESTS_KEY, JSON.stringify(seededQuotations));
         allQuotationRequests = seededQuotations;
-        // console.log("Demo quotations seeded to localStorage.");
       } else {
         allQuotationRequests = JSON.parse(storedQuotations);
       }
     } catch (e) { console.error("Error seeding/reading demo quotations:", e); }
 
 
-    if (quotationRequestIdFromUrl && !allQuotationRequests.length) { // Ensure allQuotationRequests is loaded if only ID is from URL
+    if (quotationRequestIdFromUrl && !allQuotationRequests.length) { 
         try {
             const requestsString = localStorage.getItem(AGENT_QUOTATION_REQUESTS_KEY);
             if (requestsString) allQuotationRequests = JSON.parse(requestsString);
@@ -361,30 +359,27 @@ export function useItineraryManager() {
     toast({ title: "New Itinerary Started", description: "A fresh itinerary has been created." });
   }, [router, toast]);
 
-  const handleUpdateTripData = React.useCallback((updatedTripDataFromPlanner: Partial<TripData>) => {
+  const handleUpdateTripData = React.useCallback((update: Partial<TripData> | ((current: TripData | null) => Partial<TripData> | TripData)) => {
     setTripData(prevTripData => {
-      if (!prevTripData && !currentItineraryId) {
-          console.error("Attempted to update trip data without a current itinerary.");
-          toast({ title: "Error", description: "No active itinerary to update.", variant: "destructive" });
-          return null;
-      }
-      const baseData = prevTripData || createDefaultTripData(searchParams.get('quotationRequestId') || undefined);
-      const dataToSet: TripData = {
-        ...baseData,
-        ...updatedTripDataFromPlanner,
-        id: baseData.id || currentItineraryId!,
-        version: (baseData.id || currentItineraryId!) === updatedTripDataFromPlanner.id ? (updatedTripDataFromPlanner.version || baseData.version) : (baseData.version || 1),
-      };
-      return dataToSet;
+        if (typeof update === 'function') {
+            const updatesToApply = update(prevTripData);
+            // Ensure that if prevTripData is null (should not happen in planner state), we have a base to spread over
+            const base = prevTripData || createDefaultTripData(searchParams.get('quotationRequestId') || undefined);
+            return { ...base, ...updatesToApply, id: base.id || currentItineraryId! } as TripData;
+        }
+        // If `update` is an object
+        const base = prevTripData || createDefaultTripData(searchParams.get('quotationRequestId') || undefined);
+        return { ...base, ...update, id: base.id || currentItineraryId! } as TripData;
     });
-  }, [currentItineraryId, toast, searchParams]);
+  }, [currentItineraryId, searchParams]);
+
 
   const handleUpdateSettings = React.useCallback((newSettingsPartial: Partial<TripSettings>) => {
-    setTripData(prevTripData => {
-      if (!prevTripData) return null;
-      const currentSettings = prevTripData.settings;
+    handleUpdateTripData(currentTripData => {
+      if (!currentTripData) return {};
+      const currentSettings = currentTripData.settings;
       let updatedSettings = { ...currentSettings, ...newSettingsPartial };
-      const newDaysData = { ...prevTripData.days };
+      const newDaysData = { ...currentTripData.days };
       if (updatedSettings.numDays !== undefined && updatedSettings.numDays !== currentSettings.numDays) {
         const oldNumDays = currentSettings.numDays;
         const newNumDays = updatedSettings.numDays;
@@ -396,24 +391,24 @@ export function useItineraryManager() {
           for (let i = newNumDays + 1; i <= oldNumDays; i++) delete newDaysData[i];
         }
       }
-      return { ...prevTripData, settings: updatedSettings, days: newDaysData };
+      return { settings: updatedSettings, days: newDaysData };
     });
-  }, []);
+  }, [handleUpdateTripData]);
 
   const handleUpdatePax = React.useCallback((newPaxPartial: Partial<PaxDetails>) => {
-    setTripData(prevTripData => {
-      if (!prevTripData) return null;
-      const updatedPax = { ...prevTripData.pax, ...newPaxPartial };
-      let updatedTravelers = prevTripData.travelers;
+    handleUpdateTripData(currentTripData => {
+      if (!currentTripData) return {};
+      const updatedPax = { ...currentTripData.pax, ...newPaxPartial };
+      let updatedTravelers = currentTripData.travelers;
       if (
-        (newPaxPartial.adults !== undefined && newPaxPartial.adults !== prevTripData.pax.adults) ||
-        (newPaxPartial.children !== undefined && newPaxPartial.children !== prevTripData.pax.children)
+        (newPaxPartial.adults !== undefined && newPaxPartial.adults !== currentTripData.pax.adults) ||
+        (newPaxPartial.children !== undefined && newPaxPartial.children !== currentTripData.pax.children)
       ) {
         updatedTravelers = createDefaultTravelers(updatedPax.adults, updatedPax.children);
       }
-      return { ...prevTripData, pax: updatedPax, travelers: updatedTravelers };
+      return { pax: updatedPax, travelers: updatedTravelers };
     });
-  }, []);
+  }, [handleUpdateTripData]);
 
   const handleManualSave = React.useCallback(() => {
     if (!tripData || !currentItineraryId) {
@@ -427,7 +422,7 @@ export function useItineraryManager() {
         version: newVersion,
         updatedAt: new Date().toISOString(),
       };
-      setTripData(dataToSave);
+      setTripData(dataToSave); // Update state with new version and updatedAt
       localStorage.setItem(`${ITINERARY_DATA_PREFIX}${currentItineraryId}`, JSON.stringify(dataToSave));
       const indexString = localStorage.getItem(ITINERARY_INDEX_KEY);
       let index: ItineraryMetadata[] = indexString ? JSON.parse(indexString) : [];
@@ -455,7 +450,7 @@ export function useItineraryManager() {
             allRequests[requestIndex].updatedAt = new Date().toISOString();
             localStorage.setItem(AGENT_QUOTATION_REQUESTS_KEY, JSON.stringify(allRequests));
           } else if (requestIndex > -1 && allRequests[requestIndex].status !== "Quoted") {
-            allRequests[requestIndex].linkedItineraryId = currentItineraryId; // Ensure it's linked even if status was already changed
+            allRequests[requestIndex].linkedItineraryId = currentItineraryId; 
             localStorage.setItem(AGENT_QUOTATION_REQUESTS_KEY, JSON.stringify(allRequests));
           }
         }
