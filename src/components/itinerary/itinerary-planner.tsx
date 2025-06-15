@@ -1,4 +1,3 @@
-
 /**
  * @fileoverview This component is the core user interface for planning an itinerary.
  * It orchestrates various sub-components like the `PlannerHeader` for global settings,
@@ -31,7 +30,7 @@ import { useCountries } from '@/hooks/useCountries';
 import { addDays, format, parseISO, isValid } from 'date-fns';
 import { PlannerHeader } from './planner-header';
 import { DayNavigation } from './day-navigation';
-import { useRouter } from 'next/navigation'; // Import useRouter
+import { useRouter } from 'next/navigation'; 
 import { Badge } from '@/components/ui/badge';
 
 
@@ -54,7 +53,7 @@ export function ItineraryPlanner({
   onManualSave,
   quotationRequestDetails
 }: ItineraryPlannerProps) {
-  const router = useRouter(); // Initialize router
+  const router = useRouter(); 
   const [currentDayView, setCurrentDayView] = React.useState<number>(1);
   const [costSummary, setCostSummary] = React.useState<CostSummary | null>(null);
   const [showCosts, setShowCosts] = React.useState<boolean>(true);
@@ -182,7 +181,7 @@ export function ItineraryPlanner({
               This information was provided by the agent. Use it to guide your itinerary planning.
             </CardDescription>
           </CardHeader>
-          <CardContent className="pt-2 text-xs space-y-3 p-4">
+          <CardContent className="pt-2 text-sm space-y-4 p-4">
             <div className="space-y-2">
                 <h4 className="font-semibold text-md flex items-center text-foreground/90 mb-1">
                 <UsersIcon className="h-4 w-4 mr-2 text-primary" />Client & Basic Trip Info
@@ -274,7 +273,7 @@ export function ItineraryPlanner({
               <p className="text-muted-foreground text-sm sm:text-base">Loading itinerary data and service definitions...</p>
             </div>
           ) : (
-            <ScrollArea className="flex-1 pr-0 lg:pr-2">
+            <ScrollArea className="h-[65vh] pr-0 lg:pr-2">
               {Array.from({ length: tripData.settings.numDays }, (_, i) => i + 1).map(dayNum => (
                 <div key={dayNum} style={{ display: dayNum === currentDayView ? 'block' : 'none' }}>
                   <DayView
