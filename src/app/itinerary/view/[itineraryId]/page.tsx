@@ -18,7 +18,7 @@ import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import {
   Loader2, AlertCircle, CalendarDays, Users, MapPin,
   Hotel, Car, Ticket, Utensils, ShoppingBag, FileText,
-  ArrowLeft, Globe, Printer, EyeOff, Eye, Coins, PackageIcon, MessageSquare, Share2
+  ArrowLeft, Globe, Printer, Coins, PackageIcon, MessageSquare
 } from 'lucide-react';
 import { formatCurrency, cn } from '@/lib/utils';
 import { CostBreakdownTable } from '@/components/itinerary/cost-breakdown-table';
@@ -108,11 +108,6 @@ export default function ItineraryClientViewPage() {
     }
   };
 
-  const handleShareView = (withCosts: boolean) => {
-    if (tripData?.id) {
-        router.push(`/itinerary/view/${tripData.id}?displayCosts=${withCosts}`);
-    }
-  };
 
   if (isLoading) {
     return (
@@ -162,7 +157,7 @@ export default function ItineraryClientViewPage() {
             </div>
             <div className="flex gap-2 self-start sm:self-center no-print">
                 <Button onClick={() => router.back()} variant="outline" size="sm" className="h-8 text-xs">
-                    <ArrowLeft className="mr-1.5 h-3.5 w-3.5" /> Back to Planner
+                    <ArrowLeft className="mr-1.5 h-3.5 w-3.5" /> Back to Previous Page
                 </Button>
             </div>
           </div>
@@ -268,7 +263,6 @@ export default function ItineraryClientViewPage() {
             );
           })}
 
-          {/* Main Cost Summary Section - Always Visible */}
           <section className="mt-6 pt-5 border-t print:mt-4 print:pt-3 print:border-gray-300 page-break-before-avoid">
             <h2 className="text-lg sm:text-xl font-semibold text-primary mb-3 sm:mb-4 print:text-base">Cost Summary</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
@@ -298,12 +292,6 @@ export default function ItineraryClientViewPage() {
          <div className="p-4 sm:p-6 pt-0 text-center no-print flex flex-col sm:flex-row justify-center items-center gap-3">
             <Button onClick={() => window.print()} variant="outline" size="sm" className="h-9 text-sm w-full sm:w-auto">
                 <Printer className="mr-2 h-4 w-4"/> Print Current View
-            </Button>
-            <Button onClick={() => handleShareView(true)} variant="default" size="sm" className="h-9 text-sm w-full sm:w-auto">
-                <Eye className="mr-2 h-4 w-4"/> View/Share with Details
-            </Button>
-            <Button onClick={() => handleShareView(false)} variant="secondary" size="sm" className="h-9 text-sm w-full sm:w-auto">
-                <EyeOff className="mr-2 h-4 w-4"/> View/Share without Details
             </Button>
         </div>
       </div>
