@@ -17,7 +17,7 @@ import type { TripData, ItineraryItem, CostSummary, TripSettings, PaxDetails, Qu
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { Eye, EyeOff, Loader2, FileText, Users as UsersIcon, MapPin as MapPinIcon, CalendarDays as CalendarDaysIcon, Briefcase as BriefcaseIcon, Coins as CoinsIcon, BedDouble as BedDoubleIcon, Zap as ZapIcon, Car as CarIcon, Utensils as UtensilsIcon, MessageSquare as MessageSquareIcon, Share2, Info, Send } from 'lucide-react';
+import { Eye, EyeOff, Loader2, FileText, Users as UsersIcon, MapPin as MapPinIcon, CalendarDays as CalendarDaysIcon, Briefcase as BriefcaseIcon, Coins as CoinsIcon, BedDouble as BedDoubleIcon, Zap as ZapIcon, Car as CarIcon, Utensils as UtensilsIcon, MessageSquare, Share2, Info } from 'lucide-react';
 import { formatCurrency, generateGUID } from '@/lib/utils';
 import { DayView } from '../itinerary/day-view';
 import { CostBreakdownTable } from '../itinerary/cost-breakdown-table';
@@ -264,7 +264,7 @@ export function ItineraryPlanner({
             <Separator />
             {quotationRequestDetails.otherRequirements && (
                 <div className="space-y-1 sm:space-y-1.5">
-                <h4 className="font-semibold text-sm sm:text-md flex items-center text-foreground/90 mb-1"><MessageSquareIcon className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-2 text-primary" />Other Requirements</h4>
+                <h4 className="font-semibold text-sm sm:text-md flex items-center text-foreground/90 mb-1"><MessageSquare className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-2 text-primary" />Other Requirements</h4>
                 <p className="whitespace-pre-wrap bg-muted/30 p-1.5 sm:p-2 rounded-sm text-xs">{quotationRequestDetails.otherRequirements}</p>
                 </div>
             )}
@@ -391,3 +391,4 @@ export function ItineraryPlanner({
   );
 }
 
+    
