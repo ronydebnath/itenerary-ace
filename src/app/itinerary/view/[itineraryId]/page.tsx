@@ -18,9 +18,9 @@ import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import {
   Loader2, AlertCircle, CalendarDays, Users, MapPin,
   Hotel, Car, Ticket, Utensils, ShoppingBag, FileText,
-  ArrowLeft, Globe, Printer, EyeOff, Eye, Coins
+  ArrowLeft, Globe, Printer, EyeOff, Eye, Coins, PackageIcon, MessageSquare
 } from 'lucide-react';
-import { formatCurrency } from '@/lib/utils';
+import { formatCurrency, cn } from '@/lib/utils';
 
 const ITINERARY_DATA_PREFIX = 'itineraryAce_data_';
 
@@ -33,11 +33,11 @@ const ITEM_TYPE_ICONS: { [key in ItineraryItem['type']]: React.ElementType } = {
 };
 
 const BOOKING_STATUS_STYLES: Record<DetailedSummaryItem['bookingStatus'] & string, string> = {
-  Pending: "bg-yellow-100 text-yellow-700 border-yellow-300",
-  Requested: "bg-blue-100 text-blue-700 border-blue-300",
-  Confirmed: "bg-green-100 text-green-700 border-green-300",
-  Unavailable: "bg-red-100 text-red-700 border-red-300",
-  Cancelled: "bg-gray-100 text-gray-700 border-gray-300",
+  Pending: "bg-yellow-100 text-yellow-800 border-yellow-300 dark:bg-yellow-700/20 dark:text-yellow-300 dark:border-yellow-600",
+  Requested: "bg-blue-100 text-blue-800 border-blue-300 dark:bg-blue-700/20 dark:text-blue-300 dark:border-blue-600",
+  Confirmed: "bg-green-100 text-green-800 border-green-300 dark:bg-green-700/20 dark:text-green-300 dark:border-green-600",
+  Unavailable: "bg-red-100 text-red-800 border-red-300 dark:bg-red-700/20 dark:text-red-300 dark:border-red-600",
+  Cancelled: "bg-gray-100 text-gray-800 border-gray-300 dark:bg-gray-600/20 dark:text-gray-300 dark:border-gray-500",
 };
 
 
@@ -84,9 +84,9 @@ export default function ItineraryClientViewPage() {
       } finally {
         setIsLoading(false);
       }
-    } else if (!tripData && !isLoading && !error) { 
+    } else if (!tripData && !isLoading && !error) {
       if (!isLoadingServices && !isLoadingHotelDefs && !isLoadingCountries && !isLoadingExchangeRates) {
-         setIsLoading(false); 
+         setIsLoading(false);
       }
     }
   }, [tripData, isLoadingServices, isLoadingHotelDefs, isLoadingCountries, isLoadingExchangeRates, countries, allServicePrices, allHotelDefinitions, getRate, isLoading, error]);
@@ -140,21 +140,21 @@ export default function ItineraryClientViewPage() {
 
 
   return (
-    <div className="min-h-screen bg-muted/30 p-2 sm:p-4 md:p-6 lg:p-8 print:p-0 print:bg-white">
-      <div className="max-w-4xl mx-auto bg-card shadow-xl rounded-lg print:shadow-none print:border-none">
-        <CardHeader className="p-4 sm:p-6 border-b print:border-b-2 print:border-black">
+    <div className="min-h-screen bg-muted/20 dark:bg-muted/5 p-2 sm:p-4 md:p-6 lg:p-8 print:p-0 print:bg-white">
+      <div className="max-w-4xl mx-auto bg-card shadow-2xl rounded-lg print:shadow-none print:border-none">
+        <CardHeader className="p-4 sm:p-6 border-b print:border-b-2 print:border-black bg-primary/5 dark:bg-primary/10">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
             <div className="flex-grow">
               <h1 className="text-2xl sm:text-3xl font-bold text-primary print:text-black">{tripData.itineraryName}</h1>
               {tripData.clientName && <p className="text-sm sm:text-md text-muted-foreground print:text-gray-700">For: {tripData.clientName}</p>}
             </div>
             <div className="flex gap-2 self-start sm:self-center no-print">
-                <Button onClick={() => setShowCosts(!showCosts)} variant="outline" size="sm">
-                    {showCosts ? <EyeOff className="mr-2 h-4 w-4" /> : <Eye className="mr-2 h-4 w-4" />}
+                <Button onClick={() => setShowCosts(!showCosts)} variant="outline" size="sm" className="h-8 text-xs">
+                    {showCosts ? <EyeOff className="mr-1.5 h-3.5 w-3.5" /> : <Eye className="mr-1.5 h-3.5 w-3.5" />}
                     {showCosts ? 'Hide' : 'Show'} Costs
                 </Button>
-                <Button onClick={() => router.back()} variant="outline" size="sm">
-                    <ArrowLeft className="mr-2 h-4 w-4" /> Back
+                <Button onClick={() => router.back()} variant="outline" size="sm" className="h-8 text-xs">
+                    <ArrowLeft className="mr-1.5 h-3.5 w-3.5" /> Back
                 </Button>
             </div>
           </div>
@@ -169,6 +169,13 @@ export default function ItineraryClientViewPage() {
               <div className="flex items-center col-span-full sm:col-span-2"><MapPin className="mr-1.5 h-4 w-4 text-primary print:text-gray-600" /> <strong>Provinces:</strong><span className="ml-1.5">{settings.selectedProvinces.join(', ')}</span></div>
             )}
           </div>
+           {tripData.overallBookingStatus && (
+            <div className="mt-2 pt-2 border-t border-primary/10">
+              <Badge variant="outline" className={cn("text-sm font-medium", BOOKING_STATUS_STYLES[tripData.overallBookingStatus] || 'border-gray-300 text-gray-700')}>
+                Overall Status: {tripData.overallBookingStatus}
+              </Badge>
+            </div>
+          )}
         </CardHeader>
 
         <CardContent className="p-4 sm:p-6 space-y-6 md:space-y-8 print:p-3 sm:print:p-4">
@@ -178,64 +185,73 @@ export default function ItineraryClientViewPage() {
             const dayNum = parseInt(dayNumStr);
             return (
               <section key={dayNum} className="mb-5 last:mb-0 print:mb-3 page-break-inside-avoid">
-                <h2 className="text-lg sm:text-xl font-semibold text-primary border-b-2 border-primary/30 pb-1.5 mb-3 sm:mb-4 print:text-base print:border-gray-400">
+                <h2 className="text-xl sm:text-2xl font-semibold text-primary border-b-2 border-primary/30 pb-2 mb-4 sm:mb-5 print:text-lg print:border-gray-400 print:pb-1.5 print:mb-3">
                   {getFormattedDateForDay(dayNum)}
                 </h2>
                 {dayItinerary.items.length === 0 ? (
-                  <p className="text-muted-foreground italic text-sm print:text-xs">No activities or services planned for this day.</p>
+                  <div className="text-center py-6 text-muted-foreground bg-muted/20 dark:bg-muted/10 rounded-md border border-dashed print:py-3">
+                    <PackageIcon className="mx-auto h-10 w-10 text-gray-400 dark:text-gray-500 mb-2 print:h-8 print:w-8" />
+                    <p className="text-sm sm:text-md print:text-sm">No activities or services planned for this day.</p>
+                  </div>
                 ) : (
                   <div className="space-y-4 sm:space-y-5 print:space-y-3">
                     {dayItinerary.items.map(item => {
-                      const IconComponent = ITEM_TYPE_ICONS[item.type] || FileText; // Fallback to FileText
+                      const IconComponent = ITEM_TYPE_ICONS[item.type] || FileText;
                       const detailedItemInfo = costSummary.detailedItems.find(di => di.id === item.id);
                       const locationDisplay = [detailedItemInfo?.province, detailedItemInfo?.countryName].filter(Boolean).join(', ');
 
                       return (
-                        <div key={item.id} className="bg-card border border-border rounded-lg shadow-sm overflow-hidden print:shadow-none print:border-gray-300 page-break-inside-avoid">
-                          <div className="flex items-start gap-3 p-3 sm:p-4 bg-muted/20 print:bg-gray-50 print:p-2.5">
+                        <Card key={item.id} className="shadow-md hover:shadow-lg transition-shadow duration-200 print:shadow-none print:border-gray-300 page-break-inside-avoid overflow-hidden">
+                          <CardHeader className="flex flex-row items-start gap-3 p-3 sm:p-4 bg-muted/30 dark:bg-muted/15 print:bg-gray-50 print:p-2.5 border-b print:border-gray-200">
                             <IconComponent className="h-5 w-5 sm:h-6 sm:w-6 text-accent mt-0.5 sm:mt-1 flex-shrink-0 print:h-4 print:w-4" />
-                            <div className="flex-grow">
-                              <h3 className="text-sm sm:text-md font-semibold print:text-sm">{item.name}</h3>
-                              {locationDisplay && <p className="text-xs text-muted-foreground print:text-gray-600">{locationDisplay}</p>}
+                            <div className="flex-grow min-w-0">
+                              <h3 className="text-md sm:text-lg font-semibold text-primary/90 dark:text-primary/80 print:text-base">{item.name}</h3>
+                              {locationDisplay && <p className="text-xs text-muted-foreground print:text-gray-600"><MapPin className="inline-block h-3 w-3 mr-1 -mt-px"/>{locationDisplay}</p>}
                             </div>
-                          </div>
-                          <div className="p-3 sm:p-4 space-y-1.5 text-xs sm:text-sm print:p-2.5 print:text-xs">
-                            {item.note && <p className="whitespace-pre-wrap"><strong className="print:font-normal">Note:</strong> {item.note}</p>}
+                          </CardHeader>
+                          <CardContent className="p-3 sm:p-4 space-y-2 text-xs sm:text-sm print:p-2.5 print:text-xs">
+                            {item.note && (
+                              <div className="flex items-start">
+                                <MessageSquare className="h-3.5 w-3.5 mr-2 mt-px text-muted-foreground flex-shrink-0 print:h-3 print:w-3"/>
+                                <p className="whitespace-pre-wrap text-muted-foreground print:text-gray-700">{item.note}</p>
+                              </div>
+                            )}
                             {detailedItemInfo?.configurationDetails && (
                               <div>
-                                <strong className="print:font-normal">Details:</strong>
-                                <ul className="list-disc list-inside pl-1 mt-0.5 space-y-0.5 text-xs text-muted-foreground print:text-gray-700">
+                                <strong className="text-foreground/80 print:font-normal">Details:</strong>
+                                <ul className="list-disc list-inside pl-2 mt-0.5 space-y-0.5 text-xs text-muted-foreground print:text-gray-700">
                                   {detailedItemInfo.configurationDetails.split(';').map(d => d.trim()).filter(Boolean).map((detail, idx) => (
-                                    <li key={idx}>{detail}</li>
+                                    <li key={idx} className="whitespace-normal break-words">{detail}</li>
                                   ))}
                                 </ul>
                               </div>
                             )}
                              {item.type === 'hotel' && detailedItemInfo?.occupancyDetails && detailedItemInfo.occupancyDetails.length > 0 && (
-                                <div className="mt-1.5">
-                                <strong className="text-xs print:font-normal">Rooming:</strong>
-                                <ul className="list-disc list-inside pl-1 mt-0.5 space-y-0.5 text-xs">
+                                <div className="mt-2 pt-2 border-t border-border/50 dark:border-border/20">
+                                <strong className="text-xs text-foreground/80 print:font-normal">Rooming Configuration:</strong>
+                                <ul className="list-disc list-inside pl-2 mt-0.5 space-y-1 text-xs">
                                     {detailedItemInfo.occupancyDetails.map((occ, idx) => (
                                     <li key={idx}>
                                         <strong>{occ.roomTypeName}</strong> ({occ.numRooms} room{occ.numRooms > 1 ? 's' : ''} x {occ.nights} night{occ.nights > 1 ? 's' : ''})
                                         {occ.extraBedAdded && " (incl. Extra Bed)"}.
                                         {occ.assignedTravelerLabels && <span className="block text-muted-foreground print:text-gray-600">Guests: {occ.assignedTravelerLabels}</span>}
                                         {occ.characteristics && <span className="block text-muted-foreground print:text-gray-600">Details: {occ.characteristics}</span>}
+                                        {showCosts && <span className="block text-muted-foreground print:text-gray-600">Cost: {formatCurrency(occ.totalRoomBlockCost, tripData.pax.currency)}</span>}
                                     </li>
                                     ))}
                                 </ul>
                                 </div>
                             )}
                             {detailedItemInfo?.bookingStatus && (
-                              <p className="mt-1"><strong className="print:font-normal">Status:</strong> <Badge variant="outline" className={`text-xs ${BOOKING_STATUS_STYLES[detailedItemInfo.bookingStatus] || 'border-gray-300 text-gray-700'}`}>{detailedItemInfo.bookingStatus}</Badge>
+                              <p className="mt-2 pt-2 border-t border-border/50 dark:border-border/20"><strong className="text-foreground/80 print:font-normal">Status:</strong> <Badge variant="outline" className={cn("text-xs", BOOKING_STATUS_STYLES[detailedItemInfo.bookingStatus] || 'border-gray-300 text-gray-700')}>{detailedItemInfo.bookingStatus}</Badge>
                                 {detailedItemInfo.confirmationRef && <span className="ml-2 text-muted-foreground print:text-gray-600">(Ref: {detailedItemInfo.confirmationRef})</span>}
                               </p>
                             )}
                             {detailedItemInfo?.excludedTravelers && detailedItemInfo.excludedTravelers !== "None" && (
-                              <p className="text-xs text-amber-700 print:text-gray-600 mt-1">Excludes: {detailedItemInfo.excludedTravelers}</p>
+                              <p className="text-xs text-amber-700 dark:text-amber-500 print:text-gray-600 mt-1.5">Excludes: {detailedItemInfo.excludedTravelers}</p>
                             )}
-                          </div>
-                        </div>
+                          </CardContent>
+                        </Card>
                       );
                     })}
                   </div>
@@ -248,18 +264,18 @@ export default function ItineraryClientViewPage() {
             <section className="mt-6 pt-5 border-t print:mt-4 print:pt-3 print:border-gray-300 page-break-before-avoid">
               <h2 className="text-lg sm:text-xl font-semibold text-primary mb-3 sm:mb-4 print:text-base">Cost Summary</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
-                <div>
-                  <h3 className="text-sm sm:text-md font-semibold mb-1.5 print:text-sm">Per Person Total:</h3>
-                  <ul className="list-disc list-inside pl-1 space-y-0.5 text-xs sm:text-sm print:text-xs">
+                <div className="bg-muted/20 dark:bg-muted/10 p-3 sm:p-4 rounded-md border">
+                  <h3 className="text-sm sm:text-md font-semibold mb-1.5 print:text-sm text-foreground/90">Per Person Total:</h3>
+                  <ul className="list-disc list-inside pl-1 space-y-0.5 text-xs sm:text-sm print:text-xs text-muted-foreground">
                     {travelers.map(traveler => (
                       <li key={traveler.id}>
-                        {traveler.label}: <span className="font-semibold">{formatCurrency(costSummary.perPersonTotals[traveler.id] || 0, pax.currency)}</span>
+                        {traveler.label}: <span className="font-semibold text-foreground/90">{formatCurrency(costSummary.perPersonTotals[traveler.id] || 0, pax.currency)}</span>
                       </li>
                     ))}
                   </ul>
                 </div>
-                <div className="text-left md:text-right">
-                  <h3 className="text-sm sm:text-md font-semibold mb-0.5 print:text-sm">Grand Total:</h3>
+                <div className="text-left md:text-right bg-muted/20 dark:bg-muted/10 p-3 sm:p-4 rounded-md border">
+                  <h3 className="text-sm sm:text-md font-semibold mb-0.5 print:text-sm text-foreground/90">Grand Total:</h3>
                   <p className="text-xl sm:text-2xl font-bold text-accent print:text-lg">{formatCurrency(costSummary.grandTotal, pax.currency)}</p>
                   {settings.budget && (
                     <p className="text-xs text-muted-foreground print:text-gray-600">
@@ -276,7 +292,7 @@ export default function ItineraryClientViewPage() {
            )}
         </CardContent>
          <div className="p-4 sm:p-6 pt-0 text-center no-print">
-            <Button onClick={() => window.print()} variant="default" size="sm">
+            <Button onClick={() => window.print()} variant="default" size="sm" className="h-9 text-sm">
                 <Printer className="mr-2 h-4 w-4"/> Print This View
             </Button>
         </div>
@@ -284,3 +300,6 @@ export default function ItineraryClientViewPage() {
     </div>
   );
 }
+
+
+    
