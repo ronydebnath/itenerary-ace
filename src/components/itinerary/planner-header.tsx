@@ -24,7 +24,7 @@ import { DatePicker } from '@/components/ui/date-picker';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Edit3, Save, Info, CalendarDays, Users, MapPin, Route, Loader2, DollarSign, Globe, FileText, Image as ImageIconLucide, Wand2, Landmark } from 'lucide-react'; // Added Landmark
+import { Edit3, Save, Info, CalendarDays, Users, MapPin, Route, Loader2, DollarSign, Globe, FileText, Image as ImageIconLucide, Wand2, Landmark } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { formatCurrency } from '@/lib/utils';
 import { format, parseISO, isValid } from 'date-fns';
@@ -32,6 +32,7 @@ import { Badge } from '@/components/ui/badge';
 import { useProvinces } from '@/hooks/useProvinces';
 import { useCountries } from '@/hooks/useCountries';
 import Link from 'next/link';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 
 interface PlannerHeaderProps {
   tripData: TripData;
@@ -60,7 +61,7 @@ function PlannerHeaderComponent({
       selectedCountries: (tripData.settings.selectedCountries || []).includes(countryId)
         ? (tripData.settings.selectedCountries || []).filter(id => id !== countryId)
         : [...(tripData.settings.selectedCountries || []), countryId],
-      selectedProvinces: [] // Reset provinces when countries change
+      selectedProvinces: [] 
     });
   }, [onUpdateSettings, tripData.settings.selectedCountries]);
 
@@ -108,21 +109,25 @@ function PlannerHeaderComponent({
 
   const groupedProvinces = React.useMemo(() => {
     if (isLoadingProvinces || isLoadingCountries) return {};
-    const groups: Record<string, ProvinceItem[]> = {};
+    const groups: Record<string, { countryName: string; provinces: ProvinceItem[] }> = {};
+
     displayableProvinces.forEach(province => {
+      const country = availableCountries.find(c => c.id === province.countryId);
       const countryKey = province.countryId || 'unknown';
+      const countryName = country?.name || 'Other Provinces';
+
       if (!groups[countryKey]) {
-        groups[countryKey] = [];
+        groups[countryKey] = { countryName, provinces: [] };
       }
-      groups[countryKey].push(province);
+      groups[countryKey].provinces.push(province);
     });
-    for (const countryId in groups) {
-      groups[countryId].sort((a, b) => a.name.localeCompare(b.name));
+
+    for (const key in groups) {
+      groups[key].provinces.sort((a, b) => a.name.localeCompare(b.name));
     }
-    const sortedGroupEntries = Object.entries(groups).sort(([countryIdA], [countryIdB]) => {
-      const countryNameA = availableCountries.find(c => c.id === countryIdA)?.name || 'Unknown Country';
-      const countryNameB = availableCountries.find(c => c.id === countryIdB)?.name || 'Unknown Country';
-      return countryNameA.localeCompare(countryNameB);
+
+    const sortedGroupEntries = Object.entries(groups).sort(([, groupA], [, groupB]) => {
+      return groupA.countryName.localeCompare(groupB.countryName);
     });
     return Object.fromEntries(sortedGroupEntries);
   }, [displayableProvinces, isLoadingProvinces, isLoadingCountries, availableCountries]);
@@ -134,7 +139,7 @@ function PlannerHeaderComponent({
     <Card className="mb-4 md:mb-6 shadow-xl no-print">
       <CardHeader className="bg-primary/5 p-4 sm:p-6">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4">
-          <div>
+          <div className="flex-grow">
             <CardTitle className="text-2xl sm:text-3xl font-bold text-primary flex items-center">
               <Route className="mr-2 sm:mr-3 h-7 w-7 sm:h-8 sm:w-8 text-primary" />
               Itinerary Planner
@@ -143,17 +148,17 @@ function PlannerHeaderComponent({
               Craft and cost your perfect trip. Changes to settings below will update the itinerary.
             </CardDescription>
           </div>
-          <div className="flex gap-2 flex-wrap mt-2 sm:mt-0 self-start sm:self-auto">
-            <Link href="/image-describer">
-              <Button variant="outline" size="sm" className="bg-card hover:bg-muted shadow-sm text-xs sm:text-sm h-9">
+          <div className="flex flex-wrap gap-2 mt-2 sm:mt-0 self-start sm:self-auto w-full sm:w-auto">
+            <Link href="/image-describer" className="w-full xs:w-auto">
+              <Button variant="outline" size="sm" className="bg-card hover:bg-muted shadow-sm text-xs sm:text-sm h-9 w-full xs:w-auto">
                 <ImageIconLucide className="mr-1.5 h-4 w-4" />
                 Describe Image
               </Button>
             </Link>
             <TooltipProvider>
               <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button variant="outline" size="sm" className="bg-card hover:bg-muted shadow-sm text-xs sm:text-sm h-9" disabled>
+                <TooltipTrigger asChild className="w-full xs:w-auto">
+                  <Button variant="outline" size="sm" className="bg-card hover:bg-muted shadow-sm text-xs sm:text-sm h-9 w-full xs:w-auto" disabled>
                     <Wand2 className="mr-1.5 h-4 w-4" />
                     AI Smart Suggestions
                   </Button>
@@ -163,10 +168,10 @@ function PlannerHeaderComponent({
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
-            <Button onClick={onManualSave} size="sm" className="bg-accent hover:bg-accent/90 text-accent-foreground text-xs sm:text-sm h-9">
+            <Button onClick={onManualSave} size="sm" className="bg-accent hover:bg-accent/90 text-accent-foreground text-xs sm:text-sm h-9 w-full xs:w-auto">
               <Save className="mr-1.5 h-4 w-4" /> Save
             </Button>
-            <Button variant="outline" onClick={onReset} size="sm" className="border-destructive text-destructive hover:bg-destructive/10 text-xs sm:text-sm h-9">
+            <Button variant="outline" onClick={onReset} size="sm" className="border-destructive text-destructive hover:bg-destructive/10 text-xs sm:text-sm h-9 w-full xs:w-auto">
               <Edit3 className="mr-1.5 h-4 w-4" /> New/Reset
             </Button>
           </div>
@@ -298,7 +303,7 @@ function PlannerHeaderComponent({
                         className="h-4 w-4"
                       />
                       <Label htmlFor={`country-select-${country.id}`} className="text-sm font-normal cursor-pointer">
-                        {country.name}
+                        <span className="break-words">{country.name}</span>
                       </Label>
                     </div>
                   ))}
@@ -325,35 +330,38 @@ function PlannerHeaderComponent({
                 <span className="ml-2 text-sm text-muted-foreground">Loading provinces...</span>
               </div>
             ) : Object.keys(groupedProvinces).length > 0 ? (
-              <ScrollArea className="h-28 w-full rounded-md border p-3 bg-background">
-                {Object.entries(groupedProvinces).map(([countryId, provincesInGroup]) => {
-                  const country = availableCountries.find(c => c.id === countryId);
-                  if (!tripData.settings.selectedCountries || tripData.settings.selectedCountries.length === 0 || tripData.settings.selectedCountries.includes(countryId)) {
-                    return (
-                      <div key={countryId} className="mb-2">
-                        <h4 className="text-xs font-semibold text-muted-foreground mb-1">
-                          {country?.name || "Other Provinces"}
-                        </h4>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1.5 pl-2">
-                          {provincesInGroup.map((province) => (
-                            <div key={province.id} className="flex items-center space-x-2">
-                              <Checkbox
-                                id={`province-select-${province.id}`}
-                                checked={(tripData.settings.selectedProvinces || []).includes(province.name)}
-                                onCheckedChange={() => handleProvinceToggle(province.name)}
-                                className="h-4 w-4"
-                              />
-                              <Label htmlFor={`province-select-${province.id}`} className="text-sm font-normal cursor-pointer">
-                                {province.name}
-                              </Label>
+              <ScrollArea className="h-28 w-full rounded-md border p-1 bg-background">
+                <Accordion type="multiple" className="w-full" defaultValue={Object.keys(groupedProvinces)}>
+                  {Object.entries(groupedProvinces).map(([countryId, { countryName, provinces: provincesInGroup }]) => {
+                    if (tripData.settings.selectedCountries.length === 0 || tripData.settings.selectedCountries.includes(countryId)) {
+                      return (
+                        <AccordionItem value={countryId} key={countryId} className="border-b-0">
+                          <AccordionTrigger className="py-1.5 px-2 text-xs hover:bg-muted/50 rounded-sm [&[data-state=open]>svg]:text-primary">
+                            <span className="truncate text-muted-foreground hover:text-foreground">{countryName} ({provincesInGroup.length})</span>
+                          </AccordionTrigger>
+                          <AccordionContent className="pt-0 pb-1 pl-3">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-1">
+                              {provincesInGroup.map((province) => (
+                                <div key={province.id} className="flex items-center space-x-2 py-0.5">
+                                  <Checkbox
+                                    id={`province-select-${province.id}`}
+                                    checked={(tripData.settings.selectedProvinces || []).includes(province.name)}
+                                    onCheckedChange={() => handleProvinceToggle(province.name)}
+                                    className="h-3.5 w-3.5"
+                                  />
+                                  <Label htmlFor={`province-select-${province.id}`} className="text-xs font-normal cursor-pointer">
+                                    <span className="break-words">{province.name}</span>
+                                  </Label>
+                                </div>
+                              ))}
                             </div>
-                          ))}
-                        </div>
-                      </div>
-                    );
-                  }
-                  return null;
-                })}
+                          </AccordionContent>
+                        </AccordionItem>
+                      );
+                    }
+                    return null;
+                  })}
+                </Accordion>
               </ScrollArea>
             ) : (
               <p className="text-sm text-muted-foreground text-center py-4 border rounded-md bg-muted/50">
@@ -369,13 +377,15 @@ function PlannerHeaderComponent({
         </div>
 
         <div className="mt-4 p-3 bg-secondary/30 rounded-lg border border-secondary text-sm text-muted-foreground">
-          <div>
-            <span className="font-semibold text-foreground">Current Config:</span> <strong className="text-primary">{numNights} Night(s) / {tripData.settings.numDays} Day(s)</strong> starting {displayStartDate}.
-            For {tripData.pax.adults} Adult(s), {tripData.pax.children} Child(ren). Billing Currency: {tripData.pax.currency}.
+          <div className="flex flex-wrap gap-x-3 gap-y-1">
+            <span className="font-semibold text-foreground">Current Config:</span>
+            <span className="whitespace-nowrap"><strong className="text-primary">{numNights} Night(s) / {tripData.settings.numDays} Day(s)</strong> starting {displayStartDate}.</span>
+            <span className="whitespace-nowrap">For {tripData.pax.adults} Adult(s), {tripData.pax.children} Child(ren).</span>
+            <span className="whitespace-nowrap">Billing Currency: {tripData.pax.currency}.</span>
             {tripData.settings.isTemplate ? <Badge variant="outline" className="ml-1.5 border-accent text-accent text-xs">TEMPLATE{tripData.settings.templateCategory ? `: ${tripData.settings.templateCategory}` : ''}</Badge> : ""}
-            {selectedCountryNames.length > 0 ? ` Countries: ${selectedCountryNames.join(', ')}.` : ""}
-            {(tripData.settings.selectedProvinces || []).length > 0 ? ` Provinces: ${tripData.settings.selectedProvinces.join(', ')}.` : ""}
-            {showCosts && tripData.settings.budget ? ` Budget: ${formatCurrency(tripData.settings.budget, tripData.pax.currency)}.` : ""}
+            {selectedCountryNames.length > 0 ? <span className="whitespace-nowrap"> Countries: {selectedCountryNames.join(', ')}.</span> : ""}
+            {(tripData.settings.selectedProvinces || []).length > 0 ? <span className="whitespace-nowrap"> Provinces: {tripData.settings.selectedProvinces.join(', ')}.</span> : ""}
+            {showCosts && tripData.settings.budget ? <span className="whitespace-nowrap"> Budget: {formatCurrency(tripData.settings.budget, tripData.pax.currency)}.</span> : ""}
           </div>
         </div>
       </CardContent>
