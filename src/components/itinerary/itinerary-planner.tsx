@@ -30,7 +30,7 @@ import { useCountries } from '@/hooks/useCountries';
 import { addDays, format, parseISO, isValid } from 'date-fns';
 import { PlannerHeader } from './planner-header';
 import { DayNavigation } from './day-navigation';
-import { useRouter } from 'next/navigation'; 
+import { useRouter } from 'next/navigation';
 import { Badge } from '@/components/ui/badge';
 
 
@@ -53,7 +53,7 @@ export function ItineraryPlanner({
   onManualSave,
   quotationRequestDetails
 }: ItineraryPlannerProps) {
-  const router = useRouter(); 
+  const router = useRouter();
   const [currentDayView, setCurrentDayView] = React.useState<number>(1);
   const [costSummary, setCostSummary] = React.useState<CostSummary | null>(null);
   const [showCosts, setShowCosts] = React.useState<boolean>(true);
@@ -153,6 +153,11 @@ export function ItineraryPlanner({
       router.push(`/itinerary/view/${tripData.id}`);
     }
   }, [tripData?.id, router]);
+
+  const handleSaveAndView = () => {
+    onManualSave();
+    handleViewClientItinerary();
+  };
 
   const getFormattedDateForDay = React.useCallback((dayNum: number): string => {
     if (!tripData.settings.startDate) return `Day ${dayNum}`;
@@ -352,7 +357,7 @@ export function ItineraryPlanner({
       </Card>
 
       <div className="mt-6 md:mt-8 py-4 md:py-6 border-t border-border flex flex-col sm:flex-row justify-center items-center gap-3 sm:gap-4 no-print">
-        <Button onClick={handleViewClientItinerary} className="w-full sm:w-auto bg-accent hover:bg-accent/90 text-accent-foreground">
+        <Button onClick={handleSaveAndView} className="w-full sm:w-auto bg-accent hover:bg-accent/90 text-accent-foreground">
           <Share2 className="mr-2 h-4 w-4" /> View Itinerary
         </Button>
       </div>
