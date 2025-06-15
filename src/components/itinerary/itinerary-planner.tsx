@@ -42,7 +42,7 @@ interface ItineraryPlannerProps {
   onUpdatePax: (updatedPax: Partial<PaxDetails>) => void;
   onManualSave: () => void;
   quotationRequestDetails?: QuotationRequest | null;
-  handleSendQuotationToAgent: () => boolean; // Updated function name
+  handleSendQuotationToAgent: () => boolean; 
 }
 
 export function ItineraryPlanner({
@@ -53,7 +53,7 @@ export function ItineraryPlanner({
   onUpdatePax,
   onManualSave,
   quotationRequestDetails,
-  handleSendQuotationToAgent // Updated prop name
+  handleSendQuotationToAgent 
 }: ItineraryPlannerProps) {
   const router = useRouter();
   const [currentDayView, setCurrentDayView] = React.useState<number>(1);
@@ -150,7 +150,7 @@ export function ItineraryPlanner({
     });
   }, [onUpdateTripData]);
 
-  const handleSaveAndGoToView = React.useCallback((withDetailedCosts: boolean) => {
+  const handleGoToView = React.useCallback((withDetailedCosts: boolean) => {
     onManualSave(); 
     if (tripData?.id) {
       let url = `/itinerary/view/${tripData.id}`;
@@ -370,11 +370,11 @@ export function ItineraryPlanner({
       </Card>
 
       <div className="mt-6 md:mt-8 py-4 md:py-6 border-t border-border flex flex-col sm:flex-row justify-center items-center gap-3 sm:gap-4 no-print">
-         <Button onClick={() => handleSaveAndGoToView(true)} className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-primary-foreground">
-          <Share2 className="mr-2 h-4 w-4" /> View/Share with Details
+         <Button onClick={() => handleGoToView(true)} className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-primary-foreground">
+          <Share2 className="mr-2 h-4 w-4" /> View with Price Details
         </Button>
-        <Button onClick={() => handleSaveAndGoToView(false)} className="w-full sm:w-auto bg-secondary hover:bg-secondary/80 text-secondary-foreground">
-          <EyeOff className="mr-2 h-4 w-4" /> View/Share without Details
+        <Button onClick={() => handleGoToView(false)} className="w-full sm:w-auto bg-secondary hover:bg-secondary/80 text-secondary-foreground">
+          <EyeOff className="mr-2 h-4 w-4" /> View without Price Details
         </Button>
          <div className="mt-2 sm:mt-0 text-xs text-muted-foreground text-center sm:text-left">
             <Info className="inline h-3 w-3 mr-1 -mt-px" /> All actions save the current itinerary before navigating.
