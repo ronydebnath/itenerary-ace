@@ -1,3 +1,4 @@
+
 /**
  * @fileoverview This component renders the view for a single day in the itinerary.
  * It displays all the itinerary items (transfers, activities, hotels, etc.) planned
@@ -151,18 +152,18 @@ function DayViewComponent({
 
         <div>
           <h3 className="text-md font-semibold mb-2 text-center text-primary uppercase tracking-wider">Add Service to Day {dayNumber}</h3>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 sm:gap-3">
+          <div className="grid grid-cols-3 md:grid-cols-5 gap-2">
             {SERVICE_TYPES_CONFIG.map(serviceConfig => {
               const IconComponent = serviceConfig.icon;
               return (
                 <Button
                   key={serviceConfig.type}
                   variant="outline"
-                  className="flex-col h-auto px-2 py-3 sm:py-4 border-dashed hover:border-solid hover:bg-primary/5 hover:text-primary group transition-all duration-150 ease-in-out text-xs sm:text-sm"
+                  className="flex-col h-auto p-2 border-dashed hover:border-solid hover:bg-primary/5 hover:text-primary group transition-all duration-150 ease-in-out text-[10px] sm:text-xs leading-tight"
                   onClick={() => onAddItem(dayNumber, serviceConfig.type)}
                 >
-                  <IconComponent className="h-5 w-5 sm:h-6 sm:w-6 mb-1 text-muted-foreground group-hover:text-primary transition-colors" />
-                  <span className="font-medium">{serviceConfig.label}</span>
+                  <IconComponent className="h-4 w-4 mb-0.5 text-muted-foreground group-hover:text-primary transition-colors sm:h-5 sm:w-5 sm:mb-1" />
+                  <span className="font-medium text-center">{serviceConfig.label}</span>
                 </Button>
               );
             })}
@@ -173,3 +174,4 @@ function DayViewComponent({
   );
 }
 export const DayView = React.memo(DayViewComponent);
+
