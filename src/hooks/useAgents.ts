@@ -1,3 +1,4 @@
+
 /**
  * @fileoverview This custom React hook manages agency and agent data for the application.
  * It loads information from localStorage, seeds default demo data if none exists,
@@ -38,16 +39,23 @@ const DEFAULT_AGENCIES_DATA_SEED: Omit<Agency, 'id'>[] = [
   }
 ];
 
-const AGENCY_ID_GLOBAL_TRAVEL = `agency_fixed_global`;
-const AGENCY_ID_LOCAL_ADVENTURES = `agency_fixed_local`;
-const AGENCY_ID_BENGAL_VOYAGER = `agency_fixed_bengal`;
+export const AGENCY_ID_GLOBAL_TRAVEL = `agency_fixed_global`;
+export const AGENCY_ID_LOCAL_ADVENTURES = `agency_fixed_local`;
+export const AGENCY_ID_BENGAL_VOYAGER = `agency_fixed_bengal`;
+
+export const AGENT_ID_JOHN_DOE_GTE = `agent_fixed_john_doe`;
+export const AGENT_ID_ALICE_SMITH_GTE = `agent_fixed_alice_smith`;
+export const AGENT_ID_BOB_JOHNSON_LAI = `agent_fixed_bob_johnson`;
+export const AGENT_ID_FATIMA_AHMED_BV = `agent_fixed_fatima_ahmed`;
+const PLACEHOLDER_DEFAULT_USER_AGENT_ID = "agent_default_user";
+
 
 const DEFAULT_AGENTS_DATA_SEED: Omit<AgentProfile, 'id' | 'agencyId'>[] = [
   {
     fullName: "John Doe (GTE)",
     email: "john.doe@globaltravel.com",
     phoneNumber: "+66 81 123 4567",
-    agencyName: "Global Travel Experts (Sukhumvit Branch)", // This could be a specific branch name
+    agencyName: "Global Travel Experts (Sukhumvit Branch)",
     specializations: "Luxury Travel, Thailand & SE Asia",
     yearsOfExperience: 10,
     bio: "Experienced travel consultant specializing in bespoke luxury itineraries across Southeast Asia."
@@ -75,10 +83,19 @@ const DEFAULT_AGENTS_DATA_SEED: Omit<AgentProfile, 'id' | 'agencyId'>[] = [
     specializations: "Heritage Tours, Bangladesh",
     yearsOfExperience: 8,
     bio: "Discover the rich history and vibrant culture of Bangladesh with expertly crafted tours."
+  },
+  { // Placeholder default user for /agent/profile if no specific user is loaded
+    fullName: "Default Agent User",
+    email: "agent@example.com", // Matches login credentials
+    phoneNumber: "+1 000 000 0000",
+    agencyName: "Demo Agency Branch",
+    specializations: "General Travel",
+    yearsOfExperience: 3,
+    bio: "This is a default agent profile for demonstration purposes."
   }
 ];
 
-const assignFixedAgencyIdsAndMapAgents = (agencySeedData: Omit<Agency, 'id'>[], agentSeedData: Omit<AgentProfile, 'id' | 'agencyId'>[]): { agencies: Agency[], agents: AgentProfile[] } => {
+const assignFixedIdsAndMapAgents = (agencySeedData: Omit<Agency, 'id'>[], agentSeedData: Omit<AgentProfile, 'id' | 'agencyId'>[]): { agencies: Agency[], agents: AgentProfile[] } => {
   const finalAgencies: Agency[] = agencySeedData.map(agency => {
     let id = generateGUID();
     if (agency.name === "Global Travel Experts") id = AGENCY_ID_GLOBAL_TRAVEL;
@@ -88,11 +105,16 @@ const assignFixedAgencyIdsAndMapAgents = (agencySeedData: Omit<Agency, 'id'>[], 
   });
 
   const finalAgents: AgentProfile[] = agentSeedData.map(agent => {
-    let agencyIdToLink = finalAgencies[0]?.id; 
-    if (agent.fullName.includes("(GTE)")) agencyIdToLink = AGENCY_ID_GLOBAL_TRAVEL;
-    else if (agent.fullName.includes("(LAI)")) agencyIdToLink = AGENCY_ID_LOCAL_ADVENTURES;
-    else if (agent.fullName.includes("(BV)")) agencyIdToLink = AGENCY_ID_BENGAL_VOYAGER;
-    return { ...agent, id: generateGUID(), agencyId: agencyIdToLink! };
+    let agencyIdToLink = finalAgencies[0]?.id;
+    let agentId = generateGUID();
+
+    if (agent.fullName.includes("John Doe (GTE)")) { agencyIdToLink = AGENCY_ID_GLOBAL_TRAVEL; agentId = AGENT_ID_JOHN_DOE_GTE; }
+    else if (agent.fullName.includes("Alice Smith (GTE)")) { agencyIdToLink = AGENCY_ID_GLOBAL_TRAVEL; agentId = AGENT_ID_ALICE_SMITH_GTE; }
+    else if (agent.fullName.includes("Bob Johnson (LAI)")) { agencyIdToLink = AGENCY_ID_LOCAL_ADVENTURES; agentId = AGENT_ID_BOB_JOHNSON_LAI; }
+    else if (agent.fullName.includes("Fatima Ahmed (BV)")) { agencyIdToLink = AGENCY_ID_BENGAL_VOYAGER; agentId = AGENT_ID_FATIMA_AHMED_BV; }
+    else if (agent.fullName === "Default Agent User") { agencyIdToLink = finalAgencies[0]?.id; agentId = PLACEHOLDER_DEFAULT_USER_AGENT_ID; } // Default user linked to first agency
+
+    return { ...agent, id: agentId, agencyId: agencyIdToLink! };
   });
 
   return { agencies: finalAgencies, agents: finalAgents };
@@ -112,26 +134,26 @@ export function useAgents() {
     setError(null);
 
     try {
-      const { agencies: seededAgencies, agents: seededAgents } = assignFixedAgencyIdsAndMapAgents(DEFAULT_AGENCIES_DATA_SEED, DEFAULT_AGENTS_DATA_SEED);
+      const { agencies: seededAgencies, agents: seededAgents } = assignFixedIdsAndMapAgents(DEFAULT_AGENCIES_DATA_SEED, DEFAULT_AGENTS_DATA_SEED);
       
       const storedAgencies = localStorage.getItem(AGENCIES_STORAGE_KEY);
       let agenciesToSet: Agency[] = storedAgencies ? JSON.parse(storedAgencies) : [...seededAgencies];
       seededAgencies.forEach(sa => { if (!agenciesToSet.find(a => a.id === sa.id)) agenciesToSet.push(sa); });
-      agenciesToSet.forEach(agency => { if (!agency.preferredCurrency) agency.preferredCurrency = "USD" as CurrencyCode}); // Ensure preferredCurrency
+      agenciesToSet.forEach(agency => { if (!agency.preferredCurrency) agency.preferredCurrency = "USD" as CurrencyCode});
       agenciesToSet.sort((a, b) => a.name.localeCompare(b.name));
       setAgenciesState(agenciesToSet);
       localStorage.setItem(AGENCIES_STORAGE_KEY, JSON.stringify(agenciesToSet));
 
       const storedAgents = localStorage.getItem(AGENTS_STORAGE_KEY);
       let agentsToSet: AgentProfile[] = storedAgents ? JSON.parse(storedAgents) : [...seededAgents];
-      seededAgents.forEach(sa => { if (!agentsToSet.find(a => a.email === sa.email && a.agencyId === sa.agencyId)) agentsToSet.push(sa); });
+      seededAgents.forEach(sa => { if (!agentsToSet.find(a => a.id === sa.id)) agentsToSet.push(sa); });
       setAgentsState(agentsToSet);
       localStorage.setItem(AGENTS_STORAGE_KEY, JSON.stringify(agentsToSet));
 
     } catch (e: any) {
       console.error("Error initializing agent/agency data:", e);
       setError("Failed to load agent/agency data.");
-      const { agencies: defaultAgencies, agents: defaultAgents } = assignFixedAgencyIdsAndMapAgents(DEFAULT_AGENCIES_DATA_SEED, DEFAULT_AGENTS_DATA_SEED);
+      const { agencies: defaultAgencies, agents: defaultAgents } = assignFixedIdsAndMapAgents(DEFAULT_AGENCIES_DATA_SEED, DEFAULT_AGENTS_DATA_SEED);
       defaultAgencies.forEach(agency => { if (!agency.preferredCurrency) agency.preferredCurrency = "USD" as CurrencyCode});
       setAgenciesState(defaultAgencies.sort((a, b) => a.name.localeCompare(b.name)));
       localStorage.setItem(AGENCIES_STORAGE_KEY, JSON.stringify(defaultAgencies));
