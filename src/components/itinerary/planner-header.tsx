@@ -24,7 +24,8 @@ import { DatePicker } from '@/components/ui/date-picker';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Edit3, Save, Info, CalendarDays, Users, MapPin, Route, Loader2, DollarSign, Globe, FileText, Image as ImageIconLucide, Cog, Landmark } from 'lucide-react';
+import { Edit3, Save, Info, CalendarDays, Users, MapPin, Route, Loader2, DollarSign, Globe, FileText, Image as ImageIconLucide, Wand2 } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { formatCurrency } from '@/lib/utils';
 import { format, parseISO, isValid } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
@@ -107,7 +108,7 @@ function PlannerHeaderComponent({
     if (isLoadingProvinces || isLoadingCountries) return {};
     const groups: Record<string, ProvinceItem[]> = {};
     displayableProvinces.forEach(province => {
-      const countryKey = province.countryId || 'unknown'; 
+      const countryKey = province.countryId || 'unknown';
       if (!groups[countryKey]) {
         groups[countryKey] = [];
       }
@@ -147,12 +148,19 @@ function PlannerHeaderComponent({
                 Describe Image
               </Button>
             </Link>
-            <Link href="/">
-              <Button variant="outline" size="sm" className="bg-card hover:bg-muted shadow-sm text-xs sm:text-sm h-9">
-                <Cog className="mr-1.5 h-4 w-4" />
-                Admin
-              </Button>
-            </Link>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="outline" size="sm" className="bg-card hover:bg-muted shadow-sm text-xs sm:text-sm h-9" disabled>
+                    <Wand2 className="mr-1.5 h-4 w-4" />
+                    AI Smart Suggestions
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>AI-powered suggestions to improve your itinerary. (Coming Soon!)</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
              <Button onClick={onManualSave} size="sm" className="bg-accent hover:bg-accent/90 text-accent-foreground text-xs sm:text-sm h-9">
               <Save className="mr-1.5 h-4 w-4" /> Save
             </Button>
