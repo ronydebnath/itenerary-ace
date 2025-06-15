@@ -158,7 +158,6 @@ export function AgencyForm({ initialData, onSubmit, onCancel }: AgencyFormProps)
                         <FormControl><SelectTrigger><SelectValue placeholder="Select currency" /></SelectTrigger></FormControl>
                         <SelectContent>
                             {CURRENCIES.map(curr => <SelectItem key={curr} value={curr}>{curr}</SelectItem>)}
-                            <SelectItem value="USD">USD</SelectItem> 
                         </SelectContent>
                     </Select>
                     <FormMessage />
@@ -180,4 +179,3 @@ export function AgencyForm({ initialData, onSubmit, onCancel }: AgencyFormProps)
     </Form>
   );
 }
-
