@@ -24,7 +24,7 @@ import { DatePicker } from '@/components/ui/date-picker';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Edit3, Save, Info, CalendarDays, Users, MapPin, Route, Loader2, DollarSign, Globe, FileText, Image as ImageIconLucide, Wand2 } from 'lucide-react';
+import { Edit3, Save, Info, CalendarDays, Users, MapPin, Route, Loader2, DollarSign, Globe, FileText, Image as ImageIconLucide, Wand2, Landmark } from 'lucide-react'; // Added Landmark
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { formatCurrency } from '@/lib/utils';
 import { format, parseISO, isValid } from 'date-fns';
@@ -35,7 +35,7 @@ import Link from 'next/link';
 
 interface PlannerHeaderProps {
   tripData: TripData;
-  onUpdateTripData: (updatedTripData: Partial<TripData>) => void;
+  onUpdateTripData: (updateFn: (currentTripData: TripData | null) => Partial<TripData> | TripData) => void;
   onUpdateSettings: (updatedSettings: Partial<TripSettings>) => void;
   onUpdatePax: (updatedPax: Partial<PaxDetails>) => void;
   onManualSave: () => void;
@@ -55,21 +55,23 @@ function PlannerHeaderComponent({
   const { countries: availableCountries, isLoading: isLoadingCountries } = useCountries();
   const { provinces: allAvailableProvinces, isLoading: isLoadingProvinces, getProvincesByCountry } = useProvinces();
 
-  const handleCountryToggle = (countryId: string) => {
-    const currentSelectedCountries = tripData.settings.selectedCountries || [];
-    const newSelectedCountries = currentSelectedCountries.includes(countryId)
-      ? currentSelectedCountries.filter(id => id !== countryId)
-      : [...currentSelectedCountries, countryId];
-    onUpdateSettings({ selectedCountries: newSelectedCountries, selectedProvinces: [] }); // Reset provinces when countries change
-  };
+  const handleCountryToggle = React.useCallback((countryId: string) => {
+    onUpdateSettings({
+      selectedCountries: (tripData.settings.selectedCountries || []).includes(countryId)
+        ? (tripData.settings.selectedCountries || []).filter(id => id !== countryId)
+        : [...(tripData.settings.selectedCountries || []), countryId],
+      selectedProvinces: [] // Reset provinces when countries change
+    });
+  }, [onUpdateSettings, tripData.settings.selectedCountries]);
 
-  const handleProvinceToggle = (provinceName: string) => {
-    const currentSelectedProvinces = tripData.settings.selectedProvinces || [];
-    const newSelectedProvinces = currentSelectedProvinces.includes(provinceName)
-      ? currentSelectedProvinces.filter(p => p !== provinceName)
-      : [...currentSelectedProvinces, provinceName];
-    onUpdateSettings({ selectedProvinces: newSelectedProvinces });
-  };
+  const handleProvinceToggle = React.useCallback((provinceName: string) => {
+    onUpdateSettings({
+      selectedProvinces: (tripData.settings.selectedProvinces || []).includes(provinceName)
+        ? (tripData.settings.selectedProvinces || []).filter(p => p !== provinceName)
+        : [...(tripData.settings.selectedProvinces || []), provinceName]
+    });
+  }, [onUpdateSettings, tripData.settings.selectedProvinces]);
+
 
   const startDateForPicker = React.useMemo(() => {
     try {
@@ -92,9 +94,9 @@ function PlannerHeaderComponent({
       globallySelectedCountries.forEach(countryId => {
         provincesFromSelectedCountries = provincesFromSelectedCountries.concat(getProvincesByCountry(countryId));
       });
-      return provincesFromSelectedCountries.sort((a,b) => a.name.localeCompare(b.name));
+      return provincesFromSelectedCountries.sort((a, b) => a.name.localeCompare(b.name));
     }
-    return allAvailableProvinces.sort((a,b) => a.name.localeCompare(b.name));
+    return allAvailableProvinces.sort((a, b) => a.name.localeCompare(b.name));
   }, [isLoadingProvinces, tripData.settings.selectedCountries, allAvailableProvinces, getProvincesByCountry]);
 
 
@@ -142,7 +144,7 @@ function PlannerHeaderComponent({
             </CardDescription>
           </div>
           <div className="flex gap-2 flex-wrap mt-2 sm:mt-0 self-start sm:self-auto">
-             <Link href="/image-describer">
+            <Link href="/image-describer">
               <Button variant="outline" size="sm" className="bg-card hover:bg-muted shadow-sm text-xs sm:text-sm h-9">
                 <ImageIconLucide className="mr-1.5 h-4 w-4" />
                 Describe Image
@@ -161,7 +163,7 @@ function PlannerHeaderComponent({
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
-             <Button onClick={onManualSave} size="sm" className="bg-accent hover:bg-accent/90 text-accent-foreground text-xs sm:text-sm h-9">
+            <Button onClick={onManualSave} size="sm" className="bg-accent hover:bg-accent/90 text-accent-foreground text-xs sm:text-sm h-9">
               <Save className="mr-1.5 h-4 w-4" /> Save
             </Button>
             <Button variant="outline" onClick={onReset} size="sm" className="border-destructive text-destructive hover:bg-destructive/10 text-xs sm:text-sm h-9">
@@ -177,22 +179,22 @@ function PlannerHeaderComponent({
             <Input
               id="itineraryName"
               value={tripData.itineraryName || ''}
-              onChange={(e) => onUpdateTripData({ itineraryName: e.target.value })}
+              onChange={(e) => onUpdateTripData(currentData => ({ ...currentData, itineraryName: e.target.value }))}
               placeholder="Enter itinerary name"
               className="text-base font-semibold h-10 mt-1"
             />
-             {tripData.id && (
+            {tripData.id && (
               <p className="text-xs text-muted-foreground mt-1">
                 ID: <span className="font-mono bg-muted px-1.5 py-0.5 rounded text-xs">{tripData.id}</span>
               </p>
-             )}
+            )}
           </div>
           <div>
             <Label htmlFor="clientName" className="text-sm font-medium text-muted-foreground">Client Name (Optional)</Label>
             <Input
               id="clientName"
               value={tripData.clientName || ''}
-              onChange={(e) => onUpdateTripData({ clientName: e.target.value })}
+              onChange={(e) => onUpdateTripData(currentData => ({ ...currentData, clientName: e.target.value }))}
               placeholder="Enter client name"
               className="text-base h-10 mt-1"
             />
@@ -200,40 +202,40 @@ function PlannerHeaderComponent({
         </div>
 
         <div className="border-t pt-4 mt-4">
-            <div className="flex items-center space-x-2">
-                <Checkbox
-                id="isTemplate"
-                checked={tripData.settings.isTemplate || false}
-                onCheckedChange={(checked) => {
-                    const isNowTemplate = !!checked;
-                    onUpdateSettings({
-                        isTemplate: isNowTemplate,
-                        templateCategory: isNowTemplate ? tripData.settings.templateCategory : undefined
-                    });
-                }}
-                className="h-4 w-4"
-                />
-                <Label htmlFor="isTemplate" className="text-sm font-normal cursor-pointer flex items-center">
-                <FileText className="mr-2 h-4 w-4 text-muted-foreground" /> Mark as Itinerary Template
-                </Label>
-            </div>
-            {tripData.settings.isTemplate && (
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="isTemplate"
+              checked={tripData.settings.isTemplate || false}
+              onCheckedChange={(checked) => {
+                const isNowTemplate = !!checked;
+                onUpdateSettings({
+                  isTemplate: isNowTemplate,
+                  templateCategory: isNowTemplate ? tripData.settings.templateCategory : undefined
+                });
+              }}
+              className="h-4 w-4"
+            />
+            <Label htmlFor="isTemplate" className="text-sm font-normal cursor-pointer flex items-center">
+              <FileText className="mr-2 h-4 w-4 text-muted-foreground" /> Mark as Itinerary Template
+            </Label>
+          </div>
+          {tripData.settings.isTemplate && (
             <div className="mt-3 ml-6">
-                <Label htmlFor="templateCategory" className="text-sm font-medium text-muted-foreground">Template Category (Optional)</Label>
-                <Input
+              <Label htmlFor="templateCategory" className="text-sm font-medium text-muted-foreground">Template Category (Optional)</Label>
+              <Input
                 id="templateCategory"
                 value={tripData.settings.templateCategory || ''}
                 onChange={(e) => onUpdateSettings({ templateCategory: e.target.value || undefined })}
                 placeholder="e.g., Beach Holiday, Cultural Tour"
                 className="text-sm h-10 mt-1"
-                />
+              />
             </div>
-            )}
+          )}
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-end border-t pt-4 mt-4">
           <div>
-            <Label htmlFor="startDate" className="text-sm font-medium text-muted-foreground flex items-center"><CalendarDays className="h-4 w-4 mr-1.5"/>Start Date</Label>
+            <Label htmlFor="startDate" className="text-sm font-medium text-muted-foreground flex items-center"><CalendarDays className="h-4 w-4 mr-1.5" />Start Date</Label>
             <DatePicker
               date={startDateForPicker}
               onDateChange={(date) => onUpdateSettings({ startDate: date ? date.toISOString().split('T')[0] : new Date().toISOString().split('T')[0] })}
@@ -241,41 +243,41 @@ function PlannerHeaderComponent({
           </div>
           <div>
             <Label htmlFor="numDays" className="text-sm font-medium text-muted-foreground">Days</Label>
-            <Input id="numDays" type="number" value={tripData.settings.numDays} onChange={(e) => onUpdateSettings({ numDays: parseInt(e.target.value, 10) || 1 })} min="1" className="h-10 mt-1"/>
+            <Input id="numDays" type="number" value={tripData.settings.numDays} onChange={(e) => onUpdateSettings({ numDays: parseInt(e.target.value, 10) || 1 })} min="1" className="h-10 mt-1" />
           </div>
           <div>
-            <Label htmlFor="globalAdults" className="text-sm font-medium text-muted-foreground flex items-center"><Users className="h-4 w-4 mr-1.5"/>Adults</Label>
-            <Input id="globalAdults" type="number" value={tripData.pax.adults} onChange={(e) => onUpdatePax({ adults: parseInt(e.target.value, 10) || 0 })} min="0" className="h-10 mt-1"/>
+            <Label htmlFor="globalAdults" className="text-sm font-medium text-muted-foreground flex items-center"><Users className="h-4 w-4 mr-1.5" />Adults</Label>
+            <Input id="globalAdults" type="number" value={tripData.pax.adults} onChange={(e) => onUpdatePax({ adults: parseInt(e.target.value, 10) || 0 })} min="0" className="h-10 mt-1" />
           </div>
           <div>
             <Label htmlFor="globalChildren" className="text-sm font-medium text-muted-foreground">Children</Label>
-            <Input id="globalChildren" type="number" value={tripData.pax.children} onChange={(e) => onUpdatePax({ children: parseInt(e.target.value, 10) || 0 })} min="0" className="h-10 mt-1"/>
+            <Input id="globalChildren" type="number" value={tripData.pax.children} onChange={(e) => onUpdatePax({ children: parseInt(e.target.value, 10) || 0 })} min="0" className="h-10 mt-1" />
           </div>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 items-end">
-            <div>
-                <Label htmlFor="currency" className="text-sm font-medium text-muted-foreground flex items-center"><Landmark className="h-4 w-4 mr-1.5"/>Billing Currency</Label>
-                <Select value={tripData.pax.currency} onValueChange={(value) => onUpdatePax({ currency: value as CurrencyCode })}>
-                <SelectTrigger id="currency" className="w-full h-10 mt-1">
-                    <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                    {CURRENCIES.map(curr => (
-                    <SelectItem key={curr} value={curr}>{curr}</SelectItem>
-                    ))}
-                </SelectContent>
-                </Select>
-            </div>
-            <div>
-                <Label htmlFor="budget" className="text-sm font-medium text-muted-foreground flex items-center"><DollarSign className="h-4 w-4 mr-1.5"/>Budget (Optional)</Label>
-                <Input id="budget" type="number" value={tripData.settings.budget || ''} onChange={(e) => onUpdateSettings({ budget: e.target.value ? parseFloat(e.target.value) : undefined })} min="0" placeholder="e.g., 1000" className="h-10 mt-1"/>
-            </div>
+          <div>
+            <Label htmlFor="currency" className="text-sm font-medium text-muted-foreground flex items-center"><Landmark className="h-4 w-4 mr-1.5" />Billing Currency</Label>
+            <Select value={tripData.pax.currency} onValueChange={(value) => onUpdatePax({ currency: value as CurrencyCode })}>
+              <SelectTrigger id="currency" className="w-full h-10 mt-1">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {CURRENCIES.map(curr => (
+                  <SelectItem key={curr} value={curr}>{curr}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label htmlFor="budget" className="text-sm font-medium text-muted-foreground flex items-center"><DollarSign className="h-4 w-4 mr-1.5" />Budget (Optional)</Label>
+            <Input id="budget" type="number" value={tripData.settings.budget || ''} onChange={(e) => onUpdateSettings({ budget: e.target.value ? parseFloat(e.target.value) : undefined })} min="0" placeholder="e.g., 1000" className="h-10 mt-1" />
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 border-t pt-4 mt-4">
           <div>
-            <Label className="text-sm font-medium text-muted-foreground flex items-center"><Globe className="h-4 w-4 mr-1.5"/>Selected Countries (Optional)</Label>
+            <Label className="text-sm font-medium text-muted-foreground flex items-center"><Globe className="h-4 w-4 mr-1.5" />Selected Countries (Optional)</Label>
             <p className="text-xs text-muted-foreground/80 mb-1.5">
               Filters available provinces and services.
             </p>
@@ -303,17 +305,17 @@ function PlannerHeaderComponent({
                 </div>
               </ScrollArea>
             ) : (
-               <p className="text-sm text-muted-foreground text-center py-4 border rounded-md bg-muted/50">No countries available.</p>
+              <p className="text-sm text-muted-foreground text-center py-4 border rounded-md bg-muted/50">No countries available.</p>
             )}
-             {selectedCountryNames.length > 0 && (
-                <div className="pt-1.5 text-xs text-muted-foreground">
-                  Selected: <span className="font-medium">{selectedCountryNames.join(', ')}</span>
-                </div>
-              )}
+            {selectedCountryNames.length > 0 && (
+              <div className="pt-1.5 text-xs text-muted-foreground">
+                Selected: <span className="font-medium">{selectedCountryNames.join(', ')}</span>
+              </div>
+            )}
           </div>
 
           <div>
-            <Label className="text-sm font-medium text-muted-foreground flex items-center"><MapPin className="h-4 w-4 mr-1.5"/>Selected Provinces (Optional)</Label>
+            <Label className="text-sm font-medium text-muted-foreground flex items-center"><MapPin className="h-4 w-4 mr-1.5" />Selected Provinces (Optional)</Label>
             <p className="text-xs text-muted-foreground/80 mb-1.5">
               Filters services within selected countries or all provinces.
             </p>
@@ -354,27 +356,27 @@ function PlannerHeaderComponent({
                 })}
               </ScrollArea>
             ) : (
-               <p className="text-sm text-muted-foreground text-center py-4 border rounded-md bg-muted/50">
-                 { (tripData.settings.selectedCountries || []).length > 0 ? "No provinces for selected countries." : "No provinces available."}
-               </p>
+              <p className="text-sm text-muted-foreground text-center py-4 border rounded-md bg-muted/50">
+                { (tripData.settings.selectedCountries || []).length > 0 ? "No provinces for selected countries." : "No provinces available."}
+              </p>
             )}
             {(tripData.settings.selectedProvinces || []).length > 0 && (
-                <div className="pt-1.5 text-xs text-muted-foreground">
-                  Selected: <span className="font-medium">{tripData.settings.selectedProvinces.join(', ')}</span>
-                </div>
-              )}
+              <div className="pt-1.5 text-xs text-muted-foreground">
+                Selected: <span className="font-medium">{tripData.settings.selectedProvinces.join(', ')}</span>
+              </div>
+            )}
           </div>
         </div>
 
         <div className="mt-4 p-3 bg-secondary/30 rounded-lg border border-secondary text-sm text-muted-foreground">
-            <div>
-              <span className="font-semibold text-foreground">Current Config:</span> <strong className="text-primary">{numNights} Night(s) / {tripData.settings.numDays} Day(s)</strong> starting {displayStartDate}.
-              For {tripData.pax.adults} Adult(s), {tripData.pax.children} Child(ren). Billing Currency: {tripData.pax.currency}.
-              {tripData.settings.isTemplate ? <Badge variant="outline" className="ml-1.5 border-accent text-accent text-xs">TEMPLATE{tripData.settings.templateCategory ? `: ${tripData.settings.templateCategory}` : ''}</Badge> : ""}
-              {selectedCountryNames.length > 0 ? ` Countries: ${selectedCountryNames.join(', ')}.` : ""}
-              {(tripData.settings.selectedProvinces || []).length > 0 ? ` Provinces: ${tripData.settings.selectedProvinces.join(', ')}.` : ""}
-              {showCosts && tripData.settings.budget ? ` Budget: ${formatCurrency(tripData.settings.budget, tripData.pax.currency)}.` : ""}
-            </div>
+          <div>
+            <span className="font-semibold text-foreground">Current Config:</span> <strong className="text-primary">{numNights} Night(s) / {tripData.settings.numDays} Day(s)</strong> starting {displayStartDate}.
+            For {tripData.pax.adults} Adult(s), {tripData.pax.children} Child(ren). Billing Currency: {tripData.pax.currency}.
+            {tripData.settings.isTemplate ? <Badge variant="outline" className="ml-1.5 border-accent text-accent text-xs">TEMPLATE{tripData.settings.templateCategory ? `: ${tripData.settings.templateCategory}` : ''}</Badge> : ""}
+            {selectedCountryNames.length > 0 ? ` Countries: ${selectedCountryNames.join(', ')}.` : ""}
+            {(tripData.settings.selectedProvinces || []).length > 0 ? ` Provinces: ${tripData.settings.selectedProvinces.join(', ')}.` : ""}
+            {showCosts && tripData.settings.budget ? ` Budget: ${formatCurrency(tripData.settings.budget, tripData.pax.currency)}.` : ""}
+          </div>
         </div>
       </CardContent>
     </Card>
@@ -382,4 +384,3 @@ function PlannerHeaderComponent({
 }
 
 export const PlannerHeader = React.memo(PlannerHeaderComponent);
-
