@@ -214,6 +214,7 @@ export interface TripData {
   quotationRequestId?: string;
   version?: number;
   overallBookingStatus?: OverallBookingStatus;
+  adminRevisionNotes?: string; // Notes from Admin for this version of the itinerary proposal
 }
 
 export interface CostSummary {

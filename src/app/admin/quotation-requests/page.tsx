@@ -20,9 +20,9 @@ import { LayoutDashboard, ListChecks, Edit, Trash2, Search, FileText, Eye, FileP
 import { format, parseISO } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
 import { useCountries } from '@/hooks/useCountries';
-import { useAgents } from '@/hooks/useAgents'; 
+import { useAgents } from '@/hooks/useAgents';
 import { cn } from '@/lib/utils';
-import { useItineraryManager } from '@/hooks/useItineraryManager'; 
+import { useItineraryManager } from '@/hooks/useItineraryManager';
 import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 
 const AGENT_QUOTATION_REQUESTS_KEY = 'itineraryAce_agentQuotationRequests';
@@ -35,9 +35,9 @@ export default function ManageQuotationRequestsPage() {
   const router = useRouter();
   const { toast } = useToast();
   const { countries, isLoading: isLoadingCountries } = useCountries();
-  const { agents, isLoading: isLoadingAgents } = useAgents(); 
-  
-  useItineraryManager(); 
+  const { agents, isLoading: isLoadingAgents } = useAgents();
+
+  useItineraryManager();
 
   const loadRequests = React.useCallback(() => {
     setIsLoading(true);
@@ -112,7 +112,7 @@ export default function ManageQuotationRequestsPage() {
     const searchLower = searchTerm.toLowerCase();
     const agentName = getAgentName(req.agentId).toLowerCase();
     const destinations = (getCountryNames(req.tripDetails.preferredCountryIds) + " " + (req.tripDetails.preferredProvinceNames || []).join(" ")).toLowerCase();
-    
+
     const statusMatches = statusFilter === 'all' || req.status === statusFilter;
     const searchMatches = (
       req.id.toLowerCase().includes(searchLower) ||
@@ -123,7 +123,7 @@ export default function ManageQuotationRequestsPage() {
     return statusMatches && searchMatches;
   });
 
-  if (isLoading || isLoadingAgents) { 
+  if (isLoading || isLoadingAgents) {
     return <div className="flex justify-center items-center min-h-screen p-4">Loading quotation requests...</div>;
   }
 
@@ -154,7 +154,7 @@ export default function ManageQuotationRequestsPage() {
                 className="pl-8 sm:pl-10 w-full text-sm sm:text-base h-9 sm:h-10"
             />
             </div>
-            <div className="relative sm:w-64"> 
+            <div className="relative sm:w-64">
                 <Filter className="absolute left-2 sm:left-3 top-1/2 -translate-y-1/2 h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground" />
                 <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as QuotationRequestStatus | 'all')}>
                     <SelectTrigger className="pl-8 sm:pl-10 w-full text-sm sm:text-base h-9 sm:h-10">
@@ -188,7 +188,7 @@ export default function ManageQuotationRequestsPage() {
                   <TableHead className="px-2 py-3 text-xs sm:text-sm">Agent</TableHead>
                   <TableHead className="px-2 py-3 text-xs sm:text-sm">Destinations</TableHead>
                   <TableHead className="px-2 py-3 text-xs sm:text-sm">Pax</TableHead>
-                  <TableHead className="px-2 py-3 text-xs sm:text-sm">Status (Ver. {filteredRequests[0]?.version || 1})</TableHead>
+                  <TableHead className="px-2 py-3 text-xs sm:text-sm">Status & Notes</TableHead>
                   <TableHead className="text-center w-[150px] px-2 py-3 text-xs sm:text-sm">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -207,7 +207,7 @@ export default function ManageQuotationRequestsPage() {
                     <TableCell className="py-2 px-2">{req.clientInfo.adults}A {req.clientInfo.children > 0 && ` ${req.clientInfo.children}C`}</TableCell>
                     <TableCell className="py-2 px-2">
                        <Select value={req.status} onValueChange={(newStatus) => handleUpdateStatus(req.id, newStatus as QuotationRequestStatus)}>
-                          <SelectTrigger className={cn("h-8 text-xs w-[180px] sm:w-[200px]", getStatusBadgeClassName(req.status))}> 
+                          <SelectTrigger className={cn("h-8 text-xs w-[180px] sm:w-[200px]", getStatusBadgeClassName(req.status))}>
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
@@ -226,9 +226,9 @@ export default function ManageQuotationRequestsPage() {
                                   <MessageCircle className="h-3 w-3" />
                                 </Button>
                               </TooltipTrigger>
-                              <TooltipContent className="max-w-xs text-xs">
-                                <p className="font-semibold">Agent Notes:</p>
-                                <p className="whitespace-pre-wrap">{req.agentRevisionNotes}</p>
+                              <TooltipContent className="max-w-xs text-xs p-2 shadow-lg bg-background border">
+                                <p className="font-semibold text-accent">Agent Revision Notes:</p>
+                                <p className="whitespace-pre-wrap text-muted-foreground">{req.agentRevisionNotes}</p>
                               </TooltipContent>
                             </Tooltip>
                           </TooltipProvider>

@@ -21,7 +21,7 @@ import { useCountries } from '@/hooks/useCountries';
 import { cn } from '@/lib/utils';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
-import { Tooltip, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 
 const AGENT_QUOTATION_REQUESTS_KEY = 'itineraryAce_agentQuotationRequests';
 const PLACEHOLDER_AGENT_ID = "agent_default_user"; // Same as in quotation-request-form.tsx
@@ -166,8 +166,8 @@ export default function MyQuotationRequestsPage() {
       "Quoted: Waiting for TA Feedback",
       "Quoted: Re-quoted",
       "Quoted: Awaiting TA Approval",
-      "Confirmed", // Added to allow viewing approved proposals
-      "Deposit Pending", "Booked", "Documents Sent", "Trip In Progress", "Completed" // Keep existing viewable statuses
+      "Confirmed",
+      "Deposit Pending", "Booked", "Documents Sent", "Trip In Progress", "Completed"
     ].includes(status);
   };
 
@@ -222,7 +222,7 @@ export default function MyQuotationRequestsPage() {
                   <TableHead className="px-2 py-3 text-xs sm:text-sm">Date</TableHead>
                   <TableHead className="px-2 py-3 text-xs sm:text-sm">Destinations</TableHead>
                   <TableHead className="px-2 py-3 text-xs sm:text-sm">Pax</TableHead>
-                  <TableHead className="px-2 py-3 text-xs sm:text-sm text-center">Status (Ver. {filteredRequests[0]?.version || 1})</TableHead>
+                  <TableHead className="px-2 py-3 text-xs sm:text-sm text-center">Status & Notes</TableHead>
                   <TableHead className="text-center w-[220px] sm:w-[280px] px-2 py-3 text-xs sm:text-sm">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -242,7 +242,7 @@ export default function MyQuotationRequestsPage() {
                         <Badge variant="outline" className={cn("text-xs px-2 py-0.5 whitespace-nowrap", getStatusBadgeClassName(req.status))}>
                             {req.status} {req.version && req.version > 0 ? `(v${req.version.toFixed(1)})` : ''}
                         </Badge>
-                         {req.adminRevisionNotes && ["Quoted: Re-quoted", "Quoted: Waiting for TA Feedback"].includes(req.status) && (
+                         {(req.adminRevisionNotes && ["Quoted: Waiting for TA Feedback", "Quoted: Re-quoted"].includes(req.status)) || (req.agentRevisionNotes && ["Quoted: Revision Requested", "Quoted: Revision In Progress"].includes(req.status)) ? (
                           <TooltipProvider>
                             <Tooltip>
                               <TooltipTrigger asChild>
@@ -250,13 +250,23 @@ export default function MyQuotationRequestsPage() {
                                   <MessageSquare className="h-3 w-3" />
                                 </Button>
                               </TooltipTrigger>
-                              <TooltipContent className="max-w-xs text-xs">
-                                <p className="font-semibold">Admin Notes:</p>
-                                <p className="whitespace-pre-wrap">{req.adminRevisionNotes}</p>
+                              <TooltipContent className="max-w-xs text-xs p-2 shadow-lg bg-background border">
+                                {req.adminRevisionNotes && ["Quoted: Waiting for TA Feedback", "Quoted: Re-quoted"].includes(req.status) && (
+                                  <div className="mb-1">
+                                    <p className="font-semibold text-primary">Admin Notes:</p>
+                                    <p className="whitespace-pre-wrap text-muted-foreground">{req.adminRevisionNotes}</p>
+                                  </div>
+                                )}
+                                {req.agentRevisionNotes && ["Quoted: Revision Requested", "Quoted: Revision In Progress"].includes(req.status) && (
+                                  <div>
+                                    <p className="font-semibold text-accent">Your Last Revision Request:</p>
+                                    <p className="whitespace-pre-wrap text-muted-foreground">{req.agentRevisionNotes}</p>
+                                  </div>
+                                )}
                               </TooltipContent>
                             </Tooltip>
                           </TooltipProvider>
-                        )}
+                        ) : null}
                     </TableCell>
                     <TableCell className="text-center py-2 px-2 space-x-1">
                        {agentCanViewProposal(req.status) && req.linkedItineraryId ? (

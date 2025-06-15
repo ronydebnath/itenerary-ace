@@ -43,7 +43,7 @@ interface PlannerHeaderProps {
   onReset: () => void;
   showCosts: boolean;
   quotationRequestDetails?: QuotationRequest | null;
-  handleSendQuotationToAgent?: () => void; 
+  handleSendQuotationToAgent?: () => void;
 }
 
 function PlannerHeaderComponent({
@@ -65,7 +65,7 @@ function PlannerHeaderComponent({
       selectedCountries: (tripData.settings.selectedCountries || []).includes(countryId)
         ? (tripData.settings.selectedCountries || []).filter(id => id !== countryId)
         : [...(tripData.settings.selectedCountries || []), countryId],
-      selectedProvinces: [] 
+      selectedProvinces: []
     });
   }, [onUpdateSettings, tripData.settings.selectedCountries]);
 
