@@ -23,7 +23,7 @@ import { Badge } from '@/components/ui/badge';
 import { useCountries } from '@/hooks/useCountries';
 import { useAgents } from '@/hooks/useAgents'; 
 import { cn } from '@/lib/utils';
-import { useItineraryManager } from '@/hooks/useItineraryManager'; // Import the hook
+import { useItineraryManager } from '@/hooks/useItineraryManager'; 
 
 const AGENT_QUOTATION_REQUESTS_KEY = 'itineraryAce_agentQuotationRequests';
 
@@ -104,6 +104,8 @@ export default function ManageQuotationRequestsPage() {
       case 'Trip In Progress': return 'bg-[hsl(var(--status-trip-progress-bg))] text-[hsl(var(--status-trip-progress-text))] border-[hsl(var(--status-trip-progress-border))] dark:bg-[hsl(var(--status-trip-progress-bg))] dark:text-[hsl(var(--status-trip-progress-text))] dark:border-[hsl(var(--status-trip-progress-border))]';
       case 'Completed': return 'bg-[hsl(var(--status-completed-bg))] text-[hsl(var(--status-completed-text))] border-[hsl(var(--status-completed-border))] dark:bg-[hsl(var(--status-completed-bg))] dark:text-[hsl(var(--status-completed-text))] dark:border-[hsl(var(--status-completed-border))]';
       case 'Cancelled': return 'bg-[hsl(var(--status-cancelled-bg))] text-[hsl(var(--status-cancelled-text))] border-[hsl(var(--status-cancelled-border))] dark:bg-[hsl(var(--status-cancelled-bg))] dark:text-[hsl(var(--status-cancelled-text))] dark:border-[hsl(var(--status-cancelled-border))]';
+      // Fallback for deprecated statuses
+      case 'ProposalReady': return 'bg-sky-100 text-sky-800 border-sky-300 dark:bg-sky-900/30 dark:text-sky-300 dark:border-sky-700';
       default: return 'bg-gray-100 text-gray-800 border-gray-300 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600';
     }
   };
