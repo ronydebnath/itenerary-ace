@@ -18,8 +18,8 @@ import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import {
   Loader2, AlertCircle, CalendarDays, Users, MapPin,
   Hotel, Car, Ticket, Utensils, ShoppingBag, FileText,
-  ArrowLeft, Globe, Printer, EyeOff, Eye
-} from 'lucide-react'; // Removed unused icons: Building, ListOrdered, DollarSign, Coins, Briefcase, UserCircleIcon, PackagePlus
+  ArrowLeft, Globe, Printer, EyeOff, Eye, Coins
+} from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
 
 const ITINERARY_DATA_PREFIX = 'itineraryAce_data_';
@@ -284,5 +284,3 @@ export default function ItineraryClientViewPage() {
     </div>
   );
 }
-
-    
