@@ -1,4 +1,3 @@
-
 /**
  * @fileoverview This component provides a form for adding or editing transfer items
  * within an itinerary. It handles different transfer modes (ticket vs. vehicle),
@@ -411,7 +410,7 @@ function TransferItemFormComponent({
         <p className="text-xs text-blue-600 mb-2">Note: Prices shown in {itemSourceCurrency}. Totals converted to {billingCurrency} using rate ~{conversionDetails.finalRate.toFixed(4)}.</p>
       )}
 
-      <div className="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-1 gap-3 sm:gap-4 mt-4">
+      <div className="grid grid-cols-1 gap-3 sm:gap-4 mt-4">
         <FormField label="Transfer Name / Route Description" id={`itemName-${item.id}`} className="md:col-span-1">
             <Input
             id={`itemName-${item.id}`}
@@ -474,7 +473,7 @@ function TransferItemFormComponent({
 
       {item.mode === 'vehicle' && (
         <>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <FormField label="Vehicle Type" id={`vehicleType-${item.id}`}>
               <Select
                 value={displayedVehicleType}
@@ -542,6 +541,3 @@ function TransferItemFormComponent({
   );
 }
 export const TransferItemForm = React.memo(TransferItemFormComponent);
-
-
-

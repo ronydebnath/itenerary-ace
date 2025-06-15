@@ -45,7 +45,7 @@ export interface BaseItemFormProps<T extends ItineraryItem> {
 export function FormField({label, id, children, className}: {label: string, id: string, children: React.ReactNode, className?: string}) {
   return (
     <div className={cn("space-y-1 min-w-0", className)}>
-      <Label htmlFor={id} className="text-sm">
+      <Label htmlFor={id} className="text-sm block">
         <span className="break-words">{label}</span>
       </Label>
       {children}
@@ -324,7 +324,7 @@ function BaseItemFormComponent<T extends ItineraryItem>({
 
       {isCurrentlyExpanded && (
         <CardContent id={`item-content-${item.id}`} className="p-2 sm:p-3 md:p-4 space-y-3 sm:space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
             <FormField label="Country for this item (Optional)" id={`itemCountry-${item.id}`} className="md:col-span-1">
               <Select
                 value={item.countryId || "none"}
@@ -372,7 +372,7 @@ function BaseItemFormComponent<T extends ItineraryItem>({
 
           {children}
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 pt-2 border-t mt-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 pt-2 border-t mt-3">
             <FormField label="Booking Status" id={`bookingStatus-${item.id}`}>
               <Select
                 value={item.bookingStatus || "Pending"}
