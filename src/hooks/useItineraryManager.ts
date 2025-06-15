@@ -50,12 +50,13 @@ const createDefaultTravelers = (adults: number, children: number): Traveler[] =>
 const createDefaultTripData = (quotationRequestId?: string, quotationRequest?: QuotationRequest): TripData => {
   const newId = generateItineraryId();
   const now = new Date().toISOString();
-  const startDate = quotationRequest?.tripDetails.preferredStartDate ? new Date(quotationRequest.tripDetails.preferredStartDate) : new Date();
-  startDate.setHours(0, 0, 0, 0);
+  
+  const defaultStartDate = new Date();
+  defaultStartDate.setHours(0, 0, 0, 0);
 
   const settings: TripSettings = {
-    numDays: quotationRequest?.tripDetails.durationDays || 1,
-    startDate: startDate.toISOString().split('T')[0],
+    numDays: quotationRequest?.tripDetails.durationDays || 3,
+    startDate: quotationRequest?.tripDetails.preferredStartDate || defaultStartDate.toISOString().split('T')[0],
     selectedCountries: quotationRequest?.tripDetails.preferredCountryIds || [],
     selectedProvinces: quotationRequest?.tripDetails.preferredProvinceNames || [],
     budget: quotationRequest?.tripDetails.budgetAmount,
@@ -76,7 +77,7 @@ const createDefaultTripData = (quotationRequestId?: string, quotationRequest?: Q
     itineraryName: quotationRequest
       ? `Proposal for Quotation ${quotationRequest.id.slice(-6)}`
       : `New Itinerary ${newId.split('-').pop()}`,
-    clientName: undefined, // Client reference removed
+    clientName: undefined, 
     createdAt: now,
     updatedAt: now,
     settings,
@@ -126,13 +127,13 @@ export function useItineraryManager() {
                 const allRequests: QuotationRequest[] = JSON.parse(requestsString);
                 associatedQuotationRequest = allRequests.find(q => q.id === quotationRequestIdFromUrl);
                 if (associatedQuotationRequest && associatedQuotationRequest.linkedItineraryId && !idToLoad) {
-                    idToLoad = associatedQuotationRequest.linkedItineraryId; // Load linked itinerary if exists and no specific itineraryId in URL
+                    idToLoad = associatedQuotationRequest.linkedItineraryId; 
                 }
             }
         } catch (e) { console.error("Error reading quotation requests:", e); }
     }
 
-    if (!idToLoad && !quotationRequestIdFromUrl) { // No ID in URL, try last active
+    if (!idToLoad && !quotationRequestIdFromUrl) { 
       try { idToLoad = localStorage.getItem('lastActiveItineraryId'); } catch (e) { console.error("Error reading lastActiveItineraryId:", e); }
     }
 
@@ -141,24 +142,24 @@ export function useItineraryManager() {
         const savedDataString = localStorage.getItem(`${ITINERARY_DATA_PREFIX}${idToLoad}`);
         if (savedDataString) {
           const parsedData = JSON.parse(savedDataString) as Partial<TripData>;
-          const defaultSettings = createDefaultTripData(quotationRequestIdFromUrl, associatedQuotationRequest).settings;
+          const defaultTripForContext = createDefaultTripData(quotationRequestIdFromUrl, associatedQuotationRequest);
           loadedTripData = {
             id: parsedData.id || idToLoad,
-            itineraryName: parsedData.itineraryName || (associatedQuotationRequest ? `Proposal for Quotation ${associatedQuotationRequest.id.slice(-6)}` : `Itinerary ${idToLoad.slice(-6)}`),
-            clientName: parsedData.clientName || undefined,
+            itineraryName: parsedData.itineraryName || (associatedQuotationRequest ? `Proposal for Quotation ${associatedQuotationRequest.id.slice(-6)}` : defaultTripForContext.itineraryName),
+            clientName: parsedData.clientName || defaultTripForContext.clientName,
             createdAt: parsedData.createdAt || new Date().toISOString(),
             updatedAt: parsedData.updatedAt || new Date().toISOString(),
-            settings: { ...defaultSettings, ...parsedData.settings },
-            pax: parsedData.pax || { adults: associatedQuotationRequest?.clientInfo.adults ?? 1, children: associatedQuotationRequest?.clientInfo.children ?? 0, currency: associatedQuotationRequest?.tripDetails.budgetCurrency ?? 'THB' },
-            travelers: parsedData.travelers && parsedData.travelers.length > 0 ? parsedData.travelers : createDefaultTravelers(parsedData.pax?.adults || 1, parsedData.pax?.children || 0),
-            days: parsedData.days || { 1: { items: [] } },
+            settings: { ...defaultTripForContext.settings, ...parsedData.settings },
+            pax: { ...defaultTripForContext.pax, ...parsedData.pax },
+            travelers: parsedData.travelers && parsedData.travelers.length > 0 ? parsedData.travelers : createDefaultTravelers(parsedData.pax?.adults || defaultTripForContext.pax.adults, parsedData.pax?.children || defaultTripForContext.pax.children),
+            days: parsedData.days || defaultTripForContext.days,
             quotationRequestId: parsedData.quotationRequestId || quotationRequestIdFromUrl || undefined,
             version: parsedData.version || 1,
             overallBookingStatus: parsedData.overallBookingStatus || "NotStarted",
           };
         } else {
           if (localStorage.getItem('lastActiveItineraryId') === idToLoad) localStorage.removeItem('lastActiveItineraryId');
-          idToLoad = null;
+          idToLoad = null; 
         }
       } catch (error) { console.error("Failed to load data for ID:", idToLoad, error); idToLoad = null; }
     }
@@ -167,12 +168,16 @@ export function useItineraryManager() {
       loadedTripData = createDefaultTripData(quotationRequestIdFromUrl, associatedQuotationRequest);
       idToLoad = loadedTripData.id;
       if (quotationRequestIdFromUrl && associatedQuotationRequest) {
-         // Link this new itinerary to the quotation request
          const updatedQuotationRequest = { ...associatedQuotationRequest, linkedItineraryId: idToLoad, status: "Quoted" as QuotationRequestStatus, updatedAt: new Date().toISOString() };
          try {
              const requestsString = localStorage.getItem(AGENT_QUOTATION_REQUESTS_KEY);
              let allRequests: QuotationRequest[] = requestsString ? JSON.parse(requestsString) : [];
-             allRequests = allRequests.map(q => q.id === quotationRequestIdFromUrl ? updatedQuotationRequest : q);
+             const existingReqIndex = allRequests.findIndex(q => q.id === quotationRequestIdFromUrl);
+             if (existingReqIndex !== -1) {
+                 allRequests[existingReqIndex] = updatedQuotationRequest;
+             } else {
+                 allRequests.push(updatedQuotationRequest);
+             }
              localStorage.setItem(AGENT_QUOTATION_REQUESTS_KEY, JSON.stringify(allRequests));
          } catch (e) { console.error("Error updating quotation request with new itinerary ID:", e); }
       }
@@ -190,8 +195,9 @@ export function useItineraryManager() {
     } else if (pageStatus === 'loading') {
         setPageStatus('planner');
     }
-  }, [searchParams, router]);
-
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, router, currentItineraryId, pageStatus, tripData]); // currentItineraryId, pageStatus, tripData are for re-running if internal state changes need it
+  
   const handleStartNewItinerary = React.useCallback(() => {
     const newDefaultTripData = createDefaultTripData();
     setTripData(newDefaultTripData);
@@ -261,7 +267,7 @@ export function useItineraryManager() {
       return;
     }
     try {
-      const newVersion = (tripData.version || 1); // Increment version on manual save if we decide to, for now, keep same
+      const newVersion = (tripData.version || 1); 
       const dataToSave: TripData = {
         ...tripData,
         version: newVersion,
@@ -284,7 +290,6 @@ export function useItineraryManager() {
       localStorage.setItem(ITINERARY_INDEX_KEY, JSON.stringify(index));
       localStorage.setItem('lastActiveItineraryId', currentItineraryId);
 
-      // If linked to a quotation request, update its status to "Quoted"
       if (dataToSave.quotationRequestId) {
         const requestsString = localStorage.getItem(AGENT_QUOTATION_REQUESTS_KEY);
         if (requestsString) {
@@ -292,8 +297,13 @@ export function useItineraryManager() {
           const requestIndex = allRequests.findIndex(q => q.id === dataToSave.quotationRequestId);
           if (requestIndex > -1 && allRequests[requestIndex].status === "Pending") {
             allRequests[requestIndex].status = "Quoted";
-            allRequests[requestIndex].linkedItineraryId = currentItineraryId; // Ensure it's linked
+            allRequests[requestIndex].linkedItineraryId = currentItineraryId; 
             allRequests[requestIndex].updatedAt = new Date().toISOString();
+            localStorage.setItem(AGENT_QUOTATION_REQUESTS_KEY, JSON.stringify(allRequests));
+          } else if (requestIndex > -1 && allRequests[requestIndex].status !== "Quoted") {
+            // If it was already quoted, or some other status, ensure it's linked but don't change status from e.g. Confirmed.
+            allRequests[requestIndex].linkedItineraryId = currentItineraryId;
+            // Optionally update updatedAt if needed, but usually not necessary if just re-saving an existing proposal.
             localStorage.setItem(AGENT_QUOTATION_REQUESTS_KEY, JSON.stringify(allRequests));
           }
         }
