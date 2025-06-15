@@ -78,7 +78,7 @@ const getAgencyAndAgentNameFromLocalStorage = (agentId: string): string | undefi
 };
 
 
-const createDefaultTripData = (quotationRequestId?: string, quotationRequest?: QuotationRequest): TripData => {
+const createDefaultTripData = (quotationRequestId?: string, quotationRequest?: QuotationRequest | null): TripData => {
   const newId = generateItineraryId();
   const now = new Date().toISOString();
 
@@ -267,30 +267,29 @@ export function useItineraryManager() {
       }
     } catch (e) { console.error("Error seeding/reading demo quotations:", e); }
 
+    // Only run planner setup logic if we are on the planner page
     if (typeof window !== "undefined" && window.location.pathname === '/planner') {
-      if (pageStatus !== 'loading') {
-          setPageStatus('loading');
-      }
+      setPageStatus('loading'); // Set to loading at the start of processing for this path
 
       const itineraryIdFromUrl = searchParams.get('itineraryId');
       const quotationRequestIdFromUrl = searchParams.get('quotationRequestId');
 
       let targetItineraryId = itineraryIdFromUrl;
       let createFromQuotationId = quotationRequestIdFromUrl;
-      let associatedQuotationRequest: QuotationRequest | undefined = undefined;
+      let associatedQuotationRequest: QuotationRequest | null = null;
 
       if (createFromQuotationId) {
         if (allQuotationRequests.length === 0) {
             const storedQuotations = localStorage.getItem(AGENT_QUOTATION_REQUESTS_KEY);
             if (storedQuotations) allQuotationRequests = JSON.parse(storedQuotations);
         }
-        associatedQuotationRequest = allQuotationRequests.find(q => q.id === createFromQuotationId);
-        setCurrentQuotationRequest(associatedQuotationRequest || null); // Set the full request object
+        associatedQuotationRequest = allQuotationRequests.find(q => q.id === createFromQuotationId) || null;
+        setCurrentQuotationRequest(associatedQuotationRequest);
         if (associatedQuotationRequest?.linkedItineraryId && !targetItineraryId) {
             targetItineraryId = associatedQuotationRequest.linkedItineraryId;
         }
       } else {
-        setCurrentQuotationRequest(null); // No quotation ID in URL
+        setCurrentQuotationRequest(null);
       }
       
       if (!targetItineraryId && !createFromQuotationId) {
@@ -302,7 +301,7 @@ export function useItineraryManager() {
       let isNewItineraryFromQuote = false;
 
       if (targetItineraryId) {
-        if (currentItineraryId !== targetItineraryId || !tripDataInternalRef.current) {
+        // if (currentItineraryId !== targetItineraryId || !tripDataInternalRef.current) { // Removed this condition to ensure it always loads/reloads if ID present
             try {
                 const savedDataString = localStorage.getItem(`${ITINERARY_DATA_PREFIX}${targetItineraryId}`);
                 if (savedDataString) {
@@ -354,10 +353,10 @@ export function useItineraryManager() {
                 newCurrentId = newTripToSet.id;
                 if (createFromQuotationId) isNewItineraryFromQuote = true;
             }
-        } else {
-           newTripToSet = tripDataInternalRef.current;
-           newCurrentId = currentItineraryId;
-        }
+        // } else {
+        //    newTripToSet = tripDataInternalRef.current;
+        //    newCurrentId = currentItineraryId;
+        // }
       } else if (createFromQuotationId && associatedQuotationRequest) {
         newTripToSet = createDefaultTripData(createFromQuotationId, associatedQuotationRequest);
         newCurrentId = newTripToSet.id;
@@ -382,18 +381,21 @@ export function useItineraryManager() {
       }
 
       if (newTripToSet && newCurrentId) {
-        if (currentItineraryId !== newCurrentId || !tripDataInternalRef.current || tripDataInternalRef.current.id !== newTripToSet.id) {
-            setTripData(newTripToSet);
-            setCurrentItineraryId(newCurrentId);
-        }
+        setTripData(newTripToSet); // Always set, React handles if it's the same object
+        setCurrentItineraryId(newCurrentId);
+        
         try { localStorage.setItem('lastActiveItineraryId', newCurrentId); } catch(e) {/* */}
         
         const finalUrl = `/planner?itineraryId=${newCurrentId}${newTripToSet.quotationRequestId ? `&quotationRequestId=${newTripToSet.quotationRequestId}`: ''}`;
         if (window.location.pathname + window.location.search !== finalUrl) {
             router.replace(finalUrl, { shallow: true });
         }
+        setPageStatus('planner'); // Transition to planner state
+      } else {
+        console.error("useItineraryManager: Failed to determine trip data. Staying in loading state.");
+        // If newTripToSet or newCurrentId is null, we should not proceed to 'planner'
+        // setPageStatus remains 'loading' or could be set to an 'error' state
       }
-      setPageStatus('planner');
     }
   }, [searchParams, router, toast]);
 
