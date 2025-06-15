@@ -182,18 +182,8 @@ export function ItineraryPlanner({
 
   return (
     <div className="w-full max-w-[1600px] mx-auto p-2 sm:p-4 md:p-6 lg:p-8">
-      <PlannerHeader
-        tripData={tripData}
-        onUpdateTripData={onUpdateTripData}
-        onUpdateSettings={onUpdateSettings}
-        onUpdatePax={onUpdatePax}
-        onManualSave={onManualSave}
-        onReset={onReset}
-        showCosts={showCosts}
-      />
-
       {quotationRequestDetails && (
-        <Card className="my-4 md:my-6 shadow-md no-print bg-secondary/20 border-secondary">
+        <Card className="mb-4 md:mb-6 shadow-md no-print bg-secondary/20 border-secondary">
           <CardHeader className="pb-3">
             <CardTitle className="text-lg sm:text-xl text-accent flex items-center">
               <FileText className="mr-2 h-5 w-5" />
@@ -268,6 +258,15 @@ export function ItineraryPlanner({
         </Card>
       )}
 
+      <PlannerHeader
+        tripData={tripData}
+        onUpdateTripData={onUpdateTripData}
+        onUpdateSettings={onUpdateSettings}
+        onUpdatePax={onUpdatePax}
+        onManualSave={onManualSave}
+        onReset={onReset}
+        showCosts={showCosts}
+      />
 
       <DayNavigation
         currentDayView={currentDayView}
