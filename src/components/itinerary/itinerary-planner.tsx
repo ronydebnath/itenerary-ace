@@ -18,7 +18,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 // ScrollArea import is removed as it's no longer used directly here for DayView
 import { Separator } from '@/components/ui/separator';
-import { Eye, EyeOff, Loader2, FileText, Users as UsersIcon, MapPin as MapPinIcon, CalendarDays as CalendarDaysIcon, Briefcase as BriefcaseIcon, Coins as CoinsIcon, BedDouble as BedDoubleIcon, Zap as ZapIcon, Car as CarIcon, Utensils as UtensilsIcon, MessageSquare as MessageSquareIcon, Share2 } from 'lucide-react';
+import { Eye, EyeOff, Loader2, FileText, Users as UsersIcon, MapPin as MapPinIcon, CalendarDays as CalendarDaysIcon, Briefcase as BriefcaseIcon, Coins as CoinsIcon, BedDouble as BedDoubleIcon, Zap as ZapIcon, Car as CarIcon, Utensils as UtensilsIcon, MessageSquare as MessageSquareIcon, Share2, Info } from 'lucide-react';
 import { formatCurrency, generateGUID } from '@/lib/utils';
 import { DayView } from '../itinerary/day-view';
 import { CostBreakdownTable } from '../itinerary/cost-breakdown-table';
@@ -57,7 +57,8 @@ export function ItineraryPlanner({
   const router = useRouter();
   const [currentDayView, setCurrentDayView] = React.useState<number>(1);
   const [costSummary, setCostSummary] = React.useState<CostSummary | null>(null);
-  const [showCosts, setShowCosts] = React.useState<boolean>(true);
+  // The planner's own 'showCosts' state, primarily for the 'DetailsSummaryTable' within the planner itself.
+  const [plannerShowCosts, setPlannerShowCosts] = React.useState<boolean>(true);
   const { allServicePrices, isLoading: isLoadingServices } = useServicePrices();
   const { allHotelDefinitions, isLoading: isLoadingHotelDefinitions } = useHotelDefinitions();
   const { getRate, isLoading: isLoadingExchangeRates, exchangeRates, globalMarkupPercentage, specificMarkupRates } = useExchangeRates();
@@ -149,15 +150,15 @@ export function ItineraryPlanner({
     });
   }, [onUpdateTripData]);
 
-  const handleViewClientItinerary = React.useCallback(() => {
+  const handleViewClientItinerary = React.useCallback((showDetailedCosts: boolean) => {
     if (tripData?.id) {
-      router.push(`/itinerary/view/${tripData.id}`);
+      router.push(`/itinerary/view/${tripData.id}?displayCosts=${showDetailedCosts}`);
     }
   }, [tripData?.id, router]);
 
-  const handleSaveAndView = () => {
+  const handleSaveAndView = (showDetailedCosts: boolean) => {
     onManualSave();
-    handleViewClientItinerary();
+    handleViewClientItinerary(showDetailedCosts);
   };
 
   const getFormattedDateForDay = React.useCallback((dayNum: number): string => {
@@ -261,7 +262,7 @@ export function ItineraryPlanner({
         onUpdatePax={onUpdatePax}
         onManualSave={onManualSave}
         onReset={onReset}
-        showCosts={showCosts}
+        showCosts={plannerShowCosts}
       />
 
       <DayNavigation
@@ -313,8 +314,8 @@ export function ItineraryPlanner({
                 </div>
               ) : costSummary ? (
                 <>
-                  <CostBreakdownTable summary={costSummary} currency={tripData.pax.currency} travelers={tripData.travelers} showCosts={showCosts} />
-                  {showCosts && (
+                  <CostBreakdownTable summary={costSummary} currency={tripData.pax.currency} travelers={tripData.travelers} showCosts={plannerShowCosts} />
+                  {plannerShowCosts && (
                     <>
                       <Separator className="my-3 sm:my-4" />
                       <div className="text-right">
@@ -325,7 +326,7 @@ export function ItineraryPlanner({
                       </div>
                     </>
                   )}
-                  {!showCosts && (
+                  {!plannerShowCosts && (
                     <p className="text-sm text-muted-foreground text-center mt-4">Cost details are hidden.</p>
                   )}
                 </>
@@ -338,10 +339,10 @@ export function ItineraryPlanner({
       <Card className="mt-6 md:mt-8 shadow-lg">
         <CardHeader className="no-print">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
-            <CardTitle className="text-xl sm:text-2xl font-headline text-primary">Full Itinerary Details</CardTitle>
-            <Button variant="outline" size="sm" onClick={() => setShowCosts(!showCosts)} className="ml-0 sm:ml-4 mt-2 sm:mt-0 self-start sm:self-center">
-              {showCosts ? <EyeOff className="mr-2 h-4 w-4" /> : <Eye className="mr-2 h-4 w-4" />}
-              {showCosts ? 'Hide Costs' : 'Show Costs'}
+            <CardTitle className="text-xl sm:text-2xl font-headline text-primary">Full Itinerary Details (For Planner)</CardTitle>
+            <Button variant="outline" size="sm" onClick={() => setPlannerShowCosts(!plannerShowCosts)} className="ml-0 sm:ml-4 mt-2 sm:mt-0 self-start sm:self-center">
+              {plannerShowCosts ? <EyeOff className="mr-2 h-4 w-4" /> : <Eye className="mr-2 h-4 w-4" />}
+              {plannerShowCosts ? 'Hide Costs' : 'Show Costs'}
             </Button>
           </div>
         </CardHeader>
@@ -352,15 +353,21 @@ export function ItineraryPlanner({
               <p className="text-muted-foreground text-sm sm:text-base">Loading full details...</p>
             </div>
           ) : costSummary ? (
-            <DetailsSummaryTable summary={costSummary} currency={tripData.pax.currency} showCosts={showCosts} />
+            <DetailsSummaryTable summary={costSummary} currency={tripData.pax.currency} showCosts={plannerShowCosts} />
           ) : <p className="text-sm text-center">Loading details...</p>}
         </CardContent>
       </Card>
 
       <div className="mt-6 md:mt-8 py-4 md:py-6 border-t border-border flex flex-col sm:flex-row justify-center items-center gap-3 sm:gap-4 no-print">
-        <Button onClick={handleSaveAndView} className="w-full sm:w-auto bg-accent hover:bg-accent/90 text-accent-foreground">
-          <Share2 className="mr-2 h-4 w-4" /> View Itinerary
+        <Button onClick={() => handleSaveAndView(true)} className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-primary-foreground">
+          <Share2 className="mr-2 h-4 w-4" /> View/Share with Price Details
         </Button>
+        <Button onClick={() => handleSaveAndView(false)} className="w-full sm:w-auto bg-secondary hover:bg-secondary/80 text-secondary-foreground">
+          <EyeOff className="mr-2 h-4 w-4" /> View/Share without Price Details
+        </Button>
+         <div className="mt-2 sm:mt-0 text-xs text-muted-foreground text-center sm:text-left">
+            <Info className="inline h-3 w-3 mr-1 -mt-px" /> Both options save the current itinerary before navigating.
+          </div>
       </div>
     </div>
   );

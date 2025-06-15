@@ -2,7 +2,7 @@
 "use client";
 
 import * as React from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import type { TripData, ItineraryItem, CostSummary, DetailedSummaryItem, HotelOccupancyDetail, CurrencyCode, Traveler, CountryItem } from '@/types/itinerary';
 import { calculateAllCosts } from '@/lib/calculation-utils';
 import { useServicePrices } from '@/hooks/useServicePrices';
@@ -21,7 +21,7 @@ import {
   ArrowLeft, Globe, Printer, EyeOff, Eye, Coins, PackageIcon, MessageSquare
 } from 'lucide-react';
 import { formatCurrency, cn } from '@/lib/utils';
-import { CostBreakdownTable } from '@/components/itinerary/cost-breakdown-table'; 
+import { CostBreakdownTable } from '@/components/itinerary/cost-breakdown-table';
 // DetailsSummaryTable import is removed as the section is being removed
 
 const ITINERARY_DATA_PREFIX = 'itineraryAce_data_';
@@ -46,13 +46,18 @@ const BOOKING_STATUS_STYLES: Record<DetailedSummaryItem['bookingStatus'] & strin
 export default function ItineraryClientViewPage() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const itineraryId = params.itineraryId as string;
 
   const [tripData, setTripData] = React.useState<TripData | null>(null);
   const [costSummary, setCostSummary] = React.useState<CostSummary | null>(null);
   const [isLoading, setIsLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
-  const [showCosts, setShowCosts] = React.useState(false); // Default to false to hide individual costs
+  
+  // Read showCosts from query param. Default to false if not 'true'.
+  const displayCostsQueryParam = searchParams.get('displayCosts');
+  const showCosts = displayCostsQueryParam === 'true';
+
 
   const { allServicePrices, isLoading: isLoadingServices } = useServicePrices();
   const { allHotelDefinitions, isLoading: isLoadingHotelDefs } = useHotelDefinitions();
@@ -153,12 +158,9 @@ export default function ItineraryClientViewPage() {
               {tripData.clientName && <p className="text-sm sm:text-md text-muted-foreground print:text-gray-700">For: {tripData.clientName}</p>}
             </div>
             <div className="flex gap-2 self-start sm:self-center no-print">
-                <Button onClick={() => setShowCosts(!showCosts)} variant="outline" size="sm" className="h-8 text-xs">
-                    {showCosts ? <EyeOff className="mr-1.5 h-3.5 w-3.5" /> : <Eye className="mr-1.5 h-3.5 w-3.5" />}
-                    {showCosts ? 'Hide Detailed Costs' : 'Show Detailed Costs'}
-                </Button>
+                {/* Removed the "Hide/Show Detailed Costs" button as it's now controlled by query param */}
                 <Button onClick={() => router.back()} variant="outline" size="sm" className="h-8 text-xs">
-                    <ArrowLeft className="mr-1.5 h-3.5 w-3.5" /> Back
+                    <ArrowLeft className="mr-1.5 h-3.5 w-3.5" /> Back to Planner
                 </Button>
             </div>
           </div>
@@ -285,7 +287,9 @@ export default function ItineraryClientViewPage() {
               </div>
             </div>
             {!showCosts && (
-              <p className="text-sm text-muted-foreground text-center mt-4 print:hidden">Detailed item costs are currently hidden. Click "Show Detailed Costs" to view.</p>
+              <p className="text-sm text-muted-foreground text-center mt-4 print:block">
+                Detailed individual service costs are hidden in this view.
+              </p>
             )}
           </section>
           
