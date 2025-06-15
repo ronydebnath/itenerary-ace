@@ -1,3 +1,4 @@
+
 /**
  * @fileoverview This file defines the core data structures and types used throughout the Itinerary Ace application,
  * particularly for representing trip data, itinerary items, pricing, and related entities. It establishes
@@ -214,7 +215,7 @@ export interface TripData {
   quotationRequestId?: string;
   version?: number;
   overallBookingStatus?: OverallBookingStatus;
-  adminRevisionNotes?: string; // Notes from Admin for this version of the itinerary proposal
+  adminRevisionNotes?: string; 
 }
 
 export interface CostSummary {
@@ -335,3 +336,4 @@ export interface SpecificMarkupRate {
   markupPercentage: number;
   updatedAt: string; // ISO Date string
 }
+

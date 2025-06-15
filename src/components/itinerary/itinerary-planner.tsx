@@ -1,3 +1,4 @@
+
 /**
  * @fileoverview This component is the core user interface for planning an itinerary.
  * It orchestrates various sub-components like the `PlannerHeader` for global settings,
@@ -42,7 +43,7 @@ interface ItineraryPlannerProps {
   onUpdatePax: (updatedPax: Partial<PaxDetails>) => void;
   onManualSave: () => void;
   quotationRequestDetails?: QuotationRequest | null;
-  handleSendQuotationToAgent: () => boolean; 
+  handleSendQuotationToAgent?: () => boolean; 
 }
 
 export function ItineraryPlanner({
@@ -383,3 +384,4 @@ export function ItineraryPlanner({
     </div>
   );
 }
+
