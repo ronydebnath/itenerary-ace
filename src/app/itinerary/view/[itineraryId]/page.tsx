@@ -19,13 +19,13 @@ import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import {
   Loader2, AlertCircle, CalendarDays, Users, MapPin,
   Hotel, Car, Ticket, Utensils, ShoppingBag, FileText,
-  ArrowLeft, Globe, Printer, Coins, PackageIcon, MessageSquare, Send
+  ArrowLeft, Globe, Printer, Coins, PackageIcon, MessageSquare, Send, Edit3
 } from 'lucide-react';
 import { formatCurrency, cn } from '@/lib/utils';
 import { CostBreakdownTable } from '@/components/itinerary/cost-breakdown-table';
 import { DetailsSummaryTable } from '@/components/itinerary/details-summary-table';
 import { useToast } from "@/hooks/use-toast";
-import { useSession } from "next-auth/react"; // Import useSession
+import { useSession } from "next-auth/react"; 
 
 const ITINERARY_DATA_PREFIX = 'itineraryAce_data_';
 const AGENT_QUOTATION_REQUESTS_KEY = 'itineraryAce_agentQuotationRequests'; // For updating quote status
@@ -54,7 +54,7 @@ export default function ItineraryClientViewPage() {
   const searchParams = useSearchParams();
   const itineraryId = params.itineraryId as string;
   const { toast } = useToast();
-  const { data: session, status: sessionStatus } = useSession(); // Get session data
+  const { data: session, status: sessionStatus } = useSession(); 
 
   const [tripData, setTripData] = React.useState<TripData | null>(null);
   const [costSummary, setCostSummary] = React.useState<CostSummary | null>(null);
@@ -193,6 +193,7 @@ export default function ItineraryClientViewPage() {
     : 'N/A';
   
   const isAdmin = session?.user && (session.user as any).role === 'admin';
+  const isAgent = session?.user && (session.user as any).role === 'agent';
 
 
   return (
@@ -338,10 +339,26 @@ export default function ItineraryClientViewPage() {
             <Button onClick={() => window.print()} variant="outline" size="sm" className="h-9 text-sm w-full sm:w-auto">
                 <Printer className="mr-2 h-4 w-4"/> Print Current View
             </Button>
-            {isAdmin && tripData.quotationRequestId && (
-                <Button onClick={handleSendQuotationToAgent} size="sm" className="h-9 text-sm w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white">
+            
+            {/* Admin Specific Actions */}
+            {isAdmin && (
+              <>
+                {tripData.quotationRequestId && (
+                  <Button onClick={handleSendQuotationToAgent} size="sm" className="h-9 text-sm w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white">
                     <Send className="mr-2 h-4 w-4"/> Send Quotation to Agent
+                  </Button>
+                )}
+                <Button onClick={() => router.push(`/planner?itineraryId=${itineraryId}`)} variant="outline" size="sm" className="h-9 text-sm w-full sm:w-auto">
+                  <Edit3 className="mr-2 h-4 w-4"/> Edit in Planner
                 </Button>
+              </>
+            )}
+
+            {/* Agent Specific Actions */}
+            {isAgent && (
+              <Button onClick={() => router.push('/agent/my-quotation-requests')} variant="outline" size="sm" className="h-9 text-sm w-full sm:w-auto">
+                <ArrowLeft className="mr-2 h-4 w-4"/> Back to My Requests
+              </Button>
             )}
         </div>
       </div>
