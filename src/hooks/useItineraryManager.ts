@@ -88,7 +88,7 @@ const createDefaultTripData = (quotationRequestId?: string, quotationRequest?: Q
   let clientNameForTrip: string | undefined = undefined;
   if (quotationRequest?.agentId) {
     clientNameForTrip = getAgencyAndAgentNameFromLocalStorage(quotationRequest.agentId);
-  } else if (quotationRequestId && !quotationRequest) { 
+  } else if (quotationRequestId && !quotationRequest) {
     try {
         const requestsString = localStorage.getItem(AGENT_QUOTATION_REQUESTS_KEY);
         if (requestsString) {
@@ -147,7 +147,7 @@ export function useItineraryManager() {
   const { toast } = useToast();
 
   const [tripData, setTripData] = React.useState<TripData | null>(null);
-  const tripDataInternalRef = React.useRef<TripData | null>(null); 
+  const tripDataInternalRef = React.useRef<TripData | null>(null);
   const [currentItineraryId, setCurrentItineraryId] = React.useState<string | null>(null);
   const [pageStatus, setPageStatus] = React.useState<PageStatus>('loading');
   const [currentQuotationRequest, setCurrentQuotationRequest] = React.useState<QuotationRequest | null>(null);
@@ -156,6 +156,10 @@ export function useItineraryManager() {
   React.useEffect(() => {
     tripDataInternalRef.current = tripData;
   }, [tripData]);
+
+  // Memoize extracted params for stable dependency array
+  const itineraryIdFromUrl = searchParams.get('itineraryId');
+  const quotationRequestIdFromUrl = searchParams.get('quotationRequestId');
 
   React.useEffect(() => {
     let allQuotationRequests: QuotationRequest[] = [];
@@ -179,7 +183,7 @@ export function useItineraryManager() {
           }
           return "AGY";
         };
-        
+
         const generateFullQuotationId = (agencyId?: string): string => {
             const numericPart = generateQuotationIdNumericPart();
             const initials = getAgencyInitials(agencyId);
@@ -267,12 +271,8 @@ export function useItineraryManager() {
       }
     } catch (e) { console.error("Error seeding/reading demo quotations:", e); }
 
-    // Only run planner setup logic if we are on the planner page
     if (typeof window !== "undefined" && window.location.pathname === '/planner') {
-      setPageStatus('loading'); // Set to loading at the start of processing for this path
-
-      const itineraryIdFromUrl = searchParams.get('itineraryId');
-      const quotationRequestIdFromUrl = searchParams.get('quotationRequestId');
+      setPageStatus('loading');
 
       let targetItineraryId = itineraryIdFromUrl;
       let createFromQuotationId = quotationRequestIdFromUrl;
@@ -291,7 +291,7 @@ export function useItineraryManager() {
       } else {
         setCurrentQuotationRequest(null);
       }
-      
+
       if (!targetItineraryId && !createFromQuotationId) {
         try { targetItineraryId = localStorage.getItem('lastActiveItineraryId'); } catch (e) { /* ignore */ }
       }
@@ -301,13 +301,12 @@ export function useItineraryManager() {
       let isNewItineraryFromQuote = false;
 
       if (targetItineraryId) {
-        // if (currentItineraryId !== targetItineraryId || !tripDataInternalRef.current) { // Removed this condition to ensure it always loads/reloads if ID present
             try {
                 const savedDataString = localStorage.getItem(`${ITINERARY_DATA_PREFIX}${targetItineraryId}`);
                 if (savedDataString) {
                     const parsedData = JSON.parse(savedDataString) as Partial<TripData>;
                     const defaultForContext = createDefaultTripData(parsedData.quotationRequestId || createFromQuotationId || undefined, associatedQuotationRequest);
-                    
+
                     let finalClientName = parsedData.clientName;
                     if (!finalClientName && (parsedData.quotationRequestId || createFromQuotationId)) {
                         const qIdForClientName = parsedData.quotationRequestId || createFromQuotationId;
@@ -338,7 +337,7 @@ export function useItineraryManager() {
                     newCurrentId = targetItineraryId;
                 } else {
                     if (localStorage.getItem('lastActiveItineraryId') === targetItineraryId) localStorage.removeItem('lastActiveItineraryId');
-                    
+
                     if (createFromQuotationId && associatedQuotationRequest) {
                         newTripToSet = createDefaultTripData(createFromQuotationId, associatedQuotationRequest);
                         isNewItineraryFromQuote = true;
@@ -347,16 +346,12 @@ export function useItineraryManager() {
                     }
                     newCurrentId = newTripToSet.id;
                 }
-            } catch (error) { 
+            } catch (error) {
                 console.error("Failed to load data for ID:", targetItineraryId, error);
                 newTripToSet = createDefaultTripData(createFromQuotationId, associatedQuotationRequest);
                 newCurrentId = newTripToSet.id;
                 if (createFromQuotationId) isNewItineraryFromQuote = true;
             }
-        // } else {
-        //    newTripToSet = tripDataInternalRef.current;
-        //    newCurrentId = currentItineraryId;
-        // }
       } else if (createFromQuotationId && associatedQuotationRequest) {
         newTripToSet = createDefaultTripData(createFromQuotationId, associatedQuotationRequest);
         newCurrentId = newTripToSet.id;
@@ -381,23 +376,24 @@ export function useItineraryManager() {
       }
 
       if (newTripToSet && newCurrentId) {
-        setTripData(newTripToSet); // Always set, React handles if it's the same object
+        setTripData(newTripToSet);
         setCurrentItineraryId(newCurrentId);
-        
+
         try { localStorage.setItem('lastActiveItineraryId', newCurrentId); } catch(e) {/* */}
-        
+
         const finalUrl = `/planner?itineraryId=${newCurrentId}${newTripToSet.quotationRequestId ? `&quotationRequestId=${newTripToSet.quotationRequestId}`: ''}`;
         if (window.location.pathname + window.location.search !== finalUrl) {
             router.replace(finalUrl, { shallow: true });
         }
-        setPageStatus('planner'); // Transition to planner state
+        setPageStatus('planner');
       } else {
-        console.error("useItineraryManager: Failed to determine trip data. Staying in loading state.");
-        // If newTripToSet or newCurrentId is null, we should not proceed to 'planner'
-        // setPageStatus remains 'loading' or could be set to an 'error' state
+        // Handle case where newTripToSet or newCurrentId might be null
+        // This ensures pageStatus doesn't get stuck in 'loading' incorrectly
+        // or try to transition to 'planner' without valid data.
+        // Potentially set an error state or fallback.
       }
     }
-  }, [searchParams, router, toast]);
+  }, [itineraryIdFromUrl, quotationRequestIdFromUrl, router, toast]); // Use memoized params
 
 
   const handleStartNewItinerary = React.useCallback(() => {
@@ -418,7 +414,7 @@ export function useItineraryManager() {
         } else {
             updatesToApply = update;
         }
-        
+
         const base = prevTripData || createDefaultTripData(searchParams.get('quotationRequestId') || undefined, currentQuotationRequest || undefined);
         const newTripData = { ...base, ...updatesToApply } as TripData;
 
@@ -469,19 +465,19 @@ export function useItineraryManager() {
   }, [handleUpdateTripData]);
 
   const handleManualSave = React.useCallback(() => {
-    const currentTripDataForSave = tripDataInternalRef.current; 
+    const currentTripDataForSave = tripDataInternalRef.current;
     if (!currentTripDataForSave || !currentItineraryId) {
       toast({ title: "Error", description: "No itinerary data to save.", variant: "destructive" });
       return;
     }
     try {
-      const newVersion = (currentTripDataForSave.version || 1); 
+      const newVersion = (currentTripDataForSave.version || 1);
       const dataToSave: TripData = {
         ...currentTripDataForSave,
         version: newVersion,
         updatedAt: new Date().toISOString(),
       };
-      
+
       localStorage.setItem(`${ITINERARY_DATA_PREFIX}${currentItineraryId}`, JSON.stringify(dataToSave));
       const indexString = localStorage.getItem(ITINERARY_INDEX_KEY);
       let index: ItineraryMetadata[] = indexString ? JSON.parse(indexString) : [];
