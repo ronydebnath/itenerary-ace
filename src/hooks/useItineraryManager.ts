@@ -15,7 +15,7 @@
 
 import * as React from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import type { TripData, ItineraryMetadata, TripSettings, PaxDetails, Traveler, OverallBookingStatus, BookingStatus } from '@/types/itinerary';
+import type { TripData, ItineraryMetadata, TripSettings, PaxDetails, Traveler, OverallBookingStatus, BookingStatus, Agency, AgentProfile } from '@/types/itinerary';
 import { OVERALL_BOOKING_STATUSES, BOOKING_STATUSES } from '@/types/itinerary';
 import type { QuotationRequest, QuotationRequestStatus } from '@/types/quotation';
 import { QUOTATION_STATUSES } from '@/types/quotation';
@@ -25,6 +25,8 @@ import { useToast } from "@/hooks/use-toast";
 const ITINERARY_INDEX_KEY = 'itineraryAce_index';
 const ITINERARY_DATA_PREFIX = 'itineraryAce_data_';
 const AGENT_QUOTATION_REQUESTS_KEY = 'itineraryAce_agentQuotationRequests';
+const AGENCIES_STORAGE_KEY = 'itineraryAceAgencies';
+const AGENTS_STORAGE_KEY = 'itineraryAceAgents';
 
 
 const generateItineraryId = (): string => {
@@ -47,12 +49,44 @@ const createDefaultTravelers = (adults: number, children: number): Traveler[] =>
   return newTravelers;
 };
 
+// Helper within the hook's scope to get agency/agent names
+const getAgencyAndAgentNameFromLocalStorage = (agentId: string): string | undefined => {
+  try {
+    const agentsString = localStorage.getItem(AGENTS_STORAGE_KEY);
+    const agenciesString = localStorage.getItem(AGENCIES_STORAGE_KEY);
+
+    if (agentsString && agenciesString) {
+      const allAgents: AgentProfile[] = JSON.parse(agentsString);
+      const allAgencies: Agency[] = JSON.parse(agenciesString);
+
+      const agent = allAgents.find(a => a.id === agentId);
+      if (agent) {
+        const agency = allAgencies.find(ag => ag.id === agent.agencyId);
+        if (agency) {
+          return `${agency.name} - ${agent.fullName}`;
+        }
+        return `Agent: ${agent.fullName} (Agency ID: ${agent.agencyId})`;
+      }
+    }
+  } catch (e) {
+    console.error("Error fetching agent/agency for clientName:", e);
+  }
+  return agentId ? `Agent ID: ${agentId}` : undefined;
+};
+
+
 const createDefaultTripData = (quotationRequestId?: string, quotationRequest?: QuotationRequest): TripData => {
   const newId = generateItineraryId();
   const now = new Date().toISOString();
-  
+
   const defaultStartDate = new Date();
   defaultStartDate.setHours(0, 0, 0, 0);
+
+  let clientNameForTrip: string | undefined = undefined;
+  if (quotationRequest?.agentId) {
+    clientNameForTrip = getAgencyAndAgentNameFromLocalStorage(quotationRequest.agentId);
+  }
+
 
   const settings: TripSettings = {
     numDays: quotationRequest?.tripDetails.durationDays || 3,
@@ -77,7 +111,7 @@ const createDefaultTripData = (quotationRequestId?: string, quotationRequest?: Q
     itineraryName: quotationRequest
       ? `Proposal for Quotation ${quotationRequest.id.slice(-6)}`
       : `New Itinerary ${newId.split('-').pop()}`,
-    clientName: undefined, 
+    clientName: clientNameForTrip,
     createdAt: now,
     updatedAt: now,
     settings,
@@ -119,21 +153,22 @@ export function useItineraryManager() {
     let idToLoad = itineraryIdFromUrl;
     let loadedTripData: TripData | null = null;
     let associatedQuotationRequest: QuotationRequest | undefined = undefined;
+    let allQuotationRequests: QuotationRequest[] = [];
 
     if (quotationRequestIdFromUrl) {
         try {
             const requestsString = localStorage.getItem(AGENT_QUOTATION_REQUESTS_KEY);
             if (requestsString) {
-                const allRequests: QuotationRequest[] = JSON.parse(requestsString);
-                associatedQuotationRequest = allRequests.find(q => q.id === quotationRequestIdFromUrl);
+                allQuotationRequests = JSON.parse(requestsString);
+                associatedQuotationRequest = allQuotationRequests.find(q => q.id === quotationRequestIdFromUrl);
                 if (associatedQuotationRequest && associatedQuotationRequest.linkedItineraryId && !idToLoad) {
-                    idToLoad = associatedQuotationRequest.linkedItineraryId; 
+                    idToLoad = associatedQuotationRequest.linkedItineraryId;
                 }
             }
         } catch (e) { console.error("Error reading quotation requests:", e); }
     }
 
-    if (!idToLoad && !quotationRequestIdFromUrl) { 
+    if (!idToLoad && !quotationRequestIdFromUrl) {
       try { idToLoad = localStorage.getItem('lastActiveItineraryId'); } catch (e) { console.error("Error reading lastActiveItineraryId:", e); }
     }
 
@@ -142,11 +177,25 @@ export function useItineraryManager() {
         const savedDataString = localStorage.getItem(`${ITINERARY_DATA_PREFIX}${idToLoad}`);
         if (savedDataString) {
           const parsedData = JSON.parse(savedDataString) as Partial<TripData>;
-          const defaultTripForContext = createDefaultTripData(quotationRequestIdFromUrl, associatedQuotationRequest);
+          const defaultTripForContext = createDefaultTripData(parsedData.quotationRequestId || quotationRequestIdFromUrl, associatedQuotationRequest);
+
+          let finalClientName = parsedData.clientName;
+          if (!finalClientName && (parsedData.quotationRequestId || quotationRequestIdFromUrl)) {
+            const qIdForClientName = parsedData.quotationRequestId || quotationRequestIdFromUrl;
+            if (!allQuotationRequests.length && qIdForClientName) { // Load if not already loaded
+                const requestsString = localStorage.getItem(AGENT_QUOTATION_REQUESTS_KEY);
+                if (requestsString) allQuotationRequests = JSON.parse(requestsString);
+            }
+            const agentIdForClientName = allQuotationRequests.find(q => q.id === qIdForClientName)?.agentId;
+            if (agentIdForClientName) {
+              finalClientName = getAgencyAndAgentNameFromLocalStorage(agentIdForClientName);
+            }
+          }
+
           loadedTripData = {
             id: parsedData.id || idToLoad,
             itineraryName: parsedData.itineraryName || (associatedQuotationRequest ? `Proposal for Quotation ${associatedQuotationRequest.id.slice(-6)}` : defaultTripForContext.itineraryName),
-            clientName: parsedData.clientName || defaultTripForContext.clientName,
+            clientName: finalClientName || defaultTripForContext.clientName,
             createdAt: parsedData.createdAt || new Date().toISOString(),
             updatedAt: parsedData.updatedAt || new Date().toISOString(),
             settings: { ...defaultTripForContext.settings, ...parsedData.settings },
@@ -159,7 +208,7 @@ export function useItineraryManager() {
           };
         } else {
           if (localStorage.getItem('lastActiveItineraryId') === idToLoad) localStorage.removeItem('lastActiveItineraryId');
-          idToLoad = null; 
+          idToLoad = null;
         }
       } catch (error) { console.error("Failed to load data for ID:", idToLoad, error); idToLoad = null; }
     }
@@ -170,15 +219,13 @@ export function useItineraryManager() {
       if (quotationRequestIdFromUrl && associatedQuotationRequest) {
          const updatedQuotationRequest = { ...associatedQuotationRequest, linkedItineraryId: idToLoad, status: "Quoted" as QuotationRequestStatus, updatedAt: new Date().toISOString() };
          try {
-             const requestsString = localStorage.getItem(AGENT_QUOTATION_REQUESTS_KEY);
-             let allRequests: QuotationRequest[] = requestsString ? JSON.parse(requestsString) : [];
-             const existingReqIndex = allRequests.findIndex(q => q.id === quotationRequestIdFromUrl);
+             const existingReqIndex = allQuotationRequests.findIndex(q => q.id === quotationRequestIdFromUrl);
              if (existingReqIndex !== -1) {
-                 allRequests[existingReqIndex] = updatedQuotationRequest;
+                 allQuotationRequests[existingReqIndex] = updatedQuotationRequest;
              } else {
-                 allRequests.push(updatedQuotationRequest);
+                 allQuotationRequests.push(updatedQuotationRequest);
              }
-             localStorage.setItem(AGENT_QUOTATION_REQUESTS_KEY, JSON.stringify(allRequests));
+             localStorage.setItem(AGENT_QUOTATION_REQUESTS_KEY, JSON.stringify(allQuotationRequests));
          } catch (e) { console.error("Error updating quotation request with new itinerary ID:", e); }
       }
     }
@@ -197,7 +244,7 @@ export function useItineraryManager() {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams, router, currentItineraryId, pageStatus, tripData]); // currentItineraryId, pageStatus, tripData are for re-running if internal state changes need it
-  
+
   const handleStartNewItinerary = React.useCallback(() => {
     const newDefaultTripData = createDefaultTripData();
     setTripData(newDefaultTripData);
@@ -267,7 +314,7 @@ export function useItineraryManager() {
       return;
     }
     try {
-      const newVersion = (tripData.version || 1); 
+      const newVersion = (tripData.version || 1);
       const dataToSave: TripData = {
         ...tripData,
         version: newVersion,
@@ -297,13 +344,11 @@ export function useItineraryManager() {
           const requestIndex = allRequests.findIndex(q => q.id === dataToSave.quotationRequestId);
           if (requestIndex > -1 && allRequests[requestIndex].status === "Pending") {
             allRequests[requestIndex].status = "Quoted";
-            allRequests[requestIndex].linkedItineraryId = currentItineraryId; 
+            allRequests[requestIndex].linkedItineraryId = currentItineraryId;
             allRequests[requestIndex].updatedAt = new Date().toISOString();
             localStorage.setItem(AGENT_QUOTATION_REQUESTS_KEY, JSON.stringify(allRequests));
           } else if (requestIndex > -1 && allRequests[requestIndex].status !== "Quoted") {
-            // If it was already quoted, or some other status, ensure it's linked but don't change status from e.g. Confirmed.
             allRequests[requestIndex].linkedItineraryId = currentItineraryId;
-            // Optionally update updatedAt if needed, but usually not necessary if just re-saving an existing proposal.
             localStorage.setItem(AGENT_QUOTATION_REQUESTS_KEY, JSON.stringify(allRequests));
           }
         }
