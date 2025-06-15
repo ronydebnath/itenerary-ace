@@ -102,7 +102,7 @@ function BaseItemFormComponent<T extends ItineraryItem>({
 
     if (itemCountryIdFromProp) {
       let provincesWithinItemCountry = getProvincesByCountry(itemCountryIdFromProp);
-      if (globallySelectedProvincesFromSettings.length > 0) {
+      if (globallySelectedProvincesFromSettings.length > 0 && globallySelectedCountries.includes(itemCountryIdFromProp)) {
         provincesWithinItemCountry = provincesWithinItemCountry.filter(p =>
           globallySelectedProvincesFromSettings.includes(p.name)
         );
@@ -141,56 +141,80 @@ function BaseItemFormComponent<T extends ItineraryItem>({
   ]);
 
   React.useEffect(() => {
-    const currentItem = item; // Use the item prop directly in this effect's closure
-    let needsUpdate = false;
-    const updatedFields: Partial<T> = {};
+    const currentItemCountryId = item.countryId;
+    const currentItemProvince = item.province;
+    const currentItemType = item.type;
 
-    const isCountryValid = !currentItem.countryId || displayableCountriesForItem.some(c => c.id === currentItem.countryId);
-    if (currentItem.countryId && !isCountryValid) {
+    const updatedFields: Partial<T> = {};
+    let needsResetForInvalidLocation = false;
+
+    const isCountryValid = !currentItemCountryId || displayableCountriesForItem.some(c => c.id === currentItemCountryId);
+    if (currentItemCountryId && !isCountryValid) {
       updatedFields.countryId = undefined;
       updatedFields.countryName = undefined;
       updatedFields.province = undefined;
-      updatedFields.selectedServicePriceId = undefined;
-      if (currentItem.type === 'activity') (updatedFields as Partial<ActivityItem>).selectedPackageId = undefined;
-      if (currentItem.type === 'transfer') (updatedFields as Partial<TransferItem>).selectedVehicleOptionId = undefined;
-      if (currentItem.type === 'hotel') {
-        (updatedFields as Partial<HotelItem>).hotelDefinitionId = '';
-        (updatedFields as Partial<HotelItem>).selectedRooms = [];
-      }
-      needsUpdate = true;
+      needsResetForInvalidLocation = true;
     }
 
-    const effectiveCountryIdForProvinceCheck = updatedFields.countryId === undefined ? currentItem.countryId : updatedFields.countryId;
-    const provincesToCheckAgainst = effectiveCountryIdForProvinceCheck
-        ? getProvincesByCountry(effectiveCountryIdForProvinceCheck)
-        : displayableProvincesForItem;
-
-    const isProvinceStillValid = !currentItem.province || (updatedFields.province === undefined && provincesToCheckAgainst.some(p => p.name === currentItem.province));
-
-    if (currentItem.province && !isProvinceStillValid && updatedFields.province === undefined) {
+    let provincesToCheckAgainst = displayableProvincesForItem;
+    const effectiveCountryId = updatedFields.countryId === undefined ? currentItemCountryId : updatedFields.countryId;
+    if (effectiveCountryId) {
+        provincesToCheckAgainst = getProvincesByCountry(effectiveCountryId);
+    }
+    
+    const isProvinceStillValid = !currentItemProvince || (updatedFields.province === undefined && provincesToCheckAgainst.some(p => p.name === currentItemProvince));
+    if (currentItemProvince && !isProvinceStillValid && updatedFields.province === undefined) {
       updatedFields.province = undefined;
-      if(updatedFields.selectedServicePriceId === undefined) updatedFields.selectedServicePriceId = undefined;
-      if (currentItem.type === 'activity' && (updatedFields as Partial<ActivityItem>).selectedPackageId === undefined) (updatedFields as Partial<ActivityItem>).selectedPackageId = undefined;
-      if (currentItem.type === 'transfer' && (updatedFields as Partial<TransferItem>).selectedVehicleOptionId === undefined) (updatedFields as Partial<TransferItem>).selectedVehicleOptionId = undefined;
-      if (currentItem.type === 'hotel' && (updatedFields as Partial<HotelItem>).hotelDefinitionId === undefined) {
-          (updatedFields as Partial<HotelItem>).hotelDefinitionId = '';
-          (updatedFields as Partial<HotelItem>).selectedRooms = [];
-      }
-      needsUpdate = true;
+      needsResetForInvalidLocation = true;
     }
 
-    if (needsUpdate) {
-      onUpdate({ ...currentItem, ...updatedFields });
+    if (needsResetForInvalidLocation) {
+        updatedFields.selectedServicePriceId = undefined;
+        if (currentItemType === 'activity') (updatedFields as Partial<ActivityItem>).selectedPackageId = undefined;
+        if (currentItemType === 'transfer') (updatedFields as Partial<TransferItem>).selectedVehicleOptionId = undefined;
+        if (currentItemType === 'hotel') {
+            (updatedFields as Partial<HotelItem>).hotelDefinitionId = '';
+            (updatedFields as Partial<HotelItem>).selectedRooms = [];
+        }
+    }
+    
+    let hasMeaningfulChange = false;
+    if (Object.keys(updatedFields).length > 0) {
+        if (updatedFields.hasOwnProperty('countryId') && item.countryId !== updatedFields.countryId) hasMeaningfulChange = true;
+        if (updatedFields.hasOwnProperty('province') && item.province !== updatedFields.province) hasMeaningfulChange = true;
+        if (updatedFields.hasOwnProperty('selectedServicePriceId') && item.selectedServicePriceId !== updatedFields.selectedServicePriceId) hasMeaningfulChange = true;
+        
+        if (item.type === 'activity' && updatedFields.hasOwnProperty('selectedPackageId') && (item as ActivityItem).selectedPackageId !== (updatedFields as Partial<ActivityItem>).selectedPackageId) hasMeaningfulChange = true;
+        if (item.type === 'transfer' && updatedFields.hasOwnProperty('selectedVehicleOptionId') && (item as TransferItem).selectedVehicleOptionId !== (updatedFields as Partial<TransferItem>).selectedVehicleOptionId) hasMeaningfulChange = true;
+        if (item.type === 'hotel') {
+            if (updatedFields.hasOwnProperty('hotelDefinitionId') && (item as HotelItem).hotelDefinitionId !== (updatedFields as Partial<HotelItem>).hotelDefinitionId) hasMeaningfulChange = true;
+            if (updatedFields.hasOwnProperty('selectedRooms')) { // Basic check for selectedRooms, could be deeper if necessary
+                 const currentSelectedRooms = (item as HotelItem).selectedRooms || [];
+                 const newSelectedRooms = (updatedFields as Partial<HotelItem>).selectedRooms || [];
+                 if (currentSelectedRooms.length !== newSelectedRooms.length || 
+                     !currentSelectedRooms.every((room, index) => newSelectedRooms[index] && room.id === newSelectedRooms[index].id)) { // Simple comparison
+                     hasMeaningfulChange = true;
+                 }
+            }
+        }
+    }
+
+    if (hasMeaningfulChange) {
+      onUpdate({ ...item, ...updatedFields });
     }
   }, [
-    itemCountryIdFromProp, // Specific item fields from prop
-    itemProvinceFromProp,
-    itemTypeFromProp,
-    displayableCountriesForItem, // Memoized array based on global settings
-    displayableProvincesForItem, // Memoized array based on global settings & item's country
-    getProvincesByCountry,    // Stable callback from hook
-    onUpdate,                 // Stable callback from props
-    item, // Include the whole item to catch other relevant changes, but effect logic is based on specific fields
+    item.countryId, // Now specific
+    item.province,  // Now specific
+    item.type,      // Now specific
+    displayableCountriesForItem,
+    displayableProvincesForItem,
+    getProvincesByCountry,
+    onUpdate,
+    item.selectedServicePriceId, // Add other fields that might be reset by this effect if they influence it
+    (item as ActivityItem).selectedPackageId,
+    (item as TransferItem).selectedVehicleOptionId,
+    (item as HotelItem).hotelDefinitionId,
+    (item as HotelItem).selectedRooms,
   ]);
 
 
@@ -199,7 +223,7 @@ function BaseItemFormComponent<T extends ItineraryItem>({
     const updatedItemPartial: Partial<ItineraryItem> = {
       countryId: selectedCountry?.id,
       countryName: selectedCountry?.name,
-      province: undefined, // Always reset province when country changes
+      province: undefined, 
       selectedServicePriceId: undefined,
       selectedPackageId: undefined,
       selectedVehicleOptionId: undefined,
@@ -411,4 +435,3 @@ function BaseItemFormComponent<T extends ItineraryItem>({
 }
 
 export const BaseItemForm = React.memo(BaseItemFormComponent) as typeof BaseItemFormComponent;
-
