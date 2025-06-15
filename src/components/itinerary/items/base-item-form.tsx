@@ -1,4 +1,3 @@
-
 /**
  * @fileoverview This component serves as a foundational building block for all specific
  * itinerary item forms (e.g., Transfer, Activity, Hotel). It provides a common structure
@@ -139,7 +138,6 @@ function BaseItemFormComponent<T extends ItineraryItem>({
   ]);
 
 
-  // Ref to store the previous values of item.type, item.countryId, item.province
   const prevContextRef = React.useRef<{
     type: ItineraryItem['type'];
     countryId?: string;
@@ -150,94 +148,86 @@ function BaseItemFormComponent<T extends ItineraryItem>({
     province: item.province,
   });
 
-
   React.useEffect(() => {
-    const currentType = item.type;
-    const currentCountryId = item.countryId;
-    const currentProvince = item.province;
+    const currentItem = item; // item from the current render's props
+
+    const currentItemType = currentItem.type;
+    const currentItemCountryId = currentItem.countryId;
+    const currentItemProvince = currentItem.province;
 
     const prevType = prevContextRef.current.type;
     const prevCountryId = prevContextRef.current.countryId;
     const prevProvince = prevContextRef.current.province;
 
-    let needsReset = false;
-    const updatedFieldsToReset: Partial<T> = {};
-
+    // Check if the core context has changed by comparing current item's fields with the stored previous context
     if (
-      currentType !== prevType ||
-      currentCountryId !== prevCountryId ||
-      currentProvince !== prevProvince
+        currentItemType !== prevType ||
+        currentItemCountryId !== prevCountryId ||
+        currentItemProvince !== prevProvince
     ) {
-      // Context has changed, determine which fields to reset
-      if (item.selectedServicePriceId !== undefined) {
-        updatedFieldsToReset.selectedServicePriceId = undefined;
-        needsReset = true;
-      }
-
-      if (currentType === 'activity') {
-        const activityItem = item as ActivityItem;
-        if (activityItem.selectedPackageId !== undefined) {
-          (updatedFieldsToReset as Partial<ActivityItem>).selectedPackageId = undefined;
-          needsReset = true;
+        const updatedFieldsToReset: Partial<T> = {};
+        
+        // Determine if dependent fields need reset based on the *current* item's state
+        if (currentItem.selectedServicePriceId !== undefined) {
+            updatedFieldsToReset.selectedServicePriceId = undefined;
         }
-      } else if (currentType === 'transfer') {
-        const transferItem = item as TransferItem;
-        if (transferItem.selectedVehicleOptionId !== undefined) {
-          (updatedFieldsToReset as Partial<TransferItem>).selectedVehicleOptionId = undefined;
-          needsReset = true;
-        }
-      } else if (currentType === 'hotel') {
-        const hotelItem = item as HotelItem;
-        if (hotelItem.hotelDefinitionId !== undefined && hotelItem.hotelDefinitionId !== '') {
-          (updatedFieldsToReset as Partial<HotelItem>).hotelDefinitionId = '';
-          needsReset = true;
-        }
-        if (hotelItem.selectedRooms !== undefined && hotelItem.selectedRooms.length > 0) {
-          (updatedFieldsToReset as Partial<HotelItem>).selectedRooms = [];
-          needsReset = true;
-        }
-      }
-
-      // If item's countryId was cleared by this change (from defined to undefined), also clear province
-      if (prevCountryId !== undefined && currentCountryId === undefined && item.province !== undefined) {
-        updatedFieldsToReset.province = undefined;
-        needsReset = true;
-      }
-    }
-
-    if (needsReset) {
-      let actualChangesExist = false;
-      for (const key in updatedFieldsToReset) {
-        // For arrays, a simple !== might not be enough if the new value is [] and old was also [] but different ref.
-        // However, for this reset logic, if updatedFieldsToReset has a key, it means we *intend* to change it to a default/empty state.
-        // The comparison should be against the item's current state.
-        if (key === 'selectedRooms' && Array.isArray(updatedFieldsToReset[key as keyof T]) && Array.isArray(item[key as keyof T])) {
-            if ((item[key as keyof T] as unknown as any[]).length > 0) { // Only reset if it's not already empty
-                actualChangesExist = true;
+        if (currentItemType === 'activity') {
+            const activityItem = currentItem as ActivityItem;
+            if (activityItem.selectedPackageId !== undefined) {
+                (updatedFieldsToReset as Partial<ActivityItem>).selectedPackageId = undefined;
             }
-        } else if (updatedFieldsToReset[key as keyof T] !== item[key as keyof T]) {
-          actualChangesExist = true;
+        } else if (currentItemType === 'transfer') {
+            const transferItem = currentItem as TransferItem;
+            if (transferItem.selectedVehicleOptionId !== undefined) {
+                (updatedFieldsToReset as Partial<TransferItem>).selectedVehicleOptionId = undefined;
+            }
+        } else if (currentItemType === 'hotel') {
+            const hotelItem = currentItem as HotelItem;
+            if (hotelItem.hotelDefinitionId && hotelItem.hotelDefinitionId !== '') {
+                (updatedFieldsToReset as Partial<HotelItem>).hotelDefinitionId = '';
+            }
+            if (hotelItem.selectedRooms && hotelItem.selectedRooms.length > 0) {
+                (updatedFieldsToReset as Partial<HotelItem>).selectedRooms = [];
+            }
         }
-        if (actualChangesExist) break; 
-      }
 
-      if (actualChangesExist) {
-        onUpdate({ ...item, ...updatedFieldsToReset });
-      }
-    }
+        // If countryId was just cleared (changed from defined to undefined), ensure province is also cleared
+        if (currentItemCountryId === undefined && prevCountryId !== undefined && currentItemProvince !== undefined) {
+            updatedFieldsToReset.province = undefined;
+        }
+        
+        let actualChangesExist = false;
+        for (const key in updatedFieldsToReset) {
+            const typedKey = key as keyof T;
+            const resetValue = updatedFieldsToReset[typedKey];
+            const currentValueOnItem = currentItem[typedKey];
 
-    // Update the ref *after* all logic for the current render/effect execution.
-    // This ensures that on the *next* run, prevContextRef.current holds the values from *this* run.
-    if (currentType !== prevType || currentCountryId !== prevCountryId || currentProvince !== prevProvince) {
-      prevContextRef.current = {
-        type: currentType,
-        countryId: currentCountryId,
-        province: currentProvince,
-      };
+            if (Array.isArray(resetValue) && Array.isArray(currentValueOnItem)) {
+                // If we intend to reset to an empty array, and the current array is not empty
+                if (resetValue.length === 0 && currentValueOnItem.length > 0) {
+                    actualChangesExist = true; break;
+                }
+            } else if (resetValue === '' && (currentValueOnItem !== '' && currentValueOnItem !== undefined)) {
+                // For string fields being reset to empty (e.g., hotelDefinitionId)
+                 actualChangesExist = true; break;
+            } else if (resetValue === undefined && currentValueOnItem !== undefined) {
+                // For most fields being reset to undefined
+                actualChangesExist = true; break;
+            }
+        }
+
+        if (actualChangesExist) {
+            onUpdate({ ...currentItem, ...updatedFieldsToReset });
+        }
+
+        // Update ref to the current context
+        prevContextRef.current = {
+            type: currentItemType,
+            countryId: currentItemCountryId,
+            province: currentItemProvince,
+        };
     }
-  // The dependencies are the specific item properties that define its context.
-  // `onUpdate` is stable due to useCallback in parent.
-  }, [item.type, item.countryId, item.province, onUpdate, item]); // `item` is included to catch all changes to its properties that might be relevant to the reset conditions
+  }, [item.type, item.countryId, item.province, onUpdate, item]); // item is included here to ensure currentItem is up-to-date, but logic relies on prevContextRef
 
 
   const handleItemCountryChange = React.useCallback((countryIdValue?: string) => {
@@ -246,7 +236,7 @@ function BaseItemFormComponent<T extends ItineraryItem>({
       ...item,
       countryId: selectedCountry?.id,
       countryName: selectedCountry?.name,
-      province: undefined, // Always clear province when country changes
+      province: undefined, 
     } as T); 
   }, [allAvailableCountriesHook, item, onUpdate]);
 
@@ -447,4 +437,3 @@ function BaseItemFormComponent<T extends ItineraryItem>({
 }
 
 export const BaseItemForm = React.memo(BaseItemFormComponent) as typeof BaseItemFormComponent;
-
