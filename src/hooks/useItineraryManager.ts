@@ -367,14 +367,15 @@ export function useItineraryManager() {
           } else {
             if (localStorage.getItem('lastActiveItineraryId') === targetItineraryIdFromLogic) localStorage.removeItem('lastActiveItineraryId');
             newTripToSet = createDefaultTripData(createFromQuotationIdLogic, associatedQuotationRequestLogic);
-            newTripToSet.id = targetItineraryIdFromLogic;
+            newTripToSet.id = targetItineraryIdFromLogic; // Ensure ID matches URL if provided
             newCurrentIdForState = targetItineraryIdFromLogic;
             newTripToSet = saveNewItineraryToStorage(newTripToSet);
           }
         } catch (error) {
           console.error("Failed to load or create data for ID:", targetItineraryIdFromLogic, error);
           newTripToSet = createDefaultTripData(createFromQuotationIdLogic, associatedQuotationRequestLogic);
-          if(targetItineraryIdFromLogic) newTripToSet.id = targetItineraryIdFromLogic;
+          if(targetItineraryIdFromLogic) newTripToSet.id = targetItineraryIdFromLogic; // Ensure ID consistency
+          else newTripToSet.id = generateItineraryId(); // Fallback ID generation
           newCurrentIdForState = newTripToSet.id;
           newTripToSet = saveNewItineraryToStorage(newTripToSet);
         }
@@ -389,6 +390,7 @@ export function useItineraryManager() {
              allQuotationRequests[reqIdx].linkedItineraryId = newCurrentIdForState;
              allQuotationRequests[reqIdx].status = "Quoted: Revision In Progress";
              allQuotationRequests[reqIdx].updatedAt = new Date().toISOString();
+             allQuotationRequests[reqIdx].version = (allQuotationRequests[reqIdx].version || 0); // Init version if not present
              localStorage.setItem(AGENT_QUOTATION_REQUESTS_KEY, JSON.stringify(allQuotationRequests));
              associatedQuotationRequestLogic = allQuotationRequests[reqIdx];
           }
@@ -408,6 +410,11 @@ export function useItineraryManager() {
         if (associatedQuotationRequestLogic?.adminRevisionNotes && !newTripToSet.adminRevisionNotes) {
             newTripToSet.adminRevisionNotes = associatedQuotationRequestLogic.adminRevisionNotes;
         }
+        if (associatedQuotationRequestLogic?.agentRevisionNotes && !(newTripToSet as any).agentRevisionNotesDisplay) {
+           // This is for displaying in planner, not for saving back to quote from here.
+           (newTripToSet as any).agentRevisionNotesDisplay = associatedQuotationRequestLogic.agentRevisionNotes;
+        }
+
         setTripData(newTripToSet);
         setCurrentItineraryId(newCurrentIdForState);
         setCurrentQuotationRequest(associatedQuotationRequestLogic);
@@ -419,6 +426,12 @@ export function useItineraryManager() {
         setPageStatus('planner');
       } else if (tripDataInternalRef.current) {
           setPageStatus('planner');
+          const currentTripAssociatedQuote = tripDataInternalRef.current.quotationRequestId
+            ? allQuotationRequests.find(q => q.id === tripDataInternalRef.current!.quotationRequestId) || null
+            : null;
+          if (JSON.stringify(currentQuotationRequest) !== JSON.stringify(currentTripAssociatedQuote)) {
+            setCurrentQuotationRequest(currentTripAssociatedQuote);
+          }
       } else {
           const fallbackTrip = createDefaultTripData();
           const savedFallback = saveNewItineraryToStorage(fallbackTrip);
@@ -565,16 +578,13 @@ export function useItineraryManager() {
             }
             allRequests[requestIndex].linkedItineraryId = currentItineraryIdForSave;
             allRequests[requestIndex].updatedAt = new Date().toISOString();
-            // Persist admin notes from tripData to the quotation request during save
-            if(dataToSave.adminRevisionNotes){
-                allRequests[requestIndex].adminRevisionNotes = dataToSave.adminRevisionNotes;
-            }
+            allRequests[requestIndex].version = currentVersion; // Ensure quote version syncs with itinerary on admin save
             localStorage.setItem(AGENT_QUOTATION_REQUESTS_KEY, JSON.stringify(allRequests));
             setCurrentQuotationRequest(prev => prev && prev.id === allRequests[requestIndex].id ? allRequests[requestIndex] : prev);
           }
         }
       }
-      setTripData(dataToSave); // Ensure local state is also updated with the saved version
+      setTripData(dataToSave);
       toast({ title: "Success", description: `Itinerary "${dataToSave.itineraryName}" (v${dataToSave.version?.toFixed(1) || '0.0'}) saved.` });
     } catch (e: any) {
       console.error("Error during manual save:", e);
@@ -582,14 +592,15 @@ export function useItineraryManager() {
     }
   }, [currentItineraryId, toast]);
 
+
   const handleSendQuotationToAgent = React.useCallback(() => {
-    const currentTripForFinalize = tripDataInternalRef.current;
+    handleManualSave(); // Save latest changes first, including admin notes on tripData
+    const currentTripForFinalize = tripDataInternalRef.current; // Use the latest saved version
+
     if (!currentTripForFinalize || !currentTripForFinalize.quotationRequestId) {
       toast({ title: "Error", description: "This itinerary is not linked to a quotation request.", variant: "destructive" });
       return false;
     }
-
-    handleManualSave(); // Save latest changes (including adminRevisionNotes on tripData)
 
     const now = new Date().toISOString();
     let newVersion: number;
@@ -606,39 +617,38 @@ export function useItineraryManager() {
       previousQuoteVersion = currentRequest.version || 0;
 
       if (currentRequest.status === "New Request Submitted" || currentRequest.status === "Quoted: Revision In Progress") {
-        newVersion = Math.max(1.0, previousQuoteVersion); // Ensure it's at least v1.0
+        newVersion = Math.max(1.0, previousQuoteVersion);
         newStatus = "Quoted: Waiting for TA Feedback";
       } else if (currentRequest.status === "Quoted: Revision Requested") {
         newVersion = parseFloat((previousQuoteVersion + 0.1).toFixed(1));
         newStatus = "Quoted: Re-quoted";
-      } else {
+      } else { // Default action if status is something else, or for subsequent sends
         newVersion = parseFloat(((previousQuoteVersion || currentTripForFinalize.version || 0) + 0.1).toFixed(1));
-        newStatus = "Quoted: Re-quoted";
+        newStatus = "Quoted: Re-quoted"; // Or Quoted: Waiting for TA Feedback if it's considered a fresh send
       }
-      
+
       currentRequest.status = newStatus;
       currentRequest.linkedItineraryId = currentTripForFinalize.id;
-      currentRequest.adminRevisionNotes = currentTripForFinalize.adminRevisionNotes || undefined; // Take notes from itinerary
+      currentRequest.adminRevisionNotes = currentTripForFinalize.adminRevisionNotes || undefined;
       currentRequest.version = newVersion;
       currentRequest.updatedAt = now;
+      currentRequest.agentRevisionNotes = undefined; // Clear agent notes as admin is sending a new version
 
       allRequests[requestIndex] = currentRequest;
       localStorage.setItem(AGENT_QUOTATION_REQUESTS_KEY, JSON.stringify(allRequests));
-      setCurrentQuotationRequest(currentRequest); // Update local state for the hook consumer
-      
-      // Also update the TripData's version to match the quote's new version
+      setCurrentQuotationRequest(currentRequest);
+
       const updatedTripWithVersion: TripData = {
           ...currentTripForFinalize,
-          adminRevisionNotes: currentTripForFinalize.adminRevisionNotes, // ensure notes are on tripdata for next save
           updatedAt: now,
           version: newVersion,
+          // adminRevisionNotes cleared from TripData after sending to quote, or kept for record? Let's keep.
       };
-      saveNewItineraryToStorage(updatedTripWithVersion); // Save the itinerary again with the updated version
+      saveNewItineraryToStorage(updatedTripWithVersion); // Re-save itinerary with updated version
       setTripData(updatedTripWithVersion);
 
-      toast({ title: "Quotation Sent to Agent", description: `Quotation ${currentTripForFinalize.quotationRequestId.split('-').pop()} status is now '${newStatus}'. Version ${newVersion.toFixed(1)}.` });
+      toast({ title: "Quotation Sent to Agent", description: `Quotation ${currentTripForFinalize.quotationRequestId.split('-').pop()} (v${newVersion.toFixed(1)}) is now '${newStatus}'.` });
       return true;
-
     } else {
       toast({ title: "Error", description: "Associated quotation request not found.", variant: "destructive" });
       return false;
@@ -659,4 +669,3 @@ export function useItineraryManager() {
     handleSendQuotationToAgent,
   };
 }
-
