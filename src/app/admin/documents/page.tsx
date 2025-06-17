@@ -200,11 +200,54 @@ export default function AdminDocumentsPage() {
                   </Card>
                   <Card className="bg-card/50 p-3">
                     <h4 className="font-medium text-foreground">2. Service Pricing Management</h4>
+                    <p className="text-xs mt-1">
+                      This module is the central hub for defining and maintaining the master list of prices for all services offered, such as hotels, activities, transfers, meals, and miscellaneous items.
+                    </p>
+                    <h5 className="font-medium text-foreground/80 mt-2 text-xs">Key Features:</h5>
                     <ul className="list-disc pl-5 mt-1 space-y-1 text-xs">
-                      <li>Centralized system to define and manage master prices for all services (hotels, activities, transfers, etc.).</li>
-                      <li>Support for different pricing structures (e.g., per person, per vehicle, seasonal hotel rates, activity packages).</li>
-                      <li>Ability to mark frequently used services as "Favorites" for quick access.</li>
-                      <li>AI-assisted contract parsing to help prefill new service price entries.</li>
+                      <li>
+                        <strong>Centralized Price List:</strong> Maintain a single source of truth for all service costs, ensuring consistency across all itineraries.
+                      </li>
+                      <li>
+                        <strong>Categorized Services:</strong> Services are organized by type (Hotel, Activity, Transfer, Meal, Misc) for easy management and filtering.
+                      </li>
+                      <li>
+                        <strong>Flexible Pricing Structures:</strong>
+                        <ul className="list-circle pl-4 mt-0.5 space-y-0.5">
+                          <li><strong>Simple Pricing:</strong> Define primary (e.g., adult) and secondary (e.g., child) prices for services like meals or basic ticketed transfers.</li>
+                          <li><strong>Hotel Pricing:</strong> Define detailed hotel information, including multiple room types. Each room type can have multiple seasonal pricing periods with specific nightly rates and extra bed rates. Star ratings can also be assigned.</li>
+                          <li><strong>Activity Pricing:</strong> Manage activities with single pricing or multiple distinct packages. Each package can have its own adult/child prices, notes, and scheduling details (validity dates, weekday closures, specific closed dates).</li>
+                          <li><strong>Transfer Pricing:</strong>
+                            <ul className="list-square pl-3 mt-0.5 space-y-0.5">
+                              <li><em>Ticket Basis:</em> Price per adult/child for shared transfers.</li>
+                              <li><em>Vehicle Basis:</em> Define multiple vehicle options (e.g., Sedan, Van, Minibus) for a route, each with its own price per vehicle and maximum passenger capacity. Date-based surcharges can also be applied to vehicle transfers.</li>
+                            </ul>
+                          </li>
+                          <li><strong>Miscellaneous Pricing:</strong> Define unit costs for various other items, specifying whether the cost is per person or a total shared cost.</li>
+                        </ul>
+                      </li>
+                      <li>
+                        <strong>Location-Based Pricing:</strong> Associate services with specific countries and provinces, allowing for regional price variations. If no location is set, the service is considered generic.
+                      </li>
+                      <li>
+                        <strong>Currency Specification:</strong> Each master service price is defined in its source currency. This is used for accurate cost conversion when the service is added to an itinerary with a different billing currency.
+                      </li>
+                      <li>
+                        <strong>"Favorites" System:</strong> Mark frequently used or preferred services as "Favorites" for quick filtering and easier access when planning itineraries.
+                      </li>
+                      <li>
+                        <strong>AI-Assisted Data Entry:</strong>
+                        <ul className="list-circle pl-4 mt-0.5 space-y-0.5">
+                            <li><strong>Contract Parser:</strong> Paste text from supplier contracts (e.g., hotel agreements), and the AI will attempt to extract key details like service name, category, pricing, and location to prefill the "Add New Service Price" form, significantly speeding up data entry.</li>
+                            <li><strong>Activity Parser:</strong> Paste general text describing an activity with multiple options, and the AI will attempt to parse out individual packages, their names, and prices to prefill the activity package section.</li>
+                        </ul>
+                      </li>
+                      <li>
+                        <strong>Unit Description:</strong> Specify what the price refers to (e.g., "per person", "per night", "per vehicle", "per ticket") for clarity.
+                      </li>
+                      <li>
+                        <strong>Notes:</strong> Add general notes or important terms and conditions for each service.
+                      </li>
                     </ul>
                   </Card>
                    <Card className="bg-card/50 p-3">
