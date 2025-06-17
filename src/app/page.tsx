@@ -13,9 +13,9 @@
 "use client";
 
 import Link from 'next/link';
-import { Button } from '@/components/ui/button';
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
-import { LayoutDashboard, Route, ListOrdered, DollarSign, Wand2, Briefcase, Map, Users, BadgeDollarSign, ListChecks } from 'lucide-react';
+import { LayoutDashboard, Route, ListOrdered, DollarSign, Wand2, Briefcase, Map, Users, BadgeDollarSign, ListChecks, FileLock2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import React from 'react';
 
@@ -126,6 +126,13 @@ export default function AdminDashboardPage() {
             href="/admin/agencies"
             icon={Users}
             buttonText="Manage Agencies"
+          />
+           <DashboardCard
+            title="Secure Documents"
+            description="Access confidential documents and resources (password protected)."
+            href="/admin/documents"
+            icon={FileLock2}
+            buttonText="Access Documents"
           />
            <DashboardCard
             title="Agent Tools & Portal"
