@@ -195,6 +195,7 @@ const createDefaultTripData = (quotationRequestId?: string, quotationRequest?: Q
     version: 0,
     overallBookingStatus: "NotStarted",
     adminRevisionNotes: quotationRequest?.adminRevisionNotes || undefined,
+    tags: [], // Initialize tags
   };
 };
 
@@ -238,6 +239,7 @@ export function useItineraryManager() {
             clientName: dataWithTimestamps.clientName,
             createdAt: dataWithTimestamps.createdAt,
             updatedAt: dataWithTimestamps.updatedAt,
+            tags: dataWithTimestamps.tags || [], // Ensure tags are saved to metadata
         };
         if (existingEntryIndex > -1) {
             index[existingEntryIndex] = newEntry;
@@ -353,6 +355,7 @@ export function useItineraryManager() {
                 quotationRequestId: savedData.quotationRequestId || createFromQuotationIdLogic || undefined,
                 version: savedData.version || 0, overallBookingStatus: savedData.overallBookingStatus || "NotStarted",
                 adminRevisionNotes: adminNotesToUse || undefined,
+                tags: savedData.tags || [], // Load tags or default to empty array
             };
             newCurrentIdForState = targetItineraryIdFromLogic;
           } else {
@@ -583,3 +586,4 @@ export function useItineraryManager() {
     handleSendQuotationToAgent,
   };
 }
+

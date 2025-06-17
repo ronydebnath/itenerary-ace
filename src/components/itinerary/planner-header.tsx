@@ -25,7 +25,7 @@ import { DatePicker } from '@/components/ui/date-picker';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Edit3, Save, Info, CalendarDays, Users, MapPin, Route, Loader2, DollarSign, Globe, FileText, Image as ImageIconLucide, Wand2, Landmark, MessageSquare } from 'lucide-react';
+import { Edit3, Save, Info, CalendarDays, Users, MapPin, Route, Loader2, DollarSign, Globe, FileText, Image as ImageIconLucide, Wand2, Landmark, MessageSquare, Tags } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { formatCurrency } from '@/lib/utils';
 import { format, parseISO, isValid } from 'date-fns';
@@ -58,6 +58,21 @@ function PlannerHeaderComponent({
 }: PlannerHeaderProps) {
   const { countries: availableCountries, isLoading: isLoadingCountries } = useCountries();
   const { provinces: allAvailableProvinces, isLoading: isLoadingProvinces, getProvincesByCountry } = useProvinces();
+  const [tagInput, setTagInput] = React.useState((tripData.tags || []).join(', '));
+
+  React.useEffect(() => {
+    setTagInput((tripData.tags || []).join(', '));
+  }, [tripData.tags]);
+
+  const handleTagInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setTagInput(e.target.value);
+  };
+
+  const handleTagInputBlur = () => {
+    const newTags = tagInput.split(',').map(tag => tag.trim()).filter(tag => tag !== '');
+    onUpdateTripData(currentData => ({ ...currentData, tags: newTags }));
+  };
+
 
   const handleCountryToggle = React.useCallback((countryId: string) => {
     onUpdateSettings({
@@ -247,6 +262,28 @@ function PlannerHeaderComponent({
           )}
         </div>
         
+        <div className="border-t pt-4 mt-4">
+          <Label htmlFor="itineraryTags" className="text-sm font-medium text-muted-foreground flex items-center mb-1">
+            <Tags className="mr-2 h-4 w-4" /> Itinerary Tags (Comma-separated)
+          </Label>
+          <Input
+            id="itineraryTags"
+            value={tagInput}
+            onChange={handleTagInputChange}
+            onBlur={handleTagInputBlur}
+            placeholder="e.g., Luxury, Adventure, Thailand"
+            className="text-sm h-10"
+          />
+          {(tripData.tags && tripData.tags.length > 0) && (
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {tripData.tags.map(tag => (
+                <Badge key={tag} variant="secondary" className="font-normal text-xs">{tag}</Badge>
+              ))}
+            </div>
+          )}
+        </div>
+
+
         {quotationRequestDetails?.agentRevisionNotes && (
           <div className="border-t pt-4 mt-4">
               <Label htmlFor="agentRevisionNotesDisplayHeader" className="text-sm font-medium text-orange-600 flex items-center">

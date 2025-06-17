@@ -201,6 +201,7 @@ export interface ItineraryMetadata {
   clientName?: string;
   createdAt: string; // ISO Date string
   updatedAt: string; // ISO Date string
+  tags?: string[]; // Added for tagging feature
 }
 
 export interface TripData {
@@ -217,6 +218,7 @@ export interface TripData {
   version?: number;
   overallBookingStatus?: OverallBookingStatus;
   adminRevisionNotes?: string; 
+  tags?: string[]; // Added for tagging feature
 }
 
 export interface CostSummary {

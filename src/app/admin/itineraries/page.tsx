@@ -1,3 +1,4 @@
+
 /**
  * @fileoverview This page component allows administrators to manage saved itineraries.
  * It displays a list of all itineraries stored in localStorage, providing options
@@ -20,8 +21,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import type { ItineraryMetadata } from '@/types/itinerary';
-import { LayoutDashboard, ListOrdered, Edit, Trash2, Search, FileText } from 'lucide-react';
+import { LayoutDashboard, ListOrdered, Edit, Trash2, Search, FileText, Tags, Filter } from 'lucide-react';
 import { format } from 'date-fns';
+import { Badge } from '@/components/ui/badge';
 
 const ITINERARY_INDEX_KEY = 'itineraryAce_index';
 const ITINERARY_DATA_PREFIX = 'itineraryAce_data_';
@@ -29,6 +31,8 @@ const ITINERARY_DATA_PREFIX = 'itineraryAce_data_';
 export default function ManageItinerariesPage() {
   const [itineraries, setItineraries] = React.useState<ItineraryMetadata[]>([]);
   const [searchTerm, setSearchTerm] = React.useState('');
+  const [tagFilterInput, setTagFilterInput] = React.useState('');
+  const [parsedTagFilters, setParsedTagFilters] = React.useState<string[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const router = useRouter();
   const { toast } = useToast();
@@ -38,8 +42,10 @@ export default function ManageItinerariesPage() {
       const storedIndex = localStorage.getItem(ITINERARY_INDEX_KEY);
       if (storedIndex) {
         const parsedIndex: ItineraryMetadata[] = JSON.parse(storedIndex);
-        parsedIndex.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
-        setItineraries(parsedIndex);
+        // Ensure tags is always an array for consistent filtering
+        const normalizedIndex = parsedIndex.map(it => ({ ...it, tags: Array.isArray(it.tags) ? it.tags : [] }));
+        normalizedIndex.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+        setItineraries(normalizedIndex);
       }
     } catch (error) {
       console.error("Error loading itinerary index:", error);
@@ -47,6 +53,11 @@ export default function ManageItinerariesPage() {
     }
     setIsLoading(false);
   }, [toast]);
+
+  React.useEffect(() => {
+    const filters = tagFilterInput.split(',').map(tag => tag.trim().toLowerCase()).filter(tag => tag !== '');
+    setParsedTagFilters(filters);
+  }, [tagFilterInput]);
 
   const handleDeleteItinerary = (itineraryId: string) => {
     try {
@@ -67,11 +78,20 @@ export default function ManageItinerariesPage() {
 
   const filteredItineraries = itineraries.filter(it => {
     const searchLower = searchTerm.toLowerCase();
-    return (
-      it.id.toLowerCase().includes(searchLower) ||
-      it.itineraryName.toLowerCase().includes(searchLower) ||
-      (it.clientName && it.clientName.toLowerCase().includes(searchLower))
-    );
+    const nameMatches = it.itineraryName.toLowerCase().includes(searchLower);
+    const idMatches = it.id.toLowerCase().includes(searchLower);
+    const clientMatches = it.clientName && it.clientName.toLowerCase().includes(searchLower);
+
+    const searchPasses = nameMatches || idMatches || clientMatches;
+
+    if (!searchPasses) return false;
+
+    if (parsedTagFilters.length > 0) {
+      const itineraryTagsLower = (it.tags || []).map(tag => tag.toLowerCase());
+      return parsedTagFilters.every(filterTag => itineraryTagsLower.includes(filterTag));
+    }
+    
+    return true;
   });
 
   if (isLoading) {
@@ -94,26 +114,36 @@ export default function ManageItinerariesPage() {
           </div>
         </div>
 
-        <div className="mb-4 md:mb-6">
-            <div className="relative">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4 md:mb-6">
+          <div className="relative">
             <Search className="absolute left-2 sm:left-3 top-1/2 -translate-y-1/2 h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground" />
             <Input
                 type="search"
                 placeholder="Search by ID, Itinerary, or Client Name..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-8 sm:pl-10 w-full md:w-2/3 lg:w-1/2 text-sm sm:text-base h-9 sm:h-10"
+                className="pl-8 sm:pl-10 w-full text-sm sm:text-base h-9 sm:h-10"
             />
-            </div>
+          </div>
+          <div className="relative">
+            <Filter className="absolute left-2 sm:left-3 top-1/2 -translate-y-1/2 h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground" />
+            <Input
+                type="search"
+                placeholder="Filter by Tags (comma-separated)..."
+                value={tagFilterInput}
+                onChange={(e) => setTagFilterInput(e.target.value)}
+                className="pl-8 sm:pl-10 w-full text-sm sm:text-base h-9 sm:h-10"
+            />
+          </div>
         </div>
 
         {filteredItineraries.length === 0 ? (
           <div className="text-center py-8 sm:py-10 border-2 border-dashed border-muted-foreground/30 rounded-lg">
             <FileText className="mx-auto h-10 w-10 sm:h-12 sm:w-12 text-muted-foreground" />
             <p className="mt-3 sm:mt-4 text-muted-foreground text-md sm:text-lg">
-              {searchTerm ? "No itineraries match your search." : "No itineraries saved yet."}
+              {searchTerm || tagFilterInput ? "No itineraries match your search/filters." : "No itineraries saved yet."}
             </p>
-            {!searchTerm && <p className="text-xs sm:text-sm text-muted-foreground mt-1">Create a new itinerary from the Admin Dashboard.</p>}
+            {!searchTerm && !tagFilterInput && <p className="text-xs sm:text-sm text-muted-foreground mt-1">Create a new itinerary from the Admin Dashboard.</p>}
           </div>
         ) : (
           <div className="rounded-lg border shadow-sm overflow-x-auto">
@@ -123,6 +153,7 @@ export default function ManageItinerariesPage() {
                   <TableHead className="px-2 sm:px-4 py-3 text-xs sm:text-sm">ID</TableHead>
                   <TableHead className="px-2 sm:px-4 py-3 text-xs sm:text-sm">Itinerary Name</TableHead>
                   <TableHead className="px-2 sm:px-4 py-3 text-xs sm:text-sm hidden md:table-cell">Client Name</TableHead>
+                  <TableHead className="px-2 sm:px-4 py-3 text-xs sm:text-sm">Tags</TableHead>
                   <TableHead className="px-2 sm:px-4 py-3 text-xs sm:text-sm">Last Updated</TableHead>
                   <TableHead className="text-center w-[80px] sm:w-[100px] px-2 sm:px-4 py-3 text-xs sm:text-sm">Actions</TableHead>
                 </TableRow>
@@ -133,6 +164,13 @@ export default function ManageItinerariesPage() {
                     <TableCell className="font-mono py-2 px-2 sm:px-4 text-xs">{it.id}</TableCell>
                     <TableCell className="font-medium py-2 px-2 sm:px-4">{it.itineraryName}</TableCell>
                     <TableCell className="py-2 px-2 sm:px-4 hidden md:table-cell">{it.clientName || 'N/A'}</TableCell>
+                    <TableCell className="py-2 px-2 sm:px-4">
+                      <div className="flex flex-wrap gap-1">
+                        {(it.tags && it.tags.length > 0) ? it.tags.map(tag => (
+                          <Badge key={tag} variant="secondary" className="text-xs font-normal">{tag}</Badge>
+                        )) : <span className="text-muted-foreground text-xs italic">No tags</span>}
+                      </div>
+                    </TableCell>
                     <TableCell className="py-2 px-2 sm:px-4">{format(new Date(it.updatedAt), 'MMM d, yy HH:mm')}</TableCell>
                     <TableCell className="text-center py-2 px-2 sm:px-4">
                       <Button
