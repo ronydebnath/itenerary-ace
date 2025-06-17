@@ -37,6 +37,28 @@ const DEFAULT_PROVINCE_DATA: Omit<ProvinceItem, 'id'>[] = [
   { name: "Cox's Bazar", countryId: DEFAULT_BANGLADESH_ID },
 ];
 
+const loadProvincesFromStorage = (): ProvinceItem[] | null => {
+  try {
+    const storedProvinces = localStorage.getItem(PROVINCES_STORAGE_KEY);
+    if (storedProvinces) {
+      return JSON.parse(storedProvinces) as ProvinceItem[];
+    }
+  } catch (e) {
+    console.warn("Error reading provinces from localStorage:", e);
+    localStorage.removeItem(PROVINCES_STORAGE_KEY); // Clear corrupted data
+  }
+  return null;
+};
+
+const saveProvincesToStorage = (provincesToSave: ProvinceItem[]): void => {
+  try {
+    localStorage.setItem(PROVINCES_STORAGE_KEY, JSON.stringify(provincesToSave));
+  } catch (e) {
+    console.error("Error saving provinces to localStorage:", e);
+    // Optionally: Notify user
+  }
+};
+
 
 export function useProvinces() {
   const { countries, isLoading: isLoadingCountries, getCountryById } = useCountries();
@@ -51,35 +73,17 @@ export function useProvinces() {
     setError(null);
     
     try {
-      const storedProvinces = localStorage.getItem(PROVINCES_STORAGE_KEY);
-      let provincesToSet: ProvinceItem[] = [];
+      let provincesToSet: ProvinceItem[] = loadProvincesFromStorage() || [];
 
-      if (storedProvinces) {
-        try {
-          provincesToSet = JSON.parse(storedProvinces);
-        } catch (parseError) {
-          console.warn("Error parsing provinces from localStorage, seeding defaults:", parseError);
-          localStorage.removeItem(PROVINCES_STORAGE_KEY);
-          provincesToSet = DEFAULT_PROVINCE_DATA.map(p => ({ ...p, id: generateGUID() }));
-          localStorage.setItem(PROVINCES_STORAGE_KEY, JSON.stringify(provincesToSet));
-        }
-      } else {
+      if (provincesToSet.length === 0) {
         provincesToSet = DEFAULT_PROVINCE_DATA.map(p => ({ ...p, id: generateGUID() }));
-        localStorage.setItem(PROVINCES_STORAGE_KEY, JSON.stringify(provincesToSet));
-      }
-      
-      if (!Array.isArray(provincesToSet) || provincesToSet.length === 0) {
-        console.warn("Provinces list is invalid or empty after load, attempting to re-seed.");
-        provincesToSet = DEFAULT_PROVINCE_DATA.map(p => ({ ...p, id: generateGUID() }));
-        localStorage.setItem(PROVINCES_STORAGE_KEY, JSON.stringify(provincesToSet));
       } else {
-        // Ensure default provinces exist and are linked correctly
-        const defaultProvincesWithGuids = DEFAULT_PROVINCE_DATA.map(p => ({...p, id: generateGUID()})); // Generate IDs here for comparison
+        const defaultProvincesWithGuids = DEFAULT_PROVINCE_DATA.map(p => ({...p, id: generateGUID()}));
         defaultProvincesWithGuids.forEach(dp => {
           const existing = provincesToSet.find(p => p.name === dp.name && p.countryId === dp.countryId);
           if (!existing) {
-            provincesToSet.push(dp); // Add if missing
-          } else if (existing.countryId !== dp.countryId) { // Correct countryId if mismatched
+            provincesToSet.push(dp);
+          } else if (existing.countryId !== dp.countryId) {
             existing.countryId = dp.countryId;
           }
         });
@@ -94,74 +98,56 @@ export function useProvinces() {
         return a.name.localeCompare(b.name);
       });
       setProvinces(provincesToSet);
+      saveProvincesToStorage(provincesToSet);
 
     } catch (e: any) {
-      console.error("Error initializing provinces from localStorage:", e);
-      setError("Failed to load provinces from local storage.");
-      setProvinces([]);
+      console.error("Error initializing provinces:", e);
+      setError("Failed to load provinces.");
+      const defaultProvinces = DEFAULT_PROVINCE_DATA.map(p => ({ ...p, id: generateGUID() }));
+      setProvinces(defaultProvinces);
+      saveProvincesToStorage(defaultProvinces);
     }
     setIsLoading(false);
-  }, [isLoadingCountries, getCountryById, countries]); // Added countries to dependency array
+  }, [isLoadingCountries, getCountryById, countries]);
 
   React.useEffect(() => {
     fetchAndSeedProvinces();
   }, [fetchAndSeedProvinces]);
 
-  const addProvince = async (provinceData: Omit<ProvinceItem, 'id'>) => {
-    setIsLoading(true);
-    try {
+  const addProvince = React.useCallback((provinceData: Omit<ProvinceItem, 'id'>) => {
+    setProvinces(prevProvinces => {
       const newProvinceWithId: ProvinceItem = { ...provinceData, id: generateGUID() };
-      const currentProvinces = provinces ? [...provinces] : [];
-      currentProvinces.push(newProvinceWithId);
-      currentProvinces.sort((a, b) => { 
+      const updatedProvinces = [...prevProvinces, newProvinceWithId].sort((a, b) => {
         const countryAName = getCountryById(a.countryId)?.name || '';
         const countryBName = getCountryById(b.countryId)?.name || '';
         if (countryAName.localeCompare(countryBName) !== 0) return countryAName.localeCompare(countryBName);
         return a.name.localeCompare(b.name);
       });
-      localStorage.setItem(PROVINCES_STORAGE_KEY, JSON.stringify(currentProvinces));
-      setProvinces(currentProvinces);
-      setError(null);
-    } catch (e: any) {
-      console.error("Error adding province to localStorage:", e);
-      setError(`Failed to add province: ${e.message}`);
-    }
-    setIsLoading(false);
-  };
+      saveProvincesToStorage(updatedProvinces);
+      return updatedProvinces;
+    });
+  }, [getCountryById]);
 
-  const updateProvince = async (updatedProvince: ProvinceItem) => {
-    setIsLoading(true);
-    try {
-      const currentProvinces = provinces ? provinces.map(p => p.id === updatedProvince.id ? updatedProvince : p) : [updatedProvince];
-      currentProvinces.sort((a, b) => {
+  const updateProvince = React.useCallback((updatedProvince: ProvinceItem) => {
+    setProvinces(prevProvinces => {
+      const updatedProvinces = prevProvinces.map(p => p.id === updatedProvince.id ? updatedProvince : p).sort((a, b) => {
         const countryAName = getCountryById(a.countryId)?.name || '';
         const countryBName = getCountryById(b.countryId)?.name || '';
         if (countryAName.localeCompare(countryBName) !== 0) return countryAName.localeCompare(countryBName);
         return a.name.localeCompare(b.name);
       });
-      localStorage.setItem(PROVINCES_STORAGE_KEY, JSON.stringify(currentProvinces));
-      setProvinces(currentProvinces);
-      setError(null);
-    } catch (e: any) {
-      console.error("Error updating province in localStorage:", e);
-      setError(`Failed to update province: ${e.message}`);
-    }
-    setIsLoading(false);
-  };
+      saveProvincesToStorage(updatedProvinces);
+      return updatedProvinces;
+    });
+  }, [getCountryById]);
 
-  const deleteProvince = async (provinceId: string) => {
-    setIsLoading(true);
-    try {
-      const currentProvinces = provinces ? provinces.filter(p => p.id !== provinceId) : [];
-      localStorage.setItem(PROVINCES_STORAGE_KEY, JSON.stringify(currentProvinces));
-      setProvinces(currentProvinces);
-      setError(null);
-    } catch (e: any) {
-      console.error("Error deleting province from localStorage:", e);
-      setError(`Failed to delete province: ${e.message}`);
-    }
-    setIsLoading(false);
-  };
+  const deleteProvince = React.useCallback((provinceId: string) => {
+    setProvinces(prevProvinces => {
+      const updatedProvinces = prevProvinces.filter(p => p.id !== provinceId);
+      saveProvincesToStorage(updatedProvinces);
+      return updatedProvinces;
+    });
+  }, []);
   
   const getProvincesByCountry = React.useCallback(
     (countryId: string): ProvinceItem[] => {

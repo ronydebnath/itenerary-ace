@@ -39,6 +39,27 @@ const assignFixedIds = (data: Omit<CountryItem, 'id'>[]): CountryItem[] => {
   });
 };
 
+const loadCountriesFromStorage = (): CountryItem[] | null => {
+  try {
+    const storedCountries = localStorage.getItem(COUNTRIES_STORAGE_KEY);
+    if (storedCountries) {
+      return JSON.parse(storedCountries) as CountryItem[];
+    }
+  } catch (e) {
+    console.warn("Error reading countries from localStorage:", e);
+    localStorage.removeItem(COUNTRIES_STORAGE_KEY); // Clear corrupted data
+  }
+  return null;
+};
+
+const saveCountriesToStorage = (countriesToSave: CountryItem[]): void => {
+  try {
+    localStorage.setItem(COUNTRIES_STORAGE_KEY, JSON.stringify(countriesToSave));
+  } catch (e) {
+    console.error("Error saving countries to localStorage:", e);
+    // Optionally: Notify user or implement more robust error handling
+  }
+};
 
 export function useCountries() {
   const [countries, setCountries] = React.useState<CountryItem[]>([]);
@@ -49,26 +70,10 @@ export function useCountries() {
     setIsLoading(true);
     setError(null);
     try {
-      const storedCountries = localStorage.getItem(COUNTRIES_STORAGE_KEY);
-      let countriesToSet: CountryItem[] = [];
-      if (storedCountries) {
-        try {
-          countriesToSet = JSON.parse(storedCountries);
-        } catch (parseError) {
-          console.warn("Error parsing countries from localStorage, seeding defaults:", parseError);
-          localStorage.removeItem(COUNTRIES_STORAGE_KEY);
-          countriesToSet = assignFixedIds(DEFAULT_COUNTRY_DATA);
-          localStorage.setItem(COUNTRIES_STORAGE_KEY, JSON.stringify(countriesToSet));
-        }
-      } else {
-        countriesToSet = assignFixedIds(DEFAULT_COUNTRY_DATA);
-        localStorage.setItem(COUNTRIES_STORAGE_KEY, JSON.stringify(countriesToSet));
-      }
+      let countriesToSet: CountryItem[] = loadCountriesFromStorage() || [];
       
-      if (!Array.isArray(countriesToSet) || countriesToSet.length === 0) {
-          console.warn("Countries list is invalid or empty after load, attempting to re-seed.");
-          countriesToSet = assignFixedIds(DEFAULT_COUNTRY_DATA);
-          localStorage.setItem(COUNTRIES_STORAGE_KEY, JSON.stringify(countriesToSet));
+      if (countriesToSet.length === 0) { // If storage is empty or parsing failed
+        countriesToSet = assignFixedIds(DEFAULT_COUNTRY_DATA);
       } else {
         // Ensure default countries exist with correct IDs if other data is present
         const defaultCountriesWithFixedIds = assignFixedIds(DEFAULT_COUNTRY_DATA);
@@ -86,10 +91,13 @@ export function useCountries() {
 
       countriesToSet.sort((a, b) => a.name.localeCompare(b.name));
       setCountries(countriesToSet);
+      saveCountriesToStorage(countriesToSet); // Save potentially updated/seeded list
     } catch (e: any) {
-      console.error("Error initializing countries from localStorage:", e);
-      setError("Failed to load countries from local storage.");
-      setCountries([]); 
+      console.error("Error initializing countries:", e);
+      setError("Failed to load countries.");
+      const defaultCountries = assignFixedIds(DEFAULT_COUNTRY_DATA);
+      setCountries(defaultCountries); // Fallback to defaults
+      saveCountriesToStorage(defaultCountries);
     }
     setIsLoading(false);
   }, []);
@@ -98,51 +106,30 @@ export function useCountries() {
     fetchAndSeedCountries();
   }, [fetchAndSeedCountries]);
 
-  const addCountry = async (countryData: Omit<CountryItem, 'id'>) => {
-    setIsLoading(true);
-    try {
+  const addCountry = React.useCallback((countryData: Omit<CountryItem, 'id'>) => {
+    setCountries(prevCountries => {
       const newCountryWithId: CountryItem = { ...countryData, id: generateGUID() };
-      const currentCountries = countries ? [...countries] : [];
-      currentCountries.push(newCountryWithId);
-      currentCountries.sort((a, b) => a.name.localeCompare(b.name));
-      localStorage.setItem(COUNTRIES_STORAGE_KEY, JSON.stringify(currentCountries));
-      setCountries(currentCountries);
-      setError(null);
-    } catch (e: any) {
-      console.error("Error adding country to localStorage:", e);
-      setError(`Failed to add country: ${e.message}`);
-    }
-    setIsLoading(false);
-  };
+      const updatedCountries = [...prevCountries, newCountryWithId].sort((a, b) => a.name.localeCompare(b.name));
+      saveCountriesToStorage(updatedCountries);
+      return updatedCountries;
+    });
+  }, []);
 
-  const updateCountry = async (updatedCountry: CountryItem) => {
-    setIsLoading(true);
-    try {
-      const currentCountries = countries ? countries.map(c => c.id === updatedCountry.id ? updatedCountry : c) : [updatedCountry];
-      currentCountries.sort((a, b) => a.name.localeCompare(b.name));
-      localStorage.setItem(COUNTRIES_STORAGE_KEY, JSON.stringify(currentCountries));
-      setCountries(currentCountries);
-      setError(null);
-    } catch (e: any) {
-      console.error("Error updating country in localStorage:", e);
-      setError(`Failed to update country: ${e.message}`);
-    }
-    setIsLoading(false);
-  };
+  const updateCountry = React.useCallback((updatedCountry: CountryItem) => {
+    setCountries(prevCountries => {
+      const updatedCountries = prevCountries.map(c => c.id === updatedCountry.id ? updatedCountry : c).sort((a, b) => a.name.localeCompare(b.name));
+      saveCountriesToStorage(updatedCountries);
+      return updatedCountries;
+    });
+  }, []);
 
-  const deleteCountry = async (countryId: string) => {
-    setIsLoading(true);
-    try {
-      const currentCountries = countries ? countries.filter(c => c.id !== countryId) : [];
-      localStorage.setItem(COUNTRIES_STORAGE_KEY, JSON.stringify(currentCountries));
-      setCountries(currentCountries);
-      setError(null);
-    } catch (e: any) {
-      console.error("Error deleting country from localStorage:", e);
-      setError(`Failed to delete country: ${e.message}`);
-    }
-    setIsLoading(false);
-  };
+  const deleteCountry = React.useCallback((countryId: string) => {
+    setCountries(prevCountries => {
+      const updatedCountries = prevCountries.filter(c => c.id !== countryId);
+      saveCountriesToStorage(updatedCountries);
+      return updatedCountries;
+    });
+  }, []);
   
   const getCountryById = React.useCallback(
     (id?: string): CountryItem | undefined => {
