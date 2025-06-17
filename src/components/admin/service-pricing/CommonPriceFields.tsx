@@ -5,7 +5,7 @@
  * It helps in centralizing the logic for these basic details to avoid repetition.
  *
  * @bangla এই কম্পোনেন্টটি বিভিন্ন পরিষেবা মূল্য ফর্ম জুড়ে ব্যবহৃত সাধারণ ইনপুট ক্ষেত্রগুলি
- * (যেমন দেশ, প্রদেশ, বিভাগ, নাম, মুদ্রা এবং নোট) রেন্ডার করে। এটি পুনরাবৃত্তি এড়াতে
+ * (যেমন দেশ, প্রদেশ, বিভাগ, নাম, মুদ্রা এবং নোট) রেন্ডার করে। এটিতে পুনরাবৃত্তি এড়াতে
  * এই মৌলিক বিবরণগুলির জন্য যুক্তিকে কেন্দ্রীভূত করতে সহায়তা করে।
  */
 "use client";
@@ -22,11 +22,12 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useProvinces } from '@/hooks/useProvinces';
 import { useCountries } from '@/hooks/useCountries';
 import { CURRENCIES, SERVICE_CATEGORIES, type CountryItem, type ProvinceItem, type CurrencyCode, ItineraryItemType } from '@/types/itinerary';
 import type { ServicePriceFormValues } from './ServicePriceFormRouter';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Star } from 'lucide-react';
 
 interface CommonPriceFieldsProps {
   form: ReturnType<typeof useFormContext<ServicePriceFormValues>>;
@@ -195,27 +196,51 @@ export function CommonPriceFields({ form }: CommonPriceFieldsProps) {
             </FormItem>
           )}
         />
-        <FormField
-          control={form.control}
-          name="currency"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel className="text-xs sm:text-sm">Currency</FormLabel>
-              <Select onValueChange={field.onChange} value={field.value} disabled={isCurrencyAutoSet}>
-                <FormControl>
-                    <SelectTrigger className={`h-9 text-sm ${isCurrencyAutoSet ? "bg-muted/50 cursor-not-allowed" : ""}`}>
-                        <SelectValue placeholder="Select currency" />
-                    </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  {CURRENCIES.map(curr => <SelectItem key={curr} value={curr}>{curr}</SelectItem>)}
-                </SelectContent>
-              </Select>
-              {isCurrencyAutoSet && <p className="text-xs text-muted-foreground mt-1">Currency auto-set by country. Editable for 'Miscellaneous' items.</p>}
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
+            <FormField
+            control={form.control}
+            name="currency"
+            render={({ field }) => (
+                <FormItem>
+                <FormLabel className="text-xs sm:text-sm">Currency</FormLabel>
+                <Select onValueChange={field.onChange} value={field.value} disabled={isCurrencyAutoSet}>
+                    <FormControl>
+                        <SelectTrigger className={`h-9 text-sm ${isCurrencyAutoSet ? "bg-muted/50 cursor-not-allowed" : ""}`}>
+                            <SelectValue placeholder="Select currency" />
+                        </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                    {CURRENCIES.map(curr => <SelectItem key={curr} value={curr}>{curr}</SelectItem>)}
+                    </SelectContent>
+                </Select>
+                {isCurrencyAutoSet && <p className="text-xs text-muted-foreground mt-1">Currency auto-set by country. Editable for 'Miscellaneous' items.</p>}
+                <FormMessage />
+                </FormItem>
+            )}
+            />
+             <FormField
+                control={form.control}
+                name="isFavorite"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-end space-x-2 pb-1.5">
+                    <div className="flex items-center space-x-2 h-9">
+                        <FormControl>
+                        <Checkbox
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                            id="isFavoriteCheckbox"
+                            className="h-5 w-5"
+                        />
+                        </FormControl>
+                        <FormLabel htmlFor="isFavoriteCheckbox" className="text-xs sm:text-sm font-normal cursor-pointer flex items-center">
+                        <Star className="h-4 w-4 mr-1.5 text-amber-400" /> Mark as Favorite
+                        </FormLabel>
+                    </div>
+                    <FormMessage className="text-xs"/>
+                  </FormItem>
+                )}
+              />
+        </div>
         <FormField
           control={form.control}
           name="notes"

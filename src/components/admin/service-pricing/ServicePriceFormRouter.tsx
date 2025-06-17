@@ -148,6 +148,7 @@ const servicePriceSchema = z.object({
   unitDescription: z.string().optional().nullable(), // Added nullable for consistency
   notes: z.string().optional().nullable(),
   selectedServicePriceId: z.string().optional().nullable(),
+  isFavorite: z.boolean().optional(),
   
   transferMode: z.enum(['ticket', 'vehicle']).optional(),
   vehicleOptions: z.array(vehicleOptionSchema).optional(),
@@ -242,6 +243,7 @@ const transformInitialDataToFormValues = (initialData?: Partial<ServicePriceItem
     currency: initialData?.currency || defaultCurrency,
     notes: initialData?.notes || "",
     selectedServicePriceId: initialData?.selectedServicePriceId || undefined,
+    isFavorite: initialData?.isFavorite || false,
   };
   
   if ((!initialData || Object.keys(initialData).length === 0 || !initialData.category) && baseTransformed.category === 'hotel' && !baseTransformed.countryId) {
@@ -446,3 +448,4 @@ export function ServicePriceFormRouter({ initialData, onSubmit, onCancel }: Serv
     </Form>
   );
 }
+
