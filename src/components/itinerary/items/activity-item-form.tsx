@@ -20,13 +20,13 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from '@/components/ui/badge';
 import { format as formatDateFns, parseISO, isValid } from 'date-fns';
-import { CalendarDays, Info, Tag, AlertCircle, Loader2 } from 'lucide-react';
+import { CalendarDays, Info, Tag, AlertCircle, Loader2, Star } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
 import { useServicePrices } from '@/hooks/useServicePrices';
 import { useCountries } from '@/hooks/useCountries';
 import { useExchangeRates } from '@/hooks/useExchangeRates';
-import { formatCurrency } from '@/lib/utils';
+import { formatCurrency, cn } from '@/lib/utils';
 
 interface ActivityItemFormProps {
   item: ActivityItemType;
@@ -123,7 +123,11 @@ function ActivityItemFormComponent({
     if (provincesToFilterBy.length > 0) {
          filteredServices = filteredServices.filter(s => !s.province || provincesToFilterBy.includes(s.province));
     }
-    setActivityServices(filteredServices.sort((a,b) => a.name.localeCompare(b.name)));
+    setActivityServices(filteredServices.sort((a,b) => {
+        if (a.isFavorite && !b.isFavorite) return -1;
+        if (!a.isFavorite && b.isFavorite) return 1;
+        return a.name.localeCompare(b.name);
+    }));
   }, [currentAllServicePrices, itemSourceCurrency, item.countryId, item.province, tripSettings.selectedCountries, tripSettings.selectedProvinces, isLoadingServices]);
 
 
@@ -279,6 +283,7 @@ function ActivityItemFormComponent({
                         <SelectItem value="none">None (Custom Price)</SelectItem>
                         {activityServices.map(service => (
                         <SelectItem key={service.id} value={service.id}>
+                            {service.isFavorite && <Star className="inline-block h-3 w-3 mr-1.5 text-amber-400 fill-amber-400" />}
                             {service.name} ({service.province || (service.countryId ? countries.find(c=>c.id === service.countryId)?.name : 'Generic')})
                             {service.activityPackages && service.activityPackages.length > 0
                             ? ` - ${service.activityPackages.length} pkg(s)`

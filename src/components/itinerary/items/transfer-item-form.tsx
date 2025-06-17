@@ -1,3 +1,4 @@
+
 /**
  * @fileoverview This component provides a form for adding or editing transfer items
  * within an itinerary. It handles different transfer modes (ticket vs. vehicle),
@@ -20,10 +21,10 @@ import { BaseItemForm, FormField } from './base-item-form';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { AlertCircle, Loader2 } from 'lucide-react';
+import { AlertCircle, Loader2, Star } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { format as formatDateFns, parseISO } from 'date-fns';
-import { formatCurrency } from '@/lib/utils';
+import { formatCurrency, cn } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';
 import { useServicePrices } from '@/hooks/useServicePrices';
 import { useCountries } from '@/hooks/useCountries';
@@ -123,7 +124,11 @@ function TransferItemFormComponent({
       filteredServices = filteredServices.filter(s => !s.province || provincesToFilterBy.includes(s.province));
     }
 
-    setTransferServices(filteredServices.sort((a,b) => a.name.localeCompare(b.name)));
+    setTransferServices(filteredServices.sort((a,b) => {
+        if (a.isFavorite && !b.isFavorite) return -1;
+        if (!a.isFavorite && b.isFavorite) return 1;
+        return a.name.localeCompare(b.name);
+    }));
   }, [currentAllServicePrices, itemSourceCurrency, item.mode, item.countryId, item.province, tripSettings.selectedCountries, tripSettings.selectedProvinces, isLoadingServices]);
 
 
@@ -361,6 +366,7 @@ function TransferItemFormComponent({
                         <SelectItem value="none">None (Custom Price/Options)</SelectItem>
                         {transferServices.map(service => (
                         <SelectItem key={service.id} value={service.id}>
+                           {service.isFavorite && <Star className="inline-block h-3 w-3 mr-1.5 text-amber-400 fill-amber-400" />}
                             {service.name} ({service.province || (service.countryId ? countries.find(c => c.id === service.countryId)?.name : 'Generic')})
                             {service.vehicleOptions && service.vehicleOptions.length > 0 ? ` - ${service.vehicleOptions.length} options` : (service.price1 !== undefined ? ` - ${service.currency} ${service.price1}`: '')}
                         </SelectItem>
@@ -525,7 +531,7 @@ function TransferItemFormComponent({
                     return (
                       <li key={sp.id}>
                         {sp.name}: +{formatCurrency(sp.surchargeAmount, itemSourceCurrency)}
-                        ({formatDateFns(parseISO(sp.startDate), 'dd MMM')} - {formatDateFns(parseISO(sp.endDate), 'dd MMM')})
+                        ({formatDateFns(parseISO(sp.startDate as string), 'dd MMM')} - {formatDateFns(parseISO(sp.endDate as string), 'dd MMM')})
                       </li>
                     );
                   } catch (e) {

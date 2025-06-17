@@ -97,8 +97,14 @@ function HotelItemFormComponent({
       const numericStarFilter = parseInt(starFilter, 10);
       filteredDefs = filteredDefs.filter(hd => hd.starRating === numericStarFilter);
     }
-    setAvailableHotels(filteredDefs.sort((a,b) => a.name.localeCompare(b.name)));
-  }, [item.countryId, item.province, currentAllHotelDefinitions, isLoadingHotelDefs, tripSettings.selectedCountries, tripSettings.selectedProvinces, starFilter]);
+    setAvailableHotels(filteredDefs.sort((a,b) => {
+        const aSp = allServicePrices.find(sp => sp.category === 'hotel' && sp.hotelDetails?.id === a.id);
+        const bSp = allServicePrices.find(sp => sp.category === 'hotel' && sp.hotelDetails?.id === b.id);
+        if (aSp?.isFavorite && !bSp?.isFavorite) return -1;
+        if (!aSp?.isFavorite && bSp?.isFavorite) return 1;
+        return a.name.localeCompare(b.name);
+    }));
+  }, [item.countryId, item.province, currentAllHotelDefinitions, isLoadingHotelDefs, tripSettings.selectedCountries, tripSettings.selectedProvinces, starFilter, allServicePrices]);
 
   React.useEffect(() => {
     let determinedSourceCurrency = billingCurrency; 
@@ -283,7 +289,19 @@ function HotelItemFormComponent({
           {isLoadingHotelDefs && availableHotels.length === 0 ? (<div className="flex items-center h-9 border rounded-md px-3 bg-muted/50"><Loader2 className="h-4 w-4 animate-spin mr-2 text-muted-foreground" /><span className="text-xs text-muted-foreground">Loading hotels...</span></div>) : (
             <Select value={item.hotelDefinitionId || "none"} onValueChange={handleHotelDefinitionChange} disabled={availableHotels.length === 0 && !item.hotelDefinitionId && !isLoadingHotelDefs}>
               <SelectTrigger className="h-9 text-sm"><SelectValue placeholder={availableHotels.length === 0 && !item.hotelDefinitionId ? "No hotels match criteria" : "Choose a hotel..."} /></SelectTrigger>
-              <SelectContent><SelectItem value="none">None (Clear Selection)</SelectItem>{availableHotels.map(hotelDef => (<SelectItem key={hotelDef.id} value={hotelDef.id}>{hotelDef.name} ({hotelDef.province || (hotelDef.countryId ? countries.find(c => c.id === hotelDef.countryId)?.name : 'Generic')}){hotelDef.starRating && <span className="text-xs ml-1 opacity-70">({hotelDef.starRating}*)</span>}</SelectItem>))}</SelectContent>
+              <SelectContent>
+                  <SelectItem value="none">None (Clear Selection)</SelectItem>
+                  {availableHotels.map(hotelDef => {
+                      const sp = allServicePrices.find(s => s.category === 'hotel' && s.hotelDetails?.id === hotelDef.id);
+                      return (
+                          <SelectItem key={hotelDef.id} value={hotelDef.id}>
+                              {sp?.isFavorite && <Star className="inline-block h-3 w-3 mr-1.5 text-amber-400 fill-amber-400" />}
+                              {hotelDef.name} ({hotelDef.province || (hotelDef.countryId ? countries.find(c => c.id === hotelDef.countryId)?.name : 'Generic')})
+                              {hotelDef.starRating && <span className="text-xs ml-1 opacity-70">({hotelDef.starRating}*)</span>}
+                          </SelectItem>
+                      );
+                  })}
+              </SelectContent>
             </Select>
           )}
         </FormField>
@@ -419,4 +437,3 @@ function HotelItemFormComponent({
 }
 export const HotelItemForm = React.memo(HotelItemFormComponent);
     
-

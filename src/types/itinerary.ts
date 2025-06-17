@@ -275,6 +275,7 @@ export interface ServicePriceItem {
   countryId?: string; // Country this service is primarily associated with
   province?: string;  // Province this service is primarily associated with
   category: ItineraryItemType;
+  isFavorite?: boolean; // New field for favorites
 
   // For simple pricing (ticket transfers, meals, misc, or fallback for activities)
   price1?: number;       // e.g., Adult price, Unit cost
@@ -342,3 +343,4 @@ export interface SpecificMarkupRate {
 export const DEFAULT_THAILAND_ID = "f47ac10b-58cc-4372-a567-0e02b2c3d479";
 export const DEFAULT_MALAYSIA_ID = "986a76d0-9490-4e0f-806a-1a3e9728a708";
 export const DEFAULT_BANGLADESH_ID = "bd010101-0000-0000-0000-000000000001";
+

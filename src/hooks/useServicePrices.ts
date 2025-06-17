@@ -16,6 +16,8 @@ import { generateGUID } from '@/lib/utils';
 import { useCountries, DEFAULT_THAILAND_ID, DEFAULT_MALAYSIA_ID, DEFAULT_BANGLADESH_ID } from './useCountries';
 import { useHotelDefinitions } from './useHotelDefinitions';
 import { addDays, format } from 'date-fns';
+import { useToast } from './use-toast';
+
 
 const SERVICE_PRICES_STORAGE_KEY = 'itineraryAceServicePrices';
 const currentYear = new Date().getFullYear();
@@ -44,6 +46,7 @@ const createDemoServicePrices = (
       hotelDetails: hotelDef,
       unitDescription: "per night",
       notes: `Rates for ${hotelDef.name} in ${hotelDef.province}.`,
+      isFavorite: false,
     });
   });
 
@@ -54,18 +57,18 @@ const createDemoServicePrices = (
       { id: generateGUID(), name: "Full Day Tour (With Lunch)", price1: 2500, price2: 1500, notes: "Includes guide, fees, and Thai set lunch. Approx 8 hours.", validityStartDate: format(new Date(currentYear, 0, 1), 'yyyy-MM-dd'), validityEndDate: format(new Date(currentYear, 5, 30), 'yyyy-MM-dd'), closedWeekdays: [1] /* Monday */, specificClosedDates: [format(new Date(currentYear, 3, 13), 'yyyy-MM-dd'), format(new Date(currentYear, 3, 14), 'yyyy-MM-dd')] /* Songkran Example */ },
     ];
     demoPrices.push(
-      { id: generateGUID(), name: "Bangkok Grand Palace & Temples Tour", countryId: thailand.id, province: "Bangkok", category: 'activity', activityPackages: bkkGrandPalaceTourPackages, currency: "THB", unitDescription: "per person", notes: "Explore the magnificent Grand Palace and key temples." },
+      { id: generateGUID(), name: "Bangkok Grand Palace & Temples Tour", countryId: thailand.id, province: "Bangkok", category: 'activity', activityPackages: bkkGrandPalaceTourPackages, currency: "THB", unitDescription: "per person", notes: "Explore the magnificent Grand Palace and key temples.", isFavorite: true },
       { id: generateGUID(), name: "Chao Phraya River Dinner Cruise", countryId: thailand.id, province: "Bangkok", category: 'activity', activityPackages: [
           {id: generateGUID(), name: "Standard Cruise", price1: 1800, price2: 1000, notes: "International buffet, live music."},
           {id: generateGUID(), name: "Luxury Cruise (Window Seat)", price1: 2800, price2: 1600, notes: "Guaranteed window seat, premium buffet."}
-        ], currency: "THB", unitDescription: "per person", notes: "Evening cruise with city views." },
+        ], currency: "THB", unitDescription: "per person", notes: "Evening cruise with city views.", isFavorite: false },
 
-      { id: "transfer-bkk-airport-sedan-demo", name: "Suvarnabhumi Airport (BKK) to Bangkok City (Sedan)", countryId: thailand.id, province: "Bangkok", category: 'transfer', transferMode: 'vehicle', currency: "THB", unitDescription: "per service", vehicleOptions: [{ id: generateGUID(), vehicleType: 'Sedan', price: 900, maxPassengers: 3, notes: "Comfortable sedan for up to 3 pax with luggage." }], surchargePeriods: [{ id: generateGUID(), name: "Late Night Surcharge (00:00-05:00)", startDate: format(new Date(currentYear, 0, 1), 'yyyy-MM-dd'), endDate: format(new Date(nextYear, 11, 31), 'yyyy-MM-dd'), surchargeAmount: 200 }] },
-      { id: generateGUID(), name: "Suvarnabhumi Airport (BKK) to Bangkok City (Shared Van Ticket)", countryId: thailand.id, province: "Bangkok", category: 'transfer', transferMode: 'ticket', price1: 150, currency: "THB", unitDescription: "per person", subCategory: "ticket", notes: "Seat in shared van, drops at major hotels." },
+      { id: "transfer-bkk-airport-sedan-demo", name: "Suvarnabhumi Airport (BKK) to Bangkok City (Sedan)", countryId: thailand.id, province: "Bangkok", category: 'transfer', transferMode: 'vehicle', currency: "THB", unitDescription: "per service", vehicleOptions: [{ id: generateGUID(), vehicleType: 'Sedan', price: 900, maxPassengers: 3, notes: "Comfortable sedan for up to 3 pax with luggage." }], surchargePeriods: [{ id: generateGUID(), name: "Late Night Surcharge (00:00-05:00)", startDate: format(new Date(currentYear, 0, 1), 'yyyy-MM-dd'), endDate: format(new Date(nextYear, 11, 31), 'yyyy-MM-dd'), surchargeAmount: 200 }], isFavorite: true },
+      { id: generateGUID(), name: "Suvarnabhumi Airport (BKK) to Bangkok City (Shared Van Ticket)", countryId: thailand.id, province: "Bangkok", category: 'transfer', transferMode: 'ticket', price1: 150, currency: "THB", unitDescription: "per person", subCategory: "ticket", notes: "Seat in shared van, drops at major hotels.", isFavorite: false },
 
       { id: generateGUID(), name: "Phuket Phi Phi Islands & Maya Bay (Speedboat)", countryId: thailand.id, province: "Phuket", category: 'activity', activityPackages: [
           {id: generateGUID(), name: "Shared Speedboat Tour", price1: 2200, price2: 1500, notes: "Full day, includes lunch, snorkeling."},
-        ], currency: "THB", unitDescription: "per person/service", notes: "Explore iconic islands." },
+        ], currency: "THB", unitDescription: "per person/service", notes: "Explore iconic islands.", isFavorite: false },
 
       {
         id: generateGUID(),
@@ -79,31 +82,32 @@ const createDemoServicePrices = (
         vehicleOptions: [
           { id: generateGUID(), vehicleType: 'Sedan', price: 800, maxPassengers: 3, notes: "Private car transfer." },
           { id: generateGUID(), vehicleType: 'Minibus', price: 1200, maxPassengers: 10, notes: "Private minibus transfer." }
-        ]
+        ],
+        isFavorite: false,
       },
 
-      { id: generateGUID(), name: "Hotel International Buffet Lunch (Bangkok)", countryId: thailand.id, province: "Bangkok", category: 'meal', price1: 950, price2: 475, currency: "THB", subCategory: "Buffet", unitDescription: "per person" },
-      { id: generateGUID(), name: "Seafood BBQ Dinner on the Beach (Phuket)", countryId: thailand.id, province: "Phuket", category: 'meal', price1: 1500, currency: "THB", subCategory: "Special Dinner", unitDescription: "per person", notes: "Fresh seafood buffet." },
+      { id: generateGUID(), name: "Hotel International Buffet Lunch (Bangkok)", countryId: thailand.id, province: "Bangkok", category: 'meal', price1: 950, price2: 475, currency: "THB", subCategory: "Buffet", unitDescription: "per person", isFavorite: false },
+      { id: generateGUID(), name: "Seafood BBQ Dinner on the Beach (Phuket)", countryId: thailand.id, province: "Phuket", category: 'meal', price1: 1500, currency: "THB", subCategory: "Special Dinner", unitDescription: "per person", notes: "Fresh seafood buffet.", isFavorite: false },
 
-      { id: generateGUID(), name: "Thai Cooking Class Materials Fee (Bangkok)", countryId: thailand.id, province: "Bangkok", category: 'misc', price1: 500, currency: "THB", unitDescription: "per person", subCategory: "Class Fee", notes: "Ingredients for cooking class." },
-      { id: generateGUID(), name: "VIP Airport Fast Track (Bangkok BKK)", countryId: thailand.id, province: "Bangkok", category: 'misc', price1: 1500, currency: "THB", unitDescription: "per person", subCategory: "Airport Service", notes: "Arrival or Departure fast track service." }
+      { id: generateGUID(), name: "Thai Cooking Class Materials Fee (Bangkok)", countryId: thailand.id, province: "Bangkok", category: 'misc', price1: 500, currency: "THB", unitDescription: "per person", subCategory: "Class Fee", notes: "Ingredients for cooking class.", isFavorite: false },
+      { id: generateGUID(), name: "VIP Airport Fast Track (Bangkok BKK)", countryId: thailand.id, province: "Bangkok", category: 'misc', price1: 1500, currency: "THB", unitDescription: "per person", subCategory: "Airport Service", notes: "Arrival or Departure fast track service.", isFavorite: false }
     );
   }
 
   // Malaysia Services
   if (malaysia) {
     demoPrices.push(
-      { id: generateGUID(), name: "Kuala Lumpur City Highlights Tour", countryId: malaysia.id, province: "Kuala Lumpur", category: 'activity', price1: 120, price2: 80, currency: "MYR", unitDescription: "per person" },
-      { id: generateGUID(), name: "KLIA Express Train Ticket", countryId: malaysia.id, province: "Kuala Lumpur", category: 'transfer', transferMode: 'ticket', price1: 55, currency: "MYR", unitDescription: "per person", subCategory: "ticket" },
-      { id: generateGUID(), name: "Buffet Lunch at Revolving Tower KL", countryId: malaysia.id, province: "Kuala Lumpur", category: 'meal', price1: 90, price2: 50, currency: "MYR", subCategory: "Buffet", unitDescription: "per person" }
+      { id: generateGUID(), name: "Kuala Lumpur City Highlights Tour", countryId: malaysia.id, province: "Kuala Lumpur", category: 'activity', price1: 120, price2: 80, currency: "MYR", unitDescription: "per person", isFavorite: false },
+      { id: generateGUID(), name: "KLIA Express Train Ticket", countryId: malaysia.id, province: "Kuala Lumpur", category: 'transfer', transferMode: 'ticket', price1: 55, currency: "MYR", unitDescription: "per person", subCategory: "ticket", isFavorite: false },
+      { id: generateGUID(), name: "Buffet Lunch at Revolving Tower KL", countryId: malaysia.id, province: "Kuala Lumpur", category: 'meal', price1: 90, price2: 50, currency: "MYR", subCategory: "Buffet", unitDescription: "per person", isFavorite: false }
     );
   }
   // Bangladesh Services
   if (bangladesh) {
     demoPrices.push(
-      { id: generateGUID(), name: "Dhaka City Rickshaw Tour", countryId: bangladesh.id, province: "Dhaka", category: 'activity', price1: 1000, currency: "BDT", unitDescription: "per person", notes: "Half-day guided tour." },
-      { id: generateGUID(), name: "Hazrat Shahjalal Airport (DAC) to Dhaka City (Sedan)", countryId: bangladesh.id, province: "Dhaka", category: 'transfer', transferMode: 'vehicle', currency: "BDT", vehicleOptions: [{id: generateGUID(), vehicleType: "Sedan", price: 2500, maxPassengers: 3}], unitDescription: "per service" },
-      { id: generateGUID(), name: "Traditional Bengali Thali Dinner", countryId: bangladesh.id, province: "Dhaka", category: 'meal', price1: 800, currency: "BDT", subCategory: "Set Menu", unitDescription: "per person" }
+      { id: generateGUID(), name: "Dhaka City Rickshaw Tour", countryId: bangladesh.id, province: "Dhaka", category: 'activity', price1: 1000, currency: "BDT", unitDescription: "per person", notes: "Half-day guided tour.", isFavorite: false },
+      { id: generateGUID(), name: "Hazrat Shahjalal Airport (DAC) to Dhaka City (Sedan)", countryId: bangladesh.id, province: "Dhaka", category: 'transfer', transferMode: 'vehicle', currency: "BDT", vehicleOptions: [{id: generateGUID(), vehicleType: "Sedan", price: 2500, maxPassengers: 3}], unitDescription: "per service", isFavorite: false },
+      { id: generateGUID(), name: "Traditional Bengali Thali Dinner", countryId: bangladesh.id, province: "Dhaka", category: 'meal', price1: 800, currency: "BDT", subCategory: "Set Menu", unitDescription: "per person", isFavorite: false }
     );
   }
 
@@ -117,6 +121,7 @@ export function useServicePrices() {
   const { allHotelDefinitions, isLoading: isLoadingHotelDefs } = useHotelDefinitions();
   const [allServicePrices, setAllServicePrices] = React.useState<ServicePriceItem[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
+  const { toast } = useToast();
 
   React.useEffect(() => {
     if (isLoadingCountries || isLoadingHotelDefs) return;
@@ -130,7 +135,7 @@ export function useServicePrices() {
         try {
             const parsedPrices = JSON.parse(storedPricesString) as ServicePriceItem[];
             if (Array.isArray(parsedPrices)) {
-            const validatedPrices = parsedPrices.filter(p => p.id && p.name && p.category && p.currency);
+            const validatedPrices = parsedPrices.map(p => ({ ...p, isFavorite: p.isFavorite || false })).filter(p => p.id && p.name && p.category && p.currency);
             pricesToSet = validatedPrices;
 
             DEMO_SERVICE_PRICES.forEach(demoPrice => {
@@ -149,7 +154,7 @@ export function useServicePrices() {
                   if (demoPrice.id && demoPrice.id.includes("-demo")) {
                     const existingIndex = pricesToSet.findIndex(p => p.id === demoPrice.id);
                     if (existingIndex !== -1) {
-                      pricesToSet[existingIndex] = demoPrice;
+                      pricesToSet[existingIndex] = demoPrice; // This ensures demo items are always up-to-date with the code
                     } else {
                        const oldDemoByName = pricesToSet.findIndex(p =>
                             p.name === demoPrice.name && p.province === demoPrice.province &&
@@ -223,5 +228,22 @@ export function useServicePrices() {
       return allServicePrices.find(sp => sp.id === id);
     }, [allServicePrices, isLoading]);
 
-  return { isLoading: isLoading || isLoadingCountries || isLoadingHotelDefs, allServicePrices, getServicePrices: getServicePricesFiltered, getServicePriceById };
+  const toggleFavoriteServicePrice = React.useCallback((serviceId: string) => {
+    setAllServicePrices(prevPrices => {
+        const updatedPrices = prevPrices.map(p =>
+            p.id === serviceId ? { ...p, isFavorite: !p.isFavorite } : p
+        );
+        localStorage.setItem(SERVICE_PRICES_STORAGE_KEY, JSON.stringify(updatedPrices));
+        return updatedPrices;
+    });
+    const service = allServicePrices.find(p => p.id === serviceId);
+    if (service) {
+        toast({
+            title: "Favorite Status Updated",
+            description: `"${service.name}" is now ${!service.isFavorite ? 'a favorite' : 'not a favorite'}.`,
+        });
+    }
+  }, [allServicePrices, toast]);
+
+  return { isLoading: isLoading || isLoadingCountries || isLoadingHotelDefs, allServicePrices, getServicePrices: getServicePricesFiltered, getServicePriceById, toggleFavoriteServicePrice };
 }

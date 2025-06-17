@@ -11,9 +11,9 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Edit, CalendarClock, Package, AlertTriangle, Info, Car } from 'lucide-react';
+import { Edit, CalendarClock, Package, AlertTriangle, Info, Car, Star } from 'lucide-react';
 import type { ServicePriceItem, ItineraryItemType, VehicleOption } from '@/types/itinerary';
-import { formatCurrency } from '@/lib/utils';
+import { formatCurrency, cn } from '@/lib/utils';
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { format } from 'date-fns';
@@ -22,10 +22,11 @@ interface ServicePriceTableProps {
   servicePrices: ServicePriceItem[];
   onEdit: (serviceId: string) => void;
   onDeleteConfirmation: (serviceId: string) => React.ReactNode;
+  onToggleFavorite: (serviceId: string) => void;
   displayMode: 'all' | ItineraryItemType;
 }
 
-export function ServicePriceTable({ servicePrices, onEdit, onDeleteConfirmation, displayMode }: ServicePriceTableProps) {
+export function ServicePriceTable({ servicePrices, onEdit, onDeleteConfirmation, onToggleFavorite, displayMode }: ServicePriceTableProps) {
 
   const renderAllModeRow = (service: ServicePriceItem) => {
     let displayDetail = service.subCategory || 'N/A';
@@ -132,6 +133,9 @@ export function ServicePriceTable({ servicePrices, onEdit, onDeleteConfirmation,
         <TableCell className="py-2 px-2 sm:px-4">{service.currency}</TableCell>
         <TableCell className="py-2 px-2 sm:px-4 max-w-[100px] sm:max-w-xs truncate">{service.notes || 'N/A'}</TableCell>
         <TableCell className="text-center py-2 px-2 sm:px-4">
+          <Button variant="ghost" size="icon" onClick={() => onToggleFavorite(service.id)} className="mr-1 sm:mr-2 text-amber-500 hover:text-amber-400 h-7 w-7 sm:h-8 sm:w-8" title={service.isFavorite ? "Remove from favorites" : "Add to favorites"} >
+            <Star className={cn("h-4 w-4 sm:h-5 sm:w-5", service.isFavorite && "fill-amber-400")} />
+          </Button>
           <Button variant="ghost" size="icon" onClick={() => onEdit(service.id)} className="mr-1 sm:mr-2 text-primary hover:bg-primary/10 h-7 w-7 sm:h-8 sm:w-8">
             <Edit className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
           </Button>
@@ -141,7 +145,7 @@ export function ServicePriceTable({ servicePrices, onEdit, onDeleteConfirmation,
     );
   };
 
-  const renderHotelRow = (service: ServicePriceItem) => { /* ... similar responsive adjustments ... */
+  const renderHotelRow = (service: ServicePriceItem) => { 
     let lowestRate: number | undefined = undefined;
     service.hotelDetails?.roomTypes.forEach(rt => { rt.seasonalPrices.forEach(sp => { if (lowestRate === undefined || sp.rate < lowestRate) lowestRate = sp.rate; }); });
     const displayPriceInfo = lowestRate !== undefined ? `From ${formatCurrency(lowestRate, service.currency)}` : "N/A";
@@ -161,6 +165,9 @@ export function ServicePriceTable({ servicePrices, onEdit, onDeleteConfirmation,
         <TableCell className="py-2 px-2 sm:px-4">{service.currency}</TableCell>
         <TableCell className="py-2 px-2 sm:px-4 max-w-[100px] sm:max-w-xs truncate">{service.notes || 'N/A'}</TableCell>
         <TableCell className="text-center py-2 px-2 sm:px-4">
+          <Button variant="ghost" size="icon" onClick={() => onToggleFavorite(service.id)} className="mr-1 text-amber-500 hover:text-amber-400 h-7 w-7 sm:h-8 sm:w-8" title={service.isFavorite ? "Remove from favorites" : "Add to favorites"} >
+            <Star className={cn("h-4 w-4 sm:h-5 sm:w-5", service.isFavorite && "fill-amber-400")} />
+          </Button>
           <Button variant="ghost" size="icon" onClick={() => onEdit(service.id)} className="mr-1 sm:mr-2 text-primary hover:bg-primary/10 h-7 w-7 sm:h-8 sm:w-8"> <Edit className="h-3.5 w-3.5 sm:h-4 sm:w-4" /> </Button>
           {onDeleteConfirmation(service.id)}
         </TableCell>
@@ -168,7 +175,7 @@ export function ServicePriceTable({ servicePrices, onEdit, onDeleteConfirmation,
     );
   };
 
-  const renderActivityRow = (service: ServicePriceItem) => { /* ... similar responsive adjustments ... */
+  const renderActivityRow = (service: ServicePriceItem) => { 
     let lowestPackagePrice: number | undefined = undefined;
     service.activityPackages?.forEach(pkg => { if (lowestPackagePrice === undefined || pkg.price1 < lowestPackagePrice) lowestPackagePrice = pkg.price1; });
     const displayPriceInfo = lowestPackagePrice !== undefined ? `From ${formatCurrency(lowestPackagePrice, service.currency)}` : (service.price1 !== undefined ? formatCurrency(service.price1, service.currency) : "N/A");
@@ -187,6 +194,9 @@ export function ServicePriceTable({ servicePrices, onEdit, onDeleteConfirmation,
         <TableCell className="py-2 px-2 sm:px-4">{service.currency}</TableCell>
         <TableCell className="py-2 px-2 sm:px-4 max-w-[100px] sm:max-w-xs truncate">{service.notes || 'N/A'}</TableCell>
         <TableCell className="text-center py-2 px-2 sm:px-4">
+          <Button variant="ghost" size="icon" onClick={() => onToggleFavorite(service.id)} className="mr-1 text-amber-500 hover:text-amber-400 h-7 w-7 sm:h-8 sm:w-8" title={service.isFavorite ? "Remove from favorites" : "Add to favorites"} >
+            <Star className={cn("h-4 w-4 sm:h-5 sm:w-5", service.isFavorite && "fill-amber-400")} />
+          </Button>
           <Button variant="ghost" size="icon" onClick={() => onEdit(service.id)} className="mr-1 sm:mr-2 text-primary hover:bg-primary/10 h-7 w-7 sm:h-8 sm:w-8"> <Edit className="h-3.5 w-3.5 sm:h-4 sm:w-4" /> </Button>
           {onDeleteConfirmation(service.id)}
         </TableCell>
@@ -194,7 +204,7 @@ export function ServicePriceTable({ servicePrices, onEdit, onDeleteConfirmation,
     );
   };
 
-  const renderTransferRow = (service: ServicePriceItem) => { /* ... similar responsive adjustments ... */
+  const renderTransferRow = (service: ServicePriceItem) => { 
      const isVehicle = service.transferMode === 'vehicle';
      let displayDetail = "Ticket Basis";
      let baseRate = service.price1 !== undefined ? formatCurrency(service.price1, service.currency) : 'N/A';
@@ -224,6 +234,9 @@ export function ServicePriceTable({ servicePrices, onEdit, onDeleteConfirmation,
         <TableCell className="py-2 px-2 sm:px-4">{service.currency}</TableCell>
         <TableCell className="py-2 px-2 sm:px-4 max-w-[100px] sm:max-w-xs truncate">{service.notes || 'N/A'}</TableCell>
         <TableCell className="text-center py-2 px-2 sm:px-4">
+          <Button variant="ghost" size="icon" onClick={() => onToggleFavorite(service.id)} className="mr-1 text-amber-500 hover:text-amber-400 h-7 w-7 sm:h-8 sm:w-8" title={service.isFavorite ? "Remove from favorites" : "Add to favorites"} >
+            <Star className={cn("h-4 w-4 sm:h-5 sm:w-5", service.isFavorite && "fill-amber-400")} />
+          </Button>
           <Button variant="ghost" size="icon" onClick={() => onEdit(service.id)} className="mr-1 sm:mr-2 text-primary hover:bg-primary/10 h-7 w-7 sm:h-8 sm:w-8"> <Edit className="h-3.5 w-3.5 sm:h-4 sm:w-4" /> </Button>
           {onDeleteConfirmation(service.id)}
         </TableCell>
@@ -241,6 +254,9 @@ export function ServicePriceTable({ servicePrices, onEdit, onDeleteConfirmation,
         <TableCell className="py-2 px-2 sm:px-4">{service.currency}</TableCell>
         <TableCell className="py-2 px-2 sm:px-4 max-w-[100px] sm:max-w-xs truncate">{service.notes || 'N/A'}</TableCell>
         <TableCell className="text-center py-2 px-2 sm:px-4">
+          <Button variant="ghost" size="icon" onClick={() => onToggleFavorite(service.id)} className="mr-1 text-amber-500 hover:text-amber-400 h-7 w-7 sm:h-8 sm:w-8" title={service.isFavorite ? "Remove from favorites" : "Add to favorites"} >
+            <Star className={cn("h-4 w-4 sm:h-5 sm:w-5", service.isFavorite && "fill-amber-400")} />
+          </Button>
           <Button variant="ghost" size="icon" onClick={() => onEdit(service.id)} className="mr-1 sm:mr-2 text-primary hover:bg-primary/10 h-7 w-7 sm:h-8 sm:w-8"> <Edit className="h-3.5 w-3.5 sm:h-4 sm:w-4" /> </Button>
           {onDeleteConfirmation(service.id)}
         </TableCell>
@@ -274,7 +290,7 @@ export function ServicePriceTable({ servicePrices, onEdit, onDeleteConfirmation,
       break;
     case 'all':
     default:
-      headers = ( <TableRow> <TableHead className="w-[150px] min-w-[120px] sm:w-[200px] sm:min-w-[150px] px-2 sm:px-4 py-3">Name</TableHead> <TableHead className="px-2 sm:px-4 py-3">Province</TableHead> <TableHead className="px-2 sm:px-4 py-3">Category</TableHead> <TableHead className="min-w-[120px] sm:min-w-[150px] px-2 sm:px-4 py-3">Details</TableHead> <TableHead className="text-right min-w-[120px] sm:min-w-[150px] px-2 sm:px-4 py-3">Base Rate / Info</TableHead> <TableHead className="px-2 sm:px-4 py-3">Currency</TableHead> <TableHead className="min-w-[100px] sm:min-w-[150px] px-2 sm:px-4 py-3">Notes</TableHead> <TableHead className="text-center w-[100px] sm:w-[120px] px-2 sm:px-4 py-3">Actions</TableHead> </TableRow> );
+      headers = ( <TableRow> <TableHead className="w-[150px] min-w-[120px] sm:w-[200px] sm:min-w-[150px] px-2 sm:px-4 py-3">Name</TableHead> <TableHead className="px-2 sm:px-4 py-3">Province</TableHead> <TableHead className="px-2 sm:px-4 py-3">Category</TableHead> <TableHead className="min-w-[120px] sm:min-w-[150px] px-2 sm:px-4 py-3">Details</TableHead> <TableHead className="text-right min-w-[120px] sm:min-w-[150px] px-2 sm:px-4 py-3">Base Rate / Info</TableHead> <TableHead className="px-2 sm:px-4 py-3">Currency</TableHead> <TableHead className="min-w-[100px] sm:min-w-[150px] px-2 sm:px-4 py-3">Notes</TableHead> <TableHead className="text-center w-[130px] sm:w-[140px] px-2 sm:px-4 py-3">Actions</TableHead> </TableRow> );
       rows = servicePrices.map(renderAllModeRow);
       break;
   }
