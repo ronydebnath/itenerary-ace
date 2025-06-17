@@ -1,9 +1,13 @@
 
 # Itinerary Ace - LocalStorage Data Schema
 
-This document outlines the primary data structures used by the Itinerary Ace application and how they are stored in the browser's `localStorage`. Since this application does not use a traditional backend database for these core operational data, `localStorage` serves as its primary data persistence layer.
+**Important Note:** This document outlines the primary data structures used by the Itinerary Ace application and how they are **currently stored in the user's web browser using `localStorage`**. This means all operational data such as itineraries, service prices, agent details, etc., is persisted locally on the user's device and is not automatically synced across different browsers or devices.
 
-এই ডকুমেন্টটি ইটিনেরারি এস অ্যাপ্লিকেশন দ্বারা ব্যবহৃত প্রধান ডেটা কাঠামো এবং সেগুলি ব্রাউজারের `localStorage`-এ কীভাবে সংরক্ষণ করা হয় তার রূপরেখা দেয়। যেহেতু এই অ্যাপ্লিকেশনটি এই মূল অপারেশনাল ডেটার জন্য প্রচলিত ব্যাকএন্ড ডেটাবেস ব্যবহার করে না, `localStorage` এর প্রাথমিক ডেটা স্থায়ীত্ব স্তর হিসাবে কাজ করে।
+The recent refactoring of data management hooks (e.g., `useCountries`, `useServicePrices`) has encapsulated this `localStorage` interaction. This modularization is a preparatory step that would facilitate a smoother transition to a proper backend database and API layer in the future should the application require features like data sharing, multi-user access, or more robust persistence.
+
+**গুরুত্বপূর্ণ দ্রষ্টব্য:** এই ডকুমেন্টটি ইটিনেরারি এস অ্যাপ্লিকেশন দ্বারা ব্যবহৃত প্রধান ডেটা কাঠামো এবং সেগুলি বর্তমানে **ব্যবহারকারীর ওয়েব ব্রাউজারের `localStorage`-এ কীভাবে সংরক্ষণ করা হয়** তার রূপরেখা দেয়। এর মানে হল ভ্রমণপথ, পরিষেবার মূল্য, এজেন্টের বিবরণ ইত্যাদির মতো সমস্ত অপারেশনাল ডেটা ব্যবহারকারীর ডিভাইসে স্থানীয়ভাবে স্থায়ী হয় এবং বিভিন্ন ব্রাউজার বা ডিভাইস জুড়ে স্বয়ংক্রিয়ভাবে সিঙ্ক হয় না।
+
+ডেটা ম্যানেজমেন্ট হুকগুলির (যেমন, `useCountries`, `useServicePrices`) সাম্প্রতিক রিফ্যাক্টরিং এই `localStorage` ইন্টারঅ্যাকশনকে আবদ্ধ করেছে। এই মডুলারাইজেশন একটি প্রস্তুতিমূলক পদক্ষেপ যা ভবিষ্যতে অ্যাপ্লিকেশনটির ডেটা শেয়ারিং, মাল্টি-ইউজার অ্যাক্সেস বা আরও শক্তিশালী স্থায়ীত্বের মতো বৈশিষ্ট্যগুলির প্রয়োজন হলে একটি সঠিক ব্যাকএন্ড ডেটাবেস এবং API স্তরে একটি মসৃণ انتقالকে সহজতর করবে।
 
 ## General Notes / সাধারণ নোট
 
@@ -13,6 +17,16 @@ This document outlines the primary data structures used by the Itinerary Ace app
     *   **কী**: বিভিন্ন ডেটা সংগ্রহ সনাক্ত করতে নির্দিষ্ট কী ব্যবহার করা হয়।
 *   **Relationships**: Relationships between data entities are typically managed through IDs (e.g., an `ItineraryItem` might reference a `ServicePriceItem` by its ID).
     *   **সম্পর্ক**: ডেটা সত্তাগুলির মধ্যে সম্পর্কগুলি সাধারণত আইডিগুলির মাধ্যমে পরিচালিত হয় (যেমন, একটি `ItineraryItem` তার আইডি দ্বারা একটি `ServicePriceItem`-কে রেফারেন্স করতে পারে)।
+*   **Limitations**: Being `localStorage`-based, the data is:
+    *   Specific to the browser and device.
+    *   Not automatically shareable or synchronizable across devices/users.
+    *   Limited by the browser's storage capacity (typically 5-10MB).
+    *   Not suitable for sensitive data in a production multi-user environment without additional security.
+    *   **সীমাবদ্ধতা**: `localStorage`-ভিত্তিক হওয়ায়, ডেটা হল:
+        *   ব্রাউজার এবং ডিভাইসের জন্য নির্দিষ্ট।
+        *   ডিভাইস/ব্যবহারকারীদের মধ্যে স্বয়ংক্রিয়ভাবে ভাগ করা বা সিঙ্ক্রোনাইজ করা যায় না।
+        *   ব্রাউজারের স্টোরেজ ক্ষমতা দ্বারা সীমাবদ্ধ (সাধারণত ৫-১০MB)।
+        *   অতিরিক্ত নিরাপত্তা ছাড়া প্রোডাকশন মাল্টি-ইউজার পরিবেশে সংবেদনশীল ডেটার জন্য উপযুক্ত নয়।
 
 ## Core Data Entities / মূল ডেটা সত্তা
 
@@ -55,6 +69,7 @@ This document outlines the primary data structures used by the Itinerary Ace app
             *   `quotationRequestId` (string, optional): ID of the quotation request this itinerary is based on, if any. / এই ভ্রমণপথটি যে উদ্ধৃতি অনুরোধের উপর ভিত্তি করে তৈরি, তার আইডি (যদি থাকে)।
             *   `version` (number, optional): Version number of the itinerary data structure. / ভ্রমণপথের ডেটা কাঠামোর সংস্করণ নম্বর (ঐচ্ছিক)।
             *   `overallBookingStatus` (`OverallBookingStatus`, optional): The overall booking status of the entire itinerary. / সম্পূর্ণ ভ্রমণপথের সামগ্রিক বুকিং স্ট্যাটাস (ঐচ্ছিক)।
+            *   `adminRevisionNotes` (string, optional): Notes from the admin for this version of the itinerary, related to a quotation. / একটি উদ্ধৃতির সাথে সম্পর্কিত ভ্রমণপথের এই সংস্করণের জন্য অ্যাডমিনের নোট (ঐচ্ছিক)।
     *   `ItineraryMetadata` (from `src/types/itinerary.ts`): Basic info for the index.
         *   `ItineraryMetadata` (`src/types/itinerary.ts` থেকে): সূচকের জন্য প্রাথমিক তথ্য।
         *   Fields: `id` (string), `itineraryName` (string), `clientName` (string, optional), `createdAt` (string), `updatedAt` (string).
@@ -98,6 +113,7 @@ This document outlines the primary data structures used by the Itinerary Ace app
         *   `hotelDetails` (`HotelDefinition`, optional): Full hotel definition if category is 'hotel'. / যদি বিভাগ 'hotel' হয় তবে সম্পূর্ণ হোটেল সংজ্ঞা (ঐচ্ছিক)।
         *   `activityPackages` (`ActivityPackageDefinition[]`, optional): Array of packages if category is 'activity'. / যদি বিভাগ 'activity' হয় তবে প্যাকেজগুলির অ্যারে (ঐচ্ছিক)।
         *   `surchargePeriods` (`SurchargePeriod[]`, optional): Array of surcharge periods, mainly for vehicle transfers. / সারচার্জ সময়কালের অ্যারে, প্রধানত যান ট্রান্সফারের জন্য (ঐচ্ছিক)।
+        *   `isFavorite` (boolean, optional): Indicates if this service price is a favorite. / এই পরিষেবা মূল্য একটি প্রিয় কিনা তা নির্দেশ করে (ঐচ্ছিক)।
 
 ### 3. Hotel Definitions (হোটেল সংজ্ঞা)
 
@@ -179,6 +195,10 @@ This document outlines the primary data structures used by the Itinerary Ace app
         *   `status` (`QuotationRequestStatus`): Current status of the request (e.g., "Pending", "Quoted"). / অনুরোধের বর্তমান অবস্থা (যেমন, "Pending", "Quoted")।
         *   `linkedItineraryId` (string, optional): ID of the `TripData` created from this request. / এই অনুরোধ থেকে তৈরি `TripData`-এর আইডি (ঐচ্ছিক)।
         *   `updatedAt` (string, optional): ISO date string of the last update time. / শেষ আপডেটের সময়ের ISO তারিখ স্ট্রিং (ঐচ্ছিক)।
+        *   `agentRevisionNotes` (string, optional): Notes from agent when requesting revision. / সংশোধনীর জন্য অনুরোধ করার সময় এজেন্টের নোট (ঐচ্ছিক)।
+        *   `adminRevisionNotes` (string, optional): Notes from admin when sending a re-quote. / পুনরায় উদ্ধৃতি পাঠানোর সময় অ্যাডমিনের নোট (ঐচ্ছিক)।
+        *   `version` (number, optional): Version number of the quotation. / উদ্ধৃতির সংস্করণ নম্বর (ঐচ্ছিক)।
+
 
 ### 8. Currency and Exchange Rate Settings (মুদ্রা এবং বিনিময় হার সেটিংস)
 
@@ -212,7 +232,19 @@ This document outlines the primary data structures used by the Itinerary Ace app
     *   Stores a partial service price item object to prefill the service price creation form. This key is typically cleared after the data is read.
     *   পরিষেবা মূল্য তৈরির ফর্ম প্রিফিল করার জন্য একটি আংশিক পরিষেবা মূল্য আইটেম অবজেক্ট সংরক্ষণ করে। ডেটা পড়ার পরে এই কী সাধারণত পরিষ্কার করা হয়।
 
+## Future Considerations for Database Backend / ডেটাবেস ব্যাকএন্ডের জন্য ভবিষ্যতের বিবেচনা
+
+The current `localStorage`-based system is suitable for single-user demonstrations or personal use. For a production application, especially one intended for multiple users (e.g., multiple agents, admin oversight) or if data persistence beyond a single browser session is critical, migrating to a dedicated backend with a proper database (e.g., PostgreSQL, MySQL, Firestore, MongoDB) would be essential.
+
+The recent refactoring of data management hooks (e.g., `useCountries`, `useServicePrices`, `useItineraryManager`) to encapsulate `localStorage` interactions is a foundational step. This modularization means that future migration would primarily involve updating the internal data loading and saving logic within these hooks to interact with an API layer connected to the chosen database, rather than rewriting large parts of the UI components.
+
+**Benefits of a Database Backend:**
+*   **Data Centralization & Synchronization:** All users access and modify the same data.
+*   **User Authentication & Authorization:** Secure access control.
+*   **Data Integrity & Backups:** Robust data management and recovery.
+*   **Scalability:** Handles larger amounts of data and more users.
+*   **Advanced Queries & Reporting:** Enables more complex data analysis.
+
 This schema provides a foundational understanding of how data is managed locally within the Itinerary Ace application.
 এই স্কিমাটি ইটিনেরারি এস অ্যাপ্লিকেশনের মধ্যে স্থানীয়ভাবে ডেটা কীভাবে পরিচালিত হয় তার একটি মৌলিক ধারণা প্রদান করে।
       
-
