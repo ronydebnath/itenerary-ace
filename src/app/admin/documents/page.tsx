@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { LayoutDashboard, FileLock2, AlertCircle, Eye, EyeOff, BookOpen, Puzzle, Users, Brain, Database } from 'lucide-react';
+import { LayoutDashboard, FileLock2, AlertCircle, Eye, EyeOff, BookOpen, Puzzle, Users, Brain, Database, CheckSquare, Briefcase, Settings, Lightbulb } from 'lucide-react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 
 const CORRECT_PASSWORD = "Nick"; // Simple password check
@@ -117,7 +117,7 @@ export default function AdminDocumentsPage() {
 
               <AccordionItem value="core-features">
                 <AccordionTrigger className="text-lg font-semibold text-primary hover:no-underline">
-                   <div className="flex items-center"><Puzzle className="mr-2 h-5 w-5"/>Core Functionality</div>
+                   <div className="flex items-center"><CheckSquare className="mr-2 h-5 w-5"/>Core Functionality</div>
                 </AccordionTrigger>
                 <AccordionContent className="text-sm text-muted-foreground space-y-3 pt-2 pl-2">
                   <Card className="bg-card/50 p-3">
@@ -138,6 +138,7 @@ export default function AdminDocumentsPage() {
                       <li>Link itineraries to agent quotation requests.</li>
                       <li>View detailed cost breakdowns per traveler and per service category.</li>
                       <li>Generate print-friendly views of the itinerary with optional cost display.</li>
+                       <li>Tag itineraries for better organization and filtering.</li>
                     </ul>
 
                     <h5 className="font-medium text-foreground/80 mt-2 text-xs">Core Logic & Structure:</h5>
@@ -337,6 +338,64 @@ export default function AdminDocumentsPage() {
                     <li>**Security:** While convenient for development and standalone use, LocalStorage is not suitable for sensitive data in a multi-user production environment without significant additional security layers.</li>
                   </ul>
                   <p className="mt-2 text-xs">This local storage approach allows the application to function without requiring a dedicated backend server and database, making it easy to deploy and run for demonstration or single-user purposes. For multi-user or production scenarios, a proper backend database and API layer would be necessary.</p>
+                </AccordionContent>
+              </AccordionItem>
+
+              <AccordionItem value="future-development">
+                <AccordionTrigger className="text-lg font-semibold text-primary hover:no-underline">
+                  <div className="flex items-center"><Lightbulb className="mr-2 h-5 w-5"/>Future Development Roadmap</div>
+                </AccordionTrigger>
+                <AccordionContent className="text-sm text-muted-foreground space-y-3 pt-2 pl-2">
+                  <p>This section outlines potential enhancements and new features for Itinerary Ace.</p>
+                  <Card className="bg-card/50 p-3">
+                    <h4 className="font-medium text-foreground">Backend & Database Integration</h4>
+                    <ul className="list-disc pl-5 mt-1 space-y-1 text-xs">
+                      <li>Transition from LocalStorage to a robust backend database (e.g., PostgreSQL, Firestore).</li>
+                      <li>Develop APIs for all data operations (CRUD for itineraries, services, users, etc.).</li>
+                      <li>Implement user authentication and authorization more deeply with role-based access control via the backend.</li>
+                    </ul>
+                  </Card>
+                  <Card className="bg-card/50 p-3">
+                    <h4 className="font-medium text-foreground">Enhanced Itinerary Management</h4>
+                    <ul className="list-disc pl-5 mt-1 space-y-1 text-xs">
+                      <li>Itinerary cloning/duplication.</li>
+                      <li>Version history for itineraries.</li>
+                      <li>Ability to generate PDF documents directly from the itinerary view.</li>
+                      <li>Option to create multiple distinct proposals for a single quotation request.</li>
+                      <li>More sophisticated search and filtering for saved itineraries.</li>
+                    </ul>
+                  </Card>
+                  <Card className="bg-card/50 p-3">
+                    <h4 className="font-medium text-foreground">Agent & Client Portal Enhancements</h4>
+                    <ul className="list-disc pl-5 mt-1 space-y-1 text-xs">
+                      <li>More detailed agent dashboard with key performance indicators.</li>
+                      <li>Client-facing view of approved itineraries (read-only or interactive).</li>
+                      <li>Improved notification system for quote updates and communications.</li>
+                      <li>Ability for agents to manage a list of their direct clients.</li>
+                    </ul>
+                  </Card>
+                  <Card className="bg-card/50 p-3">
+                    <h4 className="font-medium text-foreground">Advanced Pricing & Costing</h4>
+                    <ul className="list-disc pl-5 mt-1 space-y-1 text-xs">
+                      <li>Support for supplier commissions and net rates.</li>
+                      <li>More complex markup rules (e.g., per-item type, tiered markups).</li>
+                      <li>Profitability analysis tools.</li>
+                    </ul>
+                  </Card>
+                  <Card className="bg-card/50 p-3">
+                    <h4 className="font-medium text-foreground">Operational Tools</h4>
+                    <ul className="list-disc pl-5 mt-1 space-y-1 text-xs">
+                      <li>Reporting tools for sales, popular services, etc.</li>
+                      <li>Bulk import/export for service prices.</li>
+                      <li>User activity logging for admins.</li>
+                    </ul>
+                  </Card>
+                  <Card className="bg-card/50 p-3">
+                    <h4 className="font-medium text-foreground">Mobile Application</h4>
+                    <ul className="list-disc pl-5 mt-1 space-y-1 text-xs">
+                      <li>Develop companion mobile apps for agents (and potentially clients) to access itineraries and manage requests on the go.</li>
+                    </ul>
+                  </Card>
                 </AccordionContent>
               </AccordionItem>
 
