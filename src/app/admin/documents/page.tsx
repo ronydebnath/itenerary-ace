@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { LayoutDashboard, FileLock2, AlertCircle, Eye, EyeOff, BookOpen, Puzzle, Users, Brain, Database, CheckSquare, Briefcase, Settings, Lightbulb } from 'lucide-react';
+import { LayoutDashboard, FileLock2, AlertCircle, Eye, EyeOff, BookOpen, Puzzle, Users, Brain, Database, CheckSquare, Briefcase, Settings, Lightbulb, Smartphone } from 'lucide-react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 
 const CORRECT_PASSWORD = "Nick"; // Simple password check
@@ -391,10 +391,81 @@ export default function AdminDocumentsPage() {
                     </ul>
                   </Card>
                   <Card className="bg-card/50 p-3">
-                    <h4 className="font-medium text-foreground">Mobile Application</h4>
-                    <ul className="list-disc pl-5 mt-1 space-y-1 text-xs">
-                      <li>Develop companion mobile apps for agents (and potentially clients) to access itineraries and manage requests on the go.</li>
-                    </ul>
+                    <h4 className="font-medium text-foreground flex items-center"><Smartphone className="mr-2 h-4 w-4"/>Mobile Application Development</h4>
+                    <p className="text-xs mt-1 mb-2">
+                      Developing a companion mobile application would require the following key technical steps:
+                    </p>
+                    <ol className="list-decimal pl-5 space-y-1.5 text-xs">
+                      <li>
+                        <strong>Backend API Development (Crucial Prerequisite):</strong>
+                        <ul className="list-disc pl-4 mt-0.5 space-y-0.5">
+                          <li>Design and implement a robust backend API (e.g., RESTful or GraphQL) to manage all data currently handled by `localStorage`. This includes itineraries, service prices, user profiles, quotation requests, etc.</li>
+                          <li>Choose a server-side technology stack (e.g., Node.js with Express/NestJS, Python with Django/Flask, or a serverless architecture).</li>
+                          <li>Integrate a scalable database (e.g., PostgreSQL, MySQL, MongoDB, Firestore) as the central data store.</li>
+                          <li>Implement secure authentication and authorization mechanisms for API endpoints (e.g., JWT-based).</li>
+                        </ul>
+                      </li>
+                      <li>
+                        <strong>Mobile Technology Stack Selection:</strong>
+                        <ul className="list-disc pl-4 mt-0.5 space-y-0.5">
+                          <li><strong>Native Development:</strong> For optimal performance and platform integration.
+                            <ul className="list-circle pl-3">
+                              <li>iOS: Swift or Objective-C.</li>
+                              <li>Android: Kotlin or Java.</li>
+                            </ul>
+                          </li>
+                          <li><strong>Cross-Platform Development:</strong> For faster development and code sharing if targeting both platforms.
+                            <ul className="list-circle pl-3">
+                              <li><strong>React Native:</strong> A natural choice given the web app's React/Next.js stack, allowing for potential code/logic reuse.</li>
+                              <li>Flutter: Known for its expressive UI and good performance.</li>
+                              <li>Other frameworks like NativeScript, Xamarin.</li>
+                            </ul>
+                          </li>
+                        </ul>
+                      </li>
+                       <li>
+                        <strong>Core Mobile App Features (Minimum Viable Product - MVP):</strong>
+                        <ul className="list-disc pl-4 mt-0.5 space-y-0.5">
+                          <li>Secure user authentication (login/logout) connecting to the backend API.</li>
+                          <li>Ability for agents/users to view their assigned/created itineraries or proposals.</li>
+                          <li>Display itinerary details, including day-by-day plans.</li>
+                          <li>View status of quotation requests (for agents).</li>
+                          <li>(Potentially for agents) Submit new quotation requests through a simplified mobile form.</li>
+                        </ul>
+                      </li>
+                       <li>
+                        <strong>Mobile Data Management:</strong>
+                        <ul className="list-disc pl-4 mt-0.5 space-y-0.5">
+                          <li>Implement an API client within the mobile app to communicate with the backend.</li>
+                          <li>Consider local data storage/caching strategies (e.g., SQLite, Realm, or platform-specific solutions like Core Data/Room) for offline access to key information and improved performance.</li>
+                          <li>Implement data synchronization logic between the mobile app's local cache and the backend.</li>
+                        </ul>
+                      </li>
+                       <li>
+                        <strong>User Interface (UI) / User Experience (UX) Design for Mobile:</strong>
+                        <ul className="list-disc pl-4 mt-0.5 space-y-0.5">
+                          <li>Design mobile-first interfaces that are intuitive and optimized for smaller screens and touch interactions.</li>
+                          <li>Adapt existing web UI concepts where appropriate but prioritize mobile usability.</li>
+                        </ul>
+                      </li>
+                      <li>
+                        <strong>Push Notification System:</strong>
+                         <ul className="list-disc pl-4 mt-0.5 space-y-0.5">
+                          <li>Integrate a push notification service (e.g., Firebase Cloud Messaging (FCM), Apple Push Notification service (APNs)).</li>
+                          <li>Implement backend logic to trigger notifications for important events (e.g., new quotation proposal ready, status updates on requests, itinerary changes).</li>
+                        </ul>
+                      </li>
+                      <li>
+                        <strong>Testing and Deployment:</strong>
+                        <ul className="list-disc pl-4 mt-0.5 space-y-0.5">
+                          <li>Thorough testing on various devices and OS versions.</li>
+                          <li>Adherence to platform-specific guidelines for submission to app stores (Apple App Store, Google Play Store).</li>
+                        </ul>
+                      </li>
+                    </ol>
+                    <p className="text-xs mt-2">
+                      <strong>Note:</strong> The current web application's refactoring of data hooks to encapsulate `localStorage` logic is a good first step, as it makes the web frontend more API-ready. The mobile app would primarily consume these new backend APIs.
+                    </p>
                   </Card>
                 </AccordionContent>
               </AccordionItem>
