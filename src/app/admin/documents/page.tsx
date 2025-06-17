@@ -122,12 +122,80 @@ export default function AdminDocumentsPage() {
                 <AccordionContent className="text-sm text-muted-foreground space-y-3 pt-2 pl-2">
                   <Card className="bg-card/50 p-3">
                     <h4 className="font-medium text-foreground">1. Itinerary Planning & Management</h4>
+                    <p className="text-xs mt-1">
+                      The core of Itinerary Ace is its powerful itinerary planning suite. This module allows for the detailed creation and management of multi-day travel plans.
+                    </p>
+
+                    <h5 className="font-medium text-foreground/80 mt-2 text-xs">Key Features:</h5>
                     <ul className="list-disc pl-5 mt-1 space-y-1 text-xs">
-                      <li>Create multi-day itineraries with detailed day-by-day planning.</li>
-                      <li>Add various service items: transfers, activities, hotels, meals, and miscellaneous.</li>
-                      <li>Manage passenger details (adults, children) and assign them to specific services.</li>
-                      <li>Calculate estimated costs for the entire itinerary based on selected services and pricing.</li>
-                      <li>Save, load, and manage multiple itineraries. Mark itineraries as templates.</li>
+                      <li>Create itineraries spanning multiple days.</li>
+                      <li>Plan activities, accommodations, transfers, meals, and miscellaneous items for each day.</li>
+                      <li>Define and manage traveler details (adults, children) for the trip.</li>
+                      <li>Assign or exclude specific travelers from individual itinerary items.</li>
+                      <li>Utilize a library of predefined service prices or input custom pricing for itinerary items.</li>
+                      <li>Calculate estimated costs for the entire itinerary dynamically.</li>
+                      <li>Save itineraries to local storage, load existing ones, or mark them as templates for reuse.</li>
+                      <li>Link itineraries to agent quotation requests.</li>
+                      <li>View detailed cost breakdowns per traveler and per service category.</li>
+                      <li>Generate print-friendly views of the itinerary with optional cost display.</li>
+                    </ul>
+
+                    <h5 className="font-medium text-foreground/80 mt-2 text-xs">Core Logic & Structure:</h5>
+                    <ul className="list-disc pl-5 mt-1 space-y-1 text-xs">
+                      <li><strong>Day-by-Day Planning:</strong> Itineraries are structured by day numbers, determined by the 'Start Date' and 'Number of Days' settings in the Planner Header. Each day can contain multiple service items.</li>
+                      <li><strong>Item Types:</strong> Various services can be added:
+                        <ul className="list-circle pl-4 mt-0.5 space-y-0.5">
+                          <li><strong>Hotel:</strong> Manage hotel stays, including check-in/checkout days (checkout day must be after check-in day). Supports selection from predefined hotel definitions or custom entry. Allows configuration of multiple room bookings for a single hotel stay, specifying room type, number of rooms, assigned travelers, and optional extra beds. Hotel rates are often seasonal and are sourced from the hotel's master definition.</li>
+                          <li><strong>Activity:</strong> Plan tours, excursions, or entrance tickets. Can be single-day or span multiple days (using 'End Day' field). Supports selection from predefined activity services, which may include multiple packages with different pricing, or custom pricing.</li>
+                          <li><strong>Transfer:</strong> Arrange transportation (e.g., airport transfers, inter-city travel). Supports 'ticket' (per person) or 'vehicle' (per service) pricing modes. Vehicle mode can use predefined vehicle options from a master service or allow custom entry of vehicle type and cost per vehicle. Surcharge periods can apply to vehicle transfers.</li>
+                          <li><strong>Meal:</strong> Plan specific meals (breakfast, lunch, dinner). Priced per adult/child per meal, with a specified number of meals. Can use predefined meal services or custom pricing.</li>
+                          <li><strong>Miscellaneous:</strong> Add other costs like visa fees, guide fees, or souvenirs. Can be priced per person or as a total shared cost for a given quantity.</li>
+                        </ul>
+                      </li>
+                      <li><strong>Traveler Assignment:</strong> Each itinerary item allows for excluding specific travelers. This ensures costs are calculated only for participating individuals for that particular service.</li>
+                      <li><strong>Predefined vs. Custom Pricing:</strong> For each item type, users can select from a list of predefined services (master price list). This pre-fills pricing and details. Alternatively, users can input custom names, notes, and prices directly if a predefined service is not selected or suitable.</li>
+                      <li><strong>Currency Handling:</strong> Each itinerary has a primary "Billing Currency" set in the Planner Header. Individual predefined services are stored with their own "Source Currency". When a predefined service is used, its cost is converted from its source currency to the itinerary's billing currency using exchange rates (and any defined markups) managed in the "Currency Management" section. Custom-priced items are assumed to be in the itinerary's billing currency.</li>
+                    </ul>
+
+                    <h5 className="font-medium text-foreground/80 mt-2 text-xs">Data Filtering for Service Selection:</h5>
+                    <ul className="list-disc pl-5 mt-1 space-y-1 text-xs">
+                      <li>When adding items in the planner, dropdowns for predefined services (e.g., hotels, activities) are dynamically filtered to show relevant options.</li>
+                      <li><strong>Filtering criteria include:</strong>
+                          <ul className="list-circle pl-4 mt-0.5 space-y-0.5">
+                              <li><strong>Item's Location Context:</strong> This is determined by:
+                                  <ol className="list-decimal pl-4 text-xs">
+                                      <li>The specific "Country for this item" and "Province for this item" selected within the item's form.</li>
+                                      <li>If not set at the item level, it falls back to the "Selected Countries" and "Selected Provinces" globally defined for the itinerary in the Planner Header.</li>
+                                      <li>If neither item-specific nor global locations are set, services without specific location tags (or matching any generic criteria) might be shown.</li>
+                                  </ol>
+                              </li>
+                              <li><strong>Item's Source Currency:</strong> The dropdowns attempt to show services priced in a currency relevant to the item's context (e.g., default currency of the item's selected country, or the itinerary's billing currency if no specific country context is set for the item). This is managed within each item form.</li>
+                              <li><strong>Service Category:</strong> Only services matching the item type being added (e.g., only 'hotel' services for a hotel item) are shown.</li>
+                          </ul>
+                      </li>
+                      <li>This filtering helps users quickly find relevant predefined services.</li>
+                    </ul>
+                    
+                    <h5 className="font-medium text-foreground/80 mt-2 text-xs">Cost Calculation Overview (Conceptual - see `src/lib/calculation-utils.ts`):</h5>
+                    <ul className="list-disc pl-5 mt-1 space-y-1 text-xs">
+                      <li><strong>Individual Item Costs (Source Currency):</strong>
+                        <ul className="list-circle pl-4 mt-0.5 space-y-0.5">
+                          <li><strong>Transfers (Ticket):</strong> (Adult Price x #Adults) + (Child Price x #Children).</li>
+                          <li><strong>Transfers (Vehicle):</strong> (Base Cost/Vehicle + Applicable Surcharge) x #Vehicles. This total is then distributed among participating travelers.</li>
+                          <li><strong>Activities:</strong> (Adult Price x #Adults) + (Child Price x #Children). If a package is selected, package prices apply. Duration doesn't change per-person price for fixed-price activities/packages.</li>
+                          <li><strong>Hotels:</strong> For each selected room booking: Sum of (Nightly Rate + Extra Bed Rate if applicable) for each night of the stay (derived from seasonal prices of the room type definition), multiplied by the number of identical rooms in that booking. Total cost for the hotel stay is the sum of all room bookings. Distributed among assigned travelers or overall participants.</li>
+                          <li><strong>Meals:</strong> (Adult Price x #Adults x #Meals) + (Child Price x #Children x #Meals).</li>
+                          <li><strong>Miscellaneous:</strong> If 'perPerson': Unit Cost x Quantity x (#Adults + #Children). If 'total': Unit Cost x Quantity, then distributed among participants.</li>
+                        </ul>
+                      </li>
+                      <li><strong>Currency Conversion:</strong> After an item's cost is calculated in its source currency (from predefined service or item's country context), if this source currency differs from the itinerary's main "Billing Currency", the system applies the relevant exchange rate (including any global or specific-pair markups configured in Currency Management) to convert the cost into the billing currency.</li>
+                      <li><strong>Summaries Displayed in Planner:</strong>
+                        <ul className="list-circle pl-4 mt-0.5 space-y-0.5">
+                          <li><strong>Per-Traveler Cost Breakdown:</strong> Shows the total apportioned cost for each traveler in the itinerary's billing currency.</li>
+                          <li><strong>Grand Total:</strong> The sum of all item costs, in the itinerary's billing currency.</li>
+                          <li><strong>Detailed Itinerary Summary Table:</strong> Groups all items by category (Hotels, Activities, etc.) and shows sub-totals per category and individual item costs, all in the billing currency.</li>
+                        </ul>
+                      </li>
                     </ul>
                   </Card>
                   <Card className="bg-card/50 p-3">
