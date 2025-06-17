@@ -14,6 +14,35 @@ import { useToast } from './use-toast';
 
 const CUSTOM_CURRENCIES_STORAGE_KEY = 'itineraryAce_customCurrencies';
 
+// --- Helper functions for localStorage ---
+const loadCustomCurrenciesFromStorage = (): CurrencyCode[] | null => {
+  try {
+    const storedCustom = localStorage.getItem(CUSTOM_CURRENCIES_STORAGE_KEY);
+    if (storedCustom) {
+      const parsedCustom = JSON.parse(storedCustom) as CurrencyCode[];
+      if (Array.isArray(parsedCustom) && parsedCustom.every(c => typeof c === 'string' && c.length === 3)) {
+        return parsedCustom.sort();
+      } else {
+        console.warn("Invalid custom currencies found in localStorage, resetting.");
+        localStorage.removeItem(CUSTOM_CURRENCIES_STORAGE_KEY);
+      }
+    }
+  } catch (error) {
+    console.error("Error loading custom currencies from localStorage:", error);
+    localStorage.removeItem(CUSTOM_CURRENCIES_STORAGE_KEY); // Clear corrupted data
+  }
+  return null;
+};
+
+const saveCustomCurrenciesToStorage = (currenciesToSave: CurrencyCode[]): void => {
+  try {
+    localStorage.setItem(CUSTOM_CURRENCIES_STORAGE_KEY, JSON.stringify(currenciesToSave.sort()));
+  } catch (error) {
+    console.error("Error saving custom currencies to localStorage:", error);
+  }
+};
+// --- End helper functions ---
+
 export function useCustomCurrencies() {
   const [customCurrencies, setCustomCurrencies] = React.useState<CurrencyCode[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
@@ -21,25 +50,8 @@ export function useCustomCurrencies() {
 
   const fetchAndSetCurrencies = React.useCallback(() => {
     setIsLoading(true);
-    try {
-      const storedCustom = localStorage.getItem(CUSTOM_CURRENCIES_STORAGE_KEY);
-      if (storedCustom) {
-        const parsedCustom = JSON.parse(storedCustom) as CurrencyCode[];
-        // Basic validation: ensure it's an array of strings
-        if (Array.isArray(parsedCustom) && parsedCustom.every(c => typeof c === 'string' && c.length === 3)) {
-          setCustomCurrencies(parsedCustom.sort());
-        } else {
-          console.warn("Invalid custom currencies found in localStorage, resetting.");
-          localStorage.removeItem(CUSTOM_CURRENCIES_STORAGE_KEY);
-          setCustomCurrencies([]);
-        }
-      } else {
-        setCustomCurrencies([]);
-      }
-    } catch (error) {
-      console.error("Error loading custom currencies from localStorage:", error);
-      setCustomCurrencies([]);
-    }
+    const loadedCurrencies = loadCustomCurrenciesFromStorage();
+    setCustomCurrencies(loadedCurrencies || []);
     setIsLoading(false);
   }, []);
 
@@ -53,7 +65,6 @@ export function useCustomCurrencies() {
     
     const combined = [...systemDefaults, ...customManaged];
     
-    // Deduplicate, preferring system defaults if codes clash (shouldn't happen if validation is good)
     const uniqueMap = new Map<CurrencyCode, ManagedCurrency>();
     combined.forEach(mc => {
       if (!uniqueMap.has(mc.code) || (uniqueMap.has(mc.code) && !mc.isCustom)) {
@@ -81,19 +92,12 @@ export function useCustomCurrencies() {
     }
 
     setIsLoading(true);
-    const newCustomCurrencies = [...customCurrencies, upperCode].sort();
-    try {
-      localStorage.setItem(CUSTOM_CURRENCIES_STORAGE_KEY, JSON.stringify(newCustomCurrencies));
-      setCustomCurrencies(newCustomCurrencies);
-      toast({ title: "Currency Added", description: `Currency "${upperCode}" added successfully.` });
-      setIsLoading(false);
-      return true;
-    } catch (error) {
-      console.error("Error saving custom currency:", error);
-      toast({ title: "Error", description: "Could not save custom currency.", variant: "destructive" });
-      setIsLoading(false);
-      return false;
-    }
+    const newCustomCurrencies = [...customCurrencies, upperCode];
+    saveCustomCurrenciesToStorage(newCustomCurrencies);
+    setCustomCurrencies(newCustomCurrencies.sort());
+    toast({ title: "Currency Added", description: `Currency "${upperCode}" added successfully.` });
+    setIsLoading(false);
+    return true;
   };
 
   const deleteCustomCurrency = async (codeToDelete: CurrencyCode) => {
@@ -103,14 +107,9 @@ export function useCustomCurrencies() {
     }
     setIsLoading(true);
     const newCustomCurrencies = customCurrencies.filter(code => code !== codeToDelete);
-    try {
-      localStorage.setItem(CUSTOM_CURRENCIES_STORAGE_KEY, JSON.stringify(newCustomCurrencies));
-      setCustomCurrencies(newCustomCurrencies);
-      toast({ title: "Currency Deleted", description: `Custom currency "${codeToDelete}" deleted.` });
-    } catch (error) {
-      console.error("Error deleting custom currency:", error);
-      toast({ title: "Error", description: "Could not delete custom currency.", variant: "destructive" });
-    }
+    saveCustomCurrenciesToStorage(newCustomCurrencies);
+    setCustomCurrencies(newCustomCurrencies);
+    toast({ title: "Currency Deleted", description: `Custom currency "${codeToDelete}" deleted.` });
     setIsLoading(false);
   };
 

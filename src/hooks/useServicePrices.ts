@@ -57,13 +57,13 @@ const createDemoServicePrices = (
       { id: generateGUID(), name: "Full Day Tour (With Lunch)", price1: 2500, price2: 1500, notes: "Includes guide, fees, and Thai set lunch. Approx 8 hours.", validityStartDate: format(new Date(currentYear, 0, 1), 'yyyy-MM-dd'), validityEndDate: format(new Date(currentYear, 5, 30), 'yyyy-MM-dd'), closedWeekdays: [1] /* Monday */, specificClosedDates: [format(new Date(currentYear, 3, 13), 'yyyy-MM-dd'), format(new Date(currentYear, 3, 14), 'yyyy-MM-dd')] /* Songkran Example */ },
     ];
     demoPrices.push(
-      { id: generateGUID(), name: "Bangkok Grand Palace & Temples Tour", countryId: thailand.id, province: "Bangkok", category: 'activity', activityPackages: bkkGrandPalaceTourPackages, currency: "THB", unitDescription: "per person", notes: "Explore the magnificent Grand Palace and key temples.", isFavorite: true },
+      { id: "sp-bkk-grand-palace-demo", name: "Bangkok Grand Palace & Temples Tour", countryId: thailand.id, province: "Bangkok", category: 'activity', activityPackages: bkkGrandPalaceTourPackages, currency: "THB", unitDescription: "per person", notes: "Explore the magnificent Grand Palace and key temples.", isFavorite: true },
       { id: generateGUID(), name: "Chao Phraya River Dinner Cruise", countryId: thailand.id, province: "Bangkok", category: 'activity', activityPackages: [
           {id: generateGUID(), name: "Standard Cruise", price1: 1800, price2: 1000, notes: "International buffet, live music."},
           {id: generateGUID(), name: "Luxury Cruise (Window Seat)", price1: 2800, price2: 1600, notes: "Guaranteed window seat, premium buffet."}
         ], currency: "THB", unitDescription: "per person", notes: "Evening cruise with city views.", isFavorite: false },
 
-      { id: "transfer-bkk-airport-sedan-demo", name: "Suvarnabhumi Airport (BKK) to Bangkok City (Sedan)", countryId: thailand.id, province: "Bangkok", category: 'transfer', transferMode: 'vehicle', currency: "THB", unitDescription: "per service", vehicleOptions: [{ id: generateGUID(), vehicleType: 'Sedan', price: 900, maxPassengers: 3, notes: "Comfortable sedan for up to 3 pax with luggage." }], surchargePeriods: [{ id: generateGUID(), name: "Late Night Surcharge (00:00-05:00)", startDate: format(new Date(currentYear, 0, 1), 'yyyy-MM-dd'), endDate: format(new Date(nextYear, 11, 31), 'yyyy-MM-dd'), surchargeAmount: 200 }], isFavorite: true },
+      { id: "sp-bkk-airport-sedan-demo", name: "Suvarnabhumi Airport (BKK) to Bangkok City (Sedan)", countryId: thailand.id, province: "Bangkok", category: 'transfer', transferMode: 'vehicle', currency: "THB", unitDescription: "per service", vehicleOptions: [{ id: generateGUID(), vehicleType: 'Sedan', price: 900, maxPassengers: 3, notes: "Comfortable sedan for up to 3 pax with luggage." }], surchargePeriods: [{ id: generateGUID(), name: "Late Night Surcharge (00:00-05:00)", startDate: format(new Date(currentYear, 0, 1), 'yyyy-MM-dd'), endDate: format(new Date(nextYear, 11, 31), 'yyyy-MM-dd'), surchargeAmount: 200 }], isFavorite: true },
       { id: generateGUID(), name: "Suvarnabhumi Airport (BKK) to Bangkok City (Shared Van Ticket)", countryId: thailand.id, province: "Bangkok", category: 'transfer', transferMode: 'ticket', price1: 150, currency: "THB", unitDescription: "per person", subCategory: "ticket", notes: "Seat in shared van, drops at major hotels.", isFavorite: false },
 
       { id: generateGUID(), name: "Phuket Phi Phi Islands & Maya Bay (Speedboat)", countryId: thailand.id, province: "Phuket", category: 'activity', activityPackages: [
@@ -110,11 +110,33 @@ const createDemoServicePrices = (
       { id: generateGUID(), name: "Traditional Bengali Thali Dinner", countryId: bangladesh.id, province: "Dhaka", category: 'meal', price1: 800, currency: "BDT", subCategory: "Set Menu", unitDescription: "per person", isFavorite: false }
     );
   }
-
-
   return demoPrices;
 };
 
+// --- Helper functions for localStorage ---
+const loadServicePricesFromStorage = (): ServicePriceItem[] | null => {
+  try {
+    const storedPricesString = localStorage.getItem(SERVICE_PRICES_STORAGE_KEY);
+    if (storedPricesString) {
+      return JSON.parse(storedPricesString) as ServicePriceItem[];
+    }
+  } catch (e) {
+    console.warn("Error reading service prices from localStorage:", e);
+    localStorage.removeItem(SERVICE_PRICES_STORAGE_KEY); // Clear corrupted data
+  }
+  return null;
+};
+
+const saveServicePricesToStorage = (pricesToSave: ServicePriceItem[]): void => {
+  try {
+    pricesToSave.sort((a, b) => a.name.localeCompare(b.name)); // Keep them sorted for consistency
+    localStorage.setItem(SERVICE_PRICES_STORAGE_KEY, JSON.stringify(pricesToSave));
+  } catch (e) {
+    console.error("Error saving service prices to localStorage:", e);
+    // Optionally notify user or implement more robust error handling
+  }
+};
+// --- End helper functions ---
 
 export function useServicePrices() {
   const { countries, isLoading: isLoadingCountries } = useCountries();
@@ -130,56 +152,47 @@ export function useServicePrices() {
     const DEMO_SERVICE_PRICES = createDemoServicePrices(countries, allHotelDefinitions);
 
     try {
-      const storedPricesString = localStorage.getItem(SERVICE_PRICES_STORAGE_KEY);
-      if (storedPricesString) {
-        try {
-            const parsedPrices = JSON.parse(storedPricesString) as ServicePriceItem[];
-            if (Array.isArray(parsedPrices)) {
-            const validatedPrices = parsedPrices.map(p => ({ ...p, isFavorite: p.isFavorite || false })).filter(p => p.id && p.name && p.category && p.currency);
-            pricesToSet = validatedPrices;
+      const storedPrices = loadServicePricesFromStorage();
+      if (storedPrices) {
+        const validatedPrices = storedPrices
+          .map(p => ({ ...p, isFavorite: p.isFavorite || false }))
+          .filter(p => p.id && p.name && p.category && p.currency);
+        pricesToSet = validatedPrices;
 
-            DEMO_SERVICE_PRICES.forEach(demoPrice => {
-                const exists = pricesToSet.some(existingPrice =>
-                  existingPrice.id === demoPrice.id || // Check for fixed demo ID first
-                  ( existingPrice.name === demoPrice.name &&
-                    existingPrice.province === demoPrice.province &&
-                    existingPrice.category === demoPrice.category &&
-                    existingPrice.countryId === demoPrice.countryId )
+        DEMO_SERVICE_PRICES.forEach(demoPrice => {
+          const exists = pricesToSet.some(existingPrice =>
+            existingPrice.id === demoPrice.id ||
+            (existingPrice.name === demoPrice.name &&
+             existingPrice.province === demoPrice.province &&
+             existingPrice.category === demoPrice.category &&
+             existingPrice.countryId === demoPrice.countryId)
+          );
+          if (!exists) {
+            pricesToSet.push(demoPrice);
+          } else {
+            if (demoPrice.id && demoPrice.id.includes("-demo")) {
+              const existingIndex = pricesToSet.findIndex(p => p.id === demoPrice.id);
+              if (existingIndex !== -1) {
+                pricesToSet[existingIndex] = demoPrice;
+              } else {
+                const oldDemoByName = pricesToSet.findIndex(p =>
+                  p.name === demoPrice.name && p.province === demoPrice.province &&
+                  p.category === demoPrice.category && p.countryId === demoPrice.countryId &&
+                  p.id && !p.id.includes("-demo")
                 );
-                if (!exists) {
-                  pricesToSet.push(demoPrice);
-                } else {
-                  // If a demo item might have been updated (e.g. new fields added to schema), overwrite with latest.
-                  // This is specifically for demo items that might have fixed IDs.
-                  if (demoPrice.id && demoPrice.id.includes("-demo")) {
-                    const existingIndex = pricesToSet.findIndex(p => p.id === demoPrice.id);
-                    if (existingIndex !== -1) {
-                      pricesToSet[existingIndex] = demoPrice; // This ensures demo items are always up-to-date with the code
-                    } else {
-                       const oldDemoByName = pricesToSet.findIndex(p =>
-                            p.name === demoPrice.name && p.province === demoPrice.province &&
-                            p.category === demoPrice.category && p.countryId === demoPrice.countryId &&
-                            p.id && !p.id.includes("-demo") // Avoid re-adding if a user created a custom one with same name
-                        );
-                        if(oldDemoByName === -1) pricesToSet.push(demoPrice); // Add if new demo structure for an old demo name
-                    }
-                  }
-                }
-            });
-            } else {
-                pricesToSet = DEMO_SERVICE_PRICES;
+                if (oldDemoByName === -1) pricesToSet.push(demoPrice);
+              }
             }
-        } catch (parseError) {
-            console.warn("Error parsing service prices from localStorage, seeding defaults:", parseError);
-            pricesToSet = DEMO_SERVICE_PRICES;
-        }
+          }
+        });
       } else {
         pricesToSet = DEMO_SERVICE_PRICES;
       }
-      localStorage.setItem(SERVICE_PRICES_STORAGE_KEY, JSON.stringify(pricesToSet));
+      saveServicePricesToStorage(pricesToSet);
     } catch (error) {
       console.error("Failed to load or initialize service prices:", error);
       pricesToSet = DEMO_SERVICE_PRICES;
+      saveServicePricesToStorage(pricesToSet); // Save defaults if error
     }
     setAllServicePrices(pricesToSet.sort((a,b) => a.name.localeCompare(b.name)));
     setIsLoading(false);
@@ -197,8 +210,6 @@ export function useServicePrices() {
             } else if (service.countryId && service.countryId !== filters.countryId) {
                 return false;
             } else if (!service.countryId && filters.category !== 'misc' && service.category !== 'hotel' ) {
-                // For non-hotel/misc services, if a country filter is applied, the service must have a countryId or it won't match.
-                // This prevents generic (no countryId) non-misc/hotel services from appearing when a country is filtered.
                 return false;
             }
         }
@@ -209,8 +220,6 @@ export function useServicePrices() {
             } else if (service.province && service.province !== filters.provinceName) {
                 return false;
             } else if (!service.province && service.category !== 'misc' && service.category !== 'hotel') {
-                 // Similar logic for province: if a province filter is applied, non-misc/hotel services must have a province
-                 // or they won't match if they are generic.
                 return false;
             }
         }
@@ -233,7 +242,7 @@ export function useServicePrices() {
         const updatedPrices = prevPrices.map(p =>
             p.id === serviceId ? { ...p, isFavorite: !p.isFavorite } : p
         );
-        localStorage.setItem(SERVICE_PRICES_STORAGE_KEY, JSON.stringify(updatedPrices));
+        saveServicePricesToStorage(updatedPrices); // Persist change
         return updatedPrices;
     });
     const service = allServicePrices.find(p => p.id === serviceId);

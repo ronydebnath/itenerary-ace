@@ -45,6 +45,33 @@ export interface ConversionRateDetails {
   markupType: 'global' | 'specific' | 'none';
 }
 
+// --- Helper functions for localStorage ---
+const loadDataFromStorage = <T>(key: string, defaultValue: T): T => {
+  try {
+    const storedData = localStorage.getItem(key);
+    if (storedData) {
+      if (key === GLOBAL_MARKUP_STORAGE_KEY) return parseFloat(storedData) as T;
+      return JSON.parse(storedData) as T;
+    }
+  } catch (e) {
+    console.warn(`Error reading ${key} from localStorage, using default. Error:`, e);
+    localStorage.removeItem(key); // Clear corrupted data
+  }
+  return defaultValue;
+};
+
+const saveDataToStorage = <T>(key: string, dataToSave: T): void => {
+  try {
+    let dataString = typeof dataToSave === 'string' ? dataToSave : JSON.stringify(dataToSave);
+    localStorage.setItem(key, dataString);
+  } catch (e) {
+    console.error(`Error saving ${key} to localStorage:`, e);
+    // Optionally notify user
+  }
+};
+// --- End helper functions ---
+
+
 export function useExchangeRates() {
   const [exchangeRates, setExchangeRates] = React.useState<ExchangeRate[]>([]);
   const [globalMarkupPercentage, setGlobalMarkupPercentageState] = React.useState<number>(0);
@@ -64,10 +91,9 @@ export function useExchangeRates() {
     const apiKey = process.env.NEXT_PUBLIC_EXCHANGERATE_API_KEY || process.env.EXCHANGERATE_API_KEY;
     if (!apiKey || apiKey === 'YOUR_EXCHANGERATE_API_KEY_HERE' || apiKey.trim() === '') {
       console.warn("ExchangeRate-API key is not configured. API fetch for exchange rates skipped.");
-      setError("API key for exchange rates is not configured."); // Set error for internal state
+      setError("API key for exchange rates is not configured.");
       return null;
     }
-
     try {
       const response = await fetch(`https://v6.exchangerate-api.com/v6/${apiKey}/latest/${REFERENCE_CURRENCY}`);
       if (!response.ok) {
@@ -80,7 +106,7 @@ export function useExchangeRates() {
       const data = await response.json();
       if (data.result === 'success' && data.conversion_rates) {
         const newTimestamp = new Date(data.time_last_update_unix * 1000).toISOString();
-        setError(null); // Clear previous API errors on success
+        setError(null); 
         return { rates: data.conversion_rates, timestamp: newTimestamp };
       } else {
         const errorMessage = data['error-type'] || 'Invalid API response structure';
@@ -95,38 +121,33 @@ export function useExchangeRates() {
     }
   }, [setError]);
 
-  const saveRatesToLocalStorage = React.useCallback((rates: ExchangeRate[]) => {
-    try {
-      rates.sort((a,b) => `${a.fromCurrency}-${a.toCurrency}`.localeCompare(`${b.fromCurrency}-${b.toCurrency}`));
-      localStorage.setItem(EXCHANGE_RATES_STORAGE_KEY, JSON.stringify(rates));
-      setExchangeRates(rates); // Update state
-    } catch (e: any) {
-      console.error("Error saving rates to localStorage:", e);
-      toast({ title: "Error Saving Rates", description: e.message, variant: "destructive" });
-    }
-  }, [toast]); // setExchangeRates is stable
+  const internalSaveRates = React.useCallback((rates: ExchangeRate[]) => {
+    rates.sort((a,b) => `${a.fromCurrency}-${a.toCurrency}`.localeCompare(`${b.fromCurrency}-${b.toCurrency}`));
+    saveDataToStorage<ExchangeRate[]>(EXCHANGE_RATES_STORAGE_KEY, rates);
+    setExchangeRates(rates);
+  }, []);
+
+  const internalSaveSpecificMarkups = React.useCallback((markups: SpecificMarkupRate[]) => {
+    markups.sort((a,b) => `${a.fromCurrency}-${a.toCurrency}`.localeCompare(`${b.fromCurrency}-${b.toCurrency}`));
+    saveDataToStorage<SpecificMarkupRate[]>(SPECIFIC_MARKUP_RATES_STORAGE_KEY, markups);
+    setSpecificMarkupRates(markups);
+  }, []);
+
 
   const fetchAndSeedData = React.useCallback(async (options?: { forceApiFetch?: boolean }) => {
     setIsLoading(true);
-    // setError(null); // Clear general errors, API specific error is handled by fetchRatesFromAPI
     const forceApiFetch = options?.forceApiFetch ?? false;
 
     try {
-      let localRates: ExchangeRate[] = [];
-      let localApiTimestampString: string | null = null;
-
-      try {
-        const storedRatesString = localStorage.getItem(EXCHANGE_RATES_STORAGE_KEY);
-        if (storedRatesString) localRates = JSON.parse(storedRatesString);
-        localApiTimestampString = localStorage.getItem(API_RATES_LAST_FETCHED_KEY);
-      } catch (e) { console.warn("localStorage rate read error", e); }
-
+      let localRates: ExchangeRate[] = loadDataFromStorage<ExchangeRate[]>(EXCHANGE_RATES_STORAGE_KEY, []);
+      let localApiTimestampString: string | null = loadDataFromStorage<string | null>(API_RATES_LAST_FETCHED_KEY, null);
+      
       let ratesToSet = [...localRates];
       let finalTimestampForState = localApiTimestampString;
       let fetchedFromApiSuccessfully = false;
 
       let shouldAttemptApiFetch = forceApiFetch;
-      if (!shouldAttemptApiFetch && !isLoadingCustomCurrencies) { // Don't auto-fetch if custom currencies are still loading
+      if (!shouldAttemptApiFetch && !isLoadingCustomCurrencies) {
         if (!localApiTimestampString) {
           shouldAttemptApiFetch = true;
         } else {
@@ -138,9 +159,8 @@ export function useExchangeRates() {
               shouldAttemptApiFetch = true;
             }
           } catch (dateParseError) {
-            console.warn("Error parsing last API fetch timestamp, will attempt API fetch:", dateParseError);
             shouldAttemptApiFetch = true;
-            localStorage.removeItem(API_RATES_LAST_FETCHED_KEY); // Clear invalid timestamp
+            saveDataToStorage<string | null>(API_RATES_LAST_FETCHED_KEY, null); // Clear invalid timestamp
           }
         }
       }
@@ -170,14 +190,12 @@ export function useExchangeRates() {
           });
           ratesToSet = Array.from(updatedRatesMap.values());
           finalTimestampForState = apiTimestampFromFunc;
-          localStorage.setItem(API_RATES_LAST_FETCHED_KEY, apiTimestampFromFunc);
+          saveDataToStorage<string | null>(API_RATES_LAST_FETCHED_KEY, apiTimestampFromFunc);
           if (forceApiFetch) toast({ title: "Rates Updated", description: "Successfully fetched latest exchange rates from API.", variant: "default" });
         } else {
-          // API fetch failed
           if (forceApiFetch) {
             toast({ title: "API Fetch Failed", description: `Could not update rates from API. ${error || 'Using previously stored or default rates.'}`, variant: "destructive" });
           }
-          // If not forced, failure is silent, relying on console logs from fetchRatesFromAPI
         }
       }
 
@@ -186,149 +204,110 @@ export function useExchangeRates() {
           ratesToSet.push({ ...defaultRate, id: generateGUID(), updatedAt: new Date().toISOString(), source: 'manual' });
         });
         finalTimestampForState = null;
-        if (localStorage.getItem(API_RATES_LAST_FETCHED_KEY)) localStorage.removeItem(API_RATES_LAST_FETCHED_KEY);
+        if (loadDataFromStorage<string | null>(API_RATES_LAST_FETCHED_KEY, null)) saveDataToStorage<string | null>(API_RATES_LAST_FETCHED_KEY, null);
         
         if (shouldAttemptApiFetch && !fetchedFromApiSuccessfully) {
           toast({ title: "Using Default Rates", description: "API fetch failed and no saved rates found. Using default rates.", variant: "default" });
         } else if (!shouldAttemptApiFetch && localRates.length === 0) {
           toast({ title: "Using Default Rates", description: "No saved rates. Using default rates.", variant: "default" });
         }
-      } else if (!shouldAttemptApiFetch && !forceApiFetch && localApiTimestampString && !error) { // No API attempt, used cache
-         // toast({ title: "Using Cached Rates", description: `Rates last updated: ${new Date(localApiTimestampString).toLocaleString()}.`, variant: "default" });
       }
 
-
-      saveRatesToLocalStorage(ratesToSet.map(r => ({ ...r, source: r.source || 'manual' })));
+      internalSaveRates(ratesToSet.map(r => ({ ...r, source: r.source || 'manual' })));
       setLastApiFetchTimestampState(finalTimestampForState);
 
-      try {
-        const storedGlobalMarkup = localStorage.getItem(GLOBAL_MARKUP_STORAGE_KEY);
-        setGlobalMarkupPercentageState(storedGlobalMarkup ? parseFloat(storedGlobalMarkup) : 0);
-        const storedSpecificMarkups = localStorage.getItem(SPECIFIC_MARKUP_RATES_STORAGE_KEY);
-        setSpecificMarkupRates(storedSpecificMarkups ? JSON.parse(storedSpecificMarkups) : []);
-      } catch (e) { console.error("Error loading markup settings:", e); }
+      setGlobalMarkupPercentageState(loadDataFromStorage<number>(GLOBAL_MARKUP_STORAGE_KEY, 0));
+      setSpecificMarkupRates(loadDataFromStorage<SpecificMarkupRate[]>(SPECIFIC_MARKUP_RATES_STORAGE_KEY, []));
 
     } catch (criticalError: any) {
       console.error("Critical error in fetchAndSeedData:", criticalError);
       setError("An unexpected critical error occurred while loading rate data.");
-      setExchangeRates(DEFAULT_RATES_DATA.map(dr => ({...dr, id: generateGUID(), updatedAt: new Date().toISOString(), source: 'manual'})));
+      internalSaveRates(DEFAULT_RATES_DATA.map(dr => ({...dr, id: generateGUID(), updatedAt: new Date().toISOString(), source: 'manual'})));
       setLastApiFetchTimestampState(null);
       setGlobalMarkupPercentageState(0);
       setSpecificMarkupRates([]);
     } finally {
       setIsLoading(false);
     }
-  }, [toast, allManagedCurrencyCodes, fetchRatesFromAPI, saveRatesToLocalStorage, isLoadingCustomCurrencies, error]); // Added `error` to dependencies
+  }, [toast, allManagedCurrencyCodes, fetchRatesFromAPI, internalSaveRates, isLoadingCustomCurrencies, error]);
 
   React.useEffect(() => {
     if (!isLoadingCustomCurrencies) {
-      fetchAndSeedData(); // Initial load, will decide internally if API fetch is needed
+      fetchAndSeedData();
     }
   }, [fetchAndSeedData, isLoadingCustomCurrencies]);
   
-  const saveSpecificMarkupRatesToLocalStorage = React.useCallback((newSpecificMarkups: SpecificMarkupRate[]) => {
-    try {
-      newSpecificMarkups.sort((a,b) => `${a.fromCurrency}-${a.toCurrency}`.localeCompare(`${b.fromCurrency}-${b.toCurrency}`));
-      localStorage.setItem(SPECIFIC_MARKUP_RATES_STORAGE_KEY, JSON.stringify(newSpecificMarkups));
-      setSpecificMarkupRates(newSpecificMarkups);
-    } catch (e: any) {
-      console.error("Error saving specific markups to localStorage:", e);
-      toast({ title: "Error Saving Specific Markups", description: e.message, variant: "destructive" });
-    }
-  },[toast]);
-
-
   const setGlobalMarkup = React.useCallback((newMarkup: number) => {
     if (isNaN(newMarkup) || newMarkup < 0) {
       toast({ title: "Invalid Markup", description: "Global markup must be non-negative.", variant: "destructive"}); return;
     }
-    try {
-      localStorage.setItem(GLOBAL_MARKUP_STORAGE_KEY, String(newMarkup));
-      setGlobalMarkupPercentageState(newMarkup);
-      toast({ title: "Success", description: `Global conversion markup set to ${newMarkup}%.` });
-    } catch (e: any) {
-      console.error("Error saving global markup:", e);
-      toast({ title: "Error Setting Global Markup", description: e.message, variant: "destructive" });
-    }
+    saveDataToStorage<number>(GLOBAL_MARKUP_STORAGE_KEY, newMarkup);
+    setGlobalMarkupPercentageState(newMarkup);
+    toast({ title: "Success", description: `Global conversion markup set to ${newMarkup}%.` });
   }, [toast]);
 
   const addRate = React.useCallback((newRateData: Omit<ExchangeRate, 'id' | 'updatedAt' | 'source'>) => {
-    const currentRates = exchangeRatesRef.current; // Use ref for current rates
-    const existing = currentRates.find(r => r.fromCurrency === newRateData.fromCurrency && r.toCurrency === newRateData.toCurrency);
+    const existing = exchangeRates.find(r => r.fromCurrency === newRateData.fromCurrency && r.toCurrency === newRateData.toCurrency);
     if (existing) { toast({ title: "Rate Exists", description: `Rate ${newRateData.fromCurrency}-${newRateData.toCurrency} already exists. Edit it.`, variant: "default" }); return; }
     if (newRateData.fromCurrency === newRateData.toCurrency) { toast({ title: "Invalid Pair", description: "Cannot set rate for same currency.", variant: "destructive"}); return; }
     const newRate: ExchangeRate = { ...newRateData, id: generateGUID(), updatedAt: new Date().toISOString(), source: 'manual' };
-    saveRatesToLocalStorage([...currentRates, newRate]);
+    internalSaveRates([...exchangeRates, newRate]);
     toast({ title: "Success", description: `Rate ${newRate.fromCurrency}-${newRate.toCurrency} added.` });
-  }, [saveRatesToLocalStorage, toast]); // exchangeRatesRef is stable
-
-  const exchangeRatesRef = React.useRef(exchangeRates);
-  React.useEffect(() => { exchangeRatesRef.current = exchangeRates; }, [exchangeRates]);
+  }, [exchangeRates, internalSaveRates, toast]);
 
   const updateRate = React.useCallback((updatedRate: ExchangeRate) => {
-    const currentRates = exchangeRatesRef.current;
-    const updatedRates = currentRates.map(r => r.id === updatedRate.id ? { ...updatedRate, updatedAt: new Date().toISOString(), source: 'manual' } : r);
-    saveRatesToLocalStorage(updatedRates);
+    const updatedRates = exchangeRates.map(r => r.id === updatedRate.id ? { ...updatedRate, updatedAt: new Date().toISOString(), source: 'manual' } : r);
+    internalSaveRates(updatedRates);
     toast({ title: "Success", description: `Rate ${updatedRate.fromCurrency}-${updatedRate.toCurrency} updated.` });
-  }, [saveRatesToLocalStorage, toast]);
+  }, [exchangeRates, internalSaveRates, toast]);
 
   const deleteRate = React.useCallback((rateId: string) => {
-    const currentRates = exchangeRatesRef.current;
-    const rateToDelete = currentRates.find(r => r.id === rateId);
-    saveRatesToLocalStorage(currentRates.filter(r => r.id !== rateId));
+    const rateToDelete = exchangeRates.find(r => r.id === rateId);
+    internalSaveRates(exchangeRates.filter(r => r.id !== rateId));
     if (rateToDelete) toast({ title: "Success", description: `Rate ${rateToDelete.fromCurrency}-${rateToDelete.toCurrency} deleted.` });
-  }, [saveRatesToLocalStorage, toast]);
+  }, [exchangeRates, internalSaveRates, toast]);
   
-  const specificMarkupRatesRef = React.useRef(specificMarkupRates);
-  React.useEffect(() => { specificMarkupRatesRef.current = specificMarkupRates; }, [specificMarkupRates]);
-
   const addSpecificMarkup = React.useCallback((markupData: Omit<SpecificMarkupRate, 'id' | 'updatedAt'>) => {
-    const currentMarkups = specificMarkupRatesRef.current;
     if (markupData.fromCurrency === markupData.toCurrency) { toast({ title: "Invalid Pair", description: "Cannot set specific markup for same currency.", variant: "destructive" }); return; }
-    const existing = currentMarkups.find(sm => sm.fromCurrency === markupData.fromCurrency && sm.toCurrency === markupData.toCurrency);
+    const existing = specificMarkupRates.find(sm => sm.fromCurrency === markupData.fromCurrency && sm.toCurrency === markupData.toCurrency);
     if (existing) { toast({ title: "Specific Markup Exists", description: `Specific markup for ${markupData.fromCurrency}-${markupData.toCurrency} already exists. Edit it.`, variant: "default" }); return; }
     const newSpecificMarkup: SpecificMarkupRate = { ...markupData, id: generateGUID(), updatedAt: new Date().toISOString() };
-    saveSpecificMarkupRatesToLocalStorage([...currentMarkups, newSpecificMarkup]);
+    internalSaveSpecificMarkups([...specificMarkupRates, newSpecificMarkup]);
     toast({ title: "Success", description: `Specific markup for ${markupData.fromCurrency}-${markupData.toCurrency} added.` });
-  }, [saveSpecificMarkupRatesToLocalStorage, toast]);
+  }, [specificMarkupRates, internalSaveSpecificMarkups, toast]);
 
   const updateSpecificMarkup = React.useCallback((updatedMarkup: SpecificMarkupRate) => {
-    const currentMarkups = specificMarkupRatesRef.current;
-    const updatedMarkups = currentMarkups.map(sm => sm.id === updatedMarkup.id ? { ...updatedMarkup, updatedAt: new Date().toISOString() } : sm);
-    saveSpecificMarkupRatesToLocalStorage(updatedMarkups);
+    const updatedMarkups = specificMarkupRates.map(sm => sm.id === updatedMarkup.id ? { ...updatedMarkup, updatedAt: new Date().toISOString() } : sm);
+    internalSaveSpecificMarkups(updatedMarkups);
     toast({ title: "Success", description: `Specific markup for ${updatedMarkup.fromCurrency}-${updatedMarkup.toCurrency} updated.` });
-  }, [saveSpecificMarkupRatesToLocalStorage, toast]);
+  }, [specificMarkupRates, internalSaveSpecificMarkups, toast]);
   
   const deleteSpecificMarkup = React.useCallback((markupId: string) => {
-    const currentMarkups = specificMarkupRatesRef.current;
-    const markupToDelete = currentMarkups.find(sm => sm.id === markupId);
-    saveSpecificMarkupRatesToLocalStorage(currentMarkups.filter(sm => sm.id !== markupId));
+    const markupToDelete = specificMarkupRates.find(sm => sm.id === markupId);
+    internalSaveSpecificMarkups(specificMarkupRates.filter(sm => sm.id !== markupId));
     if (markupToDelete) toast({ title: "Success", description: `Specific markup for ${markupToDelete.fromCurrency}-${markupToDelete.toCurrency} deleted.` });
-  }, [saveSpecificMarkupRatesToLocalStorage, toast]);
+  }, [specificMarkupRates, internalSaveSpecificMarkups, toast]);
 
   const findBaseRate = React.useCallback((from: CurrencyCode, to: CurrencyCode): number | null => {
-    const currentRates = exchangeRatesRef.current;
     if (from === to) return 1;
-    const directRate = currentRates.find(r => r.fromCurrency === from && r.toCurrency === to);
+    const directRate = exchangeRates.find(r => r.fromCurrency === from && r.toCurrency === to);
     if (directRate) return directRate.rate;
-    const inverseRate = currentRates.find(r => r.fromCurrency === to && r.toCurrency === from);
+    const inverseRate = exchangeRates.find(r => r.fromCurrency === to && r.toCurrency === from);
     if (inverseRate && inverseRate.rate !== 0) return 1 / inverseRate.rate;
     return null;
-  }, []); // exchangeRatesRef ensures this doesn't change with exchangeRates state
+  }, [exchangeRates]);
 
   const getRate = React.useCallback((fromCurrency: CurrencyCode, toCurrency: CurrencyCode): ConversionRateDetails | null => {
-    if (isLoadingCustomCurrencies) { /* console.warn("getRate called while custom currencies loading."); */ }
-    if (!allManagedCurrencyCodes.includes(fromCurrency as any) || !allManagedCurrencyCodes.includes(toCurrency as any)) {
-      // console.error("Invalid currency code to getRate:", fromCurrency, toCurrency, "Available:", allManagedCurrencyCodes); return null;
-    }
+    if (isLoadingCustomCurrencies) {}
+    if (!allManagedCurrencyCodes.includes(fromCurrency as any) || !allManagedCurrencyCodes.includes(toCurrency as any)) {}
 
     if (fromCurrency === toCurrency) return { baseRate: 1, finalRate: 1, markupApplied: 0, markupType: 'none' };
 
     let rateFromToRef: number | null = fromCurrency === REFERENCE_CURRENCY ? 1 : findBaseRate(fromCurrency, REFERENCE_CURRENCY);
-    if (rateFromToRef === null) { /* console.warn(`No base rate from ${fromCurrency} to ${REFERENCE_CURRENCY}.`); */ return null; }
+    if (rateFromToRef === null) { return null; }
 
     let rateRefToTo: number | null = toCurrency === REFERENCE_CURRENCY ? 1 : findBaseRate(REFERENCE_CURRENCY, toCurrency);
-    if (rateRefToTo === null) { /* console.warn(`No base rate from ${REFERENCE_CURRENCY} to ${toCurrency}.`); */ return null; }
+    if (rateRefToTo === null) { return null; }
 
     const baseCombinedRate = Math.max(0.000001, rateFromToRef * rateRefToTo);
     let finalCombinedRate = baseCombinedRate;
@@ -336,7 +315,7 @@ export function useExchangeRates() {
     let markupType: ConversionRateDetails['markupType'] = 'none';
 
     if (fromCurrency !== toCurrency) {
-      const specificMarkup = specificMarkupRatesRef.current.find(sm => sm.fromCurrency === fromCurrency && sm.toCurrency === toCurrency);
+      const specificMarkup = specificMarkupRates.find(sm => sm.fromCurrency === fromCurrency && sm.toCurrency === toCurrency);
       if (specificMarkup && specificMarkup.markupPercentage >= 0) {
         finalCombinedRate = baseCombinedRate * (1 + (specificMarkup.markupPercentage / 100));
         actualMarkupApplied = specificMarkup.markupPercentage;
@@ -350,12 +329,12 @@ export function useExchangeRates() {
     finalCombinedRate = Math.max(0.000001, finalCombinedRate);
 
     return { baseRate: baseCombinedRate, finalRate: finalCombinedRate, markupApplied: actualMarkupApplied, markupType };
-  }, [findBaseRate, globalMarkupPercentage, allManagedCurrencyCodes, isLoadingCustomCurrencies]); // specificMarkupRatesRef ensures this doesn't change with specificMarkupRates state
+  }, [findBaseRate, globalMarkupPercentage, specificMarkupRates, allManagedCurrencyCodes, isLoadingCustomCurrencies]);
 
   return {
     exchangeRates,
     isLoading: isLoading || isLoadingCustomCurrencies,
-    error, // This reflects API errors primarily
+    error,
     addRate, updateRate, deleteRate,
     getRate,
     globalMarkupPercentage, setGlobalMarkup,

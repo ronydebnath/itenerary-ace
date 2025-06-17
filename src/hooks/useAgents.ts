@@ -112,7 +112,7 @@ const assignFixedIdsAndMapAgents = (agencySeedData: Omit<Agency, 'id'>[], agentS
     else if (agent.fullName.includes("Alice Smith (GTE)")) { agencyIdToLink = AGENCY_ID_GLOBAL_TRAVEL; agentId = AGENT_ID_ALICE_SMITH_GTE; }
     else if (agent.fullName.includes("Bob Johnson (LAI)")) { agencyIdToLink = AGENCY_ID_LOCAL_ADVENTURES; agentId = AGENT_ID_BOB_JOHNSON_LAI; }
     else if (agent.fullName.includes("Fatima Ahmed (BV)")) { agencyIdToLink = AGENCY_ID_BENGAL_VOYAGER; agentId = AGENT_ID_FATIMA_AHMED_BV; }
-    else if (agent.fullName === "Default Agent User") { agencyIdToLink = finalAgencies[0]?.id; agentId = PLACEHOLDER_DEFAULT_USER_AGENT_ID; } // Default user linked to first agency
+    else if (agent.fullName === "Default Agent User") { agencyIdToLink = finalAgencies[0]?.id; agentId = PLACEHOLDER_DEFAULT_USER_AGENT_ID; }
 
     return { ...agent, id: agentId, agencyId: agencyIdToLink! };
   });
@@ -120,8 +120,36 @@ const assignFixedIdsAndMapAgents = (agencySeedData: Omit<Agency, 'id'>[], agentS
   return { agencies: finalAgencies, agents: finalAgents };
 };
 
+// --- Helper functions for localStorage ---
+const loadDataFromStorage = <T>(key: string): T[] | null => {
+  try {
+    const storedData = localStorage.getItem(key);
+    if (storedData) {
+      return JSON.parse(storedData) as T[];
+    }
+  } catch (e) {
+    console.warn(`Error reading ${key} from localStorage:`, e);
+    localStorage.removeItem(key); // Clear corrupted data
+  }
+  return null;
+};
+
+const saveDataToStorage = <T extends { name?: string }>(key: string, dataToSave: T[]): void => {
+  try {
+    // Sort by name if available, otherwise keep current order (might be an issue if IDs are expected sorted)
+    if (dataToSave.length > 0 && typeof dataToSave[0].name === 'string') {
+      dataToSave.sort((a, b) => (a.name as string).localeCompare(b.name as string));
+    }
+    localStorage.setItem(key, JSON.stringify(dataToSave));
+  } catch (e) {
+    console.error(`Error saving ${key} to localStorage:`, e);
+    // Optionally notify user
+  }
+};
+// --- End helper functions ---
+
 export function useAgents() {
-  const { countries, isLoading: isLoadingCountries } = useCountries();
+  const { countries, isLoading: isLoadingCountries } = useCountries(); // Keep for context if needed
   const [agencies, setAgenciesState] = React.useState<Agency[]>([]);
   const [agents, setAgentsState] = React.useState<AgentProfile[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
@@ -136,29 +164,26 @@ export function useAgents() {
     try {
       const { agencies: seededAgencies, agents: seededAgents } = assignFixedIdsAndMapAgents(DEFAULT_AGENCIES_DATA_SEED, DEFAULT_AGENTS_DATA_SEED);
       
-      const storedAgencies = localStorage.getItem(AGENCIES_STORAGE_KEY);
-      let agenciesToSet: Agency[] = storedAgencies ? JSON.parse(storedAgencies) : [...seededAgencies];
+      let agenciesToSet = loadDataFromStorage<Agency>(AGENCIES_STORAGE_KEY) || [...seededAgencies];
       seededAgencies.forEach(sa => { if (!agenciesToSet.find(a => a.id === sa.id)) agenciesToSet.push(sa); });
       agenciesToSet.forEach(agency => { if (!agency.preferredCurrency) agency.preferredCurrency = "USD" as CurrencyCode});
-      agenciesToSet.sort((a, b) => a.name.localeCompare(b.name));
+      saveDataToStorage<Agency>(AGENCIES_STORAGE_KEY, agenciesToSet);
       setAgenciesState(agenciesToSet);
-      localStorage.setItem(AGENCIES_STORAGE_KEY, JSON.stringify(agenciesToSet));
 
-      const storedAgents = localStorage.getItem(AGENTS_STORAGE_KEY);
-      let agentsToSet: AgentProfile[] = storedAgents ? JSON.parse(storedAgents) : [...seededAgents];
+      let agentsToSet = loadDataFromStorage<AgentProfile>(AGENTS_STORAGE_KEY) || [...seededAgents];
       seededAgents.forEach(sa => { if (!agentsToSet.find(a => a.id === sa.id)) agentsToSet.push(sa); });
+      saveDataToStorage<AgentProfile>(AGENTS_STORAGE_KEY, agentsToSet);
       setAgentsState(agentsToSet);
-      localStorage.setItem(AGENTS_STORAGE_KEY, JSON.stringify(agentsToSet));
 
     } catch (e: any) {
       console.error("Error initializing agent/agency data:", e);
       setError("Failed to load agent/agency data.");
       const { agencies: defaultAgencies, agents: defaultAgents } = assignFixedIdsAndMapAgents(DEFAULT_AGENCIES_DATA_SEED, DEFAULT_AGENTS_DATA_SEED);
       defaultAgencies.forEach(agency => { if (!agency.preferredCurrency) agency.preferredCurrency = "USD" as CurrencyCode});
-      setAgenciesState(defaultAgencies.sort((a, b) => a.name.localeCompare(b.name)));
-      localStorage.setItem(AGENCIES_STORAGE_KEY, JSON.stringify(defaultAgencies));
+      saveDataToStorage<Agency>(AGENCIES_STORAGE_KEY, defaultAgencies);
+      setAgenciesState(defaultAgencies);
+      saveDataToStorage<AgentProfile>(AGENTS_STORAGE_KEY, defaultAgents);
       setAgentsState(defaultAgents);
-      localStorage.setItem(AGENTS_STORAGE_KEY, JSON.stringify(defaultAgents));
     }
     setIsLoading(false);
   }, [isLoadingCountries, countries]);
@@ -173,31 +198,36 @@ export function useAgents() {
   
   const addAgency = React.useCallback((agencyData: Omit<Agency, 'id'>) => {
     const newAgency: Agency = { ...agencyData, id: generateGUID(), preferredCurrency: agencyData.preferredCurrency || ("USD" as CurrencyCode) };
-    const updatedAgencies = [...agencies, newAgency].sort((a, b) => a.name.localeCompare(b.name));
-    setAgenciesState(updatedAgencies);
-    localStorage.setItem(AGENCIES_STORAGE_KEY, JSON.stringify(updatedAgencies));
+    setAgenciesState(prev => {
+        const updated = [...prev, newAgency];
+        saveDataToStorage<Agency>(AGENCIES_STORAGE_KEY, updated);
+        return updated;
+    });
     toast({ title: "Agency Added", description: `Agency "${newAgency.name}" created.` });
-  }, [agencies, toast]);
+  }, [toast]);
 
   const updateAgency = React.useCallback((updatedAgencyData: Agency) => {
     const finalAgencyData = { ...updatedAgencyData, preferredCurrency: updatedAgencyData.preferredCurrency || ("USD" as CurrencyCode) };
-    const updatedAgencies = agencies.map(agency =>
-      agency.id === finalAgencyData.id ? finalAgencyData : agency
-    ).sort((a, b) => a.name.localeCompare(b.name));
-    setAgenciesState(updatedAgencies);
-    localStorage.setItem(AGENCIES_STORAGE_KEY, JSON.stringify(updatedAgencies));
+    setAgenciesState(prev => {
+        const updated = prev.map(agency => agency.id === finalAgencyData.id ? finalAgencyData : agency);
+        saveDataToStorage<Agency>(AGENCIES_STORAGE_KEY, updated);
+        return updated;
+    });
     toast({ title: "Agency Updated", description: `Agency "${finalAgencyData.name}" updated.` });
-  }, [agencies, toast]);
+  }, [toast]);
 
   const deleteAgency = React.useCallback((agencyId: string) => {
     const agencyToDelete = agencies.find(a => a.id === agencyId);
-    const updatedAgencies = agencies.filter(agency => agency.id !== agencyId);
-    setAgenciesState(updatedAgencies);
-    localStorage.setItem(AGENCIES_STORAGE_KEY, JSON.stringify(updatedAgencies));
-    
-    const updatedAgents = agents.filter(agent => agent.agencyId !== agencyId);
-    setAgentsState(updatedAgents);
-    localStorage.setItem(AGENTS_STORAGE_KEY, JSON.stringify(updatedAgents));
+    setAgenciesState(prev => {
+        const updated = prev.filter(agency => agency.id !== agencyId);
+        saveDataToStorage<Agency>(AGENCIES_STORAGE_KEY, updated);
+        return updated;
+    });
+    setAgentsState(prev => {
+        const updated = prev.filter(agent => agent.agencyId !== agencyId);
+        saveDataToStorage<AgentProfile>(AGENTS_STORAGE_KEY, updated);
+        return updated;
+    });
     if (agencyToDelete) {
       toast({ title: "Agency Deleted", description: `Agency "${agencyToDelete.name}" and its users removed.`, variant: "destructive" });
     }
@@ -209,26 +239,30 @@ export function useAgents() {
       return;
     }
     const newAgent: AgentProfile = { ...agentData, id: generateGUID() };
-    const updatedAgents = [...agents, newAgent];
-    setAgentsState(updatedAgents);
-    localStorage.setItem(AGENTS_STORAGE_KEY, JSON.stringify(updatedAgents));
-    toast({ title: "User Added", description: `User "${newAgent.fullName}" added to agency.` });
-  }, [agents, toast]);
+    setAgentsState(prev => {
+        const updated = [...prev, newAgent];
+        saveDataToStorage<AgentProfile>(AGENTS_STORAGE_KEY, updated);
+        return updated;
+    });
+    toast({ title: "User Added", description: `User "${newAgent.fullName}" added.` });
+  }, [toast]);
 
   const updateAgent = React.useCallback((updatedAgentData: AgentProfile) => {
-    const updatedAgents = agents.map(agent =>
-      agent.id === updatedAgentData.id ? updatedAgentData : agent
-    );
-    setAgentsState(updatedAgents);
-    localStorage.setItem(AGENTS_STORAGE_KEY, JSON.stringify(updatedAgents));
+    setAgentsState(prev => {
+        const updated = prev.map(agent => agent.id === updatedAgentData.id ? updatedAgentData : agent);
+        saveDataToStorage<AgentProfile>(AGENTS_STORAGE_KEY, updated);
+        return updated;
+    });
     toast({ title: "User Updated", description: `User "${updatedAgentData.fullName}" updated.` });
-  }, [agents, toast]);
+  }, [toast]);
 
   const deleteAgent = React.useCallback((agentId: string) => {
     const agentToDelete = agents.find(a => a.id === agentId);
-    const updatedAgents = agents.filter(agent => agent.id !== agentId);
-    setAgentsState(updatedAgents);
-    localStorage.setItem(AGENTS_STORAGE_KEY, JSON.stringify(updatedAgents));
+    setAgentsState(prev => {
+        const updated = prev.filter(agent => agent.id !== agentId);
+        saveDataToStorage<AgentProfile>(AGENTS_STORAGE_KEY, updated);
+        return updated;
+    });
     if (agentToDelete) {
       toast({ title: "User Deleted", description: `User "${agentToDelete.fullName}" removed.`, variant: "destructive" });
     }
@@ -253,4 +287,3 @@ export function useAgents() {
     refreshAgentData: fetchAndSeedData
   };
 }
-

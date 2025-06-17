@@ -127,6 +127,29 @@ const createDemoHotelDefinitions = (countries: CountryItem[]): HotelDefinition[]
   return demoHotels;
 };
 
+// --- Helper functions for localStorage ---
+const loadHotelDefinitionsFromStorage = (): HotelDefinition[] | null => {
+  try {
+    const storedDefinitionsString = localStorage.getItem(HOTEL_DEFINITIONS_STORAGE_KEY);
+    if (storedDefinitionsString) {
+      return JSON.parse(storedDefinitionsString) as HotelDefinition[];
+    }
+  } catch (e) {
+    console.warn("Error reading hotel definitions from localStorage:", e);
+    localStorage.removeItem(HOTEL_DEFINITIONS_STORAGE_KEY); // Clear corrupted data
+  }
+  return null;
+};
+
+const saveHotelDefinitionsToStorage = (definitionsToSave: HotelDefinition[]): void => {
+  try {
+    localStorage.setItem(HOTEL_DEFINITIONS_STORAGE_KEY, JSON.stringify(definitionsToSave));
+  } catch (e) {
+    console.error("Error saving hotel definitions to localStorage:", e);
+    // Optionally notify user
+  }
+};
+// --- End helper functions ---
 
 export function useHotelDefinitions() {
   const { countries, isLoading: isLoadingCountries } = useCountries();
@@ -140,54 +163,43 @@ export function useHotelDefinitions() {
     const DEMO_HOTELS = createDemoHotelDefinitions(countries);
 
     try {
-      const storedDefinitionsString = localStorage.getItem(HOTEL_DEFINITIONS_STORAGE_KEY);
-      if (storedDefinitionsString) {
-        try {
-          const parsedDefinitions = JSON.parse(storedDefinitionsString) as HotelDefinition[];
-          if (Array.isArray(parsedDefinitions)) {
-            const validatedDefinitions = parsedDefinitions.filter(
-              h => h.id && h.name && h.countryId && h.province && Array.isArray(h.roomTypes) &&
-                   (h.starRating === undefined || h.starRating === null || (typeof h.starRating === 'number' && h.starRating >= 1 && h.starRating <= 5)) &&
-                   h.roomTypes.every((rt: any) => rt.id && rt.name && Array.isArray(rt.seasonalPrices) && rt.seasonalPrices.every((sp: any) => sp.id && sp.startDate && sp.endDate && typeof sp.rate === 'number'))
-            );
-            definitionsToSet = validatedDefinitions;
-            
-            DEMO_HOTELS.forEach(demoHotel => {
-              const existingDemoHotelIndex = definitionsToSet.findIndex(def => def.id === demoHotel.id);
-              if (existingDemoHotelIndex !== -1) {
-                 // Update existing demo hotel with potentially new structure/room types
-                 definitionsToSet[existingDemoHotelIndex] = {
-                   ...demoHotel, // Takes new structure
-                   // Preserve user-made changes to top-level name/province/country if any, but not room types
-                   name: definitionsToSet[existingDemoHotelIndex].name, 
-                   province: definitionsToSet[existingDemoHotelIndex].province,
-                   countryId: definitionsToSet[existingDemoHotelIndex].countryId,
-                   starRating: definitionsToSet[existingDemoHotelIndex].starRating,
-                 };
-              } else {
-                const existingByName = definitionsToSet.find(def => def.name === demoHotel.name && def.province === demoHotel.province && def.countryId === demoHotel.countryId);
-                if (!existingByName) {
-                    definitionsToSet.push(demoHotel); 
-                } else if (existingByName.id !== demoHotel.id && demoHotel.id && demoHotel.id.includes("-demo")) {
-                    definitionsToSet = definitionsToSet.filter(d => d.id !== existingByName.id);
-                    definitionsToSet.push(demoHotel);
-                }
-              }
-            });
+      const storedDefinitions = loadHotelDefinitionsFromStorage();
+      if (storedDefinitions) {
+        const validatedDefinitions = storedDefinitions.filter(
+          h => h.id && h.name && h.countryId && h.province && Array.isArray(h.roomTypes) &&
+               (h.starRating === undefined || h.starRating === null || (typeof h.starRating === 'number' && h.starRating >= 1 && h.starRating <= 5)) &&
+               h.roomTypes.every((rt: any) => rt.id && rt.name && Array.isArray(rt.seasonalPrices) && rt.seasonalPrices.every((sp: any) => sp.id && sp.startDate && sp.endDate && typeof sp.rate === 'number'))
+        );
+        definitionsToSet = validatedDefinitions;
+        
+        DEMO_HOTELS.forEach(demoHotel => {
+          const existingDemoHotelIndex = definitionsToSet.findIndex(def => def.id === demoHotel.id);
+          if (existingDemoHotelIndex !== -1) {
+             definitionsToSet[existingDemoHotelIndex] = {
+               ...demoHotel,
+               name: definitionsToSet[existingDemoHotelIndex].name, 
+               province: definitionsToSet[existingDemoHotelIndex].province,
+               countryId: definitionsToSet[existingDemoHotelIndex].countryId,
+               starRating: definitionsToSet[existingDemoHotelIndex].starRating,
+             };
           } else {
-            definitionsToSet = DEMO_HOTELS;
+            const existingByName = definitionsToSet.find(def => def.name === demoHotel.name && def.province === demoHotel.province && def.countryId === demoHotel.countryId);
+            if (!existingByName) {
+                definitionsToSet.push(demoHotel); 
+            } else if (existingByName.id !== demoHotel.id && demoHotel.id && demoHotel.id.includes("-demo")) {
+                definitionsToSet = definitionsToSet.filter(d => d.id !== existingByName.id);
+                definitionsToSet.push(demoHotel);
+            }
           }
-        } catch (parseError) {
-          console.warn("Error parsing hotel definitions from localStorage, seeding defaults:", parseError);
-          definitionsToSet = DEMO_HOTELS;
-        }
+        });
       } else {
         definitionsToSet = DEMO_HOTELS;
       }
-      localStorage.setItem(HOTEL_DEFINITIONS_STORAGE_KEY, JSON.stringify(definitionsToSet));
+      saveHotelDefinitionsToStorage(definitionsToSet);
     } catch (error) {
       console.error("Failed to load or initialize hotel definitions:", error);
       definitionsToSet = DEMO_HOTELS; 
+      saveHotelDefinitionsToStorage(definitionsToSet);
     }
     setAllHotelDefinitions(definitionsToSet.sort((a,b) => a.name.localeCompare(b.name)));
     setIsLoading(false);
@@ -223,4 +235,3 @@ export function useHotelDefinitions() {
 
   return { isLoading, allHotelDefinitions, getHotelDefinitionsByLocation, getHotelDefinitionById, getRoomTypeDefinitionByIds };
 }
-
