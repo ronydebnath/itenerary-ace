@@ -12,7 +12,7 @@
 import type { Metadata } from 'next';
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster"; // Assuming this is correct path
-import AuthProvider from '@/components/auth-provider'; // Import the new AuthProvider
+import { AuthProvider } from '@/components/auth-provider'; // Import the named export
 import { Inter } from 'next/font/google';
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
