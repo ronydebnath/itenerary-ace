@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { LayoutDashboard, FileLock2, AlertCircle, Eye, EyeOff, BookOpen, Puzzle, Users, Brain, Database, CheckSquare, Briefcase, Settings, Lightbulb, Smartphone } from 'lucide-react';
+import { LayoutDashboard, FileLock2, AlertCircle, Eye, EyeOff, BookOpen, Puzzle, Users, Brain, Database, CheckSquare, Briefcase, Settings, Lightbulb, Smartphone, MailWarning, KeyRound } from 'lucide-react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 
 const CORRECT_PASSWORD = "Nick"; // Simple password check
@@ -348,6 +348,65 @@ export default function AdminDocumentsPage() {
                 <AccordionContent className="text-sm text-muted-foreground space-y-3 pt-2 pl-2">
                   <p>This section outlines potential enhancements and new features for Itinerary Ace.</p>
                   <Card className="bg-card/50 p-3">
+                    <h4 className="font-medium text-foreground flex items-center"><MailWarning className="mr-2 h-4 w-4 text-destructive"/>Next Steps for Email Integration (SendGrid)</h4>
+                    <p className="text-xs mt-1 mb-2">
+                      The frontend placeholders for email sending are set up. To make this fully functional and secure, the following backend development is required:
+                    </p>
+                    <ol className="list-decimal pl-5 space-y-1.5 text-xs">
+                      <li>
+                        <strong>Create Backend API Endpoints:</strong>
+                        <ul className="list-disc pl-4 mt-0.5 space-y-0.5">
+                          <li>Develop API routes in your Next.js application (e.g., in `src/app/api/auth/forgot-password` and `src/app/api/auth/reset-password`).</li>
+                          <li>These endpoints will receive requests from the frontend (e.g., when a user clicks "Forgot Password?").</li>
+                        </ul>
+                      </li>
+                      <li>
+                        <strong>Secure API Key Management:</strong>
+                        <ul className="list-disc pl-4 mt-0.5 space-y-0.5">
+                          <li>The `SENDGRID_API_KEY` and `EMAIL_FROM` environment variables **must only be accessed on the server-side** within these API routes.</li>
+                          <li>Do NOT expose your SendGrid API key in client-side JavaScript.</li>
+                        </ul>
+                      </li>
+                       <li>
+                        <strong>Password Reset Token Logic (Backend):</strong>
+                        <ul className="list-disc pl-4 mt-0.5 space-y-0.5">
+                          <li>When `/api/auth/forgot-password` is called:
+                            <ul className="list-circle pl-3">
+                              <li>Verify the user's email exists in your user database (once implemented).</li>
+                              <li>Generate a cryptographically secure, unique, and short-lived password reset token.</li>
+                              <li>Store this token securely, associated with the user's ID and an expiration timestamp (e.g., in your user database).</li>
+                              <li>Construct the password reset link (e.g., `https://yourapp.com/auth/reset-password?token=YOUR_SECURE_TOKEN`).</li>
+                            </ul>
+                          </li>
+                          <li>When `/api/auth/reset-password` is called (with token and new password):
+                             <ul className="list-circle pl-3">
+                              <li>Verify the token: check if it exists, hasn't expired, and matches a user.</li>
+                              <li>If valid, hash the new password and update it in your user database.</li>
+                              <li>Invalidate the used token.</li>
+                            </ul>
+                          </li>
+                        </ul>
+                      </li>
+                      <li>
+                        <strong>Actual Email Sending (Backend):</strong>
+                        <ul className="list-disc pl-4 mt-0.5 space-y-0.5">
+                          <li>Inside your backend API routes, use the `@sendgrid/mail` SDK (already installed) with your configured API key to send the emails (e.g., password reset link email, welcome emails).</li>
+                          <li>Example for sending password reset email: The `/api/auth/forgot-password` endpoint, after generating and storing the token, would call `sgMail.send(...)`.</li>
+                        </ul>
+                      </li>
+                       <li>
+                        <strong>Error Handling & User Feedback:</strong>
+                        <ul className="list-disc pl-4 mt-0.5 space-y-0.5">
+                          <li>Implement robust error handling in your API routes.</li>
+                          <li>Provide clear feedback to the frontend (e.g., "If an account with that email exists, a reset link has been sent," or "Invalid/expired reset token").</li>
+                        </ul>
+                      </li>
+                    </ol>
+                    <p className="text-xs mt-2">
+                      <strong>Note:</strong> The current `src/lib/email-service.ts` is a frontend placeholder. The actual email sending logic using `sgMail.send()` must reside in your backend API routes.
+                    </p>
+                  </Card>
+                  <Card className="bg-card/50 p-3">
                     <h4 className="font-medium text-foreground">Backend & Database Integration</h4>
                     <ul className="list-disc pl-5 mt-1 space-y-1 text-xs">
                       <li>Transition from LocalStorage to a robust backend database (e.g., PostgreSQL, Firestore).</li>
@@ -479,3 +538,5 @@ export default function AdminDocumentsPage() {
   );
 }
 
+
+    
