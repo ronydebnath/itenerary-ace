@@ -14,7 +14,9 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Loader2, LogIn } from "lucide-react";
+import { Loader2, LogIn, MailQuestion } from "lucide-react";
+import { sendPasswordResetEmail } from '@/lib/email-service'; // Import the placeholder
+import { useToast } from '@/hooks/use-toast';
 
 const loginSchema = z.object({
   email: z.string().email("Invalid email address."),
@@ -29,6 +31,7 @@ export default function LoginPage() {
   const callbackUrl = searchParams.get('callbackUrl') || '/';
   const error = searchParams.get('error');
   const { status } = useSession();
+  const { toast } = useToast();
 
   const [isLoading, setIsLoading] = React.useState(false);
   const [loginError, setLoginError] = React.useState<string | null>(error);
@@ -52,7 +55,7 @@ export default function LoginPage() {
     setLoginError(null);
     try {
       const result = await signIn('credentials', {
-        redirect: false, // We'll handle redirection manually
+        redirect: false, 
         email: values.email,
         password: values.password,
         callbackUrl: callbackUrl
@@ -61,13 +64,44 @@ export default function LoginPage() {
       if (result?.error) {
         setLoginError(result.error === "CredentialsSignin" ? "Invalid email or password." : result.error);
       } else if (result?.ok) {
-        router.replace(callbackUrl); // Successful login
+        router.replace(callbackUrl); 
       }
     } catch (err) {
       console.error("Login error:", err);
       setLoginError("An unexpected error occurred during login.");
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleForgotPassword = async () => {
+    const email = form.getValues("email") || window.prompt("Please enter your email address to reset your password:");
+    if (email && z.string().email().safeParse(email).success) {
+      setIsLoading(true);
+      // In a real app, you'd call a backend API here.
+      // This API would generate a secure token, save it, and then use SendGrid.
+      const dummyResetLink = `${window.location.origin}/auth/reset-password?token=DUMMY_RESET_TOKEN_FOR_${email.replace(/[^a-zA-Z0-9]/g, "")}`;
+      const result = await sendPasswordResetEmail(email, dummyResetLink);
+      if (result.success) {
+        toast({
+          title: "Password Reset Email Sent (Simulated)",
+          description: `If an account exists for ${email}, a password reset link has been sent (check console). ${result.message}`,
+          variant: "default",
+        });
+      } else {
+        toast({
+          title: "Password Reset Failed (Simulated)",
+          description: `Could not send password reset email. ${result.message}`,
+          variant: "destructive",
+        });
+      }
+      setIsLoading(false);
+    } else if (email) {
+      toast({
+        title: "Invalid Email",
+        description: "Please enter a valid email address.",
+        variant: "destructive",
+      });
     }
   };
   
@@ -115,7 +149,19 @@ export default function LoginPage() {
                 name="password"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Password</FormLabel>
+                    <div className="flex justify-between items-center">
+                      <FormLabel>Password</FormLabel>
+                       <Button
+                        type="button"
+                        variant="link"
+                        size="sm"
+                        className="text-xs h-auto p-0 text-primary hover:underline"
+                        onClick={handleForgotPassword}
+                        disabled={isLoading}
+                      >
+                        Forgot Password?
+                      </Button>
+                    </div>
                     <FormControl>
                       <Input type="password" placeholder="••••••••" {...field} />
                     </FormControl>
@@ -139,3 +185,4 @@ export default function LoginPage() {
     </main>
   );
 }
+

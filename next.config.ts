@@ -20,6 +20,16 @@ if (process.env.NODE_ENV === 'development') {
     console.warn('\x1b[33m%s\x1b[0m', 'Example: EXCHANGERATE_API_KEY="your_actual_exchangerateapi_key"');
     console.warn('\x1b[33m%s\x1b[0m', '*********************************************************************\n\n');
   }
+  if (!process.env.SENDGRID_API_KEY || process.env.SENDGRID_API_KEY === 'your_sendgrid_api_key_here' || process.env.SENDGRID_API_KEY.trim() === '') {
+    console.warn('\n\n\x1b[33m%s\x1b[0m', '****************************** ATTENTION ******************************');
+    console.warn('\x1b[33m%s\x1b[0m', '[WARNING] SENDGRID_API_KEY is not set, is empty, or is using the placeholder value.');
+    console.warn('\x1b[33m%s\x1b[0m', 'Email sending functionality (e.g., password resets) WILL NOT WORK through SendGrid.');
+    console.warn('\x1b[33m%s\x1b[0m', 'To enable email sending, set SENDGRID_API_KEY in your `.env.local` file.');
+    console.warn('\x1b[33m%s\x1b[0m', 'Example: SENDGRID_API_KEY="SG.your_actual_sendgrid_key"');
+    console.warn('\x1b[33m%s\x1b[0m', 'Also ensure EMAIL_FROM is set for the sender address.');
+    console.warn('\x1b[33m%s\x1b[0m', 'Example: EMAIL_FROM="noreply@example.com"');
+    console.warn('\x1b[33m%s\x1b[0m', '*********************************************************************\n\n');
+  }
 }
 
 const nextConfig: NextConfig = {
@@ -52,6 +62,8 @@ const nextConfig: NextConfig = {
     // If it's only used server-side (e.g., in API routes or server components), no need to expose it here.
     // For this hook (useExchangeRates), it needs to be client-side.
     NEXT_PUBLIC_EXCHANGERATE_API_KEY: process.env.EXCHANGERATE_API_KEY,
+    // SENDGRID_API_KEY and EMAIL_FROM should typically NOT be exposed to the client.
+    // They are used by backend services. This env block is for client-side env vars.
   }
 };
 

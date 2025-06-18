@@ -1,6 +1,7 @@
 
 import type { NextAuthOptions, User } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
+// import { sendPasswordResetEmail } from './email-service'; // Example: Would be called by your backend API
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -31,7 +32,20 @@ export const authOptions: NextAuthOptions = {
         return null;
         // You can also Reject this callback with an Error thus the user will be sent to the error page with the error message as a query parameter
       }
-    })
+    }),
+    // Example: If you were using NextAuth's Email provider for magic links or passwordless
+    // import EmailProvider from "next-auth/providers/email";
+    // EmailProvider({
+    //   server: process.env.EMAIL_SERVER, // Your email server config
+    //   from: process.env.EMAIL_FROM,
+    //   async sendVerificationRequest({ identifier: email, url, provider: { server, from } }) {
+    //     // This is where you'd use your email sending service
+    //     // For example, calling a backend API that uses SendGrid
+    //     // await customSendVerificationRequest({ email, url, server, from });
+    //     console.log(`EMAIL PROVIDER: Verification email for ${email} with link ${url} would be sent here.`);
+    //     // If you implement password reset through this provider, this function would also be used.
+    //   }
+    // })
   ],
   session: {
     strategy: 'jwt',
@@ -39,6 +53,8 @@ export const authOptions: NextAuthOptions = {
   pages: {
     signIn: '/auth/login',
     // error: '/auth/error', // Optional: custom error page
+    // verifyRequest: '/auth/verify-request', // For Email provider
+    // newUser: '/auth/new-user' // If you want a custom new user page
   },
   callbacks: {
     async jwt({ token, user }) {
@@ -66,4 +82,11 @@ export const authOptions: NextAuthOptions = {
   },
   // Ensure you have NEXTAUTH_SECRET set in your .env file
   secret: process.env.NEXTAUTH_SECRET,
+
+  // If implementing custom password reset flows:
+  // You would typically have API routes like:
+  // - /api/auth/forgot-password: Takes email, generates token, calls sendPasswordResetEmail (via your backend)
+  // - /api/auth/reset-password: Takes token and new password, verifies token, updates password
+  // These are NOT directly configured in NextAuthOptions for CredentialsProvider.
 };
+
