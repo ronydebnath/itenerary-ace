@@ -9,6 +9,7 @@ if (!supabaseUrl || !supabaseAnonKey) {
       'Supabase URL or Anon Key is not set. Ensure NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY are in your .env.local file if you plan to use Supabase client features (e.g., Auth, Storage).'
     );
   }
+  // In a real app, you might want to throw an error or exit if Supabase is critical.
 }
 
 // Create a single supabase client for interacting with your database
@@ -17,8 +18,7 @@ export const supabase =
   ? createClient(supabaseUrl, supabaseAnonKey)
   : null;
 
-// Optional: Helper function for components to get the client,
-// which can be useful if you want to handle the null case more gracefully.
+// Helper function for components to get the client
 export function getSupabaseClient() {
   if (!supabase) {
     if (process.env.NODE_ENV === 'development') {
