@@ -11,7 +11,7 @@
  */
 import type { Metadata } from 'next';
 import './globals.css';
-import { Toaster } from "@/components/ui/toaster";
+import { Toaster } from "@/components/ui/toaster"; // Assuming this is correct path
 import AuthProvider from '@/components/auth-provider'; // Import the new AuthProvider
 import { Inter } from 'next/font/google';
 
@@ -31,9 +31,9 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning className={`${inter.variable}`}>
       <head />
       <body className="font-body antialiased bg-background text-foreground" suppressHydrationWarning>
-        <AuthProvider> {/* Wrap children with AuthProvider */}
+        <AuthProvider>
           {children}
-          <Toaster />
+          <Toaster /> {/* Assuming this is correct placement */}
         </AuthProvider>
       </body>
     </html>
