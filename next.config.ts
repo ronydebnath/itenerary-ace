@@ -41,7 +41,10 @@ const nextConfig: NextConfig = {
   },
   devIndicators: {
     allowedDevOrigins: [
-      'https://9000-firebase-studio-1749328696453.cluster-fdkw7vjj7bgguspe3fbbc25tra.cloudworkstations.dev',
+      'http://localhost:9002',
+    'http://127.0.0.1:9002',
+    'http://192.168.1.102:9002', // <-- Add your local network IP
+    'https://6000-firebase-studio-1749328696453.cluster-fdkw7vjj7bgguspe3fbbc25tra.cloudworkstations.dev',
     ],
   },
   env: {
